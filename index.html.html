@@ -5126,6 +5126,7 @@ async function syncSheets() {
 async function sbSave() {
   sbPendingChanges = true;
   try {
+    console.log(`sbSave: salvando ${projects.length} projetos no Supabase…`);
     const payload = {
       id: 'main',
       projects:   JSON.stringify(projects),
@@ -5159,6 +5160,7 @@ async function sbSave() {
     sbLastSaved = new Date();
     sbPendingChanges = false;
     sbRetryCount = 0;
+    console.log(`sbSave: confirmado ${projects.length} projetos salvos às ${sbLastSaved.toLocaleTimeString()}`);
     setSyncStatus('✓ Salvo às ' + sbLastSaved.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) + ' (' + projects.length + ' proj.)', 'var(--green)');
     syncSheets(); // envia para Google Sheets
   } catch (e) {
@@ -5271,11 +5273,6 @@ async function sbLoad() {
         });
         projects = prjs;
       }
-    } else if (!sbMaisRecente) {
-      // HTML é mais recente — salva HTML no Supabase para sincronizar
-      console.log('HTML mais recente que Supabase — atualizando banco...');
-      sbPendingChanges = true;
-      setTimeout(() => sbSave(), 500);
     }
     // carrega outros dados — só se Supabase for mais recente
     if (sbMaisRecente) {
@@ -5408,9 +5405,9 @@ RECOVERY_NPS[1780058701935] = {"nota": "9", "comentario": "", "dataResp": "2026-
 RECOVERY_NPS[1776477577933] = {"nota": "10", "comentario": "—", "dataResp": "2026-05-30"};
 RECOVERY_NPS[1776223598807] = {"nota": "", "comentario": "—"};
 const RECOVERY_MON = {};
-RECOVERY_MON['abr'] = {}, {"ot": 120000, "rec": 50000};
-RECOVERY_MON['mai'] = {}, {"ot": 120000, "rec": 50000};
-RECOVERY_MON['jun'] = {}, {"ot": 120000, "rec": 50000, "cons_Caio_pct_ot": 25, "cons_Leonam_pct_ot": 25, "cons_Caio_pct_rec": 25, "cons_Leonam_pct_rec": 25, "cons_Loma_pct_ot": 20, "cons_Loma_pct_rec": 20, "cons_Camila_pct_ot": 20, "cons_Camila_pct_rec": 20, "cons_Cleiton_pct_ot": 10, "cons_Cleiton_pct_rec": 10};
+RECOVERY_MON['abr'] = {"ot": 120000, "rec": 50000};
+RECOVERY_MON['mai'] = {"ot": 120000, "rec": 50000};
+RECOVERY_MON['jun'] = {"ot": 120000, "rec": 50000, "cons_Caio_pct_ot": 25, "cons_Leonam_pct_ot": 25, "cons_Caio_pct_rec": 25, "cons_Leonam_pct_rec": 25, "cons_Loma_pct_ot": 20, "cons_Loma_pct_rec": 20, "cons_Camila_pct_ot": 20, "cons_Camila_pct_rec": 20, "cons_Cleiton_pct_ot": 10, "cons_Cleiton_pct_rec": 10};
 const RECOVERY_CSP = {"mar": 4.6, "abr": 4.1, "fev": 5.6, "jan": 7.0, "mai": 3.5, "jun": 0.0};
 
 // Inicialização: tenta Supabase, usa recovery se necessário
