@@ -296,6 +296,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
   <button class="nav-tab tab-base" onclick="show('base')">Base de Projetos</button>
   <button class="nav-tab" onclick="show('conversao')">Tx. Conversão</button>
   <button class="nav-tab" onclick="show('leadtime')">Lead Time</button>
+  <button class="nav-tab" onclick="show('dro')">DRO</button>
   <button class="nav-tab" onclick="show('pipeline')">Pipeline</button>
   <button class="nav-tab" onclick="show('monetizacao')">Monetização</button>
   <button class="nav-tab" onclick="show('prazo')">Projetos no Prazo</button>
@@ -369,6 +370,14 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
         <span class="base-filter-label">Motivo</span>
         <select class="base-sel" id="f-motivo" onchange="renderBase()"><option value="">Todos</option></select>
       </div>
+      <div class="base-filter-group">
+        <span class="base-filter-label">Modelo</span>
+        <select class="base-sel" id="f-modelo" onchange="renderBase()">
+          <option value="">Todos</option>
+          <option value="Estruturação Estratégica">Estruturação Estratégica</option>
+          <option value="DRO">DRO</option>
+        </select>
+      </div>
       <div style="width:1px;height:20px;background:var(--border);margin:0 2px;"></div>
       <span class="base-filter-label">Ordem:</span>
       <button class="sort-btn" id="sort-inicio"    onclick="setSort('inicio')"    >Início <span class="arrow" id="arr-inicio"></span></button>
@@ -388,7 +397,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
       <table>
         <thead>
           <tr>
-            <th style="width:36px;min-width:36px;">#</th><th style="min-width:160px;">Projeto</th><th>Consultor</th><th>GMV (R$)</th><th>Tier</th><th>Designer</th><th>Copy</th>
+            <th style="width:36px;min-width:36px;">#</th><th style="min-width:160px;">Projeto</th><th>Modelo</th><th>Consultor</th><th>GMV (R$)</th><th>Tier</th><th>Designer</th><th>Copy</th>
             <th>Dt. Início</th><th>Dt. Prev. Conclusão</th><th>Dt. Conclusão Real</th>
             <th>Prazo</th><th>Flag</th>
             <th>Status</th>
@@ -524,6 +533,28 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
 </section>
 
 <!-- PIPELINE -->
+<section id="sec-dro" class="section">
+  <div class="sec-head">
+    <h2 class="sec-title">DRO</h2>
+    <p class="sec-sub">Projetos de acompanhamento mensal — comitês e auditorias</p>
+  </div>
+
+  <div class="tbl-filters" style="margin-bottom:1rem;">
+    <select class="base-sel" id="dro-f-cons" onchange="buildDRO()">
+      <option value="">Todos consultores</option>
+    </select>
+    <select class="base-sel" id="dro-f-flag" onchange="buildDRO()">
+      <option value="">Todas flags</option>
+      <option>Verde</option>
+      <option>Amarelo</option>
+      <option>Vermelho</option>
+    </select>
+    <button class="base-clear" onclick="document.getElementById('dro-f-cons').value='';document.getElementById('dro-f-flag').value='';buildDRO()">Limpar</button>
+  </div>
+
+  <div id="dro-list"></div>
+</section>
+
 <section id="sec-pipeline" class="section">
   <div class="sec-head"><h2 class="sec-title">Pipeline</h2><p class="sec-desc">Funil de oportunidades — One-time e Recorrente.</p></div>
 
@@ -827,8 +858,20 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
     </div>
   </div>
 
-  <!-- Capacidade disponível (ao final) -->
-  <div id="cap-disponivel"></div>
+  
+  <!-- Seção DRO no Capacity -->
+  <div style="margin-top:2rem;">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+      <span style="width:10px;height:10px;border-radius:50%;background:#8E5BC4;display:inline-block;"></span>
+      Projetos DRO
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+      <select class="base-sel" id="dro-cap-auditor" onchange="buildGantt()" style="font-size:11px;">
+        <option value="">Todos auditores</option>
+      </select>
+    </div>
+    <div id="gantt-dro-list"></div>
+  </div>
 </section>
 
 <!-- MODAL NOVO PROJETO -->
@@ -844,6 +887,14 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
         <div>
           <label style="display:block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">Nome do projeto *</label>
           <input id="np-nome" type="text" class="sel" style="width:100%;font-size:14px;" placeholder="Ex: Frotix Tecnologia">
+        </div>
+
+        <div>
+          <label style="display:block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">Modelo *</label>
+          <select id="np-modelo" class="sel" style="width:100%;font-size:14px;" onchange="npModeloChange()">
+            <option value="Estruturação Estratégica">Estruturação Estratégica</option>
+            <option value="DRO">DRO</option>
+          </select>
         </div>
 
         <div>
@@ -872,6 +923,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
           <div>
             <label style="display:block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">Data prevista <span id="np-prev-tag" style="color:var(--text-hint);font-weight:400;font-size:9px;">(auto)</span></label>
             <input id="np-prevFim" type="date" class="sel" style="width:100%;" onchange="npPrevManual()">
+            <div id="np-prevFim-hint" style="display:none;font-size:10px;color:var(--red);margin-top:3px;">⚠ Obrigatório para DRO (fim do contrato)</div>
           </div>
         </div>
 
@@ -1192,10 +1244,24 @@ function mesesAtivos(p) {
 // ═══════════════════════════════════
 function prazoStatus(p) {
   if (!p.inicio || !p.prevFim) return {ok: null, html: '<span style="color:var(--text-hint)">—</span>', dias: null};
-  const dIni    = parseDate(p.inicio);
-  const dPrev   = parseDate(p.prevFim);
-  const limite  = new Date(dIni.getTime() + 45 * 864e5);
-  const hoje    = new Date(); hoje.setHours(0,0,0,0);
+  const dIni  = parseDate(p.inicio);
+  const dPrev = parseDate(p.prevFim);
+  const hoje  = new Date(); hoje.setHours(0,0,0,0);
+
+  // ── DRO: prazo = duração do contrato (início → fim do contrato) ──
+  if (p.modelo === 'DRO') {
+    const rest = Math.round((dPrev - hoje) / 864e5);
+    if (p.realFim) {
+      const dias = diffDays(p.inicio, p.realFim);
+      return { ok: true, dias, html: `<span class="badge b-gray" style="margin-top:0">Encerrado</span>` };
+    }
+    if (rest < 0) return { ok: null, dias: null, html: `<span class="badge b-gray" style="margin-top:0">Encerrado</span>` };
+    if (rest <= 30) return { ok: true, dias: rest, html: `<span class="badge b-amber" style="margin-top:0">⚡ ${rest}d restantes</span>` };
+    return { ok: true, dias: rest, html: `<span class="badge b-blue" style="margin-top:0">${rest}d restantes</span>` };
+  }
+
+  // ── Estruturação Estratégica: prazo = 45 dias ──
+  const limite   = new Date(dIni.getTime() + 45 * 864e5);
 
   if (p.realFim) {
     const dReal = parseDate(p.realFim);
@@ -1242,7 +1308,7 @@ function monBadge(m) {
 // ═══════════════════════════════════
 //  NAV
 // ═══════════════════════════════════
-const TABS = ['visao','base','conversao','leadtime','pipeline','monetizacao','prazo','csp','nps','pdi','capacity','performance'];
+const TABS = ['visao','base','conversao','leadtime','dro','pipeline','monetizacao','prazo','csp','nps','pdi','capacity','performance'];
 
 function clearPipeFunilFilters() {
   ['pipe-f-cons','pipe-f-oport','pipe-f-tipo'].forEach(id => {
@@ -1273,6 +1339,7 @@ function buildPipeline() {
 
   // base: Em andamento OU com oport preenchido, excluindo Monetizados
   let ativos = projects.filter(p => {
+    if (p.modelo === 'DRO') return false;
     const temOport = p.oport && p.oport !== '—' && p.oport !== '' && p.oport !== 'Sem oportunidade';
     return calcStatus2(p) === 'Em andamento' || temOport;
   }).filter(p => p.conv !== 'Monetizado');
@@ -1541,7 +1608,8 @@ function buildOutrosEscopos() {
             <th>Projeto</th>
             <th>Escopo Adicional</th>
             <th>Data Início</th>
-            <th>Atribuição</th>
+            <th style="text-align:center;">Atribuição</th>
+            <th style="text-align:center;">Dossiê</th>
             <th style="text-align:center;">Alin. Interno</th>
             <th style="text-align:center;">Handover</th>
           </tr>
@@ -1563,8 +1631,8 @@ function buildOutrosEscopos() {
               <td><span class="badge b-red" style="font-size:10px;">${p.outrosEscopos}</span></td>
               <td><input type="date" class="sel" style="font-size:11px;padding:3px 6px;" value="${d.dataInicio||''}"
                 onchange="const pr=projects.find(x=>x.id===${p.id});if(!pr.outrosEscoposData)pr.outrosEscoposData={};pr.outrosEscoposData.dataInicio=this.value;upd();"></td>
-              <td><input type="text" class="sel" placeholder="Responsável…" style="font-size:11px;padding:3px 6px;min-width:100px;" value="${d.atribuicao||''}"
-                onblur="const pr=projects.find(x=>x.id===${p.id});if(!pr.outrosEscoposData)pr.outrosEscoposData={};pr.outrosEscoposData.atribuicao=this.value;upd();"></td>
+              <td style="text-align:center;">${check('atribuicao', d.atribuicao)}</td>
+              <td style="text-align:center;">${check('dossie', d.dossie)}</td>
               <td style="text-align:center;">${check('alinhamento', d.alinhamento)}</td>
               <td style="text-align:center;">${check('handover', d.handover)}</td>
             </tr>`;
@@ -1572,6 +1640,538 @@ function buildOutrosEscopos() {
         </tbody>
       </table>
     </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  ABA DRO
+// ═══════════════════════════════════════════════════════
+function buildDRO() {
+  const container = document.getElementById('dro-list');
+  if (!container) return;
+
+  // Popula filtro de consultores
+  const consSelect = document.getElementById('dro-f-cons');
+  if (consSelect && consSelect.options.length === 1) {
+    const cons = [...new Set(projects.filter(p => p.modelo === 'DRO').map(p => p.consultor).filter(Boolean))].sort();
+    cons.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; consSelect.appendChild(o); });
+  }
+
+  const consFilter = document.getElementById('dro-f-cons')?.value || '';
+  const flagFilter = document.getElementById('dro-f-flag')?.value || '';
+
+  const lista = projects.filter(p =>
+    p.modelo === 'DRO' &&
+    calcStatus2(p) !== 'Finalizado' &&
+    (!consFilter || p.consultor === consFilter) &&
+    (!flagFilter || p.flag === flagFilter)
+  );
+
+  if (lista.length === 0) {
+    container.innerHTML = '<p style="color:var(--text-hint);font-size:13px;padding:16px 0;">Nenhum projeto DRO ativo.</p>';
+    return;
+  }
+
+  container.innerHTML = lista.map(p => {
+    if (!p.droData) p.droData = { comites: [], auditorias: [] };
+    const d = p.droData;
+
+    // Progresso do contrato
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    const dInicio = parseDate(p.inicio);
+    const dFim = parseDate(p.prevFim);
+    let progresso = 0;
+    let diasTotal = 0;
+    let diasPassados = 0;
+    if (dInicio && dFim) {
+      diasTotal = Math.round((dFim - dInicio) / 86400000);
+      diasPassados = Math.round((hoje - dInicio) / 86400000);
+      progresso = Math.min(100, Math.max(0, Math.round(diasPassados / diasTotal * 100)));
+    }
+
+    // Meses do contrato para os comitês
+    const meses = [];
+    if (dInicio && dFim) {
+      let cur = new Date(dInicio);
+      cur.setDate(1);
+      while (cur <= dFim) {
+        meses.push(cur.toLocaleDateString('pt-BR', {month:'short', year:'2-digit'}));
+        cur.setMonth(cur.getMonth() + 1);
+      }
+    }
+
+    // Comitês
+    const comitesMarcados = d.comites || [];
+    const comitesHTML = meses.map((mes, i) => {
+      const c = comitesMarcados[i] || {};
+      const feito = !!c.data;
+      return `
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;min-width:52px;">
+          <div onclick="droToggleComite(${p.id}, ${i})"
+            style="width:22px;height:22px;border-radius:50%;border:2px solid ${feito?'var(--green)':'var(--border)'};
+            background:${feito?'var(--green)':'transparent'};display:flex;align-items:center;justify-content:center;
+            cursor:pointer;transition:all .2s;" title="${feito?c.data:'Registrar comitê'}">
+            ${feito?'<span style="color:#fff;font-size:11px;">✓</span>':''}
+          </div>
+          <span style="font-size:9px;color:var(--text-hint);white-space:nowrap;">${mes}</span>
+          ${feito?`<input type="date" value="${c.data}" style="font-size:9px;width:80px;padding:1px 3px;border:none;border-bottom:1px solid var(--border);background:transparent;color:var(--text-muted);"
+            onchange="droSetComiteData(${p.id}, ${i}, this.value)">`:
+            `<span style="font-size:9px;color:var(--border);">—</span>`}
+        </div>`;
+    }).join('');
+
+    // Auditorias previstas
+    const auditorias = d.auditorias || [];
+    const audHTML = auditorias.length > 0 ? auditorias.map((a, i) => `
+      <div style="padding:8px 0;border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <div onclick="droToggleAuditoria(${p.id}, ${i})"
+            style="width:20px;height:20px;border-radius:4px;border:2px solid ${a.feita?'var(--blue)':'var(--border)'};
+            background:${a.feita?'var(--blue)':'transparent'};display:flex;align-items:center;justify-content:center;
+            cursor:pointer;flex-shrink:0;transition:all .2s;">
+            ${a.feita?'<span style="color:#fff;font-size:11px;">✓</span>':''}
+          </div>
+          <span style="font-size:12px;font-weight:600;flex:1;">${a.nome}</span>
+          <button onclick="droRemoveAuditoria(${p.id}, ${i})"
+            style="font-size:10px;color:var(--text-hint);background:none;border:none;cursor:pointer;padding:0 4px;">✕</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:6px;padding-left:28px;">
+          <div>
+            <span style="font-size:10px;color:var(--text-hint);">Prevista</span>
+            <input type="date" value="${a.dataPrev||''}" class="sel" style="font-size:11px;padding:2px 6px;width:100%;"
+              onchange="droSetAuditoriaField(${p.id}, ${i}, 'dataPrev', this.value)">
+          </div>
+          <div>
+            <span style="font-size:10px;color:var(--text-hint);">Realizada</span>
+            <input type="date" value="${a.data||''}" class="sel" style="font-size:11px;padding:2px 6px;width:100%;"
+              onchange="droSetAuditoriaData(${p.id}, ${i}, this.value)">
+          </div>
+          <div>
+            <span style="font-size:10px;color:var(--text-hint);">Responsável</span>
+            <input type="text" value="${a.responsavel||''}" class="sel" placeholder="—" style="font-size:11px;padding:2px 6px;width:100%;"
+              onblur="droSetAuditoriaField(${p.id}, ${i}, 'responsavel', this.value)">
+          </div>
+          <div>
+            <span style="font-size:10px;color:var(--text-hint);">Entregáveis</span>
+            <input type="text" value="${a.entregaveis||''}" class="sel" placeholder="—" style="font-size:11px;padding:2px 6px;width:100%;"
+              onblur="droSetAuditoriaField(${p.id}, ${i}, 'entregaveis', this.value)">
+          </div>
+        </div>
+      </div>`).join('') :
+      '<p style="font-size:12px;color:var(--text-hint);padding:6px 0;">Nenhuma auditoria prevista.</p>';
+
+    // Toggle expand/collapse — expandido por padrão
+    if (p.droExpanded === undefined) p.droExpanded = true;
+    const expanded = p.droExpanded;
+
+    return `
+    <div class="card" style="margin-bottom:1rem;">
+      <!-- Cabeçalho — clicável para expandir/recolher -->
+      <div onclick="const pr=projects.find(x=>x.id===${p.id});pr.droExpanded=!pr.droExpanded;buildDRO();"
+        style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;cursor:pointer;${expanded?'margin-bottom:14px;':''}">
+        <div>
+          <div style="font-size:15px;font-weight:700;">${p.nome}</div>
+          <div style="font-size:12px;color:var(--text-hint);margin-top:2px;">
+            ${p.consultor} · ${p.inicio||'?'} → ${p.prevFim||'?'}
+            ${p.gmv ? ' · GMV: R$ '+Number(p.gmv).toLocaleString('pt-BR') : ''}
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;" onclick="event.stopPropagation()">
+          ${flagHTML(p.flag)}
+          <select class="sel" style="font-size:11px;padding:2px 6px;" onchange="const pr=projects.find(x=>x.id===${p.id});pr.oport=this.value;upd();">
+            <option value="" ${!p.oport?'selected':''}>Sem oportunidade</option>
+            <option value="Mapeado (AQL)" ${p.oport==='Mapeado (AQL)'?'selected':''}>Mapeado (AQL)</option>
+            <option value="Apresentar proposta (SQL)" ${p.oport==='Apresentar proposta (SQL)'?'selected':''}>Apresentar proposta (SQL)</option>
+            <option value="Proposta apresentada (SAL)" ${p.oport==='Proposta apresentada (SAL)'?'selected':''}>Proposta apresentada (SAL)</option>
+            <option value="Follow (COMMIT)" ${p.oport==='Follow (COMMIT)'?'selected':''}>Follow (COMMIT)</option>
+          </select>
+          <div style="display:flex;align-items:center;gap:4px;">
+            <span style="font-size:11px;color:var(--text-hint);">📅</span>
+            <input type="date" class="sel" style="font-size:11px;padding:2px 6px;" value="${p.proximoContato||''}"
+              onchange="const pr=projects.find(x=>x.id===${p.id});pr.proximoContato=this.value;upd();">
+          </div>
+          <span style="font-size:16px;color:var(--text-hint);line-height:1;transition:transform .2s;display:inline-block;transform:rotate(${expanded?'0':'180deg'});">⌃</span>
+        </div>
+      </div>
+
+      <!-- Corpo expansível -->
+      <div style="display:${expanded?'block':'none'}">
+
+      <!-- Barra de progresso do contrato -->
+      <div style="margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-hint);margin-bottom:4px;">
+          <span>Progresso do contrato</span>
+          <span>${progresso}% · ${Math.max(0, diasTotal - diasPassados)} dias restantes</span>
+        </div>
+        <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;">
+          <div style="height:100%;width:${progresso}%;background:${progresso>=80?'var(--red)':progresso>=50?'var(--amber)':'var(--green)'};border-radius:3px;transition:width .3s;"></div>
+        </div>
+      </div>
+
+      <!-- Comitês mensais -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:11px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">
+          Comitês Mensais (${comitesMarcados.filter(c=>c&&c.data).length}/${meses.length} realizados)
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:12px;">
+          ${comitesHTML}
+        </div>
+      </div>
+
+      <!-- Auditorias -->
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <div style="font-size:11px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.5px;">
+            Auditorias Previstas (${auditorias.filter(a=>a.feita).length}/${auditorias.length})
+          </div>
+          <button onclick="droShowAddAuditoria(${p.id})"
+            style="font-size:11px;padding:3px 10px;border:1px dashed var(--border);border-radius:6px;
+            background:transparent;color:var(--text-muted);cursor:pointer;">+ Auditoria</button>
+        </div>
+        <div id="dro-aud-${p.id}">${audHTML}</div>
+        <div id="dro-aud-form-${p.id}" style="display:none;margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:12px;">
+          <div style="font-size:11px;font-weight:600;color:var(--text-hint);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px;">Nova Auditoria</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+            <div>
+              <label style="font-size:11px;color:var(--text-hint);display:block;margin-bottom:3px;">Nome</label>
+              <input type="text" id="dro-aud-nome-${p.id}" class="sel" placeholder="Ex: Auditoria de Marca" style="width:100%;font-size:12px;">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text-hint);display:block;margin-bottom:3px;">Data Prevista</label>
+              <input type="date" id="dro-aud-dataprev-${p.id}" class="sel" style="width:100%;font-size:12px;">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text-hint);display:block;margin-bottom:3px;">Responsável</label>
+              <input type="text" id="dro-aud-resp-${p.id}" class="sel" placeholder="Nome do responsável" style="width:100%;font-size:12px;">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text-hint);display:block;margin-bottom:3px;">Entregáveis</label>
+              <input type="text" id="dro-aud-entregaveis-${p.id}" class="sel" placeholder="Ex: Relatório, Apresentação" style="width:100%;font-size:12px;">
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <button onclick="droHideAddAuditoria(${p.id})"
+              style="font-size:11px;padding:4px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;cursor:pointer;">Cancelar</button>
+            <button onclick="droConfirmAddAuditoria(${p.id})"
+              style="font-size:11px;padding:4px 12px;border:none;border-radius:6px;background:var(--accent);color:#fff;cursor:pointer;font-weight:600;">Adicionar</button>
+          </div>
+        </div>
+      </div>
+      </div><!-- fim corpo expansível -->
+    </div>`;
+  }).join('');
+}
+
+// ── Helpers DRO ──────────────────────────────────────────
+function droToggleComite(projId, idx) {
+  const p = projects.find(x => x.id === projId);
+  if (!p) return;
+  if (!p.droData) p.droData = { comites: [], auditorias: [] };
+  if (!p.droData.comites[idx]) p.droData.comites[idx] = {};
+  const c = p.droData.comites[idx];
+  if (c.data) {
+    c.data = '';
+  } else {
+    c.data = new Date().toISOString().slice(0,10);
+  }
+  upd(); buildDRO();
+}
+
+function droSetComiteData(projId, idx, val) {
+  const p = projects.find(x => x.id === projId);
+  if (!p) return;
+  if (!p.droData) p.droData = { comites: [], auditorias: [] };
+  if (!p.droData.comites[idx]) p.droData.comites[idx] = {};
+  p.droData.comites[idx].data = val;
+  upd();
+}
+
+function droAddAuditoria(projId) {
+  // mantido para compatibilidade
+}
+
+function droShowAddAuditoria(projId) {
+  const form = document.getElementById('dro-aud-form-' + projId);
+  if (form) form.style.display = 'block';
+}
+
+function droHideAddAuditoria(projId) {
+  const form = document.getElementById('dro-aud-form-' + projId);
+  if (form) form.style.display = 'none';
+  // limpa campos
+  ['nome','dataprev','resp','entregaveis'].forEach(f => {
+    const el = document.getElementById('dro-aud-' + f + '-' + projId);
+    if (el) el.value = '';
+  });
+}
+
+function droConfirmAddAuditoria(projId) {
+  const nome = document.getElementById('dro-aud-nome-' + projId)?.value?.trim();
+  if (!nome) { alert('Informe o nome da auditoria.'); return; }
+  const dataPrev = document.getElementById('dro-aud-dataprev-' + projId)?.value || '';
+  const responsavel = document.getElementById('dro-aud-resp-' + projId)?.value?.trim() || '';
+  const entregaveis = document.getElementById('dro-aud-entregaveis-' + projId)?.value?.trim() || '';
+  const p = projects.find(x => x.id === projId);
+  if (!p) return;
+  if (!p.droData) p.droData = { comites: [], auditorias: [] };
+  p.droData.auditorias.push({ nome, dataPrev, responsavel, entregaveis, data: '', feita: false });
+  upd();
+  droHideAddAuditoria(projId);
+  buildDRO();
+}
+
+function droSetAuditoriaField(projId, idx, field, val) {
+  const p = projects.find(x => x.id === projId);
+  if (!p || !p.droData) return;
+  p.droData.auditorias[idx][field] = val;
+  upd();
+}
+
+function droRemoveAuditoria(projId, idx) {
+  const p = projects.find(x => x.id === projId);
+  if (!p || !p.droData) return;
+  p.droData.auditorias.splice(idx, 1);
+  upd(); buildDRO();
+}
+
+function droToggleAuditoria(projId, idx) {
+  const p = projects.find(x => x.id === projId);
+  if (!p || !p.droData) return;
+  const a = p.droData.auditorias[idx];
+  if (!a) return;
+  a.feita = !a.feita;
+  if (a.feita && !a.data) a.data = new Date().toISOString().slice(0,10);
+  upd(); buildDRO();
+}
+
+function droSetAuditoriaData(projId, idx, val) {
+  const p = projects.find(x => x.id === projId);
+  if (!p || !p.droData) return;
+  p.droData.auditorias[idx].data = val;
+  upd();
+}
+
+// ═══════════════════════════════════════════════════════
+//  GANTT DRO — seção no Capacity
+// ═══════════════════════════════════════════════════════
+function buildGanttDRO() {
+  const container = document.getElementById('gantt-dro-list');
+  if (!container) return;
+
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const diaSem = hoje.getDay();
+  const seg0 = new Date(hoje); seg0.setDate(hoje.getDate() - (diaSem === 0 ? 6 : diaSem - 1) - 4*7);
+  const semanas = Array.from({length: 26}, (_, i) => {
+    const d = new Date(seg0); d.setDate(seg0.getDate() + i*7); return d;
+  });
+
+  // Filtros — consultor vem do filtro principal do Gantt, auditor é próprio da seção DRO
+  const consFilter    = document.getElementById('gantt-cons-filter')?.value || '';
+  const auditorFilter = document.getElementById('dro-cap-auditor')?.value || '';
+
+  // Todos os projetos DRO ativos
+  const todosAtivos = projects.filter(p => {
+    if (p.modelo !== 'DRO' || !p.inicio) return false;
+    const s2 = calcStatus2(p);
+    if (s2 === 'Finalizado' || s2 === 'Churn' || s2 === 'Pausado') return false;
+    if (p.prevFim && parseDate(p.prevFim) < hoje) return false;
+    return true;
+  });
+
+  // Popula select de auditores automaticamente
+  const selAud = document.getElementById('dro-cap-auditor');
+  if (selAud) {
+    const audUniq = [...new Set(
+      todosAtivos.flatMap(p => (p.droData?.auditorias || []).map(a => a.responsavel).filter(Boolean))
+    )].sort();
+    const curOpts = [...selAud.options].map(o => o.value).filter(Boolean);
+    if (JSON.stringify(curOpts) !== JSON.stringify(audUniq)) {
+      const curVal = selAud.value;
+      selAud.innerHTML = '<option value="">Todos auditores</option>';
+      audUniq.forEach(a => {
+        const o = document.createElement('option');
+        o.value = a; o.textContent = a;
+        if (a === curVal) o.selected = true;
+        selAud.appendChild(o);
+      });
+    }
+  }
+
+  // Filtra projetos DRO
+  const droPrjs = todosAtivos.filter(p => {
+    if (consFilter && p.consultor !== consFilter) return false;
+    if (auditorFilter) {
+      const auds = (p.droData?.auditorias || []).map(a => a.responsavel).filter(Boolean);
+      if (!auds.includes(auditorFilter)) return false;
+    }
+    return true;
+  });
+
+  if (droPrjs.length === 0) {
+    container.innerHTML = '<p style="font-size:12px;color:var(--text-hint);">Nenhum projeto DRO ativo.</p>';
+    return;
+  }
+
+  // Headers das semanas
+  const headers = '<th style="min-width:180px;position:sticky;left:0;background:var(--surface2);z-index:3;font-size:10px;padding:4px 8px;">Projeto</th>'
+    + semanas.map(s => {
+        const sEnd = new Date(s.getTime() + 6 * 864e5);
+        const isHoje = hoje >= s && hoje <= sEnd;
+        const label = s.getDate().toString().padStart(2,'0') + '/' + (s.getMonth()+1).toString().padStart(2,'0');
+        return '<th style="font-size:9px;min-width:52px;padding:3px 2px;text-align:center;'
+          + (isHoje ? 'background:rgba(212,0,26,.08);color:var(--accent);font-weight:700;' : '')
+          + '">' + label + '</th>';
+      }).join('');
+
+  const rows = droPrjs.map(p => {
+    const dI = parseDate(p.inicio);
+    if (!dI) return '';
+    const dF = parseDate(p.prevFim || p.realFim) || new Date(dI.getTime() + 180 * 864e5);
+    const dot = dotColors[p.consultor] || 'var(--text-hint)';
+    const nome = p.nome.length > 26 ? p.nome.slice(0,24) + '…' : p.nome;
+
+    // Mapeia eventos da semana: comitês e auditorias
+    const comites = (p.droData?.comites || []);
+    const auditorias = (p.droData?.auditorias || []);
+
+    const cells = semanas.map(s => {
+      const sEnd = new Date(s.getTime() + 6 * 864e5);
+      const isHoje = hoje >= s && hoje <= sEnd;
+      const sISO = s.getFullYear()+'-'+String(s.getMonth()+1).padStart(2,'0')+'-'+String(s.getDate()).padStart(2,'0');
+      const eISO = sEnd.getFullYear()+'-'+String(sEnd.getMonth()+1).padStart(2,'0')+'-'+String(sEnd.getDate()).padStart(2,'0');
+
+      // Projeto ativo nesta semana?
+      const active = dI <= sEnd && dF >= s;
+      if (!active) return '<td style="background:' + (isHoje?'rgba(212,0,26,.04)':'') + ';"></td>';
+
+      // Eventos desta semana
+      const labels = [];
+
+      // Comitês com data registrada nesta semana
+      comites.forEach((c, i) => {
+        if (c && c.data && c.data >= sISO && c.data <= eISO) {
+          labels.push({ text: 'Comitê ' + (i+1), color: 'var(--blue)', feito: true });
+        }
+      });
+
+      // Auditorias previstas nesta semana
+      auditorias.forEach(a => {
+        if (a.dataPrev && a.dataPrev >= sISO && a.dataPrev <= eISO) {
+          labels.push({ text: a.nome, color: a.feita ? 'var(--green)' : 'var(--purple,#8E5BC4)', feito: a.feita });
+        }
+      });
+
+      let barContent = '';
+      if (labels.length > 0) {
+        const labelText = labels.map(l => l.text).join('<br>');
+        const barColor = labels[0].color;
+        barContent = '<div class="gantt-bar" style="background:' + barColor + ';left:0%;right:0%;display:flex;align-items:center;justify-content:center;overflow:visible;">'
+          + '<span style="font-size:8px;font-weight:600;color:#fff;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.4);padding:0 2px;line-height:1.3;">' + labelText + '</span>'
+          + '</div>';
+      } else {
+        // Sem evento: barra fina de fundo indicando projeto ativo
+        barContent = '<div style="position:absolute;top:50%;left:0;right:0;height:2px;background:#8E5BC4;opacity:0.2;transform:translateY(-50%);"></div>';
+      }
+
+      return '<td style="position:relative;background:' + (isHoje?'rgba(212,0,26,.04)':'') + ';">' + barContent + '</td>';
+    }).join('');
+
+    const nameCell = '<td style="position:sticky;left:0;z-index:2;background:var(--surface);padding:6px 8px;border-bottom:1px solid var(--border);">'
+      + '<div style="display:flex;align-items:center;gap:6px;">'
+      + '<span style="width:8px;height:8px;border-radius:50%;background:' + dot + ';flex-shrink:0;"></span>'
+      + '<span style="font-size:11px;font-weight:500;">' + nome + '</span>'
+      + '<span style="font-size:9px;background:#8E5BC4;color:#fff;padding:1px 5px;border-radius:10px;margin-left:2px;">DRO</span>'
+      + '</div>'
+      + '<div style="font-size:10px;color:var(--text-hint);padding-left:14px;">' + (p.consultor||'') + '</div>'
+      + '</td>';
+
+    return '<tr>' + nameCell + cells + '</tr>';
+  }).join('');
+
+  container.innerHTML = '<div style="overflow-x:auto;">'
+    + '<table style="border-collapse:collapse;width:100%;font-size:11px;">'
+    + '<thead><tr>' + headers + '</tr></thead>'
+    + '<tbody>' + rows + '</tbody>'
+    + '</table></div>';
+}
+
+// ── Helpers DRO ──────────────────────────────────────────
+function droToggleComite(projId, idx) {
+  const p = projects.find(x => x.id === projId);
+  if (!p) return;
+  if (!p.droData) p.droData = { comites: [], auditorias: [] };
+  if (!p.droData.comites[idx]) p.droData.comites[idx] = {};
+  const c = p.droData.comites[idx];
+  c.data = c.data ? '' : new Date().toISOString().slice(0,10);
+  upd(); buildDRO();
+}
+
+function droSetComiteData(projId, idx, val) {
+  const p = projects.find(x => x.id === projId);
+  if (!p) return;
+  if (!p.droData) p.droData = { comites: [], auditorias: [] };
+  if (!p.droData.comites[idx]) p.droData.comites[idx] = {};
+  p.droData.comites[idx].data = val;
+  upd();
+}
+
+function droAddAuditoria(projId) {}
+
+function droShowAddAuditoria(projId) {
+  const form = document.getElementById('dro-aud-form-' + projId);
+  if (form) form.style.display = 'block';
+}
+
+function droHideAddAuditoria(projId) {
+  const form = document.getElementById('dro-aud-form-' + projId);
+  if (form) form.style.display = 'none';
+  ['nome','dataprev','resp','entregaveis'].forEach(f => {
+    const el = document.getElementById('dro-aud-' + f + '-' + projId);
+    if (el) el.value = '';
+  });
+}
+
+function droConfirmAddAuditoria(projId) {
+  const nome = document.getElementById('dro-aud-nome-' + projId)?.value?.trim();
+  if (!nome) { alert('Informe o nome da auditoria.'); return; }
+  const dataPrev = document.getElementById('dro-aud-dataprev-' + projId)?.value || '';
+  const responsavel = document.getElementById('dro-aud-resp-' + projId)?.value?.trim() || '';
+  const entregaveis = document.getElementById('dro-aud-entregaveis-' + projId)?.value?.trim() || '';
+  const p = projects.find(x => x.id === projId);
+  if (!p) return;
+  if (!p.droData) p.droData = { comites: [], auditorias: [] };
+  p.droData.auditorias.push({ nome, dataPrev, responsavel, entregaveis, data: '', feita: false });
+  upd(); droHideAddAuditoria(projId); buildDRO();
+}
+
+function droRemoveAuditoria(projId, idx) {
+  const p = projects.find(x => x.id === projId);
+  if (!p || !p.droData) return;
+  p.droData.auditorias.splice(idx, 1);
+  upd(); buildDRO();
+}
+
+function droToggleAuditoria(projId, idx) {
+  const p = projects.find(x => x.id === projId);
+  if (!p || !p.droData) return;
+  const a = p.droData.auditorias[idx];
+  if (!a) return;
+  a.feita = !a.feita;
+  if (a.feita && !a.data) a.data = new Date().toISOString().slice(0,10);
+  upd(); buildDRO();
+}
+
+function droSetAuditoriaData(projId, idx, val) {
+  const p = projects.find(x => x.id === projId);
+  if (!p || !p.droData) return;
+  p.droData.auditorias[idx].data = val;
+  upd();
+}
+
+function droSetAuditoriaField(projId, idx, field, val) {
+  const p = projects.find(x => x.id === projId);
+  if (!p || !p.droData) return;
+  p.droData.auditorias[idx][field] = val;
+  upd();
 }
 
 function buildPipeSemana() {
@@ -1601,7 +2201,7 @@ function buildPipeSemana() {
 
   // ── Critério 1: oportunidades SQL/SAL/COMMIT ──────────────
   const ETAPAS_OPORT = ['Apresentar proposta (SQL)','Proposta apresentada (SAL)','Follow (COMMIT)'];
-  const comOport = projects.filter(p => {
+  const comOport = projects.filter(p => { if (p.modelo === 'DRO') return false;
     if (consFilter && p.consultor !== consFilter) return false;
     if (fOportSem && fOportSem !== 'decol' && p.oport !== fOportSem) return false;
     if (fOportSem === 'decol') return false; // decolagem só no critério 2
@@ -1765,6 +2365,11 @@ function calcStatus2(p) {
   if (p.status2 === 'Churn' || p.status2 === 'Pausado') return p.status2;
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   if (!p.inicio) return 'Início em breve';
+  // DRO: finalizado apenas quando prevFim (fim do contrato) passou
+  if (p.modelo === 'DRO') {
+    if (p.prevFim && parseDate(p.prevFim) < hoje) return 'Finalizado';
+    return 'Em andamento';
+  }
 
   // Opção B: hierarquia de critérios
   // 1. realFim preenchido E no passado → Finalizado
@@ -1830,8 +2435,9 @@ function getBaseFiltered() {
   const fDesigner = document.getElementById('f-designer')?.value || '';
   const fCopy     = document.getElementById('f-copy')?.value     || '';
   const fMotivo   = document.getElementById('f-motivo')?.value   || '';
-  const fFlag = document.getElementById('f-flag')?.value || '';
-  const fMes  = document.getElementById('f-mes')?.value  || '';
+  const fFlag  = document.getElementById('f-flag')?.value  || '';
+  const fMes   = document.getElementById('f-mes')?.value   || '';
+  const fModelo = document.getElementById('f-modelo')?.value || '';
 
   let list = [...projects];
 
@@ -1962,6 +2568,24 @@ function closeNovoProj() {
   document.getElementById('modal-novo-projeto').style.display = 'none';
 }
 
+function npModeloChange() {
+  const modelo = document.getElementById('np-modelo').value;
+  const tag = document.getElementById('np-prev-tag');
+  const hint = document.getElementById('np-prevFim-hint');
+  const prevEl = document.getElementById('np-prevFim');
+  if (modelo === 'DRO') {
+    if(tag) tag.textContent = '(obrigatório)';
+    if(hint) hint.style.display = 'block';
+    prevEl._manual = true;
+    prevEl.value = '';
+  } else {
+    if(tag) tag.textContent = '(auto)';
+    if(hint) hint.style.display = 'none';
+    prevEl._manual = false;
+    npAutoFim();
+  }
+}
+
 function npAutoFim() {
   if (npPrevManualFlag) return;
   const inicio = document.getElementById('np-inicio').value;
@@ -1997,6 +2621,14 @@ function confirmNovoProj() {
     document.getElementById('np-nome').focus();
     return;
   }
+
+  const modelo = document.getElementById('np-modelo')?.value || 'Estruturação Estratégica';
+  if (modelo === 'DRO' && !prevFim) {
+    erroEl.textContent = 'Para projetos DRO é obrigatório informar a data de fim do contrato.';
+    erroEl.style.display = 'block';
+    document.getElementById('np-prevFim').focus();
+    return;
+  }
   if (!inicio) {
     erroEl.textContent = 'A data de início é obrigatória.';
     erroEl.style.display = 'block';
@@ -2006,14 +2638,18 @@ function confirmNovoProj() {
   erroEl.style.display = 'none';
 
   const novoProj = {
-    id: Date.now(), nome, consultor,
-    inicio, inicioLT: '', prevFim: prevFim || addDays(inicio, 45), realFim: '',
+    id: Date.now(), nome, modelo,
+    consultor,
+    inicio, inicioLT: '', 
+    prevFim: prevFim || (modelo === 'DRO' ? '' : addDays(inicio, 45)), 
+    realFim: '',
     flag, mon: 'Em andamento',
     conv: '', status2: 'Em andamento',
     gmv: gmv || '', designer: designer || '', copy: '', mesMon: '', valorOT: '', valorRec: '', motivo: '',
     oport: '', proximoContato: '', valorOport: '', valorOportRec: '', escopos: '', escoposRec: '',
     entregas: {},
-    prevManual: !!prevFim
+    prevManual: !!prevFim,
+    droData: modelo === 'DRO' ? { comites: [], auditorias: [] } : undefined
   };
 
   projects.unshift(novoProj);
@@ -2078,7 +2714,7 @@ function renderBase() {
   if (currentPerfil?.consultor) applyPerfilFilters();
   // auto-calc prevFim
   projects.forEach(p => {
-    if (p.inicio && !p.prevManual) p.prevFim = addDays(p.inicio, 45);
+    if (p.inicio && !p.prevManual && p.modelo !== 'DRO') p.prevFim = addDays(p.inicio, 45);
   });
 
   // summary cards
@@ -2118,6 +2754,12 @@ function renderBase() {
     tr.innerHTML = `
       <td style="color:var(--text-hint);font-size:10px;">${String(i+1).padStart(2,'0')}</td>
       <td contenteditable="true" data-f="nome" data-id="${p.id}" onblur="setField(this)">${p.nome}</td>
+      <td style="padding:4px 8px;">
+        <select class="sel" style="font-size:11px;padding:2px 4px;" data-f="modelo" data-id="${p.id}" onchange="setField(this)">
+          <option value="D&P" ${(!p.modelo||p.modelo==='D&P')?'selected':''}>D&P</option>
+          <option value="DRO" ${p.modelo==='DRO'?'selected':''}>DRO</option>
+        </select>
+      </td>
       <td contenteditable="true" data-f="consultor" data-id="${p.id}" onblur="setField(this)">${p.consultor}</td>
       <td contenteditable="true" data-f="gmv" data-id="${p.id}" onblur="setField(this)" style="min-width:90px;">${p.gmv||'—'}</td>
       <td style="padding:6px 10px;text-align:center;">${tierBadge(p.gmv)}</td>
@@ -2132,6 +2774,9 @@ function renderBase() {
       <td><input type="date" class="sel" value="${p.realFim}" data-f="realFim" data-id="${p.id}" onchange="setField(this)"></td>
       <td>${prazoInline(p)}</td>
       <td style="padding:6px 10px;">${flagHTML(p.flag)}</td>
+      <td style="padding:6px 10px;">
+        <span class="badge ${calcStatus2(p)==='Em andamento'?'b-blue':calcStatus2(p)==='Finalizado'?'b-gray':calcStatus2(p)==='Churn'?'b-red':'b-amber'}" style="margin-top:0;font-size:10px;">${calcStatus2(p)}</span>
+      </td>
       <td>
         <div style="display:flex;flex-direction:column;gap:4px;">
           <div>${statusBadge2(p)}</div>
@@ -2275,6 +2920,7 @@ function buildFunil(consFilter) {
   if (!el) return;
 
   let ativos = projects.filter(p => {
+    if (p.modelo === 'DRO') return false;
     const temOport = p.oport && p.oport !== '—' && p.oport !== '' && p.oport !== 'Sem oportunidade';
     return calcStatus2(p) === 'Em andamento' || temOport;
   }).filter(p => p.conv !== 'Monetizado');
@@ -2325,19 +2971,19 @@ function buildConvListas(consFilter, curM) {
   }
 
   // Iniciados
-  let ini = projects.filter(p => p.inicio);
+  let ini = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && p.inicio);
   if (curM) ini = ini.filter(p => inMes(p, 'inicio'));
   if (consFilter) ini = ini.filter(p => p.consultor === consFilter);
   ini.sort((a,b) => (b.inicio||'').localeCompare(a.inicio||''));
 
   // Finalizados
-  let fin = projects.filter(p => calcStatus2(p) === 'Finalizado');
+  let fin = projects.filter(p => calcStatus2(p) === 'Finalizado' && (!p.modelo || p.modelo !== 'DRO'));
   if (curM) fin = fin.filter(p => inMes(p, 'realFim') || inMes(p, 'prevFim'));
   if (consFilter) fin = fin.filter(p => p.consultor === consFilter);
   fin.sort((a,b) => (b.realFim||b.prevFim||'').localeCompare(a.realFim||a.prevFim||''));
 
   // Monetizados
-  let mon = projects.filter(p => p.conv === 'Monetizado' || p.mon === 'Monetizado');
+  let mon = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && (p.conv === 'Monetizado' || p.mon === 'Monetizado'));
   if (curM) mon = mon.filter(p => {
     if (!p.mesMon) return false;
     // mesMon formato: 'Abril/2026' — compara com label/ano do curM
@@ -2393,13 +3039,14 @@ function calcConv() {
   buildQuarterBody('conv-body', m => {
     // denominador: projetos iniciados neste mês (com filtro de consultor)
     let iniciados = projects.filter(p =>
+      (!p.modelo || p.modelo !== 'DRO') &&
       p.inicio &&
       parseDate(p.inicio)?.getMonth()    === m.idx &&
       parseDate(p.inicio)?.getFullYear() === m.ano
     );
     if (consFilter) iniciados = iniciados.filter(p => p.consultor === consFilter);
     // numerador: projetos cujo mês monetizado é este mês
-    let monos = projects.filter(p => { const [lb,an]=(p.mesMon||'').split('/'); return lb===m.label && parseInt(an)===m.ano; });
+    let monos = projects.filter(p => { if (p.modelo === 'DRO') return false; const [lb,an]=(p.mesMon||'').split('/'); return lb===m.label && parseInt(an)===m.ano; });
     if (consFilter) monos = monos.filter(p => p.consultor === consFilter);
     const taxa  = iniciados.length > 0 ? Math.round(monos.length / iniciados.length * 100) : null;
     totalAno += iniciados.length; monAno += monos.length;
@@ -2425,7 +3072,7 @@ function calcConv() {
   // finAno: mesmo filtro de mês e consultor dos outros cards
   const curConv = filters['conv'];
   const curMConvFin = curConv ? ALL_MESES.find(x => x.key === curConv) : null;
-  let finalizadosFilt = projects.filter(p => calcStatus2(p) === 'Finalizado');
+  let finalizadosFilt = projects.filter(p => calcStatus2(p) === 'Finalizado' && (!p.modelo || p.modelo !== 'DRO'));
   if (curMConvFin) finalizadosFilt = finalizadosFilt.filter(p => {
     const d = parseDate(p.realFim || p.prevFim);
     return d && d.getMonth() === curMConvFin.idx && d.getFullYear() === curMConvFin.ano;
@@ -2470,7 +3117,7 @@ function calcPrazo() {
     return list;
   }
   buildQuarterBody('prazo-body', m => {
-    const doMes = projects.filter(p => mesesAtivos(p).includes(m.idx));
+    const doMes = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && mesesAtivos(p).includes(m.idx));
     let ok = 0, nok = 0;
 
     const rows = doMes.map(p => {
@@ -2508,14 +3155,14 @@ function calcPrazo() {
   }, 'prazo');
 
   const taxaAno = totalAno > 0 ? Math.round(okAno / totalAno * 100) : null;
-  const diasList = projects.filter(p => p.inicio && p.realFim).map(p => diffDays(p.inicio, p.realFim)).filter(d => d !== null && d >= 0);
+  const diasList = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && p.inicio && p.realFim).map(p => diffDays(p.inicio, p.realFim)).filter(d => d !== null && d >= 0);
   const avgDias   = diasList.length ? Math.round(diasList.reduce((a,b)=>a+b,0)/diasList.length) : null;
   // Filtra pelo mês selecionado para todos os cards
   const curPrazo  = filters['prazo'];
   const curMPrazo = curPrazo ? ALL_MESES.find(x => x.key === curPrazo) : null;
   let totalCard = totalAno, okCard = okAno, nokCard = nokAno;
   if (curMPrazo) {
-    const doMesFilt = projects.filter(p => mesesAtivos(p).includes(curMPrazo.idx) && (p.inicio||'').includes(String(curMPrazo.ano)));
+    const doMesFilt = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && mesesAtivos(p).includes(curMPrazo.idx) && (p.inicio||'').includes(String(curMPrazo.ano)));
     totalCard = doMesFilt.length;
     okCard  = doMesFilt.filter(p => prazoStatus(p).ok === true).length;
     nokCard = doMesFilt.filter(p => prazoStatus(p).ok === false).length;
@@ -2590,7 +3237,7 @@ function buildNpsTable() {
   const selMes = document.getElementById('nps-f-mes');
   if (selMes) {
     const mesesFin = [...new Set(projects
-      .filter(p => calcStatus2(p) === 'Finalizado')
+      .filter(p => calcStatus2(p) === 'Finalizado' && (!p.modelo || p.modelo !== 'DRO'))
       .map(p => { const d = parseDate(p.realFim || p.prevFim); if (!d) return null; const m = ALL_MESES.find(x => x.idx===d.getMonth() && x.ano===d.getFullYear()); return m ? m.label+'/'+m.ano : null; })
       .filter(Boolean))].sort((a,b) => b.localeCompare(a));
     const curMes = selMes.value;
@@ -2599,7 +3246,7 @@ function buildNpsTable() {
   const fMes = selMes?.value || '';
 
   // base: projetos Finalizados, com filtros
-  let base = projects.filter(p => calcStatus2(p) === 'Finalizado');
+  let base = projects.filter(p => calcStatus2(p) === 'Finalizado' && (!p.modelo || p.modelo !== 'DRO'));
   if (fCons) base = base.filter(p => p.consultor === fCons);
   if (fMes) base = base.filter(p => {
     const d = parseDate(p.realFim || p.prevFim);
@@ -2676,6 +3323,7 @@ function calcNps() {
       return d.getMonth() === m.idx && d.getFullYear() === m.ano;
     });
     const finalizadosMes = projects.filter(p => {
+      if (p.modelo === 'DRO') return false;
       const df = parseDate(p.realFim || p.prevFim);
       return df && df.getMonth() === m.idx && df.getFullYear() === m.ano && calcStatus2(p) === 'Finalizado';
     }).length;
@@ -2701,7 +3349,7 @@ function calcNps() {
   }
 
   // finalizados: filtra por consultor e mês (realFim || prevFim)
-  let finalizados = projects.filter(p => calcStatus2(p) === 'Finalizado');
+  let finalizados = projects.filter(p => calcStatus2(p) === 'Finalizado' && (!p.modelo || p.modelo !== 'DRO'));
   if (fConsNps) finalizados = finalizados.filter(p => p.consultor === fConsNps);
   if (mesSel)  finalizados = finalizados.filter(p => {
     const df = parseDate(p.realFim || p.prevFim);
@@ -2930,7 +3578,7 @@ function calcMon() {
   buildFilterBar('filter-bar-mon', 'mon', calcMon);
   const cur  = filters['mon'];
   const curM = cur ? ALL_MESES.find(x => x.key === cur) : null;
-  let mons = projects.filter(p => p.conv === 'Monetizado');
+  let mons = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && p.conv === 'Monetizado');
   if (curM) mons = mons.filter(p => {
     if (!p.mesMon) return false;
     const [label, ano] = p.mesMon.split('/');
@@ -3122,7 +3770,7 @@ function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
   const prazoV = pTotal > 0 ? Math.round(pOk / pTotal * 100) : null;
 
   // ── NPS: base = todos os Finalizados ─────────────────────────
-  const npsBase = projects.filter(p => calcStatus2(p) === 'Finalizado');
+  const npsBase = projects.filter(p => calcStatus2(p) === 'Finalizado' && (!p.modelo || p.modelo !== 'DRO'));
   const npsNotas = [];
   npsBase.forEach(p => {
     const nd = npsData[p.id];
@@ -3225,7 +3873,7 @@ function buildOvAnalises(curM) {
 
   // Mês filtrado (curM) ou mês atual
   const mesLabel = curM ? curM.label + '/' + curM.ano : hoje.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
-  const iniciados   = projects.filter(p => { const d = parseDate(p.inicio); return d && d.getMonth()===mesIdx && d.getFullYear()===mesAno; });
+  const iniciados   = projects.filter(p => { if (p.modelo === 'DRO') return false; const d = parseDate(p.inicio); return d && d.getMonth()===mesIdx && d.getFullYear()===mesAno; });
   const finalizados = projects.filter(p => { const d = parseDate(p.realFim||p.prevFim); return d && d.getMonth()===mesIdx && d.getFullYear()===mesAno && calcStatus2(p)==='Finalizado'; });
   const isMonetizado = p => p.conv === 'Monetizado' || p.mon === 'Monetizado';
   const iniMon  = iniciados.filter(p => isMonetizado(p)).length;
@@ -3347,6 +3995,7 @@ function buildOvAnalises(curM) {
 }
 
 function refreshAll() {
+  if (document.getElementById('dro-list')) buildDRO();
   const cspV   = calcCsp();
   const convV  = calcConv();
   // funil sempre atualizado com base completa
@@ -3533,7 +4182,7 @@ function getLtFiltered() {
   const fMon   = document.getElementById('lt-f-mon')?.value   || '';
   const fMes   = document.getElementById('lt-f-mes')?.value   || '';
   const fOport = document.getElementById('lt-f-oport')?.value || '';
-  let list = [...projects].filter(p => p.inicio); // só com data
+  let list = [...projects].filter(p => p.inicio && (!p.modelo || p.modelo !== 'DRO')); // só com data, exclui DRO
   if (fCons) list = list.filter(p => p.consultor === fCons);
   if (fMon) {
     const STATUS_VALS = ['Em andamento','Finalizado','Início em breve','Churn','Pausado','Em negociação'];
@@ -4134,7 +4783,7 @@ function buildCapHistTable() {
   const tbody = document.getElementById('cap-hist-tbody');
   if (!tbody) return;
   const rows = getHistMeses().map(m => {
-    const ini  = projects.filter(p => p.inicio && parseDate(p.inicio)?.getMonth() === m.idx && parseDate(p.inicio)?.getFullYear() === m.ano);
+    const ini  = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && p.inicio && parseDate(p.inicio)?.getMonth() === m.idx && parseDate(p.inicio)?.getFullYear() === m.ano);
     const conv = projects.filter(p => {
       const [lb,an] = (p.mesMon||'').split('/');
       return lb === m.label && parseInt(an) === m.ano;
@@ -4292,6 +4941,7 @@ function buildGantt() {
   // filtra projetos na janela — exclui Churn e Pausado
   let prjs = projects.filter(p => {
     if (!p.inicio) return false;
+    if (p.modelo === 'DRO') return false; // DRO tem aba própria
     const s2 = calcStatus2(p);
     if (s2 === 'Churn' || s2 === 'Pausado') return false;
     const dI = parseDate(p.inicio);
@@ -4344,62 +4994,29 @@ function buildGantt() {
   });
   prjs.sort((a, b) => (a.inicio || '') < (b.inicio || '') ? -1 : 1);
 
-  // ── CAPACIDADE POR CONSULTOR ──────────────────────
-  const capDiv = document.getElementById('cap-disponivel');
-  if (capDiv) {
-    // consultores visíveis
-    const consList = consFilter
-      ? [consFilter]
-      : [...new Set(prjs.map(p => p.consultor).filter(Boolean))].sort();
+  
+  buildGanttDRO();
 
-    capDiv.innerHTML = consList.length === 0 ? '' :
-      '<div style="font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);margin-bottom:8px;">Capacidade disponível por consultor</div>'
-      + '<div style="overflow-x:auto;"><table class="gantt-table" style="min-width:100%;">'
-      + '<thead><tr>'
-      + '<th style="min-width:110px;text-align:left;padding:5px 8px;">Consultor</th>'
-      + semanas.map(s => {
-          const sEnd = new Date(s.getTime() + 6 * 864e5);
-          const isHoje = hoje >= s && hoje <= sEnd;
-          const d = s.getDate().toString().padStart(2,'0') + '/' + (s.getMonth()+1).toString().padStart(2,'0');
-          return '<th style="min-width:38px;text-align:center;' + (isHoje ? 'color:var(--accent);background:rgba(196,82,26,.06);' : '') + '">' + d + '</th>';
-        }).join('')
-      + '</tr></thead>'
-      + '<tbody>'
-      + consList.map(cons => {
-          const cells = semanas.map(s => {
-            const sEnd  = new Date(s.getTime() + 6 * 864e5);
-            const isHoje= hoje >= s && hoje <= sEnd;
-            const key   = cons + '|' + semKey(s);
-            const ativos= prjs.filter(p => {
-              if (p.consultor !== cons) return false;
-              const dI = parseDate(p.inicio);
-              const dF = p.prevFim ? parseDate(p.prevFim) : new Date(dI.getTime()+45*864e5);
-              return dI <= sEnd && dF >= s;
-            }).length;
-            const capVal = capData[key] !== undefined ? capData[key] : '';
-            const disp   = capVal !== '' ? Math.max(0, capVal - ativos) : null;
-            const dispColor = disp === null ? 'var(--text-hint)' : disp === 0 ? 'var(--red)' : disp <= 2 ? 'var(--amber)' : 'var(--green)';
-            return '<td style="text-align:center;padding:3px 2px;' + (isHoje ? 'background:rgba(196,82,26,.04);' : '') + '">'
-              + '<div style="font-size:10px;color:var(--text-hint);line-height:1.2;">' + ativos + ' proj.</div>'
-              + '<input type="number" min="0" max="20" style="width:36px;font-size:11px;text-align:center;font-family:var(--sans);border:1px solid var(--border);border-radius:4px;background:var(--surface2);color:var(--text);padding:2px 0;" '
-              + 'value="' + capVal + '" placeholder="cap" '
-              + 'oninput="saveCapData(\'' + key + '\',this.value);renderCapDisp(\'' + cons + '\',\'' + semKey(s) + '\')" '
-              + 'title="Capacidade máxima de ' + cons + ' na semana ' + semKey(s) + '">'
-              + '<div id="disp-' + key.replace(/[|\/\-]/g,'_') + '" style="font-size:10px;font-weight:600;color:' + dispColor + ';line-height:1.4;">'
-              + (disp !== null ? (disp > 0 ? '+' + disp : '0') + ' liv.' : '—')
-              + '</div>'
-              + '</td>';
-          }).join('');
-          const dotColor = consColor(cons);
-          return '<tr>'
-            + '<td style="padding:4px 8px;white-space:nowrap;"><span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:500;">'
-            + '<span style="width:8px;height:8px;border-radius:50%;background:' + dotColor + ';flex-shrink:0;"></span>' + cons + '</span></td>'
-            + cells + '</tr>';
-        }).join('')
-      + '</tbody></table></div>';
-  }
+  // Lê auditorCapFilter APÓS buildGanttDRO para garantir que o select está populado
+  const auditorCapFilter = document.getElementById('dro-cap-auditor')?.value || '';
 
-  // ── CARGA SEMANAL (todos) ─────────────────────────
+  // DROs filtrados pelo mesmo consultor do Gantt principal (usado na carga semanal)
+  const droParaCarga = projects.filter(p => {
+    if (p.modelo !== 'DRO' || !p.inicio) return false;
+    const s2 = calcStatus2(p);
+    if (s2 === 'Finalizado' || s2 === 'Churn' || s2 === 'Pausado') return false;
+    const hoje2 = new Date(); hoje2.setHours(0,0,0,0);
+    if (p.prevFim && parseDate(p.prevFim) < hoje2) return false;
+    if (consFilter && p.consultor !== consFilter) return false;
+    // Se filtro de auditor ativo, inclui só projetos onde esse auditor está responsável
+    if (auditorCapFilter) {
+      const auds = (p.droData?.auditorias || []).map(a => a.responsavel).filter(Boolean);
+      if (!auds.includes(auditorCapFilter)) return false;
+    }
+    return true;
+  });
+  const projsComDRO = [...prjs, ...droParaCarga];
+
   const cargaDiv = document.getElementById('carga-semanal');
   if (cargaDiv) {
     // Conta projetos com entrega naquela semana:
@@ -4415,14 +5032,37 @@ function buildGantt() {
       const dFp = [_dFprevP, _dFrealP, _dFdecolP].filter(Boolean).reduce((a,b) => a > b ? a : b);
       return dIp <= sEnd && dFp >= sDate;
     }
-    const maxCarga = Math.max(...semanas.map(s => prjs.filter(p => temEntregaNaSemana(p, s)).length), 1);
+    // DRO conta como 0.25 na carga semanal (1 comitê mensal ≈ 1/4 de projeto)
+    // droParaCarga e projsComDRO definidos acima
+    function cargaComDRO(lista, s, pesoAuditor) {
+      // pesoAuditor=true quando filtrado por auditor — DRO conta 1 (não 0.25)
+      return lista.reduce((acc, p) => {
+        if (!temEntregaNaSemana(p, s) && p.modelo !== 'DRO') return acc;
+        if (p.modelo === 'DRO') {
+          const ini = parseDate(p.inicio);
+          const fim = parseDate(p.realFim || p.prevFim);
+          const sEnd = new Date(s.getTime() + 6 * 864e5);
+          if (ini && ini <= sEnd && (!fim || fim >= s)) {
+            return acc + (pesoAuditor ? 1 : 0.25);
+          }
+          return acc;
+        }
+        return acc + 1;
+      }, 0);
+    }
+    const pesoAuditor = !!auditorCapFilter;
+    // Se filtro de auditor ativo: mostra só DROs daquele auditor (sem D&P)
+    const listaParaCarga = auditorCapFilter
+      ? droParaCarga.filter(p => (p.droData?.auditorias || []).some(a => a.responsavel === auditorCapFilter))
+      : projsComDRO;
+    const maxCarga = Math.max(...semanas.map(s => cargaComDRO(listaParaCarga, s, pesoAuditor)), 1);
 
     cargaDiv.innerHTML = '<div style="font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);margin-bottom:6px;">Projetos ativos por semana</div>'
       + '<div style="overflow-x:auto;"><div style="display:flex;gap:3px;min-width:max-content;">'
       + semanas.map(s => {
           const sEnd   = new Date(s.getTime() + 6 * 864e5);
           const isHoje = hoje >= s && hoje <= sEnd;
-          const cnt    = prjs.filter(p => temEntregaNaSemana(p, s)).length;
+          const cnt    = cargaComDRO(listaParaCarga, s, pesoAuditor);
           const pctH = Math.round(cnt / maxCarga * 100);
           const d = s.getDate().toString().padStart(2,'0') + '/' + (s.getMonth()+1).toString().padStart(2,'0');
           const color = isHoje ? 'var(--accent)' : 'var(--blue)';
@@ -4528,6 +5168,7 @@ function buildGantt() {
     _ganttLabels[p.id] = labelMap;
   });
 
+  // Gantt D&P sempre mostra seus projetos (filtro de auditor só afeta seção DRO abaixo)
   tbody.innerHTML = prjs.map(p => {
     const dI    = parseDate(p.inicio);
     // dF: max(prevFim, realFim, decolagem calculada) para garantir que barra chega até Decolagem
@@ -4605,7 +5246,12 @@ function buildGantt() {
           return '<div title="'+title+'" style="position:absolute;top:2px;left:calc('+posWPct+'% - 4px);width:8px;height:8px;border-radius:50%;background:'+dotBg+';border:1.5px solid rgba(0,0,0,.2);z-index:3;cursor:default;"></div>';
         }).join('');
 
-        bar = '<div class="gantt-bar" style="background:' + semStatusColor + ';left:' + leftPct + '%;right:' + rightPct + '%;display:flex;align-items:center;justify-content:center;overflow:visible;">'
+        // DRO tem barra contínua com estilo diferenciado
+        const isDRO = p.modelo === 'DRO';
+        const barColor = isDRO ? 'var(--purple, #8E5BC4)' : semStatusColor;
+        const barStyle = isDRO ? 'background:' + barColor + ';left:' + leftPct + '%;right:' + rightPct + '%;display:flex;align-items:center;justify-content:center;overflow:visible;opacity:0.85;border:1px dashed rgba(255,255,255,0.4);' : 'background:' + semStatusColor + ';left:' + leftPct + '%;right:' + rightPct + '%;display:flex;align-items:center;justify-content:center;overflow:visible;';
+        bar = '<div class="gantt-bar" style="' + barStyle + '">'
+          + (isDRO ? '<span style="font-size:8px;font-weight:700;color:#fff;white-space:nowrap;padding:0 4px;line-height:1;letter-spacing:.5px;">DRO</span>' : '')
           + '<span style="font-size:8px;font-weight:600;color:#fff;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.4);padding:0 2px;line-height:1;position:relative;z-index:2;">' + semLabel + '</span>'
           + markers
           + '</div>';
@@ -4649,7 +5295,7 @@ function buildPerformance() {
     const mesesConv = curM ? [curM] : ALL_MESES;
     let convMon = 0;
     mesesConv.forEach(m => {
-      convMon += projects.filter(p => p.consultor === nome && (() => {
+      convMon += projects.filter(p => p.consultor === nome && (!p.modelo || p.modelo !== 'DRO') && (() => {
         const [lb,an] = (p.mesMon||'').split('/');
         return lb === m.label && parseInt(an) === m.ano;
       })()).length;
@@ -4661,13 +5307,13 @@ function buildPerformance() {
     const mesesPrazo = curM ? [curM] : ALL_MESES;
     let pTotal = 0, pOk = 0;
     mesesPrazo.forEach(m => {
-      const doMes = projects.filter(p => p.consultor === nome && mesesAtivos(p).includes(m.idx));
+      const doMes = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && p.consultor === nome && mesesAtivos(p).includes(m.idx));
       doMes.forEach(p => { const st = prazoStatus(p); pTotal++; if (st.ok === true) pOk++; });
     });
     const prazoV = pTotal > 0 ? Math.round(pOk / pTotal * 100) : null;
 
     // NPS — base = finalizados do consultor no período (por realFim/prevFim)
-    const npsBase = projects.filter(p => {
+    const npsBase = projects.filter(p => { if (p.modelo === 'DRO') return false;
       if (p.consultor !== nome || calcStatus2(p) !== 'Finalizado') return false;
       if (!curM) return true;
       const dataFim = p.realFim || p.prevFim;
@@ -4847,7 +5493,7 @@ function perfSelecionaConsultor(nome) {
     if (btn) btn.style.opacity = '1';
   });
 
-  const prjsCons = projects.filter(p => p.consultor === nome);
+  const prjsCons = projects.filter(p => p.consultor === nome && (!p.modelo || p.modelo !== 'DRO'));
   const meses = curM ? [curM] : ALL_MESES;
 
   // ── CONVERSÃO ─────────────────────────────────────────────
@@ -5385,7 +6031,12 @@ projects = []; // dados carregados do Supabase
 refreshAll();
 buildLeadTime();
 setSyncStatus('Carregando…', 'var(--text-hint)');
-sbLoad().then(() => sbStartPolling());
+sbLoad().then(() => {
+
+  refreshAll();
+  buildLeadTime();
+  sbStartPolling();
+});
 document.getElementById('last-upd').textContent = ts();
   window.addEventListener('beforeunload', e => {
     syncSheets(); // tenta sync final ao fechar
