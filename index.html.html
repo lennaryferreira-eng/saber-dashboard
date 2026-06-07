@@ -5983,13 +5983,12 @@ function sbStartPolling() {
       const rows = await res.json();
       if (!rows.length) return;
       const remoteTime = new Date(rows[0].updated_at);
-      // Só recarrega se a versão remota for mais nova E se já passaram 10s desde nosso último save
-      // Isso evita sobrescrever edições locais recentes
       const agora = new Date();
-      const secondsSinceSave = sbLastSaved ? (agora - sbLastSaved) / 1000 : 999;
-      if (remoteTime > sbLastSaved && secondsSinceSave > 10) {
-        setSyncStatus('↓ Outro usuário atualizou — sincronizando…', 'var(--blue)');
-        await sbLoad();
+      const secondsSinceSave = sbLastSaved ? (agora - sbLastSaved) / 1000 : 0;
+      // NUNCA recarrega automaticamente — apenas avisa se outro usuário salvou
+      // O usuário decide se quer recarregar
+      if (sbLastSaved && remoteTime > sbLastSaved && secondsSinceSave > 30) {
+        setSyncStatus('↕ Dados atualizados por outro dispositivo — clique para recarregar', 'var(--blue)', true);
       }
     } catch (e) { /* silencioso */ }
   }, 30000);
