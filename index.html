@@ -1619,7 +1619,7 @@ function buildOutrosEscopos() {
             if (!p.outrosEscoposData) p.outrosEscoposData = {};
             const d = p.outrosEscoposData;
             const check = (field, val) => `
-              <div onclick="const pr=projects.find(x=>x.id===${p.id});if(!pr.outrosEscoposData)pr.outrosEscoposData={};pr.outrosEscoposData.${field}=!pr.outrosEscoposData.${field};upd();buildOutrosEscopos();"
+              <div onclick="const pr=projects.find(x=>String(x.id)===String(${p.id}));if(!pr.outrosEscoposData)pr.outrosEscoposData={};pr.outrosEscoposData.${field}=!pr.outrosEscoposData.${field};upd();buildOutrosEscopos();"
                 style="display:flex;justify-content:center;align-items:center;cursor:pointer;">
                 <div style="width:20px;height:20px;border-radius:50%;border:2px solid ${val?'var(--green)':'var(--border)'};background:${val?'var(--green)':'transparent'};display:flex;align-items:center;justify-content:center;transition:all .2s;">
                   ${val?'<span style="color:#fff;font-size:11px;line-height:1;">✓</span>':''}
@@ -1630,7 +1630,7 @@ function buildOutrosEscopos() {
               <td style="font-weight:500;">${p.nome}</td>
               <td><span class="badge b-red" style="font-size:10px;">${p.outrosEscopos}</span></td>
               <td><input type="date" class="sel" style="font-size:11px;padding:3px 6px;" value="${d.dataInicio||''}"
-                onchange="const pr=projects.find(x=>x.id===${p.id});if(!pr.outrosEscoposData)pr.outrosEscoposData={};pr.outrosEscoposData.dataInicio=this.value;upd();"></td>
+                onchange="const pr=projects.find(x=>String(x.id)===String(${p.id}));if(!pr.outrosEscoposData)pr.outrosEscoposData={};pr.outrosEscoposData.dataInicio=this.value;upd();"></td>
               <td style="text-align:center;">${check('atribuicao', d.atribuicao)}</td>
               <td style="text-align:center;">${check('dossie', d.dossie)}</td>
               <td style="text-align:center;">${check('alinhamento', d.alinhamento)}</td>
@@ -1766,7 +1766,7 @@ function buildDRO() {
     return `
     <div class="card" style="margin-bottom:1rem;">
       <!-- Cabeçalho — clicável para expandir/recolher -->
-      <div onclick="const pr=projects.find(x=>x.id===${p.id});pr.droExpanded=!pr.droExpanded;buildDRO();"
+      <div onclick="const pr=projects.find(x=>String(x.id)===String(${p.id}));pr.droExpanded=!pr.droExpanded;buildDRO();"
         style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;cursor:pointer;${expanded?'margin-bottom:14px;':''}">
         <div>
           <div style="font-size:15px;font-weight:700;">${p.nome}</div>
@@ -1777,7 +1777,7 @@ function buildDRO() {
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;" onclick="event.stopPropagation()">
           ${flagHTML(p.flag)}
-          <select class="sel" style="font-size:11px;padding:2px 6px;" onchange="const pr=projects.find(x=>x.id===${p.id});pr.oport=this.value;upd();">
+          <select class="sel" style="font-size:11px;padding:2px 6px;" onchange="const pr=projects.find(x=>String(x.id)===String(${p.id}));pr.oport=this.value;upd();">
             <option value="" ${!p.oport?'selected':''}>Sem oportunidade</option>
             <option value="Mapeado (AQL)" ${p.oport==='Mapeado (AQL)'?'selected':''}>Mapeado (AQL)</option>
             <option value="Apresentar proposta (SQL)" ${p.oport==='Apresentar proposta (SQL)'?'selected':''}>Apresentar proposta (SQL)</option>
@@ -1787,7 +1787,7 @@ function buildDRO() {
           <div style="display:flex;align-items:center;gap:4px;">
             <span style="font-size:11px;color:var(--text-hint);">📅</span>
             <input type="date" class="sel" style="font-size:11px;padding:2px 6px;" value="${p.proximoContato||''}"
-              onchange="const pr=projects.find(x=>x.id===${p.id});pr.proximoContato=this.value;upd();">
+              onchange="const pr=projects.find(x=>String(x.id)===String(${p.id}));pr.proximoContato=this.value;upd();">
           </div>
           <span style="font-size:16px;color:var(--text-hint);line-height:1;transition:transform .2s;display:inline-block;transform:rotate(${expanded?'0':'180deg'});">⌃</span>
         </div>
@@ -2791,7 +2791,7 @@ function renderBase() {
 
       <td>
         <div contenteditable="true" style="font-size:12px;min-width:120px;outline:none;padding:2px 4px;border-radius:4px;border:1px solid transparent;" 
-          onblur="const pr=projects.find(x=>x.id==${p.id});if(pr){pr.outrosEscopos=this.innerText.trim();upd();}" 
+          onblur="const pr=projects.find(x=>String(x.id)===String(${p.id}));if(pr){pr.outrosEscopos=this.innerText.trim();upd();}" 
           onfocus="this.style.border='1px solid var(--border)'" 
           onblur2="this.style.border='1px solid transparent'"
           oninput="this.style.border='1px solid var(--accent)'"
@@ -3483,6 +3483,7 @@ function saveMonMetaCons(mesKey, cons, el) {
   if (!monMetas[mesKey]) monMetas[mesKey] = {ot:0, rec:0};
   monMetas[mesKey]['cons_' + cons] = isNaN(v) ? 0 : v;
   calcMon();
+  upd();
 }
 function saveMonMetaConsKey(mesKey, key, el) {
   // salva chave completa (ex: cons_Camila_pct_ot)
@@ -3506,6 +3507,7 @@ function saveMonMeta(mesKey, tipo, el) {
   if (!monMetas[mesKey]) monMetas[mesKey] = {ot: 0, rec: 0};
   monMetas[mesKey][tipo] = isNaN(v) ? 0 : v;
   calcMon();
+  upd();
 }
 
 function buildMonMetasTable(realPorMes, realOTPorMes, realRecPorMes, curM) {
@@ -4116,6 +4118,7 @@ function saveEntrega(id, semIdx, field, val) {
   if (!p.entregas) p.entregas = {};
   if (!p.entregas[semIdx]) p.entregas[semIdx] = {real:'', obs:''};
   p.entregas[semIdx][field] = val;
+  upd();
   // atualiza badge de status dentro do modal sem rebuild completo
   const plan = semDataPlanejada(p, semIdx);
   const real = p.entregas[semIdx].real;
