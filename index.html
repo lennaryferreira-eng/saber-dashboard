@@ -3378,6 +3378,11 @@ function calcNps() {
   const pctResp  = totalFin > 0 ? Math.round(respostas / totalFin * 100) : null;
   const npsScore = respostas > 0 ? Math.round((prom - detr) / respostas * 100) : null;
 
+  // DEBUG
+  console.log('NPS DEBUG mesSel:', mesSel ? mesSel.label+'/'+mesSel.ano : 'null');
+  console.log('NPS DEBUG totalFin:', totalFin, 'finIds:', [...finIds].slice(0,3));
+  console.log('NPS DEBUG respostasEntries:', respostasEntries.length, respostasEntries.slice(0,2).map(([id,d])=>({id,nota:d.nota,dataResp:d.dataResp})));
+  console.log('NPS DEBUG npsData keys:', Object.keys(npsData).slice(0,3), 'exemplo:', Object.values(npsData)[0]);
   set('nps-ano',       npsScore !== null ? npsScore.toString() : '—');
   set('nps-prom',      prom);
   set('nps-neut',      neut);
