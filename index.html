@@ -5911,6 +5911,8 @@ async function sbLoad() {
       return;
     }
     const row = rows[0];
+    console.log('sbLoad: row.id=', row.id, '| projects length=', row.projects ? JSON.parse(row.projects).length : 'null');
+    console.log('sbLoad: primeiro projeto=', row.projects ? JSON.parse(row.projects)[0]?.nome : 'null');
 
     // carrega projetos — sempre usa Supabase como fonte de verdade
     const sbMaisRecente = true; // HTML não tem dados — Supabase é sempre autoritativo
