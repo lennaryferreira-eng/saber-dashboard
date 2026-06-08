@@ -1863,7 +1863,7 @@ function buildDRO() {
 
 // ── Helpers DRO ──────────────────────────────────────────
 function droToggleComite(projId, idx) {
-  const p = projects.find(x => x.id === projId);
+  const p = projects.find(x => String(x.id) === String(projId));
   if (!p) return;
   if (!p.droData) p.droData = { comites: [], auditorias: [] };
   if (!p.droData.comites[idx]) p.droData.comites[idx] = {};
@@ -1877,7 +1877,7 @@ function droToggleComite(projId, idx) {
 }
 
 function droSetComiteData(projId, idx, val) {
-  const p = projects.find(x => x.id === projId);
+  const p = projects.find(x => String(x.id) === String(projId));
   if (!p) return;
   if (!p.droData) p.droData = { comites: [], auditorias: [] };
   if (!p.droData.comites[idx]) p.droData.comites[idx] = {};
@@ -1910,7 +1910,7 @@ function droConfirmAddAuditoria(projId) {
   const dataPrev = document.getElementById('dro-aud-dataprev-' + projId)?.value || '';
   const responsavel = document.getElementById('dro-aud-resp-' + projId)?.value?.trim() || '';
   const entregaveis = document.getElementById('dro-aud-entregaveis-' + projId)?.value?.trim() || '';
-  const p = projects.find(x => x.id === projId);
+  const p = projects.find(x => String(x.id) === String(projId));
   if (!p) return;
   if (!p.droData) p.droData = { comites: [], auditorias: [] };
   p.droData.auditorias.push({ nome, dataPrev, responsavel, entregaveis, data: '', feita: false });
@@ -1920,21 +1920,21 @@ function droConfirmAddAuditoria(projId) {
 }
 
 function droSetAuditoriaField(projId, idx, field, val) {
-  const p = projects.find(x => x.id === projId);
+  const p = projects.find(x => String(x.id) === String(projId));
   if (!p || !p.droData) return;
   p.droData.auditorias[idx][field] = val;
   upd();
 }
 
 function droRemoveAuditoria(projId, idx) {
-  const p = projects.find(x => x.id === projId);
+  const p = projects.find(x => String(x.id) === String(projId));
   if (!p || !p.droData) return;
   p.droData.auditorias.splice(idx, 1);
   upd(); buildDRO();
 }
 
 function droToggleAuditoria(projId, idx) {
-  const p = projects.find(x => x.id === projId);
+  const p = projects.find(x => String(x.id) === String(projId));
   if (!p || !p.droData) return;
   const a = p.droData.auditorias[idx];
   if (!a) return;
@@ -1944,7 +1944,7 @@ function droToggleAuditoria(projId, idx) {
 }
 
 function droSetAuditoriaData(projId, idx, val) {
-  const p = projects.find(x => x.id === projId);
+  const p = projects.find(x => String(x.id) === String(projId));
   if (!p || !p.droData) return;
   p.droData.auditorias[idx].data = val;
   upd();
@@ -2096,7 +2096,7 @@ function buildGanttDRO() {
 
 // ── Helpers DRO ──────────────────────────────────────────
 function droToggleComite(projId, idx) {
-  const p = projects.find(x => x.id === projId);
+  const p = projects.find(x => String(x.id) === String(projId));
   if (!p) return;
   if (!p.droData) p.droData = { comites: [], auditorias: [] };
   if (!p.droData.comites[idx]) p.droData.comites[idx] = {};
@@ -2106,7 +2106,7 @@ function droToggleComite(projId, idx) {
 }
 
 function droSetComiteData(projId, idx, val) {
-  const p = projects.find(x => x.id === projId);
+  const p = projects.find(x => String(x.id) === String(projId));
   if (!p) return;
   if (!p.droData) p.droData = { comites: [], auditorias: [] };
   if (!p.droData.comites[idx]) p.droData.comites[idx] = {};
@@ -2136,7 +2136,7 @@ function droConfirmAddAuditoria(projId) {
   const dataPrev = document.getElementById('dro-aud-dataprev-' + projId)?.value || '';
   const responsavel = document.getElementById('dro-aud-resp-' + projId)?.value?.trim() || '';
   const entregaveis = document.getElementById('dro-aud-entregaveis-' + projId)?.value?.trim() || '';
-  const p = projects.find(x => x.id === projId);
+  const p = projects.find(x => String(x.id) === String(projId));
   if (!p) return;
   if (!p.droData) p.droData = { comites: [], auditorias: [] };
   p.droData.auditorias.push({ nome, dataPrev, responsavel, entregaveis, data: '', feita: false });
@@ -2144,14 +2144,14 @@ function droConfirmAddAuditoria(projId) {
 }
 
 function droRemoveAuditoria(projId, idx) {
-  const p = projects.find(x => x.id === projId);
+  const p = projects.find(x => String(x.id) === String(projId));
   if (!p || !p.droData) return;
   p.droData.auditorias.splice(idx, 1);
   upd(); buildDRO();
 }
 
 function droToggleAuditoria(projId, idx) {
-  const p = projects.find(x => x.id === projId);
+  const p = projects.find(x => String(x.id) === String(projId));
   if (!p || !p.droData) return;
   const a = p.droData.auditorias[idx];
   if (!a) return;
@@ -2161,14 +2161,14 @@ function droToggleAuditoria(projId, idx) {
 }
 
 function droSetAuditoriaData(projId, idx, val) {
-  const p = projects.find(x => x.id === projId);
+  const p = projects.find(x => String(x.id) === String(projId));
   if (!p || !p.droData) return;
   p.droData.auditorias[idx].data = val;
   upd();
 }
 
 function droSetAuditoriaField(projId, idx, field, val) {
-  const p = projects.find(x => x.id === projId);
+  const p = projects.find(x => String(x.id) === String(projId));
   if (!p || !p.droData) return;
   p.droData.auditorias[idx][field] = val;
   upd();
@@ -2687,7 +2687,7 @@ function setField(el) {
   const id = parseInt(el.dataset.id);
   let f    = el.dataset.f;
   if (f === 'valor') f = 'valorOT'; // migração: campo legado → valorOT
-  const p  = projects.find(x => x.id === id);
+  const p  = projects.find(x => String(x.id) === String(id));
   if (!p) return;
   p[f] = el.tagName === 'TD' ? el.textContent.trim() : el.value;
   if (f === 'gmv') renderBase();
@@ -2704,7 +2704,7 @@ function setField(el) {
 
 function setFieldPrev(el) {
   const id = parseInt(el.dataset.id);
-  const p  = projects.find(x => x.id === id);
+  const p  = projects.find(x => String(x.id) === String(id));
   if (!p) return;
   p.prevFim   = el.value;
   p.prevManual = !!el.value;
@@ -3494,7 +3494,7 @@ function saveMonMetaConsKey(mesKey, key, el) {
 }
 
 function setMonField(id, field, val) {
-  const p = projects.find(x => x.id === id);
+  const p = projects.find(x => String(x.id) === String(id));
   if (!p) return;
   p[field] = val;
   upd();
@@ -4058,7 +4058,7 @@ function semDataPlanejada(p, semIdx) {
 }
 
 function openEntregas(id) {
-  const p = projects.find(x => x.id === id);
+  const p = projects.find(x => String(x.id) === String(id));
   if (!p) return;
   if (!p.entregas) p.entregas = {};
 
@@ -4111,7 +4111,7 @@ function closeEntregas() {
 }
 
 function saveEntrega(id, semIdx, field, val) {
-  const p = projects.find(x => x.id === id);
+  const p = projects.find(x => String(x.id) === String(id));
   if (!p) return;
   if (!p.entregas) p.entregas = {};
   if (!p.entregas[semIdx]) p.entregas[semIdx] = {real:'', obs:''};
@@ -4210,7 +4210,7 @@ function getLtFiltered() {
 
 
 function ltSetEntregaScore(id, semIdx, val) {
-  const p = projects.find(x => x.id === id);
+  const p = projects.find(x => String(x.id) === String(id));
   if (!p) return;
   if (!p.entregas) p.entregas = {};
   if (!p.entregas[semIdx]) p.entregas[semIdx] = {real:'', obs:'', score:''};
@@ -4220,7 +4220,7 @@ function ltSetEntregaScore(id, semIdx, val) {
 }
 
 function ltSetField(id, field, val) {
-  const p = projects.find(x => x.id === id);
+  const p = projects.find(x => String(x.id) === String(id));
   if (!p) return;
   p[field] = val;
   upd();
@@ -4239,7 +4239,7 @@ function ltShowDateInput(id) {
   const si = parseInt(sel.value);
   if (isNaN(si)) { row.style.display = 'none'; return; }
   // preenche com data já salva (se houver)
-  const p    = projects.find(x => x.id === id);
+  const p    = projects.find(x => String(x.id) === String(id));
   const real = p?.entregas?.[si]?.real || '';
   inp.value  = real;
   row.style.display = 'flex';
@@ -4257,7 +4257,7 @@ function ltSaveDate(id) {
   const si  = parseInt(sel.value);
   if (isNaN(si)) return;
 
-  const p = projects.find(x => x.id === id);
+  const p = projects.find(x => String(x.id) === String(id));
   if (!p) return;
   if (!p.entregas) p.entregas = {};
   if (!p.entregas[si]) p.entregas[si] = {real:'', obs:''};
@@ -4306,7 +4306,7 @@ function ltShowScoreInput(id) {
   const si = sel.value;
   if (!si) { row.style.display = 'none'; return; }
   row.style.display = 'flex';
-  const p = projects.find(x => x.id === id);
+  const p = projects.find(x => String(x.id) === String(id));
   if (!p) return;
   const ent = p.entregas && (p.entregas[parseInt(si)] || p.entregas[String(si)]);
   const curScore = ent?.score || 0;
@@ -4324,7 +4324,7 @@ function ltSaveScore(id, score) {
   const sel = document.getElementById('lt-score-sel-' + id);
   if (!sel || !sel.value) return;
   const si = parseInt(sel.value);
-  const p  = projects.find(x => x.id === id);
+  const p  = projects.find(x => String(x.id) === String(id));
   if (!p) return;
   if (!p.entregas) p.entregas = {};
   if (!p.entregas[si]) p.entregas[si] = {real:'', obs:''};
@@ -4352,7 +4352,7 @@ function updateDateResult(el, atraso) {
 function updateLtBlock(id, si, atrasoIgnored) {
   const blk = document.getElementById('lt-blk-' + id + '-' + si);
   if (!blk) return;
-  const p       = projects.find(x => x.id === id);
+  const p       = projects.find(x => String(x.id) === String(id));
   const real    = p?.entregas?.[si]?.real || '';
   const realFmt = real ? real.split('-').reverse().join('/') : '';
 
