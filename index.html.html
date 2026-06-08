@@ -5808,7 +5808,7 @@ async function sbSave() {
     sbRetryCount = 0;
     console.log(`sbSave: confirmado ${projects.length} projetos salvos às ${sbLastSaved.toLocaleTimeString()}`);
     setSyncStatus('✓ Salvo às ' + sbLastSaved.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) + ' (' + projects.length + ' proj.)', 'var(--green)');
-    syncSheets(); // envia para Google Sheets
+    // syncSheets(); // DESATIVADO TEMPORARIAMENTE - restauração em andamento
     // Mantém 3 backups locais rotativos
     try {
       const backup = {
@@ -5845,7 +5845,7 @@ async function sbSave() {
         localStorage.setItem('saber_emergency_at', new Date().toISOString());
         console.warn('Dados salvos no localStorage como emergência');
       } catch(le) { console.warn('localStorage cheio:', le); }
-      syncSheets(); // fallback: tenta planilha
+      // syncSheets(); // DESATIVADO - fallback planilha
     }
   }
 }
@@ -6038,7 +6038,7 @@ sbLoad().then(() => {
 });
 document.getElementById('last-upd').textContent = ts();
   window.addEventListener('beforeunload', e => {
-    syncSheets(); // tenta sync final ao fechar
+    // syncSheets(); // DESATIVADO - sync ao fechar
     if (sbPendingChanges) {
       e.preventDefault();
       e.returnValue = 'Há alterações não salvas. Exporte os dados antes de sair.';
@@ -6046,7 +6046,7 @@ document.getElementById('last-upd').textContent = ts();
   });
 
 // Auto-sync com Google Sheets a cada 5 minutos
-setInterval(() => { if (projects.length > 0) syncSheets(); }, 5 * 60 * 1000);
+// setInterval(() => { if (projects.length > 0) syncSheets(); }, 5 * 60 * 1000); // DESATIVADO
 
 // Sincroniza barra de rolagem do topo com a tabela
 (function() {
