@@ -2363,6 +2363,7 @@ function show(name) {
 // ── STATUS2 + CONV ─────────────────────────────────────────
 function calcStatus2(p) {
   if (p.status2 === 'Churn' || p.status2 === 'Pausado') return p.status2;
+  if (p.status2 === 'Finalizado') return 'Finalizado';
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   if (!p.inicio) return 'Início em breve';
   // DRO: finalizado apenas quando prevFim (fim do contrato) passou
