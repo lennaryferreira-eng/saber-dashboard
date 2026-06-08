@@ -5783,26 +5783,25 @@ async function sbSave() {
       cap_manual: JSON.stringify(capManual),
       mon_metas:  JSON.stringify(monMetas),
     };
-    // Usa upsert para garantir que todos os dados são salvos
-    const res = await fetch(SB_URL + '/rest/v1/saber_data', {
-      method: 'POST',
-      headers: { ...SB_HEADERS, 'Prefer': 'resolution=merge-duplicates,return=representation' },
+    // Tenta PATCH primeiro (atualiza linha existente)
+    let res = await fetch(SB_URL + '/rest/v1/saber_data?id=eq.main', {
+      method: 'PATCH',
+      headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
       body: JSON.stringify(payload)
     });
+    // Se não existir ainda, cria com POST
+    if (res.status === 404 || res.status === 406) {
+      res = await fetch(SB_URL + '/rest/v1/saber_data', {
+        method: 'POST',
+        headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+        body: JSON.stringify(payload)
+      });
+    }
     if (!res.ok) {
       const errText = await res.text();
       throw new Error('HTTP ' + res.status + ': ' + errText);
     }
-    // Verifica se salvou corretamente
-    const saved = await res.json();
-    if (saved && saved[0] && saved[0].projects) {
-      const savedProjs = JSON.parse(saved[0].projects);
-      if (savedProjs.length !== projects.length) {
-        console.error('AVISO: Supabase salvou ' + savedProjs.length + ' mas temos ' + projects.length);
-      } else {
-        console.log('Supabase confirmou ' + savedProjs.length + ' projetos salvos ✓');
-      }
-    }
+    console.log('Supabase confirmou ' + projects.length + ' projetos salvos ✓');
     sbLastSaved = new Date();
     sbPendingChanges = false;
     sbRetryCount = 0;
