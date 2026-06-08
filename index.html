@@ -3357,11 +3357,11 @@ function calcNps() {
     return df && df.getMonth() === mesSel.idx && df.getFullYear() === mesSel.ano;
   });
   const totalFin = finalizados.length;
-  const finIds   = new Set(finalizados.map(p => p.id));
+  const finIds   = new Set(finalizados.map(p => String(p.id)));
 
   // respostas: dos finalizados filtrados, com dataResp no mês selecionado (se houver)
   const respostasEntries = Object.entries(npsData).filter(([id, d]) => {
-    if (!finIds.has(parseInt(id)) || d.nota === '') return false;
+    if (!finIds.has(String(id)) || d.nota === '') return false;
     if (mesSel) {
       if (!d.dataResp) return false;
       const dr = parseDate(d.dataResp);
