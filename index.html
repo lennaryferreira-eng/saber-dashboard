@@ -3270,7 +3270,7 @@ function buildNpsTable() {
   calcNps(); // atualiza cards com filtros ativos
   if (!base.length) { tbody.innerHTML = emptyRow(7, 'Nenhum projeto finalizado na base'); return; }
   tbody.innerHTML = base.map(p => {
-    const nd = npsData[p.id] || {nota:'', comentario:'', dataResp:''};
+    const nd = npsData[String(p.id)] || {nota:'', comentario:'', dataResp:''};
     const rowStyle = '';
     const mesBadge = '';
     return `<tr style="${rowStyle}">
@@ -3779,7 +3779,7 @@ function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
   const npsBase = projects.filter(p => calcStatus2(p) === 'Finalizado' && (!p.modelo || p.modelo !== 'DRO'));
   const npsNotas = [];
   npsBase.forEach(p => {
-    const nd = npsData[p.id];
+    const nd = npsData[String(p.id)];
     if (!nd || nd.nota === '' || !nd.dataResp) return;
     if (curM) {
       const d = new Date(nd.dataResp);
@@ -5329,7 +5329,7 @@ function buildPerformance() {
     });
     const npsNotas = [];
     npsBase.forEach(p => {
-      const nd = npsData[p.id];
+      const nd = npsData[String(p.id)];
       if (!nd || nd.nota === '' || !nd.dataResp) return;
       const n = parseInt(nd.nota);
       if (!isNaN(n)) npsNotas.push(n);
@@ -5596,7 +5596,7 @@ function perfSelecionaConsultor(nome) {
   });
   const npsRespondidos = [], npsPendentes = [];
   finalizados.forEach(p => {
-    const nd = npsData[p.id];
+    const nd = npsData[String(p.id)];
     if (nd && nd.nota !== '' && nd.dataResp) npsRespondidos.push({p, nd});
     else npsPendentes.push(p);
   });
@@ -5814,7 +5814,7 @@ async function sbSave() {
     sbRetryCount = 0;
     console.log(`sbSave: confirmado ${projects.length} projetos salvos às ${sbLastSaved.toLocaleTimeString()}`);
     setSyncStatus('✓ Salvo às ' + sbLastSaved.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) + ' (' + projects.length + ' proj.)', 'var(--green)');
-    // syncSheets(); // DESATIVADO TEMPORARIAMENTE - restauração em andamento
+    syncSheets(); // sync automático com planilha após salvar no Supabase
     // Mantém 3 backups locais rotativos
     try {
       const backup = {
@@ -5851,7 +5851,7 @@ async function sbSave() {
         localStorage.setItem('saber_emergency_at', new Date().toISOString());
         console.warn('Dados salvos no localStorage como emergência');
       } catch(le) { console.warn('localStorage cheio:', le); }
-      // syncSheets(); // DESATIVADO - fallback planilha
+      syncSheets(); // fallback: tenta planilha quando Supabase falha
     }
   }
 }
@@ -5940,7 +5940,7 @@ async function sbLoad() {
       if (row.nps_data) {
         const nd = JSON.parse(row.nps_data);
         if (nd && typeof nd === 'object') {
-          Object.entries(nd).forEach(([k, v]) => { npsData[parseInt(k)] = v; });
+          Object.entries(nd).forEach(([k, v]) => { npsData[String(k)] = v; });
         }
       }
       if (row.csp_manual) {
@@ -6041,7 +6041,7 @@ sbLoad().then(() => {
   setTimeout(() => {
     var fin = projects.filter(p => calcStatus2(p) === 'Finalizado');
     var mon = projects.filter(p => p.conv === 'Monetizado');
-    var npsOk = fin.filter(p => { var nd = npsData[p.id]; return nd && nd.nota !== '' && nd.dataResp; });
+    var npsOk = fin.filter(p => { var nd = npsData[String(p.id)]; return nd && nd.nota !== '' && nd.dataResp; });
     var el = document.createElement('div');
     el.style = 'position:fixed;bottom:10px;right:10px;background:#1a1a1a;color:#fff;padding:12px 16px;border-radius:8px;font-size:12px;z-index:9999;line-height:1.8;';
     el.innerHTML = '<b>🔍 Diagnóstico</b><br>'
@@ -6061,7 +6061,7 @@ sbLoad().then(() => {
 });
 document.getElementById('last-upd').textContent = ts();
   window.addEventListener('beforeunload', e => {
-    // syncSheets(); // DESATIVADO - sync ao fechar
+    syncSheets(); // sync ao fechar aba
     if (sbPendingChanges) {
       e.preventDefault();
       e.returnValue = 'Há alterações não salvas. Exporte os dados antes de sair.';
@@ -6069,7 +6069,7 @@ document.getElementById('last-upd').textContent = ts();
   });
 
 // Auto-sync com Google Sheets a cada 5 minutos
-// setInterval(() => { if (projects.length > 0) syncSheets(); }, 5 * 60 * 1000); // DESATIVADO
+setInterval(() => { if (projects.length > 0) syncSheets(); }, 5 * 60 * 1000); // sync automático a cada 5 min
 
 // Sincroniza barra de rolagem do topo com a tabela
 (function() {
