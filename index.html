@@ -5745,29 +5745,15 @@ async function syncSheets() {
       cap_manual: JSON.stringify(capManual),
       pdi_data:   JSON.stringify(typeof pdiData !== 'undefined' ? pdiData : {}),
     };
-    // Tenta com confirmação primeiro (sem no-cors)
-    try {
-      const res = await fetch(SHEETS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'payload=' + encodeURIComponent(JSON.stringify(payload))
-      });
-      const json = await res.json();
-      if (json.ok) {
-        console.log('Sheets sync confirmado OK');
-        setSyncStatus('✓ Salvo e sincronizado com planilha', 'var(--green)');
-        setTimeout(() => setSyncStatus('● Online', 'var(--green)'), 3000);
-        return;
-      }
-    } catch(e) {
-      // Se falhar (CORS bloqueado), usa no-cors como fallback
-      console.warn('Sheets sync sem confirmação (fallback no-cors)');
-    }
-    // Fallback: envia sem confirmação
-    const form = new FormData();
-    form.append('payload', JSON.stringify(payload));
-    await fetch(SHEETS_URL, { method: 'POST', body: form, mode: 'no-cors' });
-    console.log('Sheets sync enviado (sem confirmação)');
+    // Envia como text/plain para bypassar CORS preflight
+    const body = JSON.stringify(payload);
+    await fetch(SHEETS_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: body
+    });
+    console.log('Sheets sync enviado');
   } catch(e) {
     console.warn('Sheets sync error:', e);
   }
