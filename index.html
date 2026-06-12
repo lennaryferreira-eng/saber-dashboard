@@ -1012,6 +1012,8 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
+var _carregandoInicial = false; // flag de carga inicial (declarada no topo para evitar TDZ)
+
 // ═══════════════════════════════════
 //  CONSTANTES
 // ═══════════════════════════════════
@@ -1342,6 +1344,30 @@ function flagHTML(f) {
   const cls = {Verde:'flag-V',Amarelo:'flag-A',Vermelho:'flag-R'}[f] || '';
   return `<span style="display:inline-flex;align-items:center;gap:5px;"><span class="flag-dot ${cls}"></span>${f}</span>`;
 }
+function statusBadge2(p) {
+  const s = calcStatus2(p);
+  const map = {
+    'Em andamento':'b-blue',
+    'Finalizado':'b-gray',
+    'Churn':'b-red',
+    'Pausado':'b-amber',
+    'Início em breve':'b-gray'
+  };
+  return `<span class="badge ${map[s]||'b-gray'}" style="margin-top:0">${s}</span>`;
+}
+
+function convBadge(p) {
+  const c = p.conv || '';
+  if (!c) return '<span style="color:var(--text-hint)">—</span>';
+  const map = {
+    'Monetizado':'b-green',
+    'Não monetizado':'b-red',
+    'Em negociação':'b-amber',
+    'Cancelado':'b-red'
+  };
+  return `<span class="badge ${map[c]||'b-gray'}" style="margin-top:0">${c}</span>`;
+}
+
 function monBadge(m) {
   const map = {Monetizado:'b-green',Cancelado:'b-red','Não monetizado':'b-red','Em negociação':'b-amber','Em andamento':'b-blue','Finalizado':'b-gray','Churn':'b-red','Pausado':'b-amber','Início em breve':'b-gray'};
   return `<span class="badge ${map[m]||'b-gray'}" style="margin-top:0">${m}</span>`;
@@ -3865,7 +3891,6 @@ function show(sec) {
 }
 
 function refreshAll() {
-  renderBase();
   if (document.getElementById('dro-list')) buildDRO();
   const cspV   = calcCsp();
   const convV  = calcConv();
@@ -5907,9 +5932,10 @@ projects = []; // dados carregados do Supabase
 // Inicialização: carrega do Supabase ANTES de qualquer refresh
 // (não chama refreshAll antes do sbLoad para evitar salvar dados vazios)
 setSyncStatus('Carregando…', 'var(--text-hint)');
-let _carregandoInicial = true;
+_carregandoInicial = true;
 sbLoad().then(() => {
   _carregandoInicial = false;
+  renderBase();
   refreshAll();
   buildLeadTime();
   sbStartPolling();
