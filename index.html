@@ -280,7 +280,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
   <div style="text-align:right;">
     <span class="qbadge">2026 — Q1 · Q2 · Q3 · Q4</span>
     <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:8px;flex-wrap:wrap;">
-      <button onclick="syncSheets();setTimeout(()=>alert('Dados enviados para a planilha!'),1500);" title="Forçar sincronização com Google Sheets" style="font-family:var(--sans);font-size:11px;padding:5px 12px;border:1px solid var(--border);border-radius:20px;background:var(--surface2);color:var(--text-muted);cursor:pointer;transition:all .15s;" onmouseover="this.style.background='var(--surface3)'" onmouseout="this.style.background='var(--surface2)'">📊 Planilha</button>
+      <button onclick="atualizarPlanilha()" title="Atualizar planilha com dados do Supabase" style="font-family:var(--sans);font-size:11px;padding:5px 12px;border:1px solid var(--border);border-radius:20px;background:var(--surface2);color:var(--text-muted);cursor:pointer;transition:all .15s;" onmouseover="this.style.background='var(--surface3)'" onmouseout="this.style.background='var(--surface2)'">📊 Planilha</button>
       <button onclick="sbExport()" style="font-family:var(--sans);font-size:11px;padding:5px 12px;border:1px solid var(--border);border-radius:20px;background:var(--surface2);color:var(--text-muted);cursor:pointer;transition:all .15s;" onmouseover="this.style.background='var(--surface3)'" onmouseout="this.style.background='var(--surface2)'">↓ Exportar dados</button>
       <label style="font-family:var(--sans);font-size:11px;padding:5px 12px;border:1px solid var(--border);border-radius:20px;background:var(--surface2);color:var(--text-muted);cursor:pointer;transition:all .15s;" onmouseover="this.style.background='var(--surface3)'" onmouseout="this.style.background='var(--surface2)'">↑ Importar dados<input type="file" accept=".json" style="display:none" onchange="sbImport(this)"></label>
       <button onclick="restoreBackup()" title="Restaurar último backup local" style="font-family:var(--sans);font-size:11px;padding:5px 10px;border:1px solid var(--border);border-radius:20px;background:var(--surface2);color:var(--text-muted);cursor:pointer;">↩ Backup</button>
@@ -2105,303 +2105,7 @@ function droToggleComite(projId, idx) {
   upd(); buildDRO();
 }
 
-function droSetComiteData(projId, idx, val) {
-  const p = projects.find(x => String(x.id) === String(projId));
-  if (!p) return;
-  if (!p.droData) p.droData = { comites: [], auditorias: [] };
-  if (!p.droData.comites[idx]) p.droData.comites[idx] = {};
-  p.droData.comites[idx].data = val;
-  upd();
-}
 
-function droAddAuditoria(projId) {}
-
-function droShowAddAuditoria(projId) {
-  const form = document.getElementById('dro-aud-form-' + projId);
-  if (form) form.style.display = 'block';
-}
-
-function droHideAddAuditoria(projId) {
-  const form = document.getElementById('dro-aud-form-' + projId);
-  if (form) form.style.display = 'none';
-  ['nome','dataprev','resp','entregaveis'].forEach(f => {
-    const el = document.getElementById('dro-aud-' + f + '-' + projId);
-    if (el) el.value = '';
-  });
-}
-
-function droConfirmAddAuditoria(projId) {
-  const nome = document.getElementById('dro-aud-nome-' + projId)?.value?.trim();
-  if (!nome) { alert('Informe o nome da auditoria.'); return; }
-  const dataPrev = document.getElementById('dro-aud-dataprev-' + projId)?.value || '';
-  const responsavel = document.getElementById('dro-aud-resp-' + projId)?.value?.trim() || '';
-  const entregaveis = document.getElementById('dro-aud-entregaveis-' + projId)?.value?.trim() || '';
-  const p = projects.find(x => String(x.id) === String(projId));
-  if (!p) return;
-  if (!p.droData) p.droData = { comites: [], auditorias: [] };
-  p.droData.auditorias.push({ nome, dataPrev, responsavel, entregaveis, data: '', feita: false });
-  upd(); droHideAddAuditoria(projId); buildDRO();
-}
-
-function droRemoveAuditoria(projId, idx) {
-  const p = projects.find(x => String(x.id) === String(projId));
-  if (!p || !p.droData) return;
-  p.droData.auditorias.splice(idx, 1);
-  upd(); buildDRO();
-}
-
-function droToggleAuditoria(projId, idx) {
-  const p = projects.find(x => String(x.id) === String(projId));
-  if (!p || !p.droData) return;
-  const a = p.droData.auditorias[idx];
-  if (!a) return;
-  a.feita = !a.feita;
-  if (a.feita && !a.data) a.data = new Date().toISOString().slice(0,10);
-  upd(); buildDRO();
-}
-
-function droSetAuditoriaData(projId, idx, val) {
-  const p = projects.find(x => String(x.id) === String(projId));
-  if (!p || !p.droData) return;
-  p.droData.auditorias[idx].data = val;
-  upd();
-}
-
-function droSetAuditoriaField(projId, idx, field, val) {
-  const p = projects.find(x => String(x.id) === String(projId));
-  if (!p || !p.droData) return;
-  p.droData.auditorias[idx][field] = val;
-  upd();
-}
-
-function buildPipeSemana() {
-  const el    = document.getElementById('pipe-semana-body');
-  const calEl = document.getElementById('pipe-semana-cal');
-  const label = document.getElementById('pipe-semana-label');
-  const metaInp = document.getElementById('pipe-meta-semana');
-  if (!el) return;
-
-  const { inicio, fim } = getWeekBounds(pipeSemanaOffset);
-  const key = semanaKey(pipeSemanaOffset);
-
-  const fmtSem = d => d.toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'});
-  if (label) label.textContent = fmtSem(inicio) + ' — ' + fmtSem(fim);
-  if (metaInp) metaInp.value = pipeMetaSemana[key] || '';
-
-  // Popula filtro de consultor próprio
-  const selCons = document.getElementById('pipe-semana-cons');
-  if (selCons) {
-    const cons = [...new Set(projects.map(p => p.consultor).filter(Boolean))].sort();
-    const curC = selCons.value;
-    selCons.innerHTML = '<option value="">Todos consultores</option>' + cons.map(c => '<option' + (c===curC?' selected':'') + '>' + c + '</option>').join('');
-    if (currentPerfil?.consultor) { selCons.value = currentPerfil.consultor; selCons.disabled = true; }
-  }
-  const consFilter  = selCons?.value || '';
-  const fOportSem   = document.getElementById('pipe-semana-oport')?.value || '';
-
-  // ── Critério 1: oportunidades SQL/SAL/COMMIT ──────────────
-  const ETAPAS_OPORT = ['Apresentar proposta (SQL)','Proposta apresentada (SAL)','Follow (COMMIT)'];
-  const comOport = projects.filter(p => { if (p.modelo === 'DRO') return false;
-    if (consFilter && p.consultor !== consFilter) return false;
-    if (fOportSem && fOportSem !== 'decol' && p.oport !== fOportSem) return false;
-    if (fOportSem === 'decol') return false; // decolagem só no critério 2
-    return ETAPAS_OPORT.includes(p.oport);
-  });
-
-  // ── Critério 2: projetos com Decolagem registrada na semana ─
-  const comDecolagem = projects.filter(p => {
-    if (consFilter && p.consultor !== consFilter) return false;
-    if (fOportSem && fOportSem !== 'decol') return false; // se filtrou por etapa oport, ignora decolagem
-    // Verifica decolagem em ambos os formatos de chave (número ou string)
-    const dataDecol = p.entregas?.[6]?.real || p.entregas?.['6']?.real;
-    if (!dataDecol) return false;
-    const d = parseDate(dataDecol);
-    return d && d >= inicio && d <= fim;
-  });
-
-  // Une sem duplicar
-  const idsOport   = new Set(comOport.map(p => p.id));
-  const idsDecol   = new Set(comDecolagem.map(p => p.id));
-  const todosPipe  = [...comOport, ...comDecolagem.filter(p => !idsOport.has(p.id))];
-
-  if (!todosPipe.length) {
-    el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-hint);font-size:12px;">Nenhuma oportunidade ou decolagem para essa semana.</div>';
-    atualizaMetaResultado(0);
-    return;
-  }
-
-  // Calcula pipeline total
-  function parseVal(v) { return parseFloat((v||'').replace(/\./g,'').replace(',','.')) || 0; }
-  const totalPipe = todosPipe.reduce((acc,p) => acc + parseVal(p.valorOport) + parseVal(p.valorOportRec), 0);
-
-  const oColors = {
-    'Apresentar proposta (SQL)': 'var(--blue)',
-    'Proposta apresentada (SAL)': 'var(--amber)',
-    'Follow (COMMIT)': 'var(--green)',
-    'Decolagem': 'var(--accent)'
-  };
-
-  const rows = todosPipe.map(p => {
-    const isDecol = idsDecol.has(p.id) && !idsOport.has(p.id);
-    const etapa   = isDecol ? 'Decolagem' : p.oport;
-    const cor     = oColors[etapa] || 'var(--text-hint)';
-    const vOT     = parseVal(p.valorOport);
-    const vRec    = parseVal(p.valorOportRec);
-    const vTotal  = vOT + vRec;
-    const dataD   = isDecol ? fmtD(p.entregas?.[6]?.real) : '';
-    return `<tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:8px 10px;">${p.nome||'—'}</td>
-      <td style="padding:8px 10px;color:var(--text-muted);font-size:11px;">${p.consultor||'—'}</td>
-      <td style="padding:8px 10px;">
-        <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(0,0,0,.06);color:${cor};">${etapa}</span>
-        ${dataD ? `<span style="font-size:10px;color:var(--text-hint);margin-left:4px;">${dataD}</span>` : ''}
-      </td>
-      <td style="padding:8px 10px;font-size:11px;">
-        ${vOT  > 0 ? `<span style="color:var(--accent);font-weight:600;">OT: ${BRL(vOT)}</span>` : ''}
-        ${vOT > 0 && vRec > 0 ? '<br>' : ''}
-        ${vRec > 0 ? `<span style="color:var(--blue);font-weight:600;">Rec: ${BRL(vRec)}</span>` : ''}
-        ${vTotal === 0 ? '<span style="color:var(--text-hint);">—</span>' : ''}
-      </td>
-      <td style="padding:8px 10px;font-size:11px;color:var(--text-muted);">${p.escopos || '—'}</td>
-      <td style="padding:8px 10px;font-size:11px;color:var(--text-muted);">${p.proximoContato ? fmtD(p.proximoContato) : '—'}</td>
-      <td style="padding:8px 10px;">${flagHTML(p.flag)}</td>
-    </tr>`;
-  }).join('');
-
-  // ── Calendário Seg→Dom ──────────────────────────────────────
-  const DIAS = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
-  const calDias = Array.from({length:7}, (_,i) => {
-    const d = new Date(inicio);
-    d.setDate(inicio.getDate() + i);
-    return d;
-  });
-
-  // Mapeia projetos por dia (proximoContato ou dataDecolagem)
-  const porDia = {};
-  calDias.forEach(d => { porDia[d.toISOString().slice(0,10)] = []; });
-
-  todosPipe.forEach(p => {
-    const isDecol = idsDecol.has(p.id) && !idsOport.has(p.id);
-    const dataRef = isDecol ? p.entregas?.[6]?.real : p.proximoContato;
-    if (dataRef && porDia.hasOwnProperty(dataRef)) {
-      porDia[dataRef].push({p, isDecol});
-    }
-  });
-
-  const hoje = new Date(); hoje.setHours(0,0,0,0);
-  const calHTML = `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:1rem;">
-    ${calDias.map((d,i) => {
-      const key2 = d.toISOString().slice(0,10);
-      const isHoje = d.getTime() === hoje.getTime();
-      const items = porDia[key2] || [];
-      return `<div style="background:${isHoje?'rgba(212,0,26,.06)':'var(--surface2)'};border:1px solid ${isHoje?'var(--accent)':'var(--border)'};border-radius:var(--r-sm);padding:8px;min-height:80px;">
-        <div style="font-size:10px;font-weight:700;color:${isHoje?'var(--accent)':'var(--text-hint)'};margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;">
-          ${DIAS[i]} <span style="font-weight:400;">${d.getDate()}/${String(d.getMonth()+1).padStart(2,'0')}</span>
-        </div>
-        ${items.length === 0
-          ? '<div style="font-size:10px;color:var(--text-hint);opacity:.5;">—</div>'
-          : items.map(({p:proj,isDecol:id2}) => {
-              const etapa = id2 ? 'Decolagem' : proj.oport;
-              const cor = {'Apresentar proposta (SQL)':'var(--blue)','Proposta apresentada (SAL)':'var(--amber)','Follow (COMMIT)':'var(--green)','Decolagem':'var(--accent)'}[etapa]||'var(--text-hint)';
-              return `<div style="font-size:10px;padding:3px 5px;border-left:2px solid ${cor};margin-bottom:3px;background:var(--surface);border-radius:0 3px 3px 0;">
-                <div style="font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${proj.nome}">${proj.nome}</div>
-                <div style="color:${cor};font-size:9px;">${etapa}</div>
-              </div>`;
-            }).join('')
-        }
-      </div>`;
-    }).join('')}
-  </div>`;
-  if (calEl) calEl.innerHTML = calHTML;
-
-  // ── Tabela resumo ─────────────────────────────────────────
-  el.innerHTML = `
-    <div style="margin-bottom:8px;font-size:11px;color:var(--text-hint);">
-      <strong style="color:var(--text);">${todosPipe.length}</strong> oportunidade${todosPipe.length!==1?'s':''} · 
-      Pipeline total: <strong style="color:var(--accent);">${BRL(totalPipe)}</strong>
-    </div>
-    <div style="overflow-x:auto;">
-    <table style="width:100%;border-collapse:collapse;font-size:12px;">
-      <thead><tr>
-        ${['Projeto','Consultor','Etapa','Valor previsto','Escopos OT','Próx. Contato','Flag'].map(h =>
-          `<th style="text-align:left;padding:6px 10px;border-bottom:1px solid var(--border);font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">${h}</th>`
-        ).join('')}
-      </tr></thead>
-      <tbody>${rows.replace(
-        /(<tr[^>]*>)/,
-        '$1'
-      )}</tbody>
-    </table>
-    </div>`;
-
-  atualizaMetaResultado(totalPipe);
-}
-
-function atualizaMetaResultado(total) {
-  const res  = document.getElementById('pipe-meta-resultado');
-  const meta = pipeMetaSemana[semanaKey(pipeSemanaOffset)] || 0;
-  if (!res) return;
-  if (!meta) { res.innerHTML = ''; return; }
-  const pct = Math.round(total / meta * 100);
-  const cor = pct >= 100 ? 'var(--green)' : pct >= 70 ? 'var(--amber)' : 'var(--red)';
-  res.innerHTML = `<span style="font-weight:700;color:${cor};">${pct}%</span> <span style="color:var(--text-hint);font-size:11px;">do pipeline vs meta · falta ${BRL(Math.max(0, meta-total))}</span>`;
-}
-
-function show(name) {
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach((t,i) => t.classList.toggle('active', TABS[i] === name));
-  if (name === 'pipeline') { buildPipeline(); buildPipeSemana(); }
-  if (currentPerfil?.consultor) applyPerfilFilters();
-  document.getElementById('sec-' + name).classList.add('active');
-  if (name === 'capacity')    { buildCapacity(); return; }
-  if (name === 'leadtime')    { buildLeadTime(); return; }
-  if (name === 'performance') { buildPerformance(); return; }
-  if (name !== 'base') refreshAll();
-}
-
-
-// ── STATUS2 + CONV ─────────────────────────────────────────
-function calcStatus2(p) {
-  if (p.status2 === 'Churn' || p.status2 === 'Pausado') return p.status2;
-  if (p.status2 === 'Finalizado') return 'Finalizado';
-  const hoje = new Date(); hoje.setHours(0,0,0,0);
-  if (!p.inicio) return 'Início em breve';
-  // DRO: finalizado apenas quando prevFim (fim do contrato) passou
-  if (p.modelo === 'DRO') {
-    if (p.prevFim && parseDate(p.prevFim) < hoje) return 'Finalizado';
-    return 'Em andamento';
-  }
-
-  // Opção B: hierarquia de critérios
-  // 1. realFim preenchido E no passado → Finalizado
-  if (p.realFim && p.realFim.length > 4 && parseDate(p.realFim) < hoje) return 'Finalizado';
-  // 1b. realFim preenchido E no futuro → Em andamento (decolagem agendada)
-  if (p.realFim && p.realFim.length > 4 && parseDate(p.realFim) >= hoje) return 'Em andamento';
-
-  // 2. Tem entregas registradas mas Decolagem (idx=6) sem data → Em andamento
-  //    (ignora prevFim enquanto houver progresso no Lead Time)
-  const ent = p.entregas || {};
-  const temAlgumaEntrega = [0,1,2,3,4,5,6].some(i => ent[i]?.real || ent[String(i)]?.real);
-  const temDecolagem = ent[6]?.real || ent['6']?.real;
-  if (temAlgumaEntrega && !temDecolagem) return 'Em andamento';
-
-  // 3. Sem entregas: usa prevFim para decidir
-  const datas = [p.prevFim].filter(d => d && d.length > 4);
-  const maior = datas.length ? datas[0] : '';
-  if (maior && parseDate(maior) < hoje) return 'Finalizado';
-  return 'Em andamento';
-}
-function statusBadge2(p) {
-  const s = calcStatus2(p);
-  const map = {'Em andamento':'b-blue','Finalizado':'b-gray','Início em breve':'b-gray','Churn':'b-red','Pausado':'b-amber'};
-  return '<span class="badge ' + (map[s]||'b-gray') + '" style="margin-top:0;font-size:10px;">' + s + '</span>';
-}
-function convBadge(p) {
-  const c = p.conv || '';
-  if (!c) return '<span style="color:var(--text-hint);font-size:10px;">—</span>';
-  const cls = c === 'Monetizado' ? 'b-green' : 'b-red';
-  return '<span class="badge ' + cls + '" style="margin-top:0;font-size:10px;">' + c + '</span>';
-}
 
 // ═══════════════════════════════════
 //  BASE DE PROJETOS
@@ -2694,10 +2398,17 @@ function setField(el) {
   if (f === 'inicio' && !p.prevManual && p.inicio) {
     p.prevFim = addDays(p.inicio, 45);
   }
-  // Quando monetizado: copia valorOport → valorOT e valorOportRec → valorRec (se vazios)
+  // Quando monetizado: copia valorOport → valorOT e valorOportRec → valorRec
   if ((f === 'conv' || f === 'mon') && (p.conv === 'Monetizado' || p.mon === 'Monetizado')) {
     if (!p.valorOT  && p.valorOport)    p.valorOT  = p.valorOport;
     if (!p.valorRec && p.valorOportRec) p.valorRec = p.valorOportRec;
+  }
+  // Se editar valorOport/valorOportRec em projeto já monetizado, atualiza OT/Rec também
+  if (f === 'valorOport' && p.conv === 'Monetizado') {
+    p.valorOT = val;
+  }
+  if (f === 'valorOportRec' && p.conv === 'Monetizado') {
+    p.valorRec = val;
   }
   renderBase();
 }
@@ -5732,6 +5443,25 @@ let sbRetryCount = 0;
 
 
 // ── GOOGLE SHEETS SYNC ─────────────────────────────────────
+
+async function atualizarPlanilha() {
+  const btn = document.querySelector('button[onclick="atualizarPlanilha()"]');
+  if (btn) btn.textContent = '📊 Atualizando...';
+  try {
+    await fetch('https://script.google.com/a/macros/v4company.com/s/AKfycbzy462VGOLbHKckALmznzaBvZwrRMMBTSr9J3CZEt2xj_hF2pWWzHvU1BZXzNw-1HKG/exec?action=atualizar', {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {'Content-Type': 'text/plain'},
+      body: JSON.stringify({action: 'atualizarPlanilha'})
+    });
+    if (btn) btn.textContent = '📊 Planilha';
+    alert('✅ Planilha atualizada com os dados do Supabase!\nVerifique a aba Projetos na planilha.');
+  } catch(e) {
+    if (btn) btn.textContent = '📊 Planilha';
+    alert('❌ Erro ao atualizar planilha: ' + e.message);
+  }
+}
+
 async function syncSheets() {
   if (!SHEETS_URL) return;
   try {
