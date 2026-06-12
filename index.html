@@ -1619,6 +1619,88 @@ function semanaKey(offset) {
 function navSemana(dir) { pipeSemanaOffset += dir; buildPipeSemana(); }
 function navSemanaHoje() { pipeSemanaOffset = 0; buildPipeSemana(); }
 
+function buildPipeSemana() {
+  const label = document.getElementById('pipe-semana-label');
+  const body  = document.getElementById('pipe-semana-body');
+  if (!body) return;
+
+  const { inicio, fim } = getWeekBounds(pipeSemanaOffset);
+  if (label) {
+    const fmt = d => d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'});
+    label.textContent = fmt(inicio) + ' — ' + fmt(fim);
+  }
+
+  // Filtros
+  const fCons  = document.getElementById('pipe-semana-cons')?.value || '';
+  const fOport = document.getElementById('pipe-semana-oport')?.value || '';
+
+  // Projetos com próximo contato na semana
+  let lista = projects.filter(p => {
+    if (!p.proximoContato) return false;
+    const dc = parseDate(p.proximoContato);
+    if (!dc) return false;
+    return dc >= inicio && dc <= fim;
+  });
+
+  if (fCons)  lista = lista.filter(p => p.consultor === fCons);
+  if (fOport) {
+    if (fOport === 'decol') lista = lista.filter(p => p.oport === 'Decolagem');
+    else lista = lista.filter(p => p.oport === fOport);
+  }
+
+  // Popula filtro de consultores
+  const selCons = document.getElementById('pipe-semana-cons');
+  if (selCons && selCons.options.length <= 1) {
+    const cons = [...new Set(projects.filter(p => p.consultor).map(p => p.consultor))].sort();
+    const cur = selCons.value;
+    selCons.innerHTML = '<option value="">Todos consultores</option>' + cons.map(c => '<option' + (c===cur?' selected':'') + '>' + c + '</option>').join('');
+  }
+
+  // Meta da semana
+  const metaInput = document.getElementById('pipe-meta-semana');
+  const metaVal = pipeMetaSemana[semanaKey(pipeSemanaOffset)] || 0;
+  if (metaInput && document.activeElement !== metaInput) metaInput.value = metaVal || '';
+
+  // Soma valores de oportunidade
+  const pvOv = v => { const n = parseFloat(String(v||'').replace(/\./g,'').replace(',','.')); return isNaN(n) ? 0 : n; };
+  const totalSemana = lista.reduce((a,p) => a + pvOv(p.valorOport) + pvOv(p.valorOportRec), 0);
+  const metaRes = document.getElementById('pipe-meta-resultado');
+  if (metaRes) {
+    const pct = metaVal > 0 ? Math.round(totalSemana / metaVal * 100) : 0;
+    metaRes.innerHTML = 'Pipe: <b>R$ ' + totalSemana.toLocaleString('pt-BR') + '</b>' + (metaVal > 0 ? ' / ' + pct + '% da meta' : '');
+  }
+
+  if (lista.length === 0) {
+    body.innerHTML = '<p style="color:var(--text-hint);font-size:13px;padding:12px 0;text-align:center;">Nenhum contato agendado para esta semana.</p>';
+    return;
+  }
+
+  body.innerHTML = `
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>Consultor</th><th>Projeto</th><th>Etapa</th>
+          <th>Próximo Contato</th><th>Val. OT</th><th>Val. Rec</th><th>Flag</th>
+        </tr></thead>
+        <tbody>
+          ${lista.sort((a,b) => parseDate(a.proximoContato) - parseDate(b.proximoContato)).map(p => {
+            const dc = parseDate(p.proximoContato);
+            const dataFmt = dc ? dc.toLocaleDateString('pt-BR', {weekday:'short', day:'2-digit', month:'2-digit'}) : '—';
+            return '<tr>'
+              + '<td>' + (p.consultor||'—') + '</td>'
+              + '<td>' + (p.nome||'—') + '</td>'
+              + '<td>' + (p.oport||'—') + '</td>'
+              + '<td>' + dataFmt + '</td>'
+              + '<td>' + (p.valorOport||'—') + '</td>'
+              + '<td>' + (p.valorOportRec||'—') + '</td>'
+              + '<td>' + flagHTML(p.flag) + '</td>'
+              + '</tr>';
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
 function buildPipeSemanaMeta() {
   const inp = document.getElementById('pipe-meta-semana');
   if (!inp) return;
@@ -3748,6 +3830,38 @@ function buildOvAnalises(curM) {
         + '</div>';
     }).join('');
   }
+}
+
+function show(sec) {
+  // Esconde todas as seções e remove active das tabs
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  // Mostra a seção selecionada
+  const secEl = document.getElementById('sec-' + sec);
+  if (secEl) secEl.classList.add('active');
+  // Marca a tab clicada como active
+  const tabs = document.querySelectorAll('.nav-tab');
+  tabs.forEach(t => {
+    if (t.getAttribute('onclick') && t.getAttribute('onclick').indexOf("'" + sec + "'") >= 0) {
+      t.classList.add('active');
+    }
+  });
+  // Chama o build específico de cada aba
+  try {
+    if (sec === 'visao')        refreshAll();
+    else if (sec === 'base')        renderBase();
+    else if (sec === 'conversao')   { calcConv(); buildFunil(document.getElementById('conv-f-cons')?.value || ''); }
+    else if (sec === 'leadtime')    buildLeadTime();
+    else if (sec === 'dro')         buildDRO();
+    else if (sec === 'pipeline')    buildPipeline();
+    else if (sec === 'monetizacao') calcMon();
+    else if (sec === 'prazo')       calcPrazo();
+    else if (sec === 'csp')         calcCsp();
+    else if (sec === 'nps')         buildNpsTable();
+    else if (sec === 'pdi')         calcPdi();
+    else if (sec === 'capacity')    buildCapacity();
+    else if (sec === 'performance') buildPerformance();
+  } catch(e) { console.error('show(' + sec + ') erro:', e); }
 }
 
 function refreshAll() {
