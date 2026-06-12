@@ -5589,6 +5589,7 @@ function setSyncStatus(msg, color) {
 
 // ── salva com debounce de 1.5s ──
 function sbScheduleSave() {
+  if (typeof _carregandoInicial !== 'undefined' && _carregandoInicial) return; // não salva durante carga inicial
   clearTimeout(sbSaveTimer);
   setSyncStatus('Salvando…', 'var(--amber)');
   sbSaveTimer = setTimeout(sbSave, 1500);
@@ -5902,11 +5903,12 @@ projects = []; // dados carregados do Supabase
 })();
 
 
-// Inicialização simples: sempre busca do Supabase (fonte de verdade)
-refreshAll();
-buildLeadTime();
+// Inicialização: carrega do Supabase ANTES de qualquer refresh
+// (não chama refreshAll antes do sbLoad para evitar salvar dados vazios)
 setSyncStatus('Carregando…', 'var(--text-hint)');
+let _carregandoInicial = true;
 sbLoad().then(() => {
+  _carregandoInicial = false;
   refreshAll();
   buildLeadTime();
   sbStartPolling();
