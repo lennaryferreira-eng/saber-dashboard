@@ -1129,6 +1129,48 @@ function diffDays(a, b) {
   if (!da || !db) return null;
   return Math.round((db - da) / 864e5);
 }
+
+function calcStatus2(p) {
+  if (p.status2 === 'Churn' || p.status2 === 'Pausado') return p.status2;
+  if (p.status2 === 'Finalizado') return 'Finalizado';
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  if (!p.inicio) return 'Início em breve';
+  // DRO: finalizado apenas quando prevFim (fim do contrato) passou
+  if (p.modelo === 'DRO') {
+    if (p.prevFim && parseDate(p.prevFim) < hoje) return 'Finalizado';
+    return 'Em andamento';
+  }
+  // Se tem realFim, usa ele
+  if (p.realFim) {
+    const dr = parseDate(p.realFim);
+    if (dr && dr < hoje) return 'Finalizado';
+    if (dr && dr >= hoje) return 'Em andamento';
+  }
+  // Verifica entregas: se tem decolagem registrada, está finalizado
+  const ent = p.entregas || {};
+  const temDecolagem = ent[6] && ent[6].real;
+  if (temDecolagem) {
+    const dd = parseDate(ent[6].real);
+    if (dd && dd < hoje) return 'Finalizado';
+  }
+  // Tem alguma entrega registrada mas sem decolagem → Em andamento
+  let temAlgumaEntrega = false;
+  for (let i = 0; i < 7; i++) {
+    if (ent[i] && ent[i].real) { temAlgumaEntrega = true; break; }
+  }
+  if (temAlgumaEntrega && !temDecolagem) return 'Em andamento';
+  // Sem entregas: usa prevFim
+  if (p.prevFim) {
+    const pd = parseDate(p.prevFim);
+    if (pd && pd < hoje) return 'Finalizado';
+  }
+  // Início no futuro
+  const di = parseDate(p.inicio);
+  if (di && di > hoje) return 'Início em breve';
+  return 'Em andamento';
+}
+
+
 function lastDayOfMonth(ano, mes) {
   return new Date(ano, mes + 1, 0).getDate();
 }
