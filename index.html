@@ -3865,6 +3865,7 @@ function show(sec) {
 }
 
 function refreshAll() {
+  renderBase();
   if (document.getElementById('dro-list')) buildDRO();
   const cspV   = calcCsp();
   const convV  = calcConv();
