@@ -3143,7 +3143,8 @@ function calcConv() {
     );
     if (consFilter) iniciados = iniciados.filter(p => p.consultor === consFilter);
     // numerador: projetos cujo mês monetizado é este mês
-    let monos = projects.filter(p => { if (p.modelo === 'DRO') return false; const [lb,an]=(p.mesMon||'').split('/'); return lb===m.label && parseInt(an)===m.ano; });
+    // numerador: projetos com ao menos UMA monetização neste mês (cliente único conta 1x)
+    let monos = projects.filter(p => { if (p.modelo === 'DRO') return false; return projMonetizouNoMes(p, m.label, m.ano); });
     if (consFilter) monos = monos.filter(p => p.consultor === consFilter);
     const taxa  = iniciados.length > 0 ? Math.round(monos.length / iniciados.length * 100) : null;
     totalAno += iniciados.length; monAno += monos.length;
@@ -3938,7 +3939,7 @@ function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
   let convIniciados = 0, convMon = 0;
   mesesConv.forEach(m => {
     convIniciados += projects.filter(p => p.inicio && parseDate(p.inicio)?.getMonth() === m.idx && parseDate(p.inicio)?.getFullYear() === m.ano).length;
-    convMon       += projects.filter(p => { const [lb,an]=(p.mesMon||'').split('/'); return lb===m.label && parseInt(an)===m.ano; }).length;
+    convMon       += projects.filter(p => { if (p.modelo === 'DRO') return false; return projMonetizouNoMes(p, m.label, m.ano); }).length;
   });
   const convV = convIniciados > 0 ? Math.round(convMon / convIniciados * 100) : null;
 
@@ -3968,17 +3969,11 @@ function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
     ? Math.round((npsNotas.filter(n=>n>=9).length - npsNotas.filter(n=>n<=6).length) / npsNotas.length * 100)
     : null;
 
-  // ── MONETIZAÇÃO: split OT/Rec + meta de monMetas ─────────────
+  // ── MONETIZAÇÃO: soma TODAS as monetizações (por evento/mês) ──
   let monTotal = 0, monTotalOT = 0, monTotalRec = 0;
-  projects.filter(p => {
-    if (p.conv !== 'Monetizado') return false;
-    if (curM) { const [lb,an] = (p.mesMon||'').split('/'); return lb===curM.label && parseInt(an)===curM.ano; }
-    return true;
-  }).forEach(p => {
-    const vOT  = parseFloat((p.valorOT||'').replace(/\./g,'').replace(',','.'));
-    const vRec = parseFloat((p.valorRec||'').replace(/\./g,'').replace(',','.'));
-    if (!isNaN(vOT)  && vOT  > 0) { monTotal += vOT;  monTotalOT  += vOT; }
-    if (!isNaN(vRec) && vRec > 0) { monTotal += vRec; monTotalRec += vRec; }
+  (curM ? [curM] : ALL_MESES).forEach(m => {
+    const r = monReceitaNoMes(m.label, m.ano);
+    monTotalOT += r.ot; monTotalRec += r.rec; monTotal += r.total;
   });
   // meta: soma monMetas do mês ou do ano
   const metaMeses = curM ? [curM] : ALL_MESES;
@@ -4211,13 +4206,13 @@ function show(sec) {
 function refreshAll() {
   if (document.getElementById('dro-list')) buildDRO();
   const cspV   = calcCsp();
-  const convV  = calcConv();
+  let convV; try { convV = calcConv(); } catch(e){ console.error('calcConv erro:', e); convV = null; }
   // funil sempre atualizado com base completa
   buildFunil(document.getElementById('conv-f-cons')?.value || '');
   const prazoV = calcPrazo();
   buildNpsTable();
   const npsV   = calcNps();
-  calcMon();
+  try { calcMon(); } catch(e){ console.error('calcMon erro:', e); }
   const pdiV   = calcPdi();
   buildOv(cspV, convV, prazoV, npsV, pdiV);
   const _curVisao = filters['visao'] || null;
