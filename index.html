@@ -1014,6 +1014,12 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
 <script>
 var _carregandoInicial = false; // flag de carga inicial (declarada no topo para evitar TDZ)
 
+// Helper: limpa valores de data para inputs (trata null, undefined e string "null")
+function dv(v) {
+  if (v === null || v === undefined || v === 'null' || v === 'undefined' || v === '—' || v === '-') return '';
+  return String(v);
+}
+
 // ═══════════════════════════════════
 //  CONSTANTES
 // ═══════════════════════════════════
@@ -1820,7 +1826,7 @@ function buildOutrosEscopos() {
               <td>${p.consultor||'—'}</td>
               <td style="font-weight:500;">${p.nome}</td>
               <td><span class="badge b-red" style="font-size:10px;">${p.outrosEscopos}</span></td>
-              <td><input type="date" class="sel" style="font-size:11px;padding:3px 6px;" value="${d.dataInicio||''}"
+              <td><input type="date" class="sel" style="font-size:11px;padding:3px 6px;" value="${dv(d.dataInicio)}"
                 onchange="const pr=projects.find(x=>String(x.id)===String(${p.id}));if(!pr.outrosEscoposData)pr.outrosEscoposData={};pr.outrosEscoposData.dataInicio=this.value;upd();"></td>
               <td style="text-align:center;">${check('atribuicao', d.atribuicao)}</td>
               <td style="text-align:center;">${check('dossie', d.dossie)}</td>
@@ -1904,7 +1910,7 @@ function buildDRO() {
             ${feito?'<span style="color:#fff;font-size:11px;">✓</span>':''}
           </div>
           <span style="font-size:9px;color:var(--text-hint);white-space:nowrap;">${mes}</span>
-          ${feito?`<input type="date" value="${c.data||''}" style="font-size:9px;width:80px;padding:1px 3px;border:none;border-bottom:1px solid var(--border);background:transparent;color:var(--text-muted);"
+          ${feito?`<input type="date" value="${dv(c.data)}" style="font-size:9px;width:80px;padding:1px 3px;border:none;border-bottom:1px solid var(--border);background:transparent;color:var(--text-muted);"
             onchange="droSetComiteData(${p.id}, ${i}, this.value)">`:
             `<span style="font-size:9px;color:var(--border);">—</span>`}
         </div>`;
@@ -1928,12 +1934,12 @@ function buildDRO() {
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:6px;padding-left:28px;">
           <div>
             <span style="font-size:10px;color:var(--text-hint);">Prevista</span>
-            <input type="date" value="${a.dataPrev||''}" class="sel" style="font-size:11px;padding:2px 6px;width:100%;"
+            <input type="date" value="${dv(a.dataPrev)}" class="sel" style="font-size:11px;padding:2px 6px;width:100%;"
               onchange="droSetAuditoriaField(${p.id}, ${i}, 'dataPrev', this.value)">
           </div>
           <div>
             <span style="font-size:10px;color:var(--text-hint);">Realizada</span>
-            <input type="date" value="${a.data||''}" class="sel" style="font-size:11px;padding:2px 6px;width:100%;"
+            <input type="date" value="${dv(a.data)}" class="sel" style="font-size:11px;padding:2px 6px;width:100%;"
               onchange="droSetAuditoriaData(${p.id}, ${i}, this.value)">
           </div>
           <div>
@@ -1977,7 +1983,7 @@ function buildDRO() {
           </select>
           <div style="display:flex;align-items:center;gap:4px;">
             <span style="font-size:11px;color:var(--text-hint);">📅</span>
-            <input type="date" class="sel" style="font-size:11px;padding:2px 6px;" value="${p.proximoContato||''}"
+            <input type="date" class="sel" style="font-size:11px;padding:2px 6px;" value="${dv(p.proximoContato)}"
               onchange="const pr=projects.find(x=>String(x.id)===String(${p.id}));pr.proximoContato=this.value;upd();">
           </div>
           <span style="font-size:16px;color:var(--text-hint);line-height:1;transition:transform .2s;display:inline-block;transform:rotate(${expanded?'0':'180deg'});">⌃</span>
@@ -2430,7 +2436,7 @@ function openNovoProj() {
   const desList = document.getElementById('np-des-list');
   if (desList) {
     const designers = [...new Set(projects.map(p=>p.designer).filter(Boolean))].sort();
-    desList.innerHTML = designers.map(d=>`<option value="${d}">`).join('');
+    desList.innerHTML = designers.map(d=>`<option value="${dv(d)}">`).join('');
   }
   // se consultor logado, pré-preenche e trava campo consultor
   if (currentPerfil?.consultor) {
@@ -2668,13 +2674,13 @@ function renderBase() {
       <td style="padding:6px 10px;text-align:center;">${tierBadge(p.gmv)}</td>
       <td contenteditable="true" data-f="designer" data-id="${p.id}" onblur="setField(this)" style="min-width:100px;">${p.designer||'—'}</td>
       <td contenteditable="true" data-f="copy" data-id="${p.id}" onblur="setField(this)" style="min-width:100px;">${p.copy||'—'}</td>
-      <td><input type="date" class="sel" value="${p.inicio||''}" data-f="inicio" data-id="${p.id}" onchange="setField(this)"></td>
+      <td><input type="date" class="sel" value="${dv(p.inicio)}" data-f="inicio" data-id="${p.id}" onchange="setField(this)"></td>
       <td>
-        <input type="date" class="sel" value="${p.prevFim||''}" data-f="prevFim" data-id="${p.id}" onchange="setFieldPrev(this)"
+        <input type="date" class="sel" value="${dv(p.prevFim)}" data-f="prevFim" data-id="${p.id}" onchange="setFieldPrev(this)"
           style="border-color:${p.prevManual?'rgba(196,82,26,.4)':'var(--border)'}">
         <span style="font-size:9px;color:${p.prevManual?'var(--accent)':'var(--text-hint)'};display:block;margin-top:1px;">${p.prevManual?'editado':'auto'}</span>
       </td>
-      <td><input type="date" class="sel" value="${p.realFim||''}" data-f="realFim" data-id="${p.id}" onchange="setField(this)"></td>
+      <td><input type="date" class="sel" value="${dv(p.realFim)}" data-f="realFim" data-id="${p.id}" onchange="setField(this)"></td>
       <td>${prazoInline(p)}</td>
       <td style="padding:6px 10px;">${flagHTML(p.flag)}</td>
       <td style="padding:6px 10px;">
@@ -3179,7 +3185,7 @@ function buildNpsTable() {
       <td>${fmtD(p.realFim || p.prevFim) || '—'}</td><td>${p.nome||'—'}</td><td>${p.consultor||'—'}</td>
       <td><input type="number" min="0" max="10" class="sel" style="width:55px" value="${nd.nota}" data-nid="${p.id}" onchange="saveNpsNota(this)" placeholder="—"></td>
       <td class="nps-cat-${p.id}">${npsCat(nd.nota)}</td>
-      <td><input type="date" class="sel" style="width:130px;font-size:11px;" value="${nd.dataResp||''}" data-nid="${p.id}" onchange="saveNpsData(this)"></td>
+      <td><input type="date" class="sel" style="width:130px;font-size:11px;" value="${dv(nd.dataResp)}" data-nid="${p.id}" onchange="saveNpsData(this)"></td>
       <td contenteditable="true" data-ncoment="${p.id}" onblur="saveNpsComent(this)">${nd.comentario||'—'}</td>
     </tr>`;
   }).join('');
@@ -3526,7 +3532,7 @@ function calcMon() {
         const statusColor = {'Em dia':'var(--green)','Atrasado':'var(--red)','Em andamento':'var(--amber)'};
         const sc = statusColor[p.monStatus||''] || 'var(--text-hint)';
         const statusSel = `<select class="sel" style="font-size:10px;width:110px;" onchange="setMonField(${p.id},'monStatus',this.value)">`
-          + statusOpts.map(o => `<option value="${o}" ${(p.monStatus||'')=== o?'selected':''}>${o||'—'}</option>`).join('')
+          + statusOpts.map(o => `<option value="${dv(o)}" ${(p.monStatus||'')=== o?'selected':''}>${o||'—'}</option>`).join('')
           + '</select>';
         const chk = (field, label) => `<label style="display:flex;align-items:center;gap:4px;font-size:10px;cursor:pointer;white-space:nowrap;">`
           + `<input type="checkbox" ${p[field]?'checked':''} onchange="setMonField(${p.id},'${field}',this.checked)" style="accent-color:var(--accent);width:14px;height:14px;">`
@@ -5869,6 +5875,27 @@ async function sbLoad() {
           Object.keys(p).forEach(k => {
             if (p[k] === null || p[k] === undefined || p[k] === 'null') p[k] = '';
           });
+          // Limpa null aninhado em droData (comites e auditorias)
+          if (p.droData && typeof p.droData === 'object') {
+            ['comites','auditorias'].forEach(arr => {
+              if (Array.isArray(p.droData[arr])) {
+                p.droData[arr].forEach(item => {
+                  if (item && typeof item === 'object') {
+                    Object.keys(item).forEach(ik => { if (item[ik] === null || item[ik] === 'null') item[ik] = ''; });
+                  }
+                });
+              }
+            });
+          }
+          // Limpa null aninhado em entregas
+          if (p.entregas && typeof p.entregas === 'object') {
+            Object.keys(p.entregas).forEach(ek => {
+              const e = p.entregas[ek];
+              if (e && typeof e === 'object') {
+                Object.keys(e).forEach(ik => { if (e[ik] === null || e[ik] === 'null') e[ik] = ''; });
+              }
+            });
+          }
           if (!p.conv)    p.conv    = p.mon === 'Monetizado' ? 'Monetizado' : (p.mon === 'Não monetizado' || p.mon === 'Em negociação') ? 'Não monetizado' : '';
           if (!p.status2) p.status2 = calcStatus2(p);
           if (p.valorOT  === undefined || p.valorOT === '') p.valorOT  = p.valor || '';
@@ -5882,7 +5909,13 @@ async function sbLoad() {
       if (row.nps_data) {
         const nd = JSON.parse(row.nps_data);
         if (nd && typeof nd === 'object') {
-          Object.entries(nd).forEach(([k, v]) => { npsData[String(k)] = v; });
+          Object.entries(nd).forEach(([k, v]) => {
+            // limpa null/'null' nos campos do NPS
+            if (v && typeof v === 'object') {
+              Object.keys(v).forEach(kk => { if (v[kk] === null || v[kk] === 'null') v[kk] = ''; });
+            }
+            npsData[String(k)] = v;
+          });
         }
       }
       if (row.csp_manual) {
