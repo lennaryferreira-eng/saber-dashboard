@@ -1512,6 +1512,9 @@ function buildPipeline() {
     + buildSide('One-time',   'valorOport',    'escopos',    'var(--accent)')
     + buildSide('Recorrente', 'valorOportRec', 'escoposRec', 'var(--blue)')
     + '</div>';
+
+  // Atualiza também a Pipe da Semana
+  buildPipeSemana();
 }
 
 
@@ -1653,26 +1656,12 @@ function buildPipeSemana() {
   const { inicio, fim } = getWeekBounds(pipeSemanaOffset);
   if (label) {
     const fmt = d => d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'});
-    label.textContent = fmt(inicio) + ' — ' + fmt(fim);
+    label.textContent = fmt(inicio) + ' \u2014 ' + fmt(fim);
   }
 
   // Filtros
   const fCons  = document.getElementById('pipe-semana-cons')?.value || '';
   const fOport = document.getElementById('pipe-semana-oport')?.value || '';
-
-  // Projetos com próximo contato na semana
-  let lista = projects.filter(p => {
-    if (!p.proximoContato) return false;
-    const dc = parseDate(p.proximoContato);
-    if (!dc) return false;
-    return dc >= inicio && dc <= fim;
-  });
-
-  if (fCons)  lista = lista.filter(p => p.consultor === fCons);
-  if (fOport) {
-    if (fOport === 'decol') lista = lista.filter(p => p.oport === 'Decolagem');
-    else lista = lista.filter(p => p.oport === fOport);
-  }
 
   // Popula filtro de consultores
   const selCons = document.getElementById('pipe-semana-cons');
@@ -1682,14 +1671,62 @@ function buildPipeSemana() {
     selCons.innerHTML = '<option value="">Todos consultores</option>' + cons.map(c => '<option' + (c===cur?' selected':'') + '>' + c + '</option>').join('');
   }
 
+  const pvOv = v => { const n = parseFloat(String(v||'').replace(/\./g,'').replace(',','.')); return isNaN(n) ? 0 : n; };
+
+  // ── TIPO 1: Oportunidades com próximo contato na semana ──
+  let oportunidades = projects.filter(p => {
+    if (!p.proximoContato || !p.oport) return false;
+    const dc = parseDate(p.proximoContato);
+    return dc && dc >= inicio && dc <= fim;
+  }).map(p => ({
+    tipo: 'oportunidade',
+    p: p,
+    data: parseDate(p.proximoContato),
+    etapa: p.oport,
+    valOT: p.valorOport,
+    valRec: p.valorOportRec
+  }));
+
+  // ── TIPO 2: Decolagens previstas na semana ──
+  let decolagens = projects.filter(p => {
+    if (calcStatus2(p) === 'Finalizado') return false; // já decolou
+    const dataDecol = semDataEtapa(p, 6);
+    if (!dataDecol) return false;
+    const dd = parseDate(dataDecol);
+    return dd && dd >= inicio && dd <= fim;
+  }).map(p => ({
+    tipo: 'decolagem',
+    p: p,
+    data: parseDate(semDataEtapa(p, 6)),
+    etapa: 'Decolagem',
+    valOT: p.valorOT || p.valorOport,
+    valRec: p.valorRec || p.valorOportRec
+  }));
+
+  // Aplica filtro de etapa
+  if (fOport === 'decol') {
+    oportunidades = [];  // só decolagens
+  } else if (fOport) {
+    decolagens = [];     // só a etapa de oportunidade selecionada
+    oportunidades = oportunidades.filter(o => o.etapa === fOport);
+  }
+
+  // Junta os dois tipos
+  let lista = [...oportunidades, ...decolagens];
+
+  // Filtro de consultor
+  if (fCons) lista = lista.filter(o => o.p.consultor === fCons);
+
+  // Ordena por data
+  lista.sort((a,b) => (a.data||0) - (b.data||0));
+
   // Meta da semana
   const metaInput = document.getElementById('pipe-meta-semana');
   const metaVal = pipeMetaSemana[semanaKey(pipeSemanaOffset)] || 0;
   if (metaInput && document.activeElement !== metaInput) metaInput.value = metaVal || '';
 
-  // Soma valores de oportunidade
-  const pvOv = v => { const n = parseFloat(String(v||'').replace(/\./g,'').replace(',','.')); return isNaN(n) ? 0 : n; };
-  const totalSemana = lista.reduce((a,p) => a + pvOv(p.valorOport) + pvOv(p.valorOportRec), 0);
+  // Soma valores
+  const totalSemana = lista.reduce((a,o) => a + pvOv(o.valOT) + pvOv(o.valRec), 0);
   const metaRes = document.getElementById('pipe-meta-resultado');
   if (metaRes) {
     const pct = metaVal > 0 ? Math.round(totalSemana / metaVal * 100) : 0;
@@ -1697,7 +1734,7 @@ function buildPipeSemana() {
   }
 
   if (lista.length === 0) {
-    body.innerHTML = '<p style="color:var(--text-hint);font-size:13px;padding:12px 0;text-align:center;">Nenhum contato agendado para esta semana.</p>';
+    body.innerHTML = '<p style="color:var(--text-hint);font-size:13px;padding:12px 0;text-align:center;">Nenhuma oportunidade ou decolagem nesta semana.</p>';
     return;
   }
 
@@ -1705,20 +1742,24 @@ function buildPipeSemana() {
     <div class="tbl-wrap">
       <table>
         <thead><tr>
-          <th>Consultor</th><th>Projeto</th><th>Etapa</th>
-          <th>Próximo Contato</th><th>Val. OT</th><th>Val. Rec</th><th>Flag</th>
+          <th>Tipo</th><th>Consultor</th><th>Projeto</th><th>Etapa</th>
+          <th>Data</th><th>Val. OT</th><th>Val. Rec</th><th>Flag</th>
         </tr></thead>
         <tbody>
-          ${lista.sort((a,b) => parseDate(a.proximoContato) - parseDate(b.proximoContato)).map(p => {
-            const dc = parseDate(p.proximoContato);
-            const dataFmt = dc ? dc.toLocaleDateString('pt-BR', {weekday:'short', day:'2-digit', month:'2-digit'}) : '—';
+          ${lista.map(o => {
+            const p = o.p;
+            const dataFmt = o.data ? o.data.toLocaleDateString('pt-BR', {weekday:'short', day:'2-digit', month:'2-digit'}) : '\u2014';
+            const tipoBadge = o.tipo === 'decolagem'
+              ? '<span class="badge b-purple" style="margin-top:0;font-size:9px;">\ud83d\ude80 Decolagem</span>'
+              : '<span class="badge b-blue" style="margin-top:0;font-size:9px;">Oportunidade</span>';
             return '<tr>'
-              + '<td>' + (p.consultor||'—') + '</td>'
-              + '<td>' + (p.nome||'—') + '</td>'
-              + '<td>' + (p.oport||'—') + '</td>'
+              + '<td>' + tipoBadge + '</td>'
+              + '<td>' + (p.consultor||'\u2014') + '</td>'
+              + '<td>' + (p.nome||'\u2014') + '</td>'
+              + '<td>' + (o.etapa||'\u2014') + '</td>'
               + '<td>' + dataFmt + '</td>'
-              + '<td>' + (p.valorOport||'—') + '</td>'
-              + '<td>' + (p.valorOportRec||'—') + '</td>'
+              + '<td>' + (o.valOT||'\u2014') + '</td>'
+              + '<td>' + (o.valRec||'\u2014') + '</td>'
               + '<td>' + flagHTML(p.flag) + '</td>'
               + '</tr>';
           }).join('')}
