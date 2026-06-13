@@ -1656,122 +1656,98 @@ function navSemanaHoje() { pipeSemanaOffset = 0; buildPipeSemana(); }
 
 function buildPipeSemana() {
   const label = document.getElementById('pipe-semana-label');
+  const cal   = document.getElementById('pipe-semana-cal');
   const body  = document.getElementById('pipe-semana-body');
-  if (!body) return;
+  if (!cal && !body) return;
 
   const { inicio, fim } = getWeekBounds(pipeSemanaOffset);
-  if (label) {
-    const fmt = d => d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'});
-    label.textContent = fmt(inicio) + ' \u2014 ' + fmt(fim);
-  }
+  const fmtDM = d => d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'});
+  if (label) label.textContent = fmtDM(inicio) + ' — ' + fmtDM(fim);
 
   // Filtros
   const fCons  = document.getElementById('pipe-semana-cons')?.value || '';
   const fOport = document.getElementById('pipe-semana-oport')?.value || '';
 
-  // Popula filtro de consultores
+  // Popula filtro de consultores (1x)
   const selCons = document.getElementById('pipe-semana-cons');
   if (selCons && selCons.options.length <= 1) {
     const cons = [...new Set(projects.filter(p => p.consultor).map(p => p.consultor))].sort();
-    const cur = selCons.value;
-    selCons.innerHTML = '<option value="">Todos consultores</option>' + cons.map(c => '<option' + (c===cur?' selected':'') + '>' + c + '</option>').join('');
+    selCons.innerHTML = '<option value="">Todos consultores</option>' + cons.map(c => '<option>' + c + '</option>').join('');
   }
 
-  const pvOv = v => { const n = parseFloat(String(v||'').replace(/\./g,'').replace(',','.')); return isNaN(n) ? 0 : n; };
-
-  // ── TIPO 1: Oportunidades com próximo contato na semana ──
-  let oportunidades = projects.filter(p => {
-    if (!p.proximoContato || !p.oport) return false;
+  // Projetos com próximo contato dentro da semana
+  let lista = projects.filter(p => {
+    if (!p.proximoContato) return false;
     const dc = parseDate(p.proximoContato);
-    return dc && dc >= inicio && dc <= fim;
-  }).map(p => ({
-    tipo: 'oportunidade',
-    p: p,
-    data: parseDate(p.proximoContato),
-    etapa: p.oport,
-    valOT: p.valorOport,
-    valRec: p.valorOportRec
-  }));
-
-  // ── TIPO 2: Decolagens previstas na semana ──
-  let decolagens = projects.filter(p => {
-    if (calcStatus2(p) === 'Finalizado') return false; // já decolou
-    const dataDecol = semDataEtapa(p, 6);
-    if (!dataDecol) return false;
-    const dd = parseDate(dataDecol);
-    return dd && dd >= inicio && dd <= fim;
-  }).map(p => ({
-    tipo: 'decolagem',
-    p: p,
-    data: parseDate(semDataEtapa(p, 6)),
-    etapa: 'Decolagem',
-    valOT: p.valorOT || p.valorOport,
-    valRec: p.valorRec || p.valorOportRec
-  }));
-
-  // Aplica filtro de etapa
-  if (fOport === 'decol') {
-    oportunidades = [];  // só decolagens
-  } else if (fOport) {
-    decolagens = [];     // só a etapa de oportunidade selecionada
-    oportunidades = oportunidades.filter(o => o.etapa === fOport);
-  }
-
-  // Junta os dois tipos
-  let lista = [...oportunidades, ...decolagens];
-
-  // Filtro de consultor
-  if (fCons) lista = lista.filter(o => o.p.consultor === fCons);
-
-  // Ordena por data
-  lista.sort((a,b) => (a.data||0) - (b.data||0));
+    if (!dc) return false;
+    return dc >= inicio && dc <= fim;
+  });
+  if (fCons)  lista = lista.filter(p => p.consultor === fCons);
+  if (fOport) lista = lista.filter(p => p.oport === fOport);
 
   // Meta da semana
   const metaInput = document.getElementById('pipe-meta-semana');
   const metaVal = pipeMetaSemana[semanaKey(pipeSemanaOffset)] || 0;
   if (metaInput && document.activeElement !== metaInput) metaInput.value = metaVal || '';
 
-  // Soma valores
-  const totalSemana = lista.reduce((a,o) => a + pvOv(o.valOT) + pvOv(o.valRec), 0);
+  // Soma valores de oportunidade da semana
+  const pv = v => { const n = parseFloat(String(v||'').replace(/\./g,'').replace(',','.')); return isNaN(n) ? 0 : n; };
+  const totalSemana = lista.reduce((a,p) => a + pv(p.valorOport) + pv(p.valorOportRec), 0);
   const metaRes = document.getElementById('pipe-meta-resultado');
   if (metaRes) {
     const pct = metaVal > 0 ? Math.round(totalSemana / metaVal * 100) : 0;
-    metaRes.innerHTML = 'Pipe: <b>R$ ' + totalSemana.toLocaleString('pt-BR') + '</b>' + (metaVal > 0 ? ' / ' + pct + '% da meta' : '');
+    metaRes.innerHTML = 'Pipe da semana: <b>R$ ' + totalSemana.toLocaleString('pt-BR') + '</b>' + (metaVal > 0 ? ' &middot; ' + pct + '% da meta' : '');
   }
 
-  if (lista.length === 0) {
-    body.innerHTML = '<p style="color:var(--text-hint);font-size:13px;padding:12px 0;text-align:center;">Nenhuma oportunidade ou decolagem nesta semana.</p>';
-    return;
+  // ── Monta calendário de 7 dias (Seg a Dom) ──
+  if (cal) {
+    const DIAS = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+    const hojeStr = new Date().toISOString().slice(0,10);
+    let colunas = '';
+    for (let i = 0; i < 7; i++) {
+      const dia = new Date(inicio);
+      dia.setDate(inicio.getDate() + i);
+      const diaStr = dia.toISOString().slice(0,10);
+      const ehHoje = diaStr === hojeStr;
+
+      // Projetos deste dia
+      const doDia = lista.filter(p => {
+        const dc = parseDate(p.proximoContato);
+        return dc && dc.toISOString().slice(0,10) === diaStr;
+      });
+
+      const cards = doDia.map(p => {
+        const flagCor = p.flag === 'Verde' ? 'var(--green)' : p.flag === 'Amarelo' ? 'var(--amber)' : p.flag === 'Vermelho' ? 'var(--red)' : 'var(--border-md)';
+        const valOT = pv(p.valorOport);
+        const valRec = pv(p.valorOportRec);
+        const valTxt = (valOT || valRec) ? '<div style="font-size:9px;color:var(--text-muted);margin-top:2px;">R$ ' + (valOT+valRec).toLocaleString('pt-BR') + '</div>' : '';
+        return '<div onclick="show(\'leadtime\')" style="background:var(--surface);border-left:3px solid ' + flagCor + ';border-radius:4px;padding:5px 7px;margin-bottom:4px;cursor:pointer;font-size:10px;line-height:1.3;" title="' + (p.oport||'') + '">'
+          + '<div style="font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (p.nome||'—') + '</div>'
+          + '<div style="font-size:9px;color:var(--text-hint);">' + (p.consultor||'') + '</div>'
+          + (p.oport ? '<div style="font-size:9px;color:var(--accent);margin-top:1px;">' + p.oport + '</div>' : '')
+          + valTxt
+          + '</div>';
+      }).join('');
+
+      colunas += '<div style="flex:1;min-width:0;border-right:1px solid var(--border);padding:0 4px;">'
+        + '<div style="text-align:center;padding:6px 0;border-bottom:2px solid ' + (ehHoje ? 'var(--accent)' : 'var(--border)') + ';margin-bottom:6px;">'
+        + '<div style="font-size:10px;font-weight:700;color:' + (ehHoje ? 'var(--accent)' : 'var(--text-muted)') + ';letter-spacing:.05em;">' + DIAS[i] + '</div>'
+        + '<div style="font-size:13px;font-weight:700;color:' + (ehHoje ? 'var(--accent)' : 'var(--text)') + ';">' + dia.getDate() + '</div>'
+        + '</div>'
+        + (cards || '<div style="text-align:center;font-size:9px;color:var(--text-hint);padding:8px 0;">—</div>')
+        + '</div>';
+    }
+    cal.innerHTML = '<div style="display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;min-height:200px;background:var(--surface2);">' + colunas + '</div>';
   }
 
-  body.innerHTML = `
-    <div class="tbl-wrap">
-      <table>
-        <thead><tr>
-          <th>Tipo</th><th>Consultor</th><th>Projeto</th><th>Etapa</th>
-          <th>Data</th><th>Val. OT</th><th>Val. Rec</th><th>Flag</th>
-        </tr></thead>
-        <tbody>
-          ${lista.map(o => {
-            const p = o.p;
-            const dataFmt = o.data ? o.data.toLocaleDateString('pt-BR', {weekday:'short', day:'2-digit', month:'2-digit'}) : '\u2014';
-            const tipoBadge = o.tipo === 'decolagem'
-              ? '<span class="badge b-purple" style="margin-top:0;font-size:9px;">\ud83d\ude80 Decolagem</span>'
-              : '<span class="badge b-blue" style="margin-top:0;font-size:9px;">Oportunidade</span>';
-            return '<tr>'
-              + '<td>' + tipoBadge + '</td>'
-              + '<td>' + (p.consultor||'\u2014') + '</td>'
-              + '<td>' + (p.nome||'\u2014') + '</td>'
-              + '<td>' + (o.etapa||'\u2014') + '</td>'
-              + '<td>' + dataFmt + '</td>'
-              + '<td>' + (o.valOT||'\u2014') + '</td>'
-              + '<td>' + (o.valRec||'\u2014') + '</td>'
-              + '<td>' + flagHTML(p.flag) + '</td>'
-              + '</tr>';
-          }).join('')}
-        </tbody>
-      </table>
-    </div>`;
+  // ── Corpo: resumo abaixo do calendário ──
+  if (body) {
+    if (lista.length === 0) {
+      body.innerHTML = '<p style="color:var(--text-hint);font-size:12px;padding:10px 0;text-align:center;">Nenhum próximo contato agendado para esta semana.</p>';
+    } else {
+      body.innerHTML = '<p style="font-size:11px;color:var(--text-muted);padding:8px 0;">' + lista.length + ' contato' + (lista.length>1?'s':'') + ' agendado' + (lista.length>1?'s':'') + ' nesta semana.</p>';
+    }
+  }
 }
 
 function buildPipeSemanaMeta() {
