@@ -680,7 +680,10 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
 </section>
 
 <section id="sec-monetizacao" class="section">
-  <div class="sec-head"><h2 class="sec-title">Monetização</h2><p class="sec-desc">Receita por consultor — 2026.</p></div>
+  <div class="sec-head" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+    <div><h2 class="sec-title">Monetização</h2><p class="sec-desc">Receita por consultor — 2026.</p></div>
+    <button class="add-project-btn" onclick="openNovaMon()">+ Nova monetização</button>
+  </div>
   <div class="mgrid mg4">
     <div class="mcard c-gray"><div class="mlabel">Receita total 2026</div><div class="mval" id="mon-total" style="font-size:18px;">R$ 0</div></div>
     <div class="mcard c-gray"><div class="mlabel">Consultores ativos</div><div class="mval" id="mon-cons">0</div></div>
@@ -945,10 +948,73 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
         </div>
 
       </div>
-    </div>
   </div>
 </div>
 
+
+<!-- ───────── MODAL: Nova Monetização ───────── -->
+<div class="modal-overlay" id="modal-nova-mon" onclick="if(event.target===this)closeNovaMon()">
+  <div class="modal-box" style="max-width:480px;">
+    <div class="modal-header">
+      <span class="modal-title">Nova Monetização</span>
+      <button class="modal-close" onclick="closeNovaMon()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;flex-direction:column;gap:14px;">
+
+        <div>
+          <label style="display:block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">Projeto *</label>
+          <input id="nm-proj" type="text" class="sel" style="width:100%;font-size:14px;" placeholder="Digite para buscar o projeto" list="nm-proj-list" autocomplete="off">
+          <datalist id="nm-proj-list"></datalist>
+          <div style="font-size:10px;color:var(--text-hint);margin-top:3px;">Selecione um projeto já cadastrado na Base de Projetos.</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <label style="display:block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">Mês da monetização *</label>
+            <select id="nm-mes" class="sel" style="width:100%;font-size:14px;"></select>
+          </div>
+          <div>
+            <label style="display:block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">Status</label>
+            <select id="nm-status" class="sel" style="width:100%;font-size:14px;">
+              <option value="">—</option><option>Em dia</option><option>Atrasado</option><option>Em andamento</option><option>Concluído</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <label style="display:block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">Valor One-time (R$)</label>
+            <input id="nm-ot" type="text" class="sel" style="width:100%;font-size:14px;" placeholder="Ex: 15.859">
+          </div>
+          <div>
+            <label style="display:block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">Valor Recorrente (R$)</label>
+            <input id="nm-rec" type="text" class="sel" style="width:100%;font-size:14px;" placeholder="Ex: 4.093">
+          </div>
+        </div>
+
+        <div>
+          <label style="display:block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">Escopo</label>
+          <input id="nm-escopo" type="text" class="sel" style="width:100%;font-size:14px;" placeholder="Ex: Tráfego pago + CRM">
+        </div>
+
+        <div style="display:flex;gap:16px;flex-wrap:wrap;padding-top:2px;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="nm-dossie" style="accent-color:var(--accent);width:15px;height:15px;">Dossiê</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="nm-alin" style="accent-color:var(--accent);width:15px;height:15px;">Alin. interno</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="nm-pass" style="accent-color:var(--accent);width:15px;height:15px;">Pass. bastão</label>
+        </div>
+
+        <div id="nm-erro" style="display:none;font-size:12px;color:var(--red);padding:8px 12px;background:var(--red-dim);border-radius:var(--r-sm);"></div>
+
+        <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:4px;">
+          <button onclick="closeNovaMon()" style="font-family:var(--sans);font-size:13px;padding:8px 18px;border:1px solid var(--border);border-radius:20px;background:none;color:var(--text-muted);cursor:pointer;">Cancelar</button>
+          <button onclick="confirmNovaMon()" style="font-family:var(--sans);font-size:13px;font-weight:600;padding:8px 22px;border:none;border-radius:20px;background:var(--accent);color:#fff;cursor:pointer;">Registrar monetização</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
 
   <section id="sec-performance" class="section">
     <div class="sec-head"><h2 class="sec-title">Performance</h2><p class="sec-desc">Ranking de consultores por KPIs — 2026.</p></div>
@@ -3524,6 +3590,76 @@ function updMon(projId, monId, field, val) {
   m[field] = val;
   recomputeDerived(p);
   calcMon(); upd();
+}
+
+// ── Modal "Nova monetização" (seleciona projeto da base) ──
+function openNovaMon() {
+  // popula datalist de projetos (não-DRO), ordenado por nome
+  const dl = document.getElementById('nm-proj-list');
+  if (dl) {
+    const lista = projects
+      .filter(p => !p.modelo || p.modelo !== 'DRO')
+      .slice().sort((a,b) => (a.nome||'').localeCompare(b.nome||''));
+    dl.innerHTML = lista.map(p => `<option value="${(p.nome||'').replace(/"/g,'&quot;')} — ${p.consultor||'sem consultor'} (#${p.id})">`).join('');
+  }
+  // popula meses
+  const selMes = document.getElementById('nm-mes');
+  if (selMes) {
+    const cur = filters['mon'];
+    const curM = cur ? ALL_MESES.find(x => x.key === cur) : null;
+    selMes.innerHTML = '<option value="">—</option>' + ALL_MESES.map(m => {
+      const v = m.label + '/' + m.ano;
+      return `<option value="${v}" ${curM && curM.key===m.key ? 'selected':''}>${v}</option>`;
+    }).join('');
+  }
+  // limpa campos
+  ['nm-proj','nm-ot','nm-rec','nm-escopo'].forEach(id => { const e=document.getElementById(id); if(e) e.value=''; });
+  document.getElementById('nm-status').value = '';
+  ['nm-dossie','nm-alin','nm-pass'].forEach(id => { const e=document.getElementById(id); if(e) e.checked=false; });
+  const err = document.getElementById('nm-erro'); if (err) err.style.display='none';
+  document.getElementById('modal-nova-mon').style.display = 'flex';
+  setTimeout(() => document.getElementById('nm-proj')?.focus(), 50);
+}
+function closeNovaMon() {
+  const m = document.getElementById('modal-nova-mon'); if (m) m.style.display = 'none';
+}
+function _nmAcharProjeto(txt) {
+  if (!txt) return null;
+  // tenta extrair #id do final
+  const mId = txt.match(/#(\S+?)\)?\s*$/);
+  if (mId) { const p = projects.find(x => String(x.id) === String(mId[1])); if (p) return p; }
+  // senão, casa pelo nome (antes do " — ")
+  const nome = txt.split(' — ')[0].trim().toLowerCase();
+  const exatos = projects.filter(p => (p.nome||'').trim().toLowerCase() === nome);
+  if (exatos.length === 1) return exatos[0];
+  // fallback: contém
+  const contidos = projects.filter(p => (p.nome||'').trim().toLowerCase().includes(nome));
+  return contidos.length === 1 ? contidos[0] : null;
+}
+function confirmNovaMon() {
+  const err = document.getElementById('nm-erro');
+  const showErr = msg => { if (err) { err.textContent = msg; err.style.display = 'block'; } };
+  const p = _nmAcharProjeto(document.getElementById('nm-proj').value);
+  if (!p) return showErr('Selecione um projeto válido da lista (use a busca).');
+  const mes = document.getElementById('nm-mes').value;
+  const ot  = document.getElementById('nm-ot').value.trim();
+  const rec = document.getElementById('nm-rec').value.trim();
+  if (!mes && !ot && !rec) return showErr('Preencha ao menos o mês ou um valor.');
+  if (!Array.isArray(p.monetizacoes)) p.monetizacoes = [];
+  p.monetizacoes.push(novaMonetizacao({
+    mesMon: mes, valorOT: ot, valorRec: rec,
+    escopos: document.getElementById('nm-escopo').value.trim(),
+    status: document.getElementById('nm-status').value,
+    dossie: document.getElementById('nm-dossie').checked,
+    alinhamento: document.getElementById('nm-alin').checked,
+    passagem: document.getElementById('nm-pass').checked
+  }));
+  if (p.conv !== 'Monetizado') p.conv = 'Monetizado';
+  recomputeDerived(p);
+  closeNovaMon();
+  calcMon(); upd();
+  // se houver filtro de mês ativo diferente do mês lançado, limpa pra mostrar
+  if (typeof renderBase === 'function') renderBase();
 }
 
 function saveMonMeta(mesKey, tipo, el) {
