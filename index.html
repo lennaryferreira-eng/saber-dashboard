@@ -1120,6 +1120,69 @@ function pct(v, max) { return max > 0 ? Math.min(100, Math.round(v / max * 100))
 function BRL(v) { return 'R$ ' + Math.round(v).toLocaleString('pt-BR'); }
 function emptyRow(cols, msg) { return `<tr><td colspan="${cols}" style="color:var(--text-hint);text-align:center;padding:18px;font-size:12px;">${msg}</td></tr>`; }
 
+// ════════════════════════════════════════════════════════════════
+//  PASSO 1 — CAMADA DE DADOS: monetizacoes[] (fonte da verdade)
+//  Campos antigos (valorOT/valorRec/mesMon/conv) viram ESPELHOS
+//  derivados. Nenhuma função existente é alterada neste passo.
+// ════════════════════════════════════════════════════════════════
+function monPV(v){ if(v===null||v===undefined||v==='')return 0; const n=parseFloat(String(v).replace(/[R$\s]/g,'').replace(/\./g,'').replace(',','.')); return isNaN(n)?0:n; }
+let _monSeq = 0;
+function novaMonetizacao(d){ d=d||{}; return {
+  id: d.id || ('mon_' + Date.now() + '_' + (_monSeq++)),
+  mesMon: d.mesMon||'', valorOT: d.valorOT||'', valorRec: d.valorRec||'',
+  escopos: d.escopos||'', status: d.status||'',
+  dossie: !!d.dossie, alinhamento: !!d.alinhamento, passagem: !!d.passagem
+}; }
+
+// Garante p.monetizacoes[]; migra o valor único antigo para 1 evento
+function migrarMon(p){
+  if (!Array.isArray(p.monetizacoes)) p.monetizacoes = [];
+  if (p.monetizacoes.length === 0) {
+    const temValor = monPV(p.valorOT) > 0 || monPV(p.valorRec) > 0;
+    if ((p.conv === 'Monetizado') && (temValor || p.mesMon)) {
+      p.monetizacoes.push(novaMonetizacao({
+        mesMon: p.mesMon||'', valorOT: p.valorOT||p.valor||'', valorRec: p.valorRec||'',
+        escopos: p.escopos||'', status: p.monStatus||'',
+        dossie: p.monDossie, alinhamento: p.monAlinhamento, passagem: p.monPassagem
+      }));
+    }
+  }
+  p.monetizacoes = p.monetizacoes.map(m => novaMonetizacao(m));
+  return p;
+}
+
+const _MES_ORDEM = {'Janeiro':1,'Fevereiro':2,'Março':3,'Abril':4,'Maio':5,'Junho':6,'Julho':7,'Agosto':8,'Setembro':9,'Outubro':10,'Novembro':11,'Dezembro':12};
+function _mesRank(mesMon){ if(!mesMon)return 999999; const[lb,an]=mesMon.split('/'); return (parseInt(an)||0)*100 + (_MES_ORDEM[lb]||0); }
+
+// Recalcula os campos-espelho a partir do array (chamar após qualquer alteração)
+function recomputeDerived(p){
+  if (!Array.isArray(p.monetizacoes)) p.monetizacoes = [];
+  let ot = 0, rec = 0; const meses = [];
+  p.monetizacoes.forEach(m => { ot += monPV(m.valorOT); rec += monPV(m.valorRec); if (m.mesMon) meses.push(m.mesMon); });
+  const temAlgo = p.monetizacoes.some(m => monPV(m.valorOT)>0 || monPV(m.valorRec)>0 || m.mesMon);
+  p.valorOT  = ot  > 0 ? String(ot)  : '';
+  p.valorRec = rec > 0 ? String(rec) : '';
+  p.valor    = p.valorOT;
+  meses.sort((a,b)=>_mesRank(a)-_mesRank(b));
+  p.mesMon = meses[0] || '';
+  if (temAlgo) p.conv = 'Monetizado';
+  else if (p.conv === 'Monetizado') p.conv = '';
+  return p;
+}
+
+// Iteradores de agregação (usados a partir do Passo 2 — definidos já aqui, inofensivos)
+function monReceitaNoMes(label, ano){
+  let ot=0, rec=0;
+  (projects||[]).forEach(p => { if (p.modelo === 'DRO') return;
+    (p.monetizacoes||[]).forEach(m => { if (!m.mesMon) return; const[lb,an]=m.mesMon.split('/');
+      if (lb===label && parseInt(an)===ano){ ot+=monPV(m.valorOT); rec+=monPV(m.valorRec); } }); });
+  return {ot, rec, total: ot+rec};
+}
+function projMonetizouNoMes(p, label, ano){
+  return (p.monetizacoes||[]).some(m => { if (!m.mesMon) return false; const[lb,an]=m.mesMon.split('/');
+    return lb===label && parseInt(an)===ano; });
+}
+
 // Parse local de datas sem bug de timezone
 function parseDate(s) {
   if (!s) return null;
@@ -5968,6 +6031,8 @@ async function sbLoad() {
           if (!p.status2) p.status2 = calcStatus2(p);
           if (p.valorOT  === undefined || p.valorOT === '') p.valorOT  = p.valor || '';
           if (p.valorRec === undefined) p.valorRec = '';
+          try { migrarMon(p); recomputeDerived(p); }
+          catch(mErr) { console.warn('migrarMon falhou no projeto', p.id, mErr); if (!Array.isArray(p.monetizacoes)) p.monetizacoes = []; }
         });
         projects = prjs;
       }
