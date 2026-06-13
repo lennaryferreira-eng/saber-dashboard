@@ -680,10 +680,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
 </section>
 
 <section id="sec-monetizacao" class="section">
-  <div class="sec-head" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-    <div><h2 class="sec-title">Monetização</h2><p class="sec-desc">Receita por consultor — 2026.</p></div>
-    <button class="add-project-btn" onclick="openNovaMon()">+ Nova monetização</button>
-  </div>
+  <div class="sec-head"><h2 class="sec-title">Monetização</h2><p class="sec-desc">Receita por consultor — 2026.</p></div>
   <div class="mgrid mg4">
     <div class="mcard c-gray"><div class="mlabel">Receita total 2026</div><div class="mval" id="mon-total" style="font-size:18px;">R$ 0</div></div>
     <div class="mcard c-gray"><div class="mlabel">Consultores ativos</div><div class="mval" id="mon-cons">0</div></div>
@@ -703,7 +700,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
     <div id="mon-metas-mes"></div>
 
   <div id="mon-chips" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1rem;"></div>
-    <div class="tbl-wrap"><table><thead><tr><th>Consultor</th><th>Projeto</th><th>Mês monetizado</th><th>Valores (OT / Rec)</th><th>Status</th><th>Dossiê</th><th>Alin. Interno</th><th>Pass. Bastão</th><th>Ações</th></tr></thead><tbody id="mon-tbody"></tbody></table></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Consultor</th><th>Projeto</th><th>Mês monetizado</th><th>Valores</th><th>Status</th><th>Dossiê</th><th>Alin. Interno</th><th>Pass. Bastão</th></tr></thead><tbody id="mon-tbody"></tbody></table></div>
   </div>
 
   <!-- Quadro Outros Escopos Contratados -->
@@ -948,73 +945,10 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
         </div>
 
       </div>
-  </div>
-</div>
-
-
-<!-- ───────── MODAL: Nova Monetização ───────── -->
-<div class="modal-overlay" id="modal-nova-mon" onclick="if(event.target===this)closeNovaMon()">
-  <div class="modal-box" style="max-width:480px;">
-    <div class="modal-header">
-      <span class="modal-title">Nova Monetização</span>
-      <button class="modal-close" onclick="closeNovaMon()">✕</button>
-    </div>
-    <div class="modal-body">
-      <div style="display:flex;flex-direction:column;gap:14px;">
-
-        <div>
-          <label style="display:block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">Projeto *</label>
-          <input id="nm-proj" type="text" class="sel" style="width:100%;font-size:14px;" placeholder="Digite para buscar o projeto" list="nm-proj-list" autocomplete="off">
-          <datalist id="nm-proj-list"></datalist>
-          <div style="font-size:10px;color:var(--text-hint);margin-top:3px;">Selecione um projeto já cadastrado na Base de Projetos.</div>
-        </div>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div>
-            <label style="display:block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">Mês da monetização *</label>
-            <select id="nm-mes" class="sel" style="width:100%;font-size:14px;"></select>
-          </div>
-          <div>
-            <label style="display:block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">Status</label>
-            <select id="nm-status" class="sel" style="width:100%;font-size:14px;">
-              <option value="">—</option><option>Em dia</option><option>Atrasado</option><option>Em andamento</option><option>Concluído</option>
-            </select>
-          </div>
-        </div>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div>
-            <label style="display:block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">Valor One-time (R$)</label>
-            <input id="nm-ot" type="text" class="sel" style="width:100%;font-size:14px;" placeholder="Ex: 15.859">
-          </div>
-          <div>
-            <label style="display:block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">Valor Recorrente (R$)</label>
-            <input id="nm-rec" type="text" class="sel" style="width:100%;font-size:14px;" placeholder="Ex: 4.093">
-          </div>
-        </div>
-
-        <div>
-          <label style="display:block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">Escopo</label>
-          <input id="nm-escopo" type="text" class="sel" style="width:100%;font-size:14px;" placeholder="Ex: Tráfego pago + CRM">
-        </div>
-
-        <div style="display:flex;gap:16px;flex-wrap:wrap;padding-top:2px;">
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="nm-dossie" style="accent-color:var(--accent);width:15px;height:15px;">Dossiê</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="nm-alin" style="accent-color:var(--accent);width:15px;height:15px;">Alin. interno</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="nm-pass" style="accent-color:var(--accent);width:15px;height:15px;">Pass. bastão</label>
-        </div>
-
-        <div id="nm-erro" style="display:none;font-size:12px;color:var(--red);padding:8px 12px;background:var(--red-dim);border-radius:var(--r-sm);"></div>
-
-        <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:4px;">
-          <button onclick="closeNovaMon()" style="font-family:var(--sans);font-size:13px;padding:8px 18px;border:1px solid var(--border);border-radius:20px;background:none;color:var(--text-muted);cursor:pointer;">Cancelar</button>
-          <button onclick="confirmNovaMon()" style="font-family:var(--sans);font-size:13px;font-weight:600;padding:8px 22px;border:none;border-radius:20px;background:var(--accent);color:#fff;cursor:pointer;">Registrar monetização</button>
-        </div>
-
-      </div>
     </div>
   </div>
 </div>
+
 
   <section id="sec-performance" class="section">
     <div class="sec-head"><h2 class="sec-title">Performance</h2><p class="sec-desc">Ranking de consultores por KPIs — 2026.</p></div>
@@ -1185,94 +1119,6 @@ function setStyle(id, prop, val) { const e = document.getElementById(id); if (e)
 function pct(v, max) { return max > 0 ? Math.min(100, Math.round(v / max * 100)) : 0; }
 function BRL(v) { return 'R$ ' + Math.round(v).toLocaleString('pt-BR'); }
 function emptyRow(cols, msg) { return `<tr><td colspan="${cols}" style="color:var(--text-hint);text-align:center;padding:18px;font-size:12px;">${msg}</td></tr>`; }
-
-// ════════════════════════════════════════════════════════════════
-//  MODELO DE MONETIZAÇÕES MÚLTIPLAS  (fonte da verdade: p.monetizacoes[])
-//  Campos-espelho derivados (valorOT/valorRec/mesMon/conv) recalculados
-//  a cada mudança para manter compatibilidade com exibição e Apps Script.
-// ════════════════════════════════════════════════════════════════
-function monPV(v){ if(v===null||v===undefined||v==='')return 0; const n=parseFloat(String(v).replace(/[R$\s]/g,'').replace(/\./g,'').replace(',','.')); return isNaN(n)?0:n; }
-let _monSeq = 0;
-function novaMonetizacao(d){ d=d||{}; return {
-  id: d.id || ('mon_' + Date.now() + '_' + (_monSeq++)),
-  mesMon: d.mesMon||'', valorOT: d.valorOT||'', valorRec: d.valorRec||'',
-  escopos: d.escopos||'', status: d.status||'',
-  dossie: !!d.dossie, alinhamento: !!d.alinhamento, passagem: !!d.passagem
-}; }
-
-// Garante que o projeto tenha o array; migra dados antigos (valor único) para 1 evento
-function migrarMon(p){
-  if (!Array.isArray(p.monetizacoes)) p.monetizacoes = [];
-  if (p.monetizacoes.length === 0) {
-    const temValor = monPV(p.valorOT) > 0 || monPV(p.valorRec) > 0;
-    if ((p.conv === 'Monetizado') && (temValor || p.mesMon)) {
-      p.monetizacoes.push(novaMonetizacao({
-        mesMon: p.mesMon||'', valorOT: p.valorOT||p.valor||'', valorRec: p.valorRec||'',
-        escopos: p.escopos||'', status: p.monStatus||'',
-        dossie: p.monDossie, alinhamento: p.monAlinhamento, passagem: p.monPassagem
-      }));
-    }
-  }
-  // normaliza cada item
-  p.monetizacoes = p.monetizacoes.map(m => novaMonetizacao(m));
-  return p;
-}
-
-// ordem cronológica de meses (para "primeiro mês" do espelho)
-const _MES_ORDEM = {'Janeiro':1,'Fevereiro':2,'Março':3,'Abril':4,'Maio':5,'Junho':6,'Julho':7,'Agosto':8,'Setembro':9,'Outubro':10,'Novembro':11,'Dezembro':12};
-function _mesRank(mesMon){ if(!mesMon)return 999999; const[lb,an]=mesMon.split('/'); return (parseInt(an)||0)*100 + (_MES_ORDEM[lb]||0); }
-
-// Recalcula campos-espelho a partir do array (chamar após qualquer alteração)
-function recomputeDerived(p){
-  if (!Array.isArray(p.monetizacoes)) p.monetizacoes = [];
-  let ot = 0, rec = 0;
-  const mesesValidos = [];
-  p.monetizacoes.forEach(m => {
-    ot += monPV(m.valorOT); rec += monPV(m.valorRec);
-    if (m.mesMon) mesesValidos.push(m.mesMon);
-  });
-  const temAlgo = p.monetizacoes.some(m => monPV(m.valorOT)>0 || monPV(m.valorRec)>0 || m.mesMon);
-  // espelho de valores = soma de todas as monetizações
-  p.valorOT  = ot  > 0 ? String(ot)  : '';
-  p.valorRec = rec > 0 ? String(rec) : '';
-  p.valor    = p.valorOT;
-  // espelho de mês = primeiro mês cronológico (só p/ exibição/legado)
-  mesesValidos.sort((a,b)=>_mesRank(a)-_mesRank(b));
-  p.mesMon = mesesValidos[0] || '';
-  // conv derivado: se há ao menos uma monetização válida, é Monetizado
-  if (temAlgo) p.conv = 'Monetizado';
-  else if (p.conv === 'Monetizado') p.conv = ''; // perdeu todas as monetizações
-  return p;
-}
-function recomputeAllDerived(){ (projects||[]).forEach(recomputeDerived); }
-
-// ── Iteradores de agregação (precisão por mês/evento) ──
-// soma de receita por mês: retorna {ot, rec} considerando TODA monetização do mês
-function monReceitaNoMes(label, ano){
-  let ot=0, rec=0;
-  (projects||[]).forEach(p => {
-    if (p.modelo === 'DRO') return;
-    (p.monetizacoes||[]).forEach(m => {
-      if (!m.mesMon) return; const[lb,an]=m.mesMon.split('/');
-      if (lb===label && parseInt(an)===ano){ ot+=monPV(m.valorOT); rec+=monPV(m.valorRec); }
-    });
-  });
-  return {ot, rec, total: ot+rec};
-}
-// projeto monetizou neste mês? (para conversão = cliente único por mês)
-function projMonetizouNoMes(p, label, ano){
-  return (p.monetizacoes||[]).some(m => {
-    if (!m.mesMon) return false; const[lb,an]=m.mesMon.split('/');
-    return lb===label && parseInt(an)===ano;
-  });
-}
-// nº de vendas (eventos) do projeto num mês
-function projVendasNoMes(p, label, ano){
-  return (p.monetizacoes||[]).filter(m => {
-    if (!m.mesMon) return false; const[lb,an]=m.mesMon.split('/');
-    return lb===label && parseInt(an)===ano;
-  }).length;
-}
 
 // Parse local de datas sem bug de timezone
 function parseDate(s) {
@@ -2746,21 +2592,19 @@ function setField(el) {
   if (f === 'inicio' && !p.prevManual && p.inicio) {
     p.prevFim = addDays(p.inicio, 45);
   }
-  // Quando vira Monetizado e ainda não há monetização: cria uma a partir do pipeline (forecast)
+  // Quando monetizado: copia valorOport → valorOT e valorOportRec → valorRec
   if ((f === 'conv' || f === 'mon') && (p.conv === 'Monetizado' || p.mon === 'Monetizado')) {
-    if (!Array.isArray(p.monetizacoes)) p.monetizacoes = [];
-    if (p.monetizacoes.length === 0 && (p.valorOport || p.valorOportRec)) {
-      p.monetizacoes.push(novaMonetizacao({
-        mesMon: p.mesMon || '', valorOT: p.valorOport || '', valorRec: p.valorOportRec || '',
-        escopos: p.escopos || ''
-      }));
-    }
-    recomputeDerived(p);
+    if (!p.valorOT  && p.valorOport)    p.valorOT  = p.valorOport;
+    if (!p.valorRec && p.valorOportRec) p.valorRec = p.valorOportRec;
   }
-  // valorOport/valorOportRec são do PIPELINE (forecast) — não tocam o realizado (array).
-  // O realizado é editado direto na aba Monetização.
+  // Se editar valorOport/valorOportRec em projeto já monetizado, atualiza OT/Rec também
+  if (f === 'valorOport' && p.conv === 'Monetizado') {
+    p.valorOT = val;
+  }
+  if (f === 'valorOportRec' && p.conv === 'Monetizado') {
+    p.valorRec = val;
+  }
   renderBase();
-  if (typeof calcMon === 'function') calcMon();
 }
 
 function setFieldPrev(el) {
@@ -3107,8 +2951,8 @@ function calcConv() {
       parseDate(p.inicio)?.getFullYear() === m.ano
     );
     if (consFilter) iniciados = iniciados.filter(p => p.consultor === consFilter);
-    // numerador: projetos com ao menos UMA monetização neste mês (cliente único conta 1x)
-    let monos = projects.filter(p => { if (p.modelo === 'DRO') return false; return projMonetizouNoMes(p, m.label, m.ano); });
+    // numerador: projetos cujo mês monetizado é este mês
+    let monos = projects.filter(p => { if (p.modelo === 'DRO') return false; const [lb,an]=(p.mesMon||'').split('/'); return lb===m.label && parseInt(an)===m.ano; });
     if (consFilter) monos = monos.filter(p => p.consultor === consFilter);
     const taxa  = iniciados.length > 0 ? Math.round(monos.length / iniciados.length * 100) : null;
     totalAno += iniciados.length; monAno += monos.length;
@@ -3562,106 +3406,6 @@ function setMonField(id, field, val) {
   upd();
 }
 
-// ── CRUD de monetizações (modelo novo) ──
-function addMon(projId) {
-  const p = projects.find(x => String(x.id) === String(projId));
-  if (!p) return;
-  if (!Array.isArray(p.monetizacoes)) p.monetizacoes = [];
-  // pré-preenche o mês com o filtro ativo, se houver
-  const cur = filters['mon'];
-  const curM = cur ? ALL_MESES.find(x => x.key === cur) : null;
-  p.monetizacoes.push(novaMonetizacao({ mesMon: curM ? (curM.label + '/' + curM.ano) : '' }));
-  if (p.conv !== 'Monetizado') p.conv = 'Monetizado';
-  recomputeDerived(p);
-  calcMon(); upd();
-}
-function delMon(projId, monId) {
-  const p = projects.find(x => String(x.id) === String(projId));
-  if (!p || !Array.isArray(p.monetizacoes)) return;
-  p.monetizacoes = p.monetizacoes.filter(m => String(m.id) !== String(monId));
-  recomputeDerived(p);
-  calcMon(); upd();
-}
-function updMon(projId, monId, field, val) {
-  const p = projects.find(x => String(x.id) === String(projId));
-  if (!p || !Array.isArray(p.monetizacoes)) return;
-  const m = p.monetizacoes.find(x => String(x.id) === String(monId));
-  if (!m) return;
-  m[field] = val;
-  recomputeDerived(p);
-  calcMon(); upd();
-}
-
-// ── Modal "Nova monetização" (seleciona projeto da base) ──
-function openNovaMon() {
-  // popula datalist de projetos (não-DRO), ordenado por nome
-  const dl = document.getElementById('nm-proj-list');
-  if (dl) {
-    const lista = projects
-      .filter(p => !p.modelo || p.modelo !== 'DRO')
-      .slice().sort((a,b) => (a.nome||'').localeCompare(b.nome||''));
-    dl.innerHTML = lista.map(p => `<option value="${(p.nome||'').replace(/"/g,'&quot;')} — ${p.consultor||'sem consultor'} (#${p.id})">`).join('');
-  }
-  // popula meses
-  const selMes = document.getElementById('nm-mes');
-  if (selMes) {
-    const cur = filters['mon'];
-    const curM = cur ? ALL_MESES.find(x => x.key === cur) : null;
-    selMes.innerHTML = '<option value="">—</option>' + ALL_MESES.map(m => {
-      const v = m.label + '/' + m.ano;
-      return `<option value="${v}" ${curM && curM.key===m.key ? 'selected':''}>${v}</option>`;
-    }).join('');
-  }
-  // limpa campos
-  ['nm-proj','nm-ot','nm-rec','nm-escopo'].forEach(id => { const e=document.getElementById(id); if(e) e.value=''; });
-  document.getElementById('nm-status').value = '';
-  ['nm-dossie','nm-alin','nm-pass'].forEach(id => { const e=document.getElementById(id); if(e) e.checked=false; });
-  const err = document.getElementById('nm-erro'); if (err) err.style.display='none';
-  document.getElementById('modal-nova-mon').style.display = 'flex';
-  setTimeout(() => document.getElementById('nm-proj')?.focus(), 50);
-}
-function closeNovaMon() {
-  const m = document.getElementById('modal-nova-mon'); if (m) m.style.display = 'none';
-}
-function _nmAcharProjeto(txt) {
-  if (!txt) return null;
-  // tenta extrair #id do final
-  const mId = txt.match(/#(\S+?)\)?\s*$/);
-  if (mId) { const p = projects.find(x => String(x.id) === String(mId[1])); if (p) return p; }
-  // senão, casa pelo nome (antes do " — ")
-  const nome = txt.split(' — ')[0].trim().toLowerCase();
-  const exatos = projects.filter(p => (p.nome||'').trim().toLowerCase() === nome);
-  if (exatos.length === 1) return exatos[0];
-  // fallback: contém
-  const contidos = projects.filter(p => (p.nome||'').trim().toLowerCase().includes(nome));
-  return contidos.length === 1 ? contidos[0] : null;
-}
-function confirmNovaMon() {
-  const err = document.getElementById('nm-erro');
-  const showErr = msg => { if (err) { err.textContent = msg; err.style.display = 'block'; } };
-  const p = _nmAcharProjeto(document.getElementById('nm-proj').value);
-  if (!p) return showErr('Selecione um projeto válido da lista (use a busca).');
-  const mes = document.getElementById('nm-mes').value;
-  const ot  = document.getElementById('nm-ot').value.trim();
-  const rec = document.getElementById('nm-rec').value.trim();
-  if (!mes && !ot && !rec) return showErr('Preencha ao menos o mês ou um valor.');
-  if (!Array.isArray(p.monetizacoes)) p.monetizacoes = [];
-  p.monetizacoes.push(novaMonetizacao({
-    mesMon: mes, valorOT: ot, valorRec: rec,
-    escopos: document.getElementById('nm-escopo').value.trim(),
-    status: document.getElementById('nm-status').value,
-    dossie: document.getElementById('nm-dossie').checked,
-    alinhamento: document.getElementById('nm-alin').checked,
-    passagem: document.getElementById('nm-pass').checked
-  }));
-  if (p.conv !== 'Monetizado') p.conv = 'Monetizado';
-  recomputeDerived(p);
-  closeNovaMon();
-  calcMon(); upd();
-  // se houver filtro de mês ativo diferente do mês lançado, limpa pra mostrar
-  if (typeof renderBase === 'function') renderBase();
-}
-
 function saveMonMeta(mesKey, tipo, el) {
   const raw = el.value.replace(/\./g,'').replace(',','.');
   const v   = parseFloat(raw);
@@ -3742,87 +3486,70 @@ function calcMon() {
   buildFilterBar('filter-bar-mon', 'mon', calcMon);
   const cur  = filters['mon'];
   const curM = cur ? ALL_MESES.find(x => x.key === cur) : null;
-
-  // projetos monetizáveis (não-DRO), independente do filtro de mês para listar
-  let projsMon = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && p.conv === 'Monetizado' && (p.monetizacoes||[]).length);
-
-  let total = 0, count = 0, totalOT = 0, totalRec = 0;
+  let mons = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && p.conv === 'Monetizado');
+  if (curM) mons = mons.filter(p => {
+    if (!p.mesMon) return false;
+    const [label, ano] = p.mesMon.split('/');
+    return label === curM.label && parseInt(ano) === curM.ano;
+  });
+  let total = 0, count = 0;
   const consMap = {};
-  const projetosNoFiltro = new Set();
 
-  // realizado por mês/tipo (para tabela de metas) — itera TODA monetização
+  // calcula realizado por mês e por tipo para a tabela de metas
   const realPorMes = {}, realOTPorMes = {}, realRecPorMes = {};
-  projects.forEach(p => {
-    if (p.modelo === 'DRO') return;
-    (p.monetizacoes||[]).forEach(m => {
-      const mesKey = ALL_MESES.find(x => x.label + '/' + x.ano === m.mesMon)?.key;
-      if (!mesKey) return;
-      const vOT = monPV(m.valorOT), vRec = monPV(m.valorRec);
-      if (vOT  > 0) { realPorMes[mesKey] = (realPorMes[mesKey]||0) + vOT;  realOTPorMes[mesKey]  = (realOTPorMes[mesKey]||0)  + vOT; }
-      if (vRec > 0) { realPorMes[mesKey] = (realPorMes[mesKey]||0) + vRec; realRecPorMes[mesKey] = (realRecPorMes[mesKey]||0) + vRec; }
-    });
+  projects.filter(p => p.conv === 'Monetizado').forEach(p => {
+    const mesKey = ALL_MESES.find(m => m.label + '/' + m.ano === p.mesMon)?.key;
+    if (!mesKey) return;
+    const vOT  = parseFloat((p.valorOT||'').replace(/\./g,'').replace(',','.'));
+    const vRec = parseFloat((p.valorRec||'').replace(/\./g,'').replace(',','.'));
+    if (!isNaN(vOT)  && vOT  > 0) { realPorMes[mesKey] = (realPorMes[mesKey]||0) + vOT;  realOTPorMes[mesKey]  = (realOTPorMes[mesKey]||0)  + vOT; }
+    if (!isNaN(vRec) && vRec > 0) { realPorMes[mesKey] = (realPorMes[mesKey]||0) + vRec; realRecPorMes[mesKey] = (realRecPorMes[mesKey]||0) + vRec; }
   });
 
-  // filtro de eventos por mês
-  const eventoNoFiltro = m => {
-    if (!curM) return true;
-    if (!m.mesMon) return false;
-    const [lb, an] = m.mesMon.split('/');
-    return lb === curM.label && parseInt(an) === curM.ano;
-  };
-
-  const statusOpts = ['','Em dia','Atrasado','Em andamento','Concluído'];
-  const MESES_OPTS = ['']; ALL_MESES.forEach(m => MESES_OPTS.push(m.label + '/' + m.ano));
-
+  let totalOT = 0, totalRec = 0;
   const tbody = document.getElementById('mon-tbody');
-  let html = '';
-
-  projsMon.forEach(p => {
-    const eventos = (p.monetizacoes||[]).filter(eventoNoFiltro);
-    if (curM && eventos.length === 0) return; // projeto sem evento no mês filtrado: oculta
-    projetosNoFiltro.add(p.id);
-
-    eventos.forEach((m, i) => {
-      const vOT = monPV(m.valorOT), vRec = monPV(m.valorRec);
-      total += vOT + vRec; totalOT += vOT; totalRec += vRec;
-      if (vOT > 0 || vRec > 0 || m.mesMon) count++;
-      if (p.consultor) {
-        if (!consMap[p.consultor]) consMap[p.consultor] = {t:0, ot:0, rec:0, n:0};
-        consMap[p.consultor].n++;
-        consMap[p.consultor].t += vOT + vRec; consMap[p.consultor].ot += vOT; consMap[p.consultor].rec += vRec;
-      }
-      const primeira = i === 0;
-      const nEv = eventos.length;
-      const consCell = primeira ? `<td rowspan="${nEv}" style="vertical-align:top;">${p.consultor||'—'}</td>` : '';
-      const nomeCell = primeira ? `<td rowspan="${nEv}" style="vertical-align:top;">${p.nome||'—'}${nEv>1?` <span class="badge b-gray" style="font-size:8px;">${nEv} vendas</span>`:''}</td>` : '';
-      const mesSel = `<select class="sel" style="font-size:10px;width:120px;" onchange="updMon('${p.id}','${m.id}','mesMon',this.value)">`
-        + MESES_OPTS.map(o => `<option value="${dv(o)}" ${(m.mesMon||'')===o?'selected':''}>${o||'—'}</option>`).join('') + '</select>';
-      const otInput  = `<input class="sel" style="font-size:10px;width:90px;" value="${m.valorOT||''}" placeholder="OT" onblur="updMon('${p.id}','${m.id}','valorOT',this.value)">`;
-      const recInput = `<input class="sel" style="font-size:10px;width:90px;" value="${m.valorRec||''}" placeholder="Rec" onblur="updMon('${p.id}','${m.id}','valorRec',this.value)">`;
-      const statusSel = `<select class="sel" style="font-size:10px;width:108px;" onchange="updMon('${p.id}','${m.id}','status',this.value)">`
-        + statusOpts.map(o => `<option value="${dv(o)}" ${(m.status||'')===o?'selected':''}>${o||'—'}</option>`).join('') + '</select>';
-      const chk = (field) => `<input type="checkbox" ${m[field]?'checked':''} onchange="updMon('${p.id}','${m.id}','${field}',this.checked)" style="accent-color:var(--accent);width:14px;height:14px;">`;
-      const addBtn = primeira ? `<td rowspan="${nEv}" style="vertical-align:top;text-align:center;"><button class="sel" style="font-size:14px;line-height:1;padding:3px 8px;cursor:pointer;color:var(--accent);border-color:var(--border);" title="Adicionar monetização" onclick="addMon('${p.id}')">＋</button><br><button class="sel" style="font-size:12px;line-height:1;padding:2px 8px;margin-top:4px;cursor:pointer;color:var(--text-hint);" title="Remover esta venda" onclick="delMon('${p.id}','${m.id}')">✕</button></td>` : `<td style="text-align:center;"><button class="sel" style="font-size:12px;line-height:1;padding:2px 8px;cursor:pointer;color:var(--text-hint);" title="Remover esta venda" onclick="delMon('${p.id}','${m.id}')">✕</button></td>`;
-      html += `<tr>
-        ${consCell}${nomeCell}
-        <td>${mesSel}</td>
-        <td style="white-space:nowrap;">${otInput} ${recInput}</td>
-        <td>${statusSel}</td>
-        <td style="text-align:center;">${chk('dossie')}</td>
-        <td style="text-align:center;">${chk('alinhamento')}</td>
-        <td style="text-align:center;">${chk('passagem')}</td>
-        ${addBtn}
-      </tr>`;
-    });
-  });
-
-  tbody.innerHTML = html || emptyRow(9, 'Nenhuma monetização registrada ainda');
+  tbody.innerHTML = mons.length
+    ? mons.map(p => {
+        const vOT  = parseFloat((p.valorOT||'').replace(/\./g,'').replace(',','.'));
+        const vRec = parseFloat((p.valorRec||'').replace(/\./g,'').replace(',','.'));
+        const hasOT  = !isNaN(vOT)  && vOT  > 0;
+        const hasRec = !isNaN(vRec) && vRec > 0;
+        if (hasOT)  { total += vOT;  totalOT  += vOT; }
+        if (hasRec) { total += vRec; totalRec += vRec; }
+        if (hasOT || hasRec) count++; // conta projetos com valor preenchido
+        if (p.consultor) {
+          if (!consMap[p.consultor]) consMap[p.consultor] = {t:0, ot:0, rec:0, n:0};
+          consMap[p.consultor].n++;
+          if (hasOT)  { consMap[p.consultor].t += vOT;  consMap[p.consultor].ot  += vOT; }
+          if (hasRec) { consMap[p.consultor].t += vRec; consMap[p.consultor].rec += vRec; }
+        }
+        const otBadge  = hasOT  ? `<span class="badge b-green" style="margin-top:0;font-size:9px;">OT: ${p.valorOT}</span>` : '';
+        const recBadge = hasRec ? `<span class="badge b-blue"  style="margin-top:0;font-size:9px;">Rec: ${p.valorRec}</span>` : '';
+        const statusOpts = ['','Em dia','Atrasado','Em andamento','Concluído'];
+        const statusColor = {'Em dia':'var(--green)','Atrasado':'var(--red)','Em andamento':'var(--amber)'};
+        const sc = statusColor[p.monStatus||''] || 'var(--text-hint)';
+        const statusSel = `<select class="sel" style="font-size:10px;width:110px;" onchange="setMonField(${p.id},'monStatus',this.value)">`
+          + statusOpts.map(o => `<option value="${dv(o)}" ${(p.monStatus||'')=== o?'selected':''}>${o||'—'}</option>`).join('')
+          + '</select>';
+        const chk = (field, label) => `<label style="display:flex;align-items:center;gap:4px;font-size:10px;cursor:pointer;white-space:nowrap;">`
+          + `<input type="checkbox" ${p[field]?'checked':''} onchange="setMonField(${p.id},'${field}',this.checked)" style="accent-color:var(--accent);width:14px;height:14px;">`
+          + `</label>`;
+        return `<tr>
+          <td>${p.consultor||'—'}</td><td>${p.nome||'—'}</td>
+          <td>${p.mesMon||'—'}</td><td style="white-space:nowrap;">${otBadge} ${recBadge}</td>
+          <td>${statusSel}</td>
+          <td style="text-align:center;">${chk('monDossie')}</td>
+          <td style="text-align:center;">${chk('monAlinhamento')}</td>
+          <td style="text-align:center;">${chk('monPassagem')}</td>
+        </tr>`;
+      }).join('')
+    : emptyRow(5, 'Nenhum projeto monetizado ainda');
 
   set('mon-total',  BRL(totalOT + totalRec));
   const elOT = document.getElementById('mon-real-ot-val'); if (elOT) elOT.textContent = BRL(totalOT);
   const elRec = document.getElementById('mon-real-rec-val'); if (elRec) elRec.textContent = BRL(totalRec);
   set('mon-cons',   Object.keys(consMap).filter(c=>c).length);
-  set('mon-count',  projetosNoFiltro.size);
+  set('mon-count',  mons.length);
   set('mon-ticket', count > 0 ? BRL((totalOT + totalRec) / count) : '—');
   set('ov-mon',  BRL(total)); set('ov2-mon', BRL(total));
 
@@ -3937,7 +3664,7 @@ function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
   let convIniciados = 0, convMon = 0;
   mesesConv.forEach(m => {
     convIniciados += projects.filter(p => p.inicio && parseDate(p.inicio)?.getMonth() === m.idx && parseDate(p.inicio)?.getFullYear() === m.ano).length;
-    convMon       += projects.filter(p => { if (p.modelo === 'DRO') return false; return projMonetizouNoMes(p, m.label, m.ano); }).length;
+    convMon       += projects.filter(p => { const [lb,an]=(p.mesMon||'').split('/'); return lb===m.label && parseInt(an)===m.ano; }).length;
   });
   const convV = convIniciados > 0 ? Math.round(convMon / convIniciados * 100) : null;
 
@@ -3967,11 +3694,17 @@ function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
     ? Math.round((npsNotas.filter(n=>n>=9).length - npsNotas.filter(n=>n<=6).length) / npsNotas.length * 100)
     : null;
 
-  // ── MONETIZAÇÃO: split OT/Rec somando TODAS as monetizações (por evento) ──
+  // ── MONETIZAÇÃO: split OT/Rec + meta de monMetas ─────────────
   let monTotal = 0, monTotalOT = 0, monTotalRec = 0;
-  (curM ? [curM] : ALL_MESES).forEach(m => {
-    const r = monReceitaNoMes(m.label, m.ano);
-    monTotalOT += r.ot; monTotalRec += r.rec; monTotal += r.total;
+  projects.filter(p => {
+    if (p.conv !== 'Monetizado') return false;
+    if (curM) { const [lb,an] = (p.mesMon||'').split('/'); return lb===curM.label && parseInt(an)===curM.ano; }
+    return true;
+  }).forEach(p => {
+    const vOT  = parseFloat((p.valorOT||'').replace(/\./g,'').replace(',','.'));
+    const vRec = parseFloat((p.valorRec||'').replace(/\./g,'').replace(',','.'));
+    if (!isNaN(vOT)  && vOT  > 0) { monTotal += vOT;  monTotalOT  += vOT; }
+    if (!isNaN(vRec) && vRec > 0) { monTotal += vRec; monTotalRec += vRec; }
   });
   // meta: soma monMetas do mês ou do ano
   const metaMeses = curM ? [curM] : ALL_MESES;
@@ -4430,17 +4163,6 @@ function ltSetField(id, field, val) {
   const p = projects.find(x => String(x.id) === String(id));
   if (!p) return;
   p[field] = val;
-  // Se virou Monetizado pelo Lead Time e não há monetização, cria do pipeline
-  if (field === 'conv' && val === 'Monetizado') {
-    if (!Array.isArray(p.monetizacoes)) p.monetizacoes = [];
-    if (p.monetizacoes.length === 0 && (p.valorOport || p.valorOportRec)) {
-      p.monetizacoes.push(novaMonetizacao({
-        mesMon: p.mesMon || '', valorOT: p.valorOport || '', valorRec: p.valorOportRec || '', escopos: p.escopos || ''
-      }));
-    }
-    recomputeDerived(p);
-    if (typeof calcMon === 'function') calcMon();
-  }
   upd();
   // atualiza funil se campo relevante foi alterado
   if (['oport','valorOport','flag'].includes(field)) {
@@ -6175,8 +5897,6 @@ async function sbLoad() {
           if (!p.status2) p.status2 = calcStatus2(p);
           if (p.valorOT  === undefined || p.valorOT === '') p.valorOT  = p.valor || '';
           if (p.valorRec === undefined) p.valorRec = '';
-          migrarMon(p);        // garante p.monetizacoes[] (migra valor único antigo)
-          recomputeDerived(p); // sincroniza espelho valorOT/valorRec/mesMon/conv
         });
         projects = prjs;
       }
