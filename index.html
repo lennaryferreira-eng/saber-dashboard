@@ -1904,7 +1904,7 @@ function buildDRO() {
             ${feito?'<span style="color:#fff;font-size:11px;">✓</span>':''}
           </div>
           <span style="font-size:9px;color:var(--text-hint);white-space:nowrap;">${mes}</span>
-          ${feito?`<input type="date" value="${c.data}" style="font-size:9px;width:80px;padding:1px 3px;border:none;border-bottom:1px solid var(--border);background:transparent;color:var(--text-muted);"
+          ${feito?`<input type="date" value="${c.data||''}" style="font-size:9px;width:80px;padding:1px 3px;border:none;border-bottom:1px solid var(--border);background:transparent;color:var(--text-muted);"
             onchange="droSetComiteData(${p.id}, ${i}, this.value)">`:
             `<span style="font-size:9px;color:var(--border);">—</span>`}
         </div>`;
@@ -2668,13 +2668,13 @@ function renderBase() {
       <td style="padding:6px 10px;text-align:center;">${tierBadge(p.gmv)}</td>
       <td contenteditable="true" data-f="designer" data-id="${p.id}" onblur="setField(this)" style="min-width:100px;">${p.designer||'—'}</td>
       <td contenteditable="true" data-f="copy" data-id="${p.id}" onblur="setField(this)" style="min-width:100px;">${p.copy||'—'}</td>
-      <td><input type="date" class="sel" value="${p.inicio}" data-f="inicio" data-id="${p.id}" onchange="setField(this)"></td>
+      <td><input type="date" class="sel" value="${p.inicio||''}" data-f="inicio" data-id="${p.id}" onchange="setField(this)"></td>
       <td>
-        <input type="date" class="sel" value="${p.prevFim}" data-f="prevFim" data-id="${p.id}" onchange="setFieldPrev(this)"
+        <input type="date" class="sel" value="${p.prevFim||''}" data-f="prevFim" data-id="${p.id}" onchange="setFieldPrev(this)"
           style="border-color:${p.prevManual?'rgba(196,82,26,.4)':'var(--border)'}">
         <span style="font-size:9px;color:${p.prevManual?'var(--accent)':'var(--text-hint)'};display:block;margin-top:1px;">${p.prevManual?'editado':'auto'}</span>
       </td>
-      <td><input type="date" class="sel" value="${p.realFim}" data-f="realFim" data-id="${p.id}" onchange="setField(this)"></td>
+      <td><input type="date" class="sel" value="${p.realFim||''}" data-f="realFim" data-id="${p.id}" onchange="setField(this)"></td>
       <td>${prazoInline(p)}</td>
       <td style="padding:6px 10px;">${flagHTML(p.flag)}</td>
       <td style="padding:6px 10px;">
@@ -3987,7 +3987,7 @@ function semDataEtapa(p, etapaIdx) {
 function semDataPlanejada(p, semIdx) {
   const ini = ltInicio(p);
   if (!ini) return null;
-  const total = p.prevFim ? diffDays(ini, p.prevFim) : limitePrazoDias(ini);
+  const total = p.prevFim ? diffDays(ini, p.prevFim) : 45; // 45 dias = prazo padrão
   const diasPorSem = total / 7;
   const d = new Date(parseDate(ini).getTime() + diasPorSem * semIdx * 864e5);
   return d.toISOString().slice(0,10);
@@ -5865,9 +5865,13 @@ async function sbLoad() {
       if (Array.isArray(prjs) && prjs.length > 0) {
         // recalcula campos legados
         prjs.forEach(p => {
+          // Limpa null/undefined → '' em TODOS os campos (evita value="null" em inputs date)
+          Object.keys(p).forEach(k => {
+            if (p[k] === null || p[k] === undefined || p[k] === 'null') p[k] = '';
+          });
           if (!p.conv)    p.conv    = p.mon === 'Monetizado' ? 'Monetizado' : (p.mon === 'Não monetizado' || p.mon === 'Em negociação') ? 'Não monetizado' : '';
           if (!p.status2) p.status2 = calcStatus2(p);
-          if (p.valorOT  === undefined) p.valorOT  = p.valor || '';
+          if (p.valorOT  === undefined || p.valorOT === '') p.valorOT  = p.valor || '';
           if (p.valorRec === undefined) p.valorRec = '';
         });
         projects = prjs;
