@@ -1654,7 +1654,78 @@ function semanaKey(offset) {
 function navSemana(dir) { pipeSemanaOffset += dir; buildPipeSemana(); }
 function navSemanaHoje() { pipeSemanaOffset = 0; buildPipeSemana(); }
 
+// ── Calendário visual da semana (7 dias com cards) — preenche #pipe-semana-cal ──
+function buildPipeSemanaCal() {
+  const cal = document.getElementById('pipe-semana-cal');
+  if (!cal) return;
+  const { inicio } = getWeekBounds(pipeSemanaOffset);
+  const consFilter  = document.getElementById('pipe-semana-cons')?.value || '';
+  const etapaFilter = document.getElementById('pipe-semana-oport')?.value || '';
+
+  const ETAPAS_OPORT = ['Apresentar proposta (SQL)','Proposta apresentada (SAL)','Follow (COMMIT)'];
+  const oColors = {
+    'Apresentar proposta (SQL)': 'var(--blue)',
+    'Proposta apresentada (SAL)': 'var(--amber)',
+    'Follow (COMMIT)': 'var(--green)',
+    'Decolagem': 'var(--accent)'
+  };
+  const DIAS = ['SEG','TER','QUA','QUI','SEX','SÁB','DOM'];
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+
+  let cols = '';
+  for (let i = 0; i < 7; i++) {
+    const dia = new Date(inicio);
+    dia.setDate(inicio.getDate() + i);
+    dia.setHours(0,0,0,0);
+    const isHoje = dia.getTime() === hoje.getTime();
+    const ddmm = String(dia.getDate()).padStart(2,'0') + '/' + String(dia.getMonth()+1).padStart(2,'0');
+
+    const cards = [];
+    projects.forEach(p => {
+      if (p.modelo === 'DRO') return;
+      if (consFilter && p.consultor !== consFilter) return;
+      // oportunidade colocada no dia do próximo contato
+      if (ETAPAS_OPORT.includes(p.oport) && p.proximoContato) {
+        const dc = parseDate(p.proximoContato);
+        if (dc) { dc.setHours(0,0,0,0);
+          if (dc.getTime() === dia.getTime() && (!etapaFilter || etapaFilter === p.oport)) {
+            cards.push({ nome: p.nome, etapa: p.oport });
+          }
+        }
+      }
+      // decolagem colocada no dia da decolagem
+      const dataDecol = p.entregas && p.entregas[6] && p.entregas[6].real;
+      if (dataDecol) {
+        const dd = parseDate(dataDecol);
+        if (dd) { dd.setHours(0,0,0,0);
+          if (dd.getTime() === dia.getTime() && (!etapaFilter || etapaFilter === 'Decolagem')) {
+            cards.push({ nome: p.nome, etapa: 'Decolagem' });
+          }
+        }
+      }
+    });
+
+    const cardsHtml = cards.length
+      ? cards.map(c => {
+          const cor = oColors[c.etapa] || 'var(--text-hint)';
+          return `<div style="background:var(--surface);border-left:3px solid ${cor};border-radius:4px;padding:8px 10px;margin-bottom:8px;box-shadow:0 1px 2px rgba(0,0,0,.04);">
+            <div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.25;">${c.nome||'—'}</div>
+            <div style="font-size:11px;color:${cor};margin-top:2px;">${c.etapa}</div>
+          </div>`;
+        }).join('')
+      : '<div style="text-align:center;color:var(--text-hint);font-size:14px;padding:10px 0;">—</div>';
+
+    cols += `<div style="flex:1;min-width:148px;background:${isHoje?'var(--accent-dim)':'var(--surface2)'};border:1px solid ${isHoje?'var(--accent)':'var(--border)'};border-radius:8px;padding:10px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.05em;margin-bottom:10px;color:${isHoje?'var(--accent)':'var(--text-hint)'};">${DIAS[i]} <span style="font-weight:400;">${ddmm}</span></div>
+      ${cardsHtml}
+    </div>`;
+  }
+
+  cal.innerHTML = `<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;">${cols}</div>`;
+}
+
 function buildPipeSemana() {
+  buildPipeSemanaCal();
   const el    = document.getElementById('pipe-semana-body');
   const label = document.getElementById('pipe-semana-label');
   const metaInp = document.getElementById('pipe-meta-semana');
