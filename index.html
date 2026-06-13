@@ -1655,18 +1655,22 @@ function navSemana(dir) { pipeSemanaOffset += dir; buildPipeSemana(); }
 function navSemanaHoje() { pipeSemanaOffset = 0; buildPipeSemana(); }
 
 function buildPipeSemana() {
+  const el    = document.getElementById('pipe-semana-body');
   const label = document.getElementById('pipe-semana-label');
-  const cal   = document.getElementById('pipe-semana-cal');
-  const body  = document.getElementById('pipe-semana-body');
-  if (!cal && !body) return;
+  const metaInp = document.getElementById('pipe-meta-semana');
+  if (!el) return;
 
   const { inicio, fim } = getWeekBounds(pipeSemanaOffset);
-  const fmtDM = d => d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'});
-  if (label) label.textContent = fmtDM(inicio) + ' — ' + fmtDM(fim);
+  const key = semanaKey(pipeSemanaOffset);
 
-  // Filtros
-  const fCons  = document.getElementById('pipe-semana-cons')?.value || '';
-  const fOport = document.getElementById('pipe-semana-oport')?.value || '';
+  // Label da semana
+  const fmtSem = d => d.toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'});
+  if (label) label.textContent = fmtSem(inicio) + ' — ' + fmtSem(fim);
+
+  // Restaura meta salva
+  if (metaInp) metaInp.value = pipeMetaSemana[key] || '';
+
+  const consFilter = document.getElementById('pipe-semana-cons')?.value || '';
 
   // Popula filtro de consultores (1x)
   const selCons = document.getElementById('pipe-semana-cons');
@@ -1675,79 +1679,96 @@ function buildPipeSemana() {
     selCons.innerHTML = '<option value="">Todos consultores</option>' + cons.map(c => '<option>' + c + '</option>').join('');
   }
 
-  // Projetos com próximo contato dentro da semana
-  let lista = projects.filter(p => {
-    if (!p.proximoContato) return false;
-    const dc = parseDate(p.proximoContato);
-    if (!dc) return false;
-    return dc >= inicio && dc <= fim;
+  // ── Critério 1: oportunidades SQL/SAL/COMMIT ──
+  const ETAPAS_OPORT = ['Apresentar proposta (SQL)','Proposta apresentada (SAL)','Follow (COMMIT)'];
+  const comOport = projects.filter(p => {
+    if (consFilter && p.consultor !== consFilter) return false;
+    return ETAPAS_OPORT.includes(p.oport);
   });
-  if (fCons)  lista = lista.filter(p => p.consultor === fCons);
-  if (fOport) lista = lista.filter(p => p.oport === fOport);
 
-  // Meta da semana
-  const metaInput = document.getElementById('pipe-meta-semana');
-  const metaVal = pipeMetaSemana[semanaKey(pipeSemanaOffset)] || 0;
-  if (metaInput && document.activeElement !== metaInput) metaInput.value = metaVal || '';
+  // ── Critério 2: projetos com Decolagem registrada na semana ──
+  const comDecolagem = projects.filter(p => {
+    if (consFilter && p.consultor !== consFilter) return false;
+    const dataDecol = p.entregas && p.entregas[6] && p.entregas[6].real;
+    if (!dataDecol) return false;
+    const d = parseDate(dataDecol);
+    return d && d >= inicio && d <= fim;
+  });
 
-  // Soma valores de oportunidade da semana
-  const pv = v => { const n = parseFloat(String(v||'').replace(/\./g,'').replace(',','.')); return isNaN(n) ? 0 : n; };
-  const totalSemana = lista.reduce((a,p) => a + pv(p.valorOport) + pv(p.valorOportRec), 0);
-  const metaRes = document.getElementById('pipe-meta-resultado');
-  if (metaRes) {
-    const pct = metaVal > 0 ? Math.round(totalSemana / metaVal * 100) : 0;
-    metaRes.innerHTML = 'Pipe da semana: <b>R$ ' + totalSemana.toLocaleString('pt-BR') + '</b>' + (metaVal > 0 ? ' &middot; ' + pct + '% da meta' : '');
+  // Une sem duplicar
+  const idsOport   = new Set(comOport.map(p => String(p.id)));
+  const idsDecol   = new Set(comDecolagem.map(p => String(p.id)));
+  const todosPipe  = [...comOport, ...comDecolagem.filter(p => !idsOport.has(String(p.id)))];
+
+  if (!todosPipe.length) {
+    el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-hint);font-size:12px;">Nenhuma oportunidade ou decolagem para essa semana.</div>';
+    atualizaMetaResultado(0);
+    return;
   }
 
-  // ── Monta calendário de 7 dias (Seg a Dom) ──
-  if (cal) {
-    const DIAS = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
-    const hojeStr = new Date().toISOString().slice(0,10);
-    let colunas = '';
-    for (let i = 0; i < 7; i++) {
-      const dia = new Date(inicio);
-      dia.setDate(inicio.getDate() + i);
-      const diaStr = dia.toISOString().slice(0,10);
-      const ehHoje = diaStr === hojeStr;
+  // Calcula pipeline total
+  function parseVal(v) { return parseFloat((v||'').replace(/\./g,'').replace(',','.')) || 0; }
+  const totalPipe = todosPipe.reduce((acc,p) => acc + parseVal(p.valorOport) + parseVal(p.valorOportRec), 0);
 
-      // Projetos deste dia
-      const doDia = lista.filter(p => {
-        const dc = parseDate(p.proximoContato);
-        return dc && dc.toISOString().slice(0,10) === diaStr;
-      });
+  const oColors = {
+    'Apresentar proposta (SQL)': 'var(--blue)',
+    'Proposta apresentada (SAL)': 'var(--amber)',
+    'Follow (COMMIT)': 'var(--green)',
+    'Decolagem': 'var(--accent)'
+  };
 
-      const cards = doDia.map(p => {
-        const flagCor = p.flag === 'Verde' ? 'var(--green)' : p.flag === 'Amarelo' ? 'var(--amber)' : p.flag === 'Vermelho' ? 'var(--red)' : 'var(--border-md)';
-        const valOT = pv(p.valorOport);
-        const valRec = pv(p.valorOportRec);
-        const valTxt = (valOT || valRec) ? '<div style="font-size:9px;color:var(--text-muted);margin-top:2px;">R$ ' + (valOT+valRec).toLocaleString('pt-BR') + '</div>' : '';
-        return '<div onclick="show(\'leadtime\')" style="background:var(--surface);border-left:3px solid ' + flagCor + ';border-radius:4px;padding:5px 7px;margin-bottom:4px;cursor:pointer;font-size:10px;line-height:1.3;" title="' + (p.oport||'') + '">'
-          + '<div style="font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (p.nome||'—') + '</div>'
-          + '<div style="font-size:9px;color:var(--text-hint);">' + (p.consultor||'') + '</div>'
-          + (p.oport ? '<div style="font-size:9px;color:var(--accent);margin-top:1px;">' + p.oport + '</div>' : '')
-          + valTxt
-          + '</div>';
-      }).join('');
+  const rows = todosPipe.map(p => {
+    const isDecol = idsDecol.has(String(p.id)) && !idsOport.has(String(p.id));
+    const etapa   = isDecol ? 'Decolagem' : p.oport;
+    const cor     = oColors[etapa] || 'var(--text-hint)';
+    const vOT     = parseVal(p.valorOport);
+    const vRec    = parseVal(p.valorOportRec);
+    const vTotal  = vOT + vRec;
+    const dataD   = isDecol ? fmtD(p.entregas[6].real) : '';
+    return `<tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:8px 10px;">${p.nome||'—'}</td>
+      <td style="padding:8px 10px;color:var(--text-muted);font-size:11px;">${p.consultor||'—'}</td>
+      <td style="padding:8px 10px;">
+        <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(0,0,0,.06);color:${cor};">${etapa}</span>
+        ${dataD ? `<span style="font-size:10px;color:var(--text-hint);margin-left:4px;">${dataD}</span>` : ''}
+      </td>
+      <td style="padding:8px 10px;font-size:11px;">
+        ${vOT  > 0 ? `<span style="color:var(--accent);font-weight:600;">OT: ${BRL(vOT)}</span>` : ''}
+        ${vOT > 0 && vRec > 0 ? '<br>' : ''}
+        ${vRec > 0 ? `<span style="color:var(--blue);font-weight:600;">Rec: ${BRL(vRec)}</span>` : ''}
+        ${vTotal === 0 ? '<span style="color:var(--text-hint);">—</span>' : ''}
+      </td>
+      <td style="padding:8px 10px;">${flagHTML(p.flag)}</td>
+    </tr>`;
+  }).join('');
 
-      colunas += '<div style="flex:1;min-width:0;border-right:1px solid var(--border);padding:0 4px;">'
-        + '<div style="text-align:center;padding:6px 0;border-bottom:2px solid ' + (ehHoje ? 'var(--accent)' : 'var(--border)') + ';margin-bottom:6px;">'
-        + '<div style="font-size:10px;font-weight:700;color:' + (ehHoje ? 'var(--accent)' : 'var(--text-muted)') + ';letter-spacing:.05em;">' + DIAS[i] + '</div>'
-        + '<div style="font-size:13px;font-weight:700;color:' + (ehHoje ? 'var(--accent)' : 'var(--text)') + ';">' + dia.getDate() + '</div>'
-        + '</div>'
-        + (cards || '<div style="text-align:center;font-size:9px;color:var(--text-hint);padding:8px 0;">—</div>')
-        + '</div>';
-    }
-    cal.innerHTML = '<div style="display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;min-height:200px;background:var(--surface2);">' + colunas + '</div>';
-  }
+  el.innerHTML = `
+    <div style="margin-bottom:8px;font-size:11px;color:var(--text-hint);">
+      <strong style="color:var(--text);">${todosPipe.length}</strong> oportunidade${todosPipe.length!==1?'s':''} · 
+      Pipeline total: <strong style="color:var(--accent);">${BRL(totalPipe)}</strong>
+    </div>
+    <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead><tr>
+        ${['Projeto','Consultor','Etapa','Valor previsto','Flag'].map(h =>
+          `<th style="text-align:left;padding:6px 10px;border-bottom:1px solid var(--border);font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">${h}</th>`
+        ).join('')}
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </div>`;
 
-  // ── Corpo: resumo abaixo do calendário ──
-  if (body) {
-    if (lista.length === 0) {
-      body.innerHTML = '<p style="color:var(--text-hint);font-size:12px;padding:10px 0;text-align:center;">Nenhum próximo contato agendado para esta semana.</p>';
-    } else {
-      body.innerHTML = '<p style="font-size:11px;color:var(--text-muted);padding:8px 0;">' + lista.length + ' contato' + (lista.length>1?'s':'') + ' agendado' + (lista.length>1?'s':'') + ' nesta semana.</p>';
-    }
-  }
+  atualizaMetaResultado(totalPipe);
+}
+
+function atualizaMetaResultado(total) {
+  const res  = document.getElementById('pipe-meta-resultado');
+  const meta = pipeMetaSemana[semanaKey(pipeSemanaOffset)] || 0;
+  if (!res) return;
+  if (!meta) { res.innerHTML = ''; return; }
+  const pct = Math.round(total / meta * 100);
+  const cor = pct >= 100 ? 'var(--green)' : pct >= 70 ? 'var(--amber)' : 'var(--red)';
+  res.innerHTML = `<span style="font-weight:700;color:${cor};">${pct}%</span> <span style="color:var(--text-hint);font-size:11px;">do pipeline vs meta · falta ${BRL(Math.max(0, meta-total))}</span>`;
 }
 
 function buildPipeSemanaMeta() {
