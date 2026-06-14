@@ -568,6 +568,8 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
         </select>
         <select class="base-sel" id="pipe-semana-oport" onchange="buildPipeSemana()" style="font-size:11px;">
           <option value="">Todas etapas</option>
+          <option value="comercial">Comercial (decol/proposta/follow)</option>
+          <option value="operacional">Entregas operacionais</option>
           <option>Apresentar proposta (SQL)</option>
           <option>Proposta apresentada (SAL)</option>
           <option>Follow (COMMIT)</option>
@@ -1944,10 +1946,10 @@ function buildPipeSemanaCal() {
   const DIAS = ['SEG','TER','QUA','QUI','SEX','SÁB','DOM'];
   const hoje = new Date(); hoje.setHours(0,0,0,0);
 
-  // filtro de etapa
-  const mostraOport       = (et) => etapaFilter === '' || etapaFilter === et;
-  const mostraDecol       = etapaFilter === '' || etapaFilter === 'decol' || etapaFilter === 'entregas';
-  const mostraEntregaComum = etapaFilter === '' || etapaFilter === 'entregas';
+  // filtro de etapa (inclui os dois tipos de acompanhamento: comercial x operacional)
+  const mostraOport        = (et) => etapaFilter === '' || etapaFilter === et || etapaFilter === 'comercial';
+  const mostraDecol        = etapaFilter === '' || etapaFilter === 'decol' || etapaFilter === 'entregas' || etapaFilter === 'comercial';
+  const mostraEntregaComum = etapaFilter === '' || etapaFilter === 'entregas' || etapaFilter === 'operacional';
 
   let cols = '';
   for (let d = 0; d < 7; d++) {
@@ -1959,9 +1961,11 @@ function buildPipeSemanaCal() {
 
     // agrupa por projeto: 1 card por cliente, com várias etiquetas
     const porProjeto = new Map();
-    const addTag = (p, label, cor) => {
-      if (!porProjeto.has(p.id)) porProjeto.set(p.id, { nome: p.nome, tags: [] });
-      porProjeto.get(p.id).tags.push({ label, cor });
+    const addTag = (p, label, cor, comercial) => {
+      if (!porProjeto.has(p.id)) porProjeto.set(p.id, { nome: p.nome, tags: [], comercial: false });
+      const c = porProjeto.get(p.id);
+      c.tags.push({ label, cor });
+      if (comercial) c.comercial = true;
     };
 
     projects.forEach(p => {
@@ -1971,7 +1975,7 @@ function buildPipeSemanaCal() {
       // oportunidade no dia do próximo contato
       if (ETAPAS_OPORT.includes(p.oport) && p.proximoContato && mostraOport(p.oport)) {
         const dc = parseDate(p.proximoContato);
-        if (dc) { dc.setHours(0,0,0,0); if (dc.getTime() === dia.getTime()) addTag(p, p.oport, oColors[p.oport]); }
+        if (dc) { dc.setHours(0,0,0,0); if (dc.getTime() === dia.getTime()) addTag(p, p.oport, oColors[p.oport], true); }
       }
 
       // entregas no dia da data real (sinalizada no Progresso do Lead Time)
@@ -1985,7 +1989,7 @@ function buildPipeSemanaCal() {
           const isDecol = (i === SEM_NOMES.length - 1);
           if (isDecol && !mostraDecol) continue;
           if (!isDecol && !mostraEntregaComum) continue;
-          addTag(p, SEM_NOMES[i], isDecol ? oColors['Decolagem'] : COR_ENTREGA);
+          addTag(p, SEM_NOMES[i], isDecol ? oColors['Decolagem'] : COR_ENTREGA, isDecol);
         }
       }
     });
@@ -1995,9 +1999,10 @@ function buildPipeSemanaCal() {
       cardsHtml = '<div style="text-align:center;color:var(--text-hint);font-size:14px;padding:10px 0;">—</div>';
     } else {
       cardsHtml = [...porProjeto.values()].map(card => {
-        const corBorda = card.tags[0]?.cor || 'var(--text-hint)';
-        const tagsHtml = card.tags.map(t => `<div style="font-size:11px;color:${t.cor};margin-top:2px;line-height:1.2;">${t.label}</div>`).join('');
-        return `<div style="background:var(--surface);border-left:3px solid ${corBorda};border-radius:4px;padding:8px 10px;margin-bottom:8px;box-shadow:0 1px 2px rgba(0,0,0,.04);">
+        const bg    = card.comercial ? '#FEF3C7' : 'var(--surface)';
+        const borda = card.comercial ? '#CA8A04' : '#64748b';
+        const tagsHtml = card.tags.map(t => `<div style="font-size:11px;color:${t.cor};margin-top:2px;line-height:1.2;font-weight:${card.comercial?'600':'400'};">${t.label}</div>`).join('');
+        return `<div style="background:${bg};border-left:3px solid ${borda};border-radius:4px;padding:8px 10px;margin-bottom:8px;box-shadow:0 1px 2px rgba(0,0,0,.04);">
           <div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.25;">${card.nome||'—'}</div>
           ${tagsHtml}
         </div>`;
@@ -2010,12 +2015,13 @@ function buildPipeSemanaCal() {
     </div>`;
   }
 
-  const legenda = `<div style="display:flex;flex-wrap:wrap;gap:12px;font-size:10px;color:var(--text-hint);margin-bottom:10px;">
+  const legenda = `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;font-size:10px;color:var(--text-hint);margin-bottom:10px;">
     <span><span style="color:var(--blue);">●</span> Apresentar proposta</span>
     <span><span style="color:var(--amber);">●</span> Proposta</span>
     <span><span style="color:var(--green);">●</span> Follow</span>
     <span><span style="color:var(--accent);">●</span> Decolagem</span>
-    <span><span style="color:${COR_ENTREGA};">●</span> Outras entregas</span>
+    <span><span style="color:${COR_ENTREGA};">●</span> Entregas operacionais</span>
+    <span style="margin-left:auto;background:#FEF3C7;border:1px solid #CA8A04;border-radius:3px;padding:1px 7px;color:#7a5c00;font-weight:600;">Amarelo = acompanhamento comercial</span>
   </div>`;
 
   cal.innerHTML = legenda + `<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;">${cols}</div>`;
