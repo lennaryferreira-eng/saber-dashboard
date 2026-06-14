@@ -572,6 +572,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
           <option>Proposta apresentada (SAL)</option>
           <option>Follow (COMMIT)</option>
           <option value="decol">Decolagem</option>
+          <option value="entregas">Entregas (todas)</option>
         </select>
         <button class="base-clear" onclick="clearPipeSemanaFilters()" style="font-size:11px;">Limpar</button>
         <button onclick="navSemana(-1)" style="padding:4px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface2);cursor:pointer;font-size:13px;">‹</button>
@@ -1939,59 +1940,85 @@ function buildPipeSemanaCal() {
     'Follow (COMMIT)': 'var(--green)',
     'Decolagem': 'var(--accent)'
   };
+  const COR_ENTREGA = '#64748b';   // entregas comuns (não-decolagem)
   const DIAS = ['SEG','TER','QUA','QUI','SEX','SÁB','DOM'];
   const hoje = new Date(); hoje.setHours(0,0,0,0);
 
+  // filtro de etapa
+  const mostraOport       = (et) => etapaFilter === '' || etapaFilter === et;
+  const mostraDecol       = etapaFilter === '' || etapaFilter === 'decol' || etapaFilter === 'entregas';
+  const mostraEntregaComum = etapaFilter === '' || etapaFilter === 'entregas';
+
   let cols = '';
-  for (let i = 0; i < 7; i++) {
+  for (let d = 0; d < 7; d++) {
     const dia = new Date(inicio);
-    dia.setDate(inicio.getDate() + i);
+    dia.setDate(inicio.getDate() + d);
     dia.setHours(0,0,0,0);
     const isHoje = dia.getTime() === hoje.getTime();
     const ddmm = String(dia.getDate()).padStart(2,'0') + '/' + String(dia.getMonth()+1).padStart(2,'0');
 
-    const cards = [];
+    // agrupa por projeto: 1 card por cliente, com várias etiquetas
+    const porProjeto = new Map();
+    const addTag = (p, label, cor) => {
+      if (!porProjeto.has(p.id)) porProjeto.set(p.id, { nome: p.nome, tags: [] });
+      porProjeto.get(p.id).tags.push({ label, cor });
+    };
+
     projects.forEach(p => {
       if (p.modelo === 'DRO') return;
       if (consFilter && p.consultor !== consFilter) return;
-      // oportunidade colocada no dia do próximo contato
-      if (ETAPAS_OPORT.includes(p.oport) && p.proximoContato) {
+
+      // oportunidade no dia do próximo contato
+      if (ETAPAS_OPORT.includes(p.oport) && p.proximoContato && mostraOport(p.oport)) {
         const dc = parseDate(p.proximoContato);
-        if (dc) { dc.setHours(0,0,0,0);
-          if (dc.getTime() === dia.getTime() && (!etapaFilter || etapaFilter === p.oport)) {
-            cards.push({ nome: p.nome, etapa: p.oport });
-          }
-        }
+        if (dc) { dc.setHours(0,0,0,0); if (dc.getTime() === dia.getTime()) addTag(p, p.oport, oColors[p.oport]); }
       }
-      // decolagem colocada no dia da decolagem
-      const dataDecol = p.entregas && p.entregas[6] && p.entregas[6].real;
-      if (dataDecol) {
-        const dd = parseDate(dataDecol);
-        if (dd) { dd.setHours(0,0,0,0);
-          if (dd.getTime() === dia.getTime() && (!etapaFilter || etapaFilter === 'Decolagem')) {
-            cards.push({ nome: p.nome, etapa: 'Decolagem' });
-          }
+
+      // entregas no dia da data real (sinalizada no Progresso do Lead Time)
+      if (p.entregas) {
+        for (let i = 0; i < SEM_NOMES.length; i++) {
+          const ent = p.entregas[i];
+          if (!ent || !ent.real) continue;
+          const ed = parseDate(ent.real);
+          if (!ed) continue; ed.setHours(0,0,0,0);
+          if (ed.getTime() !== dia.getTime()) continue;
+          const isDecol = (i === SEM_NOMES.length - 1);
+          if (isDecol && !mostraDecol) continue;
+          if (!isDecol && !mostraEntregaComum) continue;
+          addTag(p, SEM_NOMES[i], isDecol ? oColors['Decolagem'] : COR_ENTREGA);
         }
       }
     });
 
-    const cardsHtml = cards.length
-      ? cards.map(c => {
-          const cor = oColors[c.etapa] || 'var(--text-hint)';
-          return `<div style="background:var(--surface);border-left:3px solid ${cor};border-radius:4px;padding:8px 10px;margin-bottom:8px;box-shadow:0 1px 2px rgba(0,0,0,.04);">
-            <div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.25;">${c.nome||'—'}</div>
-            <div style="font-size:11px;color:${cor};margin-top:2px;">${c.etapa}</div>
-          </div>`;
-        }).join('')
-      : '<div style="text-align:center;color:var(--text-hint);font-size:14px;padding:10px 0;">—</div>';
+    let cardsHtml;
+    if (porProjeto.size === 0) {
+      cardsHtml = '<div style="text-align:center;color:var(--text-hint);font-size:14px;padding:10px 0;">—</div>';
+    } else {
+      cardsHtml = [...porProjeto.values()].map(card => {
+        const corBorda = card.tags[0]?.cor || 'var(--text-hint)';
+        const tagsHtml = card.tags.map(t => `<div style="font-size:11px;color:${t.cor};margin-top:2px;line-height:1.2;">${t.label}</div>`).join('');
+        return `<div style="background:var(--surface);border-left:3px solid ${corBorda};border-radius:4px;padding:8px 10px;margin-bottom:8px;box-shadow:0 1px 2px rgba(0,0,0,.04);">
+          <div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.25;">${card.nome||'—'}</div>
+          ${tagsHtml}
+        </div>`;
+      }).join('');
+    }
 
     cols += `<div style="flex:1;min-width:148px;background:${isHoje?'var(--accent-dim)':'var(--surface2)'};border:1px solid ${isHoje?'var(--accent)':'var(--border)'};border-radius:8px;padding:10px;">
-      <div style="font-size:11px;font-weight:700;letter-spacing:.05em;margin-bottom:10px;color:${isHoje?'var(--accent)':'var(--text-hint)'};">${DIAS[i]} <span style="font-weight:400;">${ddmm}</span></div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:.05em;margin-bottom:10px;color:${isHoje?'var(--accent)':'var(--text-hint)'};">${DIAS[d]} <span style="font-weight:400;">${ddmm}</span></div>
       ${cardsHtml}
     </div>`;
   }
 
-  cal.innerHTML = `<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;">${cols}</div>`;
+  const legenda = `<div style="display:flex;flex-wrap:wrap;gap:12px;font-size:10px;color:var(--text-hint);margin-bottom:10px;">
+    <span><span style="color:var(--blue);">●</span> Apresentar proposta</span>
+    <span><span style="color:var(--amber);">●</span> Proposta</span>
+    <span><span style="color:var(--green);">●</span> Follow</span>
+    <span><span style="color:var(--accent);">●</span> Decolagem</span>
+    <span><span style="color:${COR_ENTREGA};">●</span> Outras entregas</span>
+  </div>`;
+
+  cal.innerHTML = legenda + `<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;">${cols}</div>`;
 }
 
 function buildPipeSemana() {
