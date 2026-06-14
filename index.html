@@ -4991,8 +4991,8 @@ function buildCapHistTable() {
   const rows = getHistMeses().map(m => {
     const ini  = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && p.inicio && parseDate(p.inicio)?.getMonth() === m.idx && parseDate(p.inicio)?.getFullYear() === m.ano);
     const conv = projects.filter(p => {
-      const [lb,an] = (p.mesMon||'').split('/');
-      return lb === m.label && parseInt(an) === m.ano;
+      if (p.modelo === 'DRO') return false;
+      return projMonetizouNoMes(p, m.label, m.ano);
     });
     const taxa = ini.length > 0 ? Math.round(conv.length / ini.length * 100) : null;
     const ativos = projects.filter(p => mesesAtivos(p).includes(m.idx));
@@ -5501,10 +5501,7 @@ function buildPerformance() {
     const mesesConv = curM ? [curM] : ALL_MESES;
     let convMon = 0;
     mesesConv.forEach(m => {
-      convMon += projects.filter(p => p.consultor === nome && (!p.modelo || p.modelo !== 'DRO') && (() => {
-        const [lb,an] = (p.mesMon||'').split('/');
-        return lb === m.label && parseInt(an) === m.ano;
-      })()).length;
+      convMon += projects.filter(p => p.consultor === nome && (!p.modelo || p.modelo !== 'DRO') && projMonetizouNoMes(p, m.label, m.ano)).length;
     });
     const convBase = 10;
     const convV = Math.round(convMon / convBase * 100);
@@ -5703,10 +5700,7 @@ function perfSelecionaConsultor(nome) {
   const meses = curM ? [curM] : ALL_MESES;
 
   // ── CONVERSÃO ─────────────────────────────────────────────
-  const monetizados = prjsCons.filter(p => meses.some(m => {
-    const [lb,an] = (p.mesMon||'').split('/');
-    return lb === m.label && parseInt(an) === m.ano;
-  }));
+  const monetizados = prjsCons.filter(p => meses.some(m => projMonetizouNoMes(p, m.label, m.ano)));
   const convBase = 10;
   const txConv = Math.round(monetizados.length / convBase * 100);
   const corConv = txConv >= 40 ? 'var(--green)' : 'var(--red)';
