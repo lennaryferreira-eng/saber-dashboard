@@ -719,7 +719,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
     <div id="mon-metas-mes"></div>
 
   <div id="mon-chips" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1rem;"></div>
-    <div class="tbl-wrap"><table><thead><tr><th>Consultor</th><th>Projeto</th><th>Mês monetizado</th><th>Valores (OT / Rec)</th><th>Status</th><th>Dossiê</th><th>Alin. Interno</th><th>Pass. Bastão</th><th>Ações</th></tr></thead><tbody id="mon-tbody"></tbody></table></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Consultor</th><th>Projeto</th><th>Mês monetizado</th><th>Valores (OT / Rec)</th><th>Escopo</th><th>Status</th><th>Dossiê</th><th>Alin. Interno</th><th>Pass. Bastão</th><th>Ações</th></tr></thead><tbody id="mon-tbody"></tbody></table></div>
   </div>
 
   <!-- Quadro Outros Escopos Contratados -->
@@ -4159,11 +4159,12 @@ function calcMon() {
       const acoes = primeira
         ? `<td rowspan="${nEv}" style="vertical-align:top;text-align:center;white-space:nowrap;"><button class="sel" style="font-size:13px;line-height:1;padding:3px 8px;cursor:pointer;color:var(--accent);" title="Adicionar venda" onclick="addMon('${p.id}')">＋</button> <button class="sel" style="font-size:12px;line-height:1;padding:3px 8px;cursor:pointer;color:var(--text-hint);" title="Remover esta venda" onclick="delMon('${p.id}','${m.id}')">✕</button></td>`
         : `<td style="text-align:center;"><button class="sel" style="font-size:12px;line-height:1;padding:3px 8px;cursor:pointer;color:var(--text-hint);" title="Remover esta venda" onclick="delMon('${p.id}','${m.id}')">✕</button></td>`;
-      html += `<tr>${consCell}${nomeCell}<td>${mesSel}</td><td style="white-space:nowrap;">${otInput} ${recInput}</td><td>${statusSel}</td><td style="text-align:center;">${chk('dossie')}</td><td style="text-align:center;">${chk('alinhamento')}</td><td style="text-align:center;">${chk('passagem')}</td>${acoes}</tr>`;
+      const escInput = `<input class="sel" style="font-size:10px;width:150px;" value="${dv(m.escopos).replace(/"/g,'&quot;')}" placeholder="—" onblur="updMon('${p.id}','${m.id}','escopos',this.value)">`;
+      html += `<tr>${consCell}${nomeCell}<td>${mesSel}</td><td style="white-space:nowrap;">${otInput} ${recInput}</td><td>${escInput}</td><td>${statusSel}</td><td style="text-align:center;">${chk('dossie')}</td><td style="text-align:center;">${chk('alinhamento')}</td><td style="text-align:center;">${chk('passagem')}</td>${acoes}</tr>`;
     });
   });
 
-  tbody.innerHTML = html || emptyRow(9, 'Nenhuma monetização registrada ainda');
+  tbody.innerHTML = html || emptyRow(10, 'Nenhuma monetização registrada ainda');
 
   set('mon-total',  BRL(totalOT + totalRec));
   const elOT = document.getElementById('mon-real-ot-val'); if (elOT) elOT.textContent = BRL(totalOT);
@@ -4452,22 +4453,23 @@ function buildOvAnalises(curM) {
     }).join('');
   }
 
-  // Ticket médio — usa valorOport (LT) como fonte principal, fallback valorOT/valor
-  function pvOv(v) { if (!v || v === '—' || v === '-') return 0; const n = parseFloat((v+'').replace(/[R$\s]/g,'').replace(/\./g,'').replace(',','.').trim()); return isNaN(n) ? 0 : n; }
-  const monetizados = projects.filter(p => {
-    if (p.conv !== 'Monetizado' && p.mon !== 'Monetizado') return false;
-    if (!curM) return true;
-    const mObj = ALL_MESES.find(x => x.key === p.mesMon);
-    return mObj ? mObj.idx === mesIdx && mObj.ano === mesAno : false;
+  // Ticket médio — usa a MONETIZAÇÃO REALIZADA (array monetizacoes[]), por evento de venda
+  let somaOT = 0, somaRec = 0, nOT = 0, nRec = 0;
+  (curM ? [curM] : ALL_MESES).forEach(m => {
+    projects.forEach(p => {
+      if (p.modelo === 'DRO') return;
+      (p.monetizacoes||[]).forEach(ev => {
+        if (!ev.mesMon) return;
+        const [lb, an] = ev.mesMon.split('/');
+        if (lb !== m.label || parseInt(an) !== m.ano) return;
+        const vOT = monPV(ev.valorOT), vRec = monPV(ev.valorRec);
+        if (vOT  > 0) { somaOT  += vOT;  nOT++; }
+        if (vRec > 0) { somaRec += vRec; nRec++; }
+      });
+    });
   });
-  // OT: valorOport (LT) → valorOT → valor (legado)
-  // Rec: valorOportRec (LT) → valorRec
-  const somaOT  = monetizados.reduce((a,p) => a + pvOv(p.valorOport  || p.valorOT  || p.valor), 0);
-  const somaRec = monetizados.reduce((a,p) => a + pvOv(p.valorOportRec || p.valorRec), 0);
-  const comOT   = monetizados.filter(p => pvOv(p.valorOport  || p.valorOT  || p.valor) > 0).length || 1;
-  const comRec  = monetizados.filter(p => pvOv(p.valorOportRec || p.valorRec) > 0).length || 1;
-  const ticketOT  = somaOT  > 0 ? BRL(somaOT  / comOT)  : '—';
-  const ticketRec = somaRec > 0 ? BRL(somaRec / comRec) : '—';
+  const ticketOT  = nOT  > 0 ? BRL(somaOT  / nOT)  : '—';
+  const ticketRec = nRec > 0 ? BRL(somaRec / nRec) : '—';
   set('ov-ticket-ot',  ticketOT);
   set('ov-ticket-rec', ticketRec);
 
