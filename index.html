@@ -1240,6 +1240,85 @@ function projMonetizouNoMes(p, label, ano){
     return lb===label && parseInt(an)===ano; });
 }
 
+// ════════════════════════════════════════════════════════════════
+//  EVENTOS DE PIPELINE (histórico datado: Oportunidade / Proposta)
+//  Lista por projeto p.pipeEventos[] — independente de oport/proximoContato.
+//  Não afeta o Pipe da Semana.
+// ════════════════════════════════════════════════════════════════
+let _pevSeq = 0;
+function novoPipeEvento(d){ d=d||{}; return {
+  id: d.id || ('pev_' + Date.now() + '_' + (_pevSeq++)),
+  tipo: d.tipo || 'Oportunidade',          // 'Oportunidade' | 'Proposta'
+  data: d.data || '',                       // 'YYYY-MM-DD'
+  valorOT: d.valorOT || '', valorRec: d.valorRec || '',
+  escopo: d.escopo || '', obs: d.obs || ''
+}; }
+function ensurePipeEventos(p){ if (!Array.isArray(p.pipeEventos)) p.pipeEventos = []; return p; }
+
+// Semanas (seg–dom) que tocam um mês → [{ini,fim,n,label,range,key}]
+function getSemanasDoMes(label, ano){
+  const mesIdx = (_MES_ORDEM[label]||0) - 1;
+  if (mesIdx < 0 || !ano) return [];
+  const primeiro = new Date(ano, mesIdx, 1);
+  const ultimo   = new Date(ano, mesIdx + 1, 0);
+  const ds = primeiro.getDay();
+  const seg = new Date(primeiro);
+  seg.setDate(primeiro.getDate() - (ds === 0 ? 6 : ds - 1));
+  seg.setHours(0,0,0,0);
+  const f2 = d => String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0');
+  const semanas = []; let cursor = new Date(seg); let n = 1;
+  while (cursor <= ultimo){
+    const ini = new Date(cursor); ini.setHours(0,0,0,0);
+    const fim = new Date(cursor); fim.setDate(cursor.getDate() + 6); fim.setHours(23,59,59,999);
+    semanas.push({ ini, fim, n, label:'Sem ' + n, range: f2(ini) + '–' + f2(fim), key: ini.toISOString().slice(0,10) });
+    cursor.setDate(cursor.getDate() + 7); n++;
+  }
+  return semanas;
+}
+
+// Eventos cujo data cai no mês (achatados com projeto/consultor)
+function pipeEventosDoMes(label, ano){
+  const mesIdx = (_MES_ORDEM[label]||0) - 1;
+  const out = [];
+  (typeof projects !== 'undefined' ? projects : []).forEach(p => {
+    if (p.modelo === 'DRO') return;
+    (p.pipeEventos||[]).forEach(ev => {
+      const dt = parseDate(ev.data);
+      if (dt && dt.getMonth() === mesIdx && dt.getFullYear() === ano){
+        out.push({ id:ev.id, tipo:ev.tipo, data:ev.data, valorOT:ev.valorOT, valorRec:ev.valorRec,
+                   escopo:ev.escopo, obs:ev.obs, projId:p.id, nome:p.nome, consultor:p.consultor||'—' });
+      }
+    });
+  });
+  return out;
+}
+
+// Matriz semana × consultor × tipo para um mês
+function pipeEventosMatriz(label, ano, consFiltro){
+  const semanas = getSemanasDoMes(label, ano);
+  let eventos = pipeEventosDoMes(label, ano);
+  if (consFiltro) eventos = eventos.filter(e => e.consultor === consFiltro);
+  const consultores = [...new Set(eventos.map(e => e.consultor))].sort();
+  function semIdx(dataStr){
+    const dt = parseDate(dataStr); if (!dt) return -1;
+    for (let i = 0; i < semanas.length; i++){ if (dt >= semanas[i].ini && dt <= semanas[i].fim) return i; }
+    return -1;
+  }
+  // cel[cons][semIdx] = {op:0, pr:0}
+  const cel = {};
+  consultores.forEach(c => { cel[c] = semanas.map(() => ({op:0, pr:0})); });
+  const totSem = semanas.map(() => ({op:0, pr:0}));
+  let totOp = 0, totPr = 0;
+  eventos.forEach(e => {
+    const si = semIdx(e.data); if (si < 0) return;
+    const isOp = (e.tipo === 'Oportunidade');
+    if (!cel[e.consultor]) cel[e.consultor] = semanas.map(() => ({op:0, pr:0}));
+    if (isOp){ cel[e.consultor][si].op++; totSem[si].op++; totOp++; }
+    else     { cel[e.consultor][si].pr++; totSem[si].pr++; totPr++; }
+  });
+  return { semanas, consultores, cel, totSem, totOp, totPr, eventos };
+}
+
 // Parse local de datas sem bug de timezone
 function parseDate(s) {
   if (!s) return null;
@@ -6156,7 +6235,7 @@ async function sbLoad() {
           if (!p.status2) p.status2 = calcStatus2(p);
           if (p.valorOT  === undefined || p.valorOT === '') p.valorOT  = p.valor || '';
           if (p.valorRec === undefined) p.valorRec = '';
-          try { migrarMon(p); recomputeDerived(p); }
+          try { migrarMon(p); recomputeDerived(p); ensurePipeEventos(p); }
           catch(mErr) { console.warn('migrarMon falhou no projeto', p.id, mErr); if (!Array.isArray(p.monetizacoes)) p.monetizacoes = []; }
         });
         projects = prjs;
