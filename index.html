@@ -3081,12 +3081,8 @@ function buildConvListas(consFilter, curM) {
 
   // Monetizados
   let mon = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && (p.conv === 'Monetizado' || p.mon === 'Monetizado'));
-  if (curM) mon = mon.filter(p => {
-    if (!p.mesMon) return false;
-    // mesMon formato: 'Abril/2026' — compara com label/ano do curM
-    const [label, ano] = p.mesMon.split('/');
-    return label === curM.label && parseInt(ano) === curM.ano;
-  });
+  // usa o array de monetizações (conta qualquer venda no mês), não só o espelho do 1º mês
+  if (curM) mon = mon.filter(p => projMonetizouNoMes(p, curM.label, curM.ano));
   if (consFilter) mon = mon.filter(p => p.consultor === consFilter);
 
   function rowHTML(p, tipo) {
