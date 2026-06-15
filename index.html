@@ -4808,6 +4808,48 @@ function ltSetEntregaScore(id, semIdx, val) {
   buildLeadTime();
 }
 
+// ── SCORE DE ENTREGA (novo) — escala única 0–100, cores 80+/70-80/<70 ──
+const _SCORE_LABELS = ['Gr','Ko','1E','2E','3E','4E','Dc'];
+function _scoreColor(s){ if(s===''||s===null||s===undefined||isNaN(parseFloat(s)))return 'var(--text-hint)'; s=parseFloat(s); if(s>=80)return 'var(--green)'; if(s>=70)return 'var(--amber)'; return 'var(--red)'; }
+function _scoreBg(s){ if(s===''||s===null||s===undefined||isNaN(parseFloat(s)))return 'var(--surface3)'; s=parseFloat(s); if(s>=80)return 'rgba(22,163,74,.15)'; if(s>=70)return 'rgba(180,83,9,.15)'; return 'rgba(212,0,26,.15)'; }
+function _ltScoreBlocksHTML(p){
+  const ent = p.entregas || {};
+  return [0,1,2,3,4,5,6].map(function(i){
+    const e = ent[i]||ent[String(i)]||{};
+    const has = e.score!==undefined && e.score!=='';
+    const s = has ? parseFloat(e.score) : null;
+    const txt = has ? s : _SCORE_LABELS[i];
+    return '<div title="'+SEM_NOMES[i]+(has?': '+s:' (sem score)')+'" style="width:26px;height:22px;border-radius:3px;background:'+(has?_scoreBg(s):'var(--surface3)')+';display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:'+(has?_scoreColor(s):'var(--text-hint)')+';">'+txt+'</div>';
+  }).join('');
+}
+function ltScoreSel(id){
+  const sel=document.getElementById('lt-score-sel-'+id);
+  const inp=document.getElementById('lt-score-inp-'+id);
+  const p=projects.find(x=>String(x.id)===String(id));
+  if(!sel||!inp||!p)return;
+  const si=parseInt(sel.value);
+  const e=(p.entregas&&(p.entregas[si]||p.entregas[String(si)]))||{};
+  const sc=(e.score!==undefined&&e.score!=='')?e.score:'';
+  inp.value=sc;
+  inp.style.color=_scoreColor(sc); inp.style.background=_scoreBg(sc); inp.style.borderColor=(sc!==''?_scoreColor(sc):'var(--border)');
+}
+function ltScoreSave(id){
+  const sel=document.getElementById('lt-score-sel-'+id);
+  const inp=document.getElementById('lt-score-inp-'+id);
+  const p=projects.find(x=>String(x.id)===String(id));
+  if(!sel||!inp||!p)return;
+  let v=inp.value.trim();
+  if(v!==''){ let n=parseFloat(v); if(isNaN(n)){v='';} else {v=Math.max(0,Math.min(100,n));} inp.value=v; }
+  const si=parseInt(sel.value);
+  if(!p.entregas)p.entregas={};
+  if(!p.entregas[si])p.entregas[si]={real:'',obs:'',score:''};
+  p.entregas[si].score=v;
+  upd();
+  inp.style.color=_scoreColor(v); inp.style.background=_scoreBg(v); inp.style.borderColor=(v!==''?_scoreColor(v):'var(--border)');
+  const blocks=document.getElementById('lt-score-blocks-'+id);
+  if(blocks)blocks.innerHTML=_ltScoreBlocksHTML(p);
+}
+
 function ltSetField(id, field, val) {
   const p = projects.find(x => String(x.id) === String(id));
   if (!p) return;
@@ -5135,85 +5177,24 @@ function buildLeadTime() {
           + ['—','Verde','Amarelo','Vermelho'].map(f => '<option' + ((p.flag||'—')===f?' selected':'') + '>' + f + '</option>').join('')
           + '</select>'
           + '</td>'
-          // Score da entrega
+          // Score da entrega (seletor próprio + escala única 0–100)
           + (function() {
               const ent = p.entregas || {};
-              const LABELS=['Gr','Ko','1E','2E','3E','4E','Dc'];
-              // Escala por etapa: 0=Kickoff(0-9), demais 0-100%
-              const SCALE = [9, 100, 100, 100, 100, 100, 100]; // max por etapa
-              // Limiares de classificação por etapa
-              // Kickoff: [8.5,7,5] | demais: [90,75,55]
-              const THRESHOLDS = [
-                [8.5, 7, 5],      // 0 Kickoff
-                [90, 75, 55],     // 1 Pesquisa Mercado
-                [90, 75, 55],     // 2 Mídia Paga
-                [90, 75, 55],     // 3 Vendas
-                [90, 75, 55],     // 4 (extra)
-                [90, 75, 55],     // 5 (extra)
-                [90, 75, 55],     // 6 Decolagem
-              ];
-              const ETAPA_LABELS = ['Kickoff','Pesquisa','Mídia Paga','Vendas','4ª Entrega','5ª Entrega','Decolagem'];
-
-              function scoreColor(s, etapaIdx) {
-                if (!s && s !== 0) return 'var(--text-hint)';
-                const [t1,t2,t3] = THRESHOLDS[etapaIdx];
-                if (s >= t1) return 'var(--green)';
-                if (s >= t2) return 'rgba(34,197,94,.7)';
-                if (s >= t3) return 'var(--amber)';
-                return 'var(--red)';
-              }
-              function scoreBg(s, etapaIdx) {
-                if (!s && s !== 0) return 'var(--surface2)';
-                const [t1,t2,t3] = THRESHOLDS[etapaIdx];
-                if (s >= t1) return 'rgba(34,197,94,.18)';
-                if (s >= t2) return 'rgba(34,197,94,.08)';
-                if (s >= t3) return 'rgba(251,191,36,.15)';
-                return 'rgba(239,68,68,.18)';
-              }
-              function scoreLabel(s, etapaIdx) {
-                if (!s && s !== 0) return '';
-                const [t1,t2,t3] = THRESHOLDS[etapaIdx];
-                if (s >= t1) return 'Excelente';
-                if (s >= t2) return 'Bom';
-                if (s >= t3) return 'Regular';
-                return 'Insuficiente';
-              }
-
-              // Etapa ativa (padrão = primeira sem data real)
-              const selIdx = (() => { for(let i=0;i<=6;i++){const e=ent[i]||ent[String(i)];if(!e||!e.real)return i;} return 6; })();
-              const curScore=(ent[selIdx]||ent[String(selIdx)]||{}).score||'';
-              const curNum = curScore !== '' ? parseFloat(curScore) : null;
-              const maxVal = SCALE[selIdx];
-              const placeholder = selIdx === 0 ? '0-9' : '0-100%';
-
-              // Blocos visuais
-              const blocks=[0,1,2,3,4,5,6].map(i=>{
-                const e=ent[i]||ent[String(i)]||{};
-                const s=e.score!==undefined&&e.score!==''?parseFloat(e.score):null;
-                const isActive=i===selIdx;
-                const bg=s!==null?scoreBg(s,i):'var(--surface3)';
-                const txt=s!==null?s:LABELS[i];
-                const border=isActive?'2px solid #aaa':'2px solid transparent';
-                return '<div title="'+ETAPA_LABELS[i]+': '+(s!==null?s+' - '+scoreLabel(s,i):'sem score')+'" style="display:flex;flex-direction:column;align-items:center;gap:1px;">'
-                  +'<div style="width:26px;height:22px;border-radius:3px;background:'+bg+';display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:'+(s!==null?scoreColor(s,i):'var(--text-hint)')+';border:'+border+'">'+txt+'</div>'
-                  +'</div>';
-              }).join('');
-
-              const cBg = curNum !== null ? scoreBg(curNum, selIdx) : 'var(--surface2)';
-              const cColor = curNum !== null ? scoreColor(curNum, selIdx) : 'var(--text-hint)';
-              const cLabel = curNum !== null ? scoreLabel(curNum, selIdx) : '';
-
-              return '<td style="padding:6px 8px;min-width:190px;">'
-                +'<div style="display:flex;gap:2px;margin-bottom:5px;">'+blocks+'</div>'
-                +'<div style="font-size:9px;color:var(--text-hint);margin-bottom:3px;">'+ETAPA_LABELS[selIdx]+' · max: '+maxVal+(selIdx>0?'%':' pts')+'</div>'
-                +'<div style="display:flex;gap:4px;align-items:center;">'
-                +'<input type="number" min="0" max="'+maxVal+'" step="'+(selIdx===0?'0.5':'1')+'" class="sel" '
-                +'style="font-size:13px;font-weight:700;flex:1;text-align:center;background:'+cBg+';color:'+cColor+';border:1px solid '+(curNum!==null?cColor:'var(--border)')+';" '
-                +'placeholder="'+placeholder+'" value="'+(curScore||'')+'" '
-                +'onchange="const _s=document.getElementById(\'lt-sel-'+p.id+'\');ltSetEntregaScore('+p.id+',(_s&&_s.value!==\'\')?(parseInt(_s.value)):('+selIdx+'),this.value)">'
-                +(cLabel?'<span style="font-size:9px;font-weight:700;color:'+cColor+';white-space:nowrap;">'+cLabel+'</span>':'')
-                +'</div>'
-                +'</td>';
+              // entrega selecionada por padrão: primeira sem score
+              let selIdx = 0;
+              for (let i = 0; i <= 6; i++) { const e = ent[i]||ent[String(i)]||{}; if (e.score===undefined||e.score==='') { selIdx=i; break; } selIdx=i; }
+              const cur = (ent[selIdx]||ent[String(selIdx)]||{}).score;
+              const curV = (cur!==undefined&&cur!=='') ? cur : '';
+              let h = '<td style="padding:6px 8px;min-width:200px;">';
+              h += '<div id="lt-score-blocks-'+p.id+'" style="display:flex;gap:2px;margin-bottom:5px;">'+_ltScoreBlocksHTML(p)+'</div>';
+              h += '<select class="sel" id="lt-score-sel-'+p.id+'" style="width:100%;font-size:11px;margin-bottom:4px;" onchange="ltScoreSel('+p.id+')">';
+              h += [0,1,2,3,4,5,6].map(function(i){ return '<option value="'+i+'"'+(i===selIdx?' selected':'')+'>'+SEM_NOMES[i]+'</option>'; }).join('');
+              h += '</select>';
+              h += '<input type="number" min="0" max="100" step="1" id="lt-score-inp-'+p.id+'" class="sel" '
+                + 'style="font-size:13px;font-weight:700;width:100%;text-align:center;background:'+_scoreBg(curV)+';color:'+_scoreColor(curV)+';border:1px solid '+(curV!==''?_scoreColor(curV):'var(--border)')+';" '
+                + 'placeholder="0–100" value="'+curV+'" onchange="ltScoreSave('+p.id+')">';
+              h += '</td>';
+              return h;
             })()
           // Oportunidade
           + '<td style="padding:6px 8px;">'
