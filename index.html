@@ -426,7 +426,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
   <!-- Mês atual -->
   <div style="margin-bottom:1rem;">
     <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:.6rem;" id="ov-mes-label">Mês atual</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.8rem;">
       <!-- Projetos Iniciados -->
       <div class="card" style="margin:0;">
         <div class="card-title">Projetos iniciados</div>
@@ -443,6 +443,15 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
         <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;">
           <span style="font-size:11px;"><span style="font-weight:700;color:var(--green);" id="ov-fin-mon">0</span> <span style="color:var(--text-hint);">monetizados</span></span>
           <span style="font-size:11px;"><span style="font-weight:700;color:var(--red);" id="ov-fin-nmon">0</span> <span style="color:var(--text-hint);">não monetizados</span></span>
+        </div>
+      </div>
+      <!-- Projetos em andamento -->
+      <div class="card" style="margin:0;">
+        <div class="card-title">Em andamento</div>
+        <div style="font-size:32px;font-weight:700;color:var(--amber);" id="ov-andamento-mes">0</div>
+        <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;">
+          <span style="font-size:11px;"><span style="font-weight:700;color:var(--green);" id="ov-andamento-mon">0</span> <span style="color:var(--text-hint);">monetizados</span></span>
+          <span style="font-size:11px;"><span style="font-weight:700;color:var(--text-muted);" id="ov-andamento-nmon">0</span> <span style="color:var(--text-hint);">não monetizados</span></span>
         </div>
       </div>
     </div>
@@ -474,6 +483,14 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
       <div class="card-title">Projetos por tier</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;" id="ov-tiers"></div>
     </div>
+  </div>
+  <!-- Motivos de Perda -->
+  <div class="card" style="margin-bottom:1rem;">
+    <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:.8rem;flex-wrap:wrap;">
+      <div class="card-title" style="margin:0;">Motivos de perda</div>
+      <span style="font-size:11px;color:var(--text-hint);">Volume por motivo · <b id="ov-motivos-total" style="color:var(--text);">0</b> projetos</span>
+    </div>
+    <div id="ov-motivos"></div>
   </div>
   <!-- Carga por consultor -->
   <div class="card" style="margin-bottom:0;">
@@ -1141,6 +1158,28 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
 var _carregandoInicial = false; // flag de carga inicial (declarada no topo para evitar TDZ)
+
+// ── MODO VISUALIZAÇÃO (link com ?view) — somente leitura, nunca salva ──
+const VIEWER = new URLSearchParams(location.search).has('view');
+function _initViewerMode(){
+  if(!VIEWER) return;
+  document.body.classList.add('viewer');
+  var st=document.createElement('style');
+  st.textContent='body.viewer .sel,body.viewer [contenteditable]{pointer-events:none!important;background:var(--surface2)!important;opacity:.6;}'
+    +'body.viewer [contenteditable]{caret-color:transparent;}'
+    +'body.viewer .add-project-btn{display:none!important;}';
+  document.head.appendChild(st);
+  // esconde botões de escrita do cabeçalho (planilha, backup, importar)
+  document.querySelectorAll('[onclick*="atualizarPlanilha"],[onclick*="restoreBackup"],[onchange*="sbImport"]').forEach(function(el){(el.closest('label')||el).style.display='none';});
+  // banner fixo
+  var b=document.createElement('div');
+  b.textContent='👁 Modo Visualização — somente leitura (nenhuma alteração é salva)';
+  b.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#1D5FA8;color:#fff;text-align:center;font-size:12px;font-weight:700;padding:7px;letter-spacing:.03em;';
+  document.body.appendChild(b);
+  document.body.style.paddingBottom='34px';
+}
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',_initViewerMode); else _initViewerMode();
+
 
 // Helper: limpa valores de data para inputs (trata null, undefined e string "null")
 function dv(v) {
@@ -4442,6 +4481,41 @@ function buildOvAnalises(curM) {
   set('ov-fin-mes',  finalizados.length);
   set('ov-fin-mon',  finMon);
   set('ov-fin-nmon', finNMon);
+
+  // Projetos em andamento no mês (contrato ativo durante o mês selecionado)
+  const _mPrim = new Date(mesAno, mesIdx, 1);
+  const _mUlt  = new Date(mesAno, mesIdx + 1, 0);
+  const emAndamento = projects.filter(p => {
+    if (p.modelo === 'DRO') return false;
+    const di = parseDate(p.inicio); if (!di) return false;
+    const df = parseDate(p.realFim || p.prevFim);
+    return di <= _mUlt && (!df || df >= _mPrim);
+  });
+  const andMon = emAndamento.filter(p => isMonetizado(p)).length;
+  set('ov-andamento-mes',  emAndamento.length);
+  set('ov-andamento-mon',  andMon);
+  set('ov-andamento-nmon', emAndamento.length - andMon);
+
+  // Motivos de perda — volume por motivo (todos os projetos com motivo preenchido)
+  (function(){
+    const box = document.getElementById('ov-motivos');
+    if (!box) return;
+    const cont = {};
+    projects.forEach(p => { const m = (p.motivo||'').trim(); if (m) cont[m] = (cont[m]||0) + 1; });
+    const arr = Object.keys(cont).map(k => ({motivo:k, n:cont[k]})).sort((a,b)=>b.n-a.n);
+    const total = arr.reduce((s,x)=>s+x.n,0);
+    const totEl = document.getElementById('ov-motivos-total'); if (totEl) totEl.textContent = total;
+    if (!arr.length) { box.innerHTML = '<div style="font-size:12px;color:var(--text-hint);padding:8px 0;">Nenhum motivo de perda registrado.</div>'; return; }
+    const max = arr[0].n;
+    box.innerHTML = arr.map(x => {
+      const pct = Math.max(4, Math.round(x.n/max*100));
+      return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px;">'
+        + '<div style="flex:0 0 160px;font-size:11px;color:var(--text);text-align:right;line-height:1.2;">'+x.motivo+'</div>'
+        + '<div style="flex:1;background:var(--surface3);border-radius:4px;height:18px;overflow:hidden;"><div style="width:'+pct+'%;height:100%;background:var(--accent);border-radius:4px;"></div></div>'
+        + '<div style="flex:0 0 28px;font-size:12px;font-weight:700;color:var(--text);text-align:right;">'+x.n+'</div>'
+        + '</div>';
+    }).join('');
+  })();
   const ovMesLbl = document.getElementById('ov-mes-label');
   if (ovMesLbl) ovMesLbl.textContent = mesLabel;
 
@@ -6285,6 +6359,7 @@ function setSyncStatus(msg, color) {
 
 // ── salva com debounce de 1.5s ──
 function sbScheduleSave() {
+  if (VIEWER) return; // modo visualização: nunca salva
   if (typeof _carregandoInicial !== 'undefined' && _carregandoInicial) return; // não salva durante carga inicial
   clearTimeout(sbSaveTimer);
   setSyncStatus('Salvando…', 'var(--amber)');
@@ -6343,6 +6418,7 @@ async function syncSheets() {
 }
 
 async function sbSave() {
+  if (VIEWER) return; // modo visualização: nunca grava no Supabase
   sbPendingChanges = true;
   try {
     console.log(`sbSave: salvando ${projects.length} projetos no Supabase…`);
