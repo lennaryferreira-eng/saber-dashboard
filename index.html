@@ -426,7 +426,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
   <!-- Mês atual -->
   <div style="margin-bottom:1rem;">
     <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:.6rem;" id="ov-mes-label">Mês atual</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.8rem;">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.8rem;">
       <!-- Projetos Iniciados -->
       <div class="card" style="margin:0;">
         <div class="card-title">Projetos iniciados</div>
@@ -449,10 +449,12 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
       <div class="card" style="margin:0;">
         <div class="card-title">Em andamento</div>
         <div style="font-size:32px;font-weight:700;color:var(--amber);" id="ov-andamento-mes">0</div>
-        <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;">
-          <span style="font-size:11px;"><span style="font-weight:700;color:var(--green);" id="ov-andamento-mon">0</span> <span style="color:var(--text-hint);">monetizados</span></span>
-          <span style="font-size:11px;"><span style="font-weight:700;color:var(--text-muted);" id="ov-andamento-nmon">0</span> <span style="color:var(--text-hint);">não monetizados</span></span>
-        </div>
+      </div>
+      <!-- Reembolsos no mês -->
+      <div class="card" style="margin:0;">
+        <div class="card-title">Reembolsos</div>
+        <div style="font-size:32px;font-weight:700;color:var(--accent);" id="ov-reembolsos-mes">0</div>
+        <div style="font-size:10px;color:var(--text-hint);margin-top:8px;">pedidos no mês</div>
       </div>
     </div>
   </div>
@@ -488,7 +490,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
   <div class="card" style="margin-bottom:1rem;">
     <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:.8rem;flex-wrap:wrap;">
       <div class="card-title" style="margin:0;">Motivos de perda</div>
-      <span style="font-size:11px;color:var(--text-hint);">Volume por motivo · <b id="ov-motivos-total" style="color:var(--text);">0</b> projetos</span>
+      <span style="font-size:11px;color:var(--text-hint);">Volume por motivo · <b id="ov-motivos-total" style="color:var(--text);">0</b> projetos · <b id="ov-reembolsos-motivos" style="color:var(--accent);">0</b> reembolsos no mês</span>
     </div>
     <div id="ov-motivos"></div>
   </div>
@@ -4482,30 +4484,25 @@ function buildOvAnalises(curM) {
   set('ov-fin-mon',  finMon);
   set('ov-fin-nmon', finNMon);
 
-  // Projetos em andamento no mês (contrato ativo durante o mês selecionado)
-  const _mPrim = new Date(mesAno, mesIdx, 1);
-  const _mUlt  = new Date(mesAno, mesIdx + 1, 0);
-  const emAndamento = projects.filter(p => {
-    if (p.modelo === 'DRO') return false;
-    const di = parseDate(p.inicio); if (!di) return false;
-    const df = parseDate(p.realFim || p.prevFim);
-    return di <= _mUlt && (!df || df >= _mPrim);
-  });
-  const andMon = emAndamento.filter(p => isMonetizado(p)).length;
-  set('ov-andamento-mes',  emAndamento.length);
-  set('ov-andamento-mon',  andMon);
-  set('ov-andamento-nmon', emAndamento.length - andMon);
+  // Projetos em andamento no mês — mesma regra de "Projetos no Prazo" (mesesAtivos), exclui DRO
+  const emAndamento = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && mesesAtivos(p).includes(mesIdx));
+  set('ov-andamento-mes', emAndamento.length);
 
-  // Motivos de perda — volume por motivo (todos os projetos com motivo preenchido)
+  // Reembolsos no mês — conta pela data do pedido de reembolso (evento com data própria)
+  const reembMes = projects.filter(p => { const dr = parseDate(p.dataReembolso); return dr && dr.getMonth() === mesIdx && dr.getFullYear() === mesAno; }).length;
+  set('ov-reembolsos-mes', reembMes);
+  set('ov-reembolsos-motivos', reembMes);
+
+  // Motivos de perda — volume por motivo, só entre os projetos em andamento no mês
   (function(){
     const box = document.getElementById('ov-motivos');
     if (!box) return;
     const cont = {};
-    projects.forEach(p => { const m = (p.motivo||'').trim(); if (m) cont[m] = (cont[m]||0) + 1; });
+    emAndamento.forEach(p => { const m = (p.motivo||'').trim(); if (m) cont[m] = (cont[m]||0) + 1; });
     const arr = Object.keys(cont).map(k => ({motivo:k, n:cont[k]})).sort((a,b)=>b.n-a.n);
     const total = arr.reduce((s,x)=>s+x.n,0);
     const totEl = document.getElementById('ov-motivos-total'); if (totEl) totEl.textContent = total;
-    if (!arr.length) { box.innerHTML = '<div style="font-size:12px;color:var(--text-hint);padding:8px 0;">Nenhum motivo de perda registrado.</div>'; return; }
+    if (!arr.length) { box.innerHTML = '<div style="font-size:12px;color:var(--text-hint);padding:8px 0;">Nenhum motivo de perda entre os projetos em andamento no mês.</div>'; return; }
     const max = arr[0].n;
     box.innerHTML = arr.map(x => {
       const pct = Math.max(4, Math.round(x.n/max*100));
@@ -5304,11 +5301,15 @@ function buildLeadTime() {
           + ['Monetizado','Não monetizado'].map(o => '<option' + ((p.conv||'')===o?' selected':'') + '>' + o + '</option>').join('')
           + '</select>'
           + '</td>'
-          // Motivo perda
+          // Motivo perda + data do pedido de reembolso
           + '<td style="padding:6px 8px;">'
           + '<input type="text" class="sel" style="font-size:11px;width:100%;" placeholder="Motivo" '
           + 'value="' + (p.motivo||'') + '" '
           + 'onchange="ltSetField(' + p.id + ',\'motivo\',this.value)">'
+          + '<div style="font-size:9px;color:var(--text-hint);margin:4px 0 1px;">Pedido de reembolso</div>'
+          + '<input type="date" class="sel" style="font-size:10px;width:100%;" '
+          + 'value="' + dv(p.dataReembolso) + '" '
+          + 'onchange="ltSetField(' + p.id + ',\'dataReembolso\',this.value)">'
           + '</td>'
           // Próximo contato
           + '<td style="padding:6px 8px;">'
