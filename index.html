@@ -713,7 +713,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
   <div class="card"><div class="card-title">Evolução NPS — 2026</div><div class="chart-wrap"><canvas id="npsChart" role="img" aria-label="NPS 2026">NPS</canvas></div></div>
   <div class="card">
     <div class="card-title">Respostas por projeto monetizado</div>
-    <div class="tbl-wrap"><table><thead><tr><th>Finalização</th><th>Projeto</th><th>Consultor</th><th>Nota (0–10)</th><th>Categoria</th><th>Data Resposta</th><th>Comentário</th></tr></thead><tbody id="nps-tbody"></tbody></table></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Finalização</th><th>Projeto</th><th>Consultor</th><th>Nota (0–10)</th><th>Categoria</th><th>Data Resposta</th><th>Comentário</th><th>Auditoria final</th></tr></thead><tbody id="nps-tbody"></tbody></table></div>
   </div>
 </section>
 
@@ -1167,7 +1167,8 @@ function _initViewerMode(){
   if(!VIEWER) return;
   document.body.classList.add('viewer');
   var st=document.createElement('style');
-  st.textContent='body.viewer .sel,body.viewer [contenteditable]{pointer-events:none!important;background:var(--surface2)!important;opacity:.6;}'
+  st.textContent='body.viewer .sel,body.viewer [contenteditable],body.viewer input[type=checkbox]{pointer-events:none!important;opacity:.55;}'
+    +'body.viewer .sel,body.viewer [contenteditable]{background:var(--surface2)!important;}'
     +'body.viewer [contenteditable]{caret-color:transparent;}'
     +'body.viewer .add-project-btn{display:none!important;}';
   document.head.appendChild(st);
@@ -3585,17 +3586,20 @@ function buildNpsTable() {
 
   const tbody = document.getElementById('nps-tbody');
   calcNps(); // atualiza cards com filtros ativos
-  if (!base.length) { tbody.innerHTML = emptyRow(7, 'Nenhum projeto finalizado na base'); return; }
+  if (!base.length) { tbody.innerHTML = emptyRow(8, 'Nenhum projeto finalizado na base'); return; }
   tbody.innerHTML = base.map(p => {
     const nd = npsData[String(p.id)] || {nota:'', comentario:'', dataResp:''};
+    const a = nd.audit || {};
     const rowStyle = '';
     const mesBadge = '';
+    const chk = (key,label) => `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;"><input type="checkbox" ${a[key]?'checked':''} onchange="saveNpsAudit('${p.id}','${key}',this.checked)" style="cursor:pointer;">${label}</label>`;
     return `<tr style="${rowStyle}">
       <td>${fmtD(p.realFim || p.prevFim) || '—'}</td><td>${p.nome||'—'}</td><td>${p.consultor||'—'}</td>
       <td><input type="number" min="0" max="10" class="sel" style="width:55px" value="${nd.nota}" data-nid="${p.id}" onchange="saveNpsNota(this)" placeholder="—"></td>
       <td class="nps-cat-${p.id}">${npsCat(nd.nota)}</td>
       <td><input type="date" class="sel" style="width:130px;font-size:11px;" value="${dv(nd.dataResp)}" data-nid="${p.id}" onchange="saveNpsData(this)"></td>
       <td contenteditable="true" data-ncoment="${p.id}" onblur="saveNpsComent(this)">${nd.comentario||'—'}</td>
+      <td><div style="display:flex;flex-direction:column;gap:3px;font-size:10px;color:var(--text-muted);">${chk('drive','Drive')}${chk('materiais','Materiais enviados')}${chk('nps','NPS enviado')}</div></td>
     </tr>`;
   }).join('');
 }
@@ -3610,6 +3614,13 @@ function saveNpsData(el) {
   if (!npsData[id]) npsData[id] = {nota:'', comentario:'', dataResp:''};
   npsData[id].dataResp = el.value;
   calcNps(); upd();
+}
+
+function saveNpsAudit(id, key, val) {
+  if (!npsData[id]) npsData[id] = {nota:'', comentario:'', dataResp:''};
+  if (!npsData[id].audit) npsData[id].audit = {};
+  npsData[id].audit[key] = val;
+  upd();
 }
 
 function saveNpsNota(el) {
