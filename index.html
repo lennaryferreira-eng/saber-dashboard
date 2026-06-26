@@ -1605,6 +1605,15 @@ function mesesAtivos(p) {
 // ═══════════════════════════════════
 //  PRAZO STATUS (por projeto)
 // ═══════════════════════════════════
+// Data de finalização REAL do projeto: a Decolagem (entregas[6].real) é a principal;
+// se não houver, usa a Conclusão Real (realFim).
+function dataFimReal(p) {
+  const ent = p.entregas || {};
+  if (ent[6] && ent[6].real) return ent[6].real;
+  if (p.realFim) return p.realFim;
+  return null;
+}
+
 function prazoStatus(p) {
   if (!p.inicio) return {ok: null, html: '<span style="color:var(--text-hint)">—</span>', dias: null};
   const dIni  = parseDate(p.inicio);
@@ -1627,10 +1636,11 @@ function prazoStatus(p) {
   // ── Estruturação Estratégica: 45 dias + 7 de "suspiro" = limite de 52 dias ──
   const lim52 = new Date(dIni.getTime() + 52 * 864e5);
 
-  // Fechado: finalizou dentro de 52 dias do início?
-  if (p.realFim) {
-    const dReal = parseDate(p.realFim);
-    const dias  = diffDays(p.inicio, p.realFim);
+  // Finalizado: usa a data da Decolagem (ou Conclusão Real). Finalizou dentro de 52 dias do início?
+  const fim = dataFimReal(p);
+  if (fim) {
+    const dReal = parseDate(fim);
+    const dias  = diffDays(p.inicio, fim);
     const ok    = dReal <= lim52;
     return {
       ok,
@@ -1654,9 +1664,10 @@ function prazoStatus(p) {
   return { ok, dias: diasPrev, html: `<span class="badge b-blue" style="margin-top:0">${rest}d p/ o limite</span>` };
 }
 
-// Mês onde o veredito de prazo conta: finalização (fechado) ou mês atual (aberto)
+// Mês onde o veredito de prazo conta: finalização (Decolagem/real) ou mês atual (aberto)
 function prazoVerdictMes(p) {
-  if (p.realFim) { const d = parseDate(p.realFim); return d ? {idx: d.getMonth(), ano: d.getFullYear()} : null; }
+  const fim = dataFimReal(p);
+  if (fim) { const d = parseDate(fim); return d ? {idx: d.getMonth(), ano: d.getFullYear()} : null; }
   const h = new Date(); return {idx: h.getMonth(), ano: h.getFullYear()};
 }
 
@@ -3461,15 +3472,16 @@ function calcPrazo() {
     let ok = 0, nok = 0;
 
     const rows = doMes.map(p => {
+      const fim = dataFimReal(p);
       const st  = prazoStatusNoMes(p, m.idx, m.ano);
-      const idx = p.realFim ? SEMANAS.length : semanaIdx(p);
-      const sNome = p.realFim ? '✓ Concluído' : idx >= 0 && idx < SEMANAS.length ? SEMANAS[idx] : '—';
+      const idx = fim ? SEMANAS.length : semanaIdx(p);
+      const sNome = fim ? '✓ Concluído' : idx >= 0 && idx < SEMANAS.length ? SEMANAS[idx] : '—';
       const dec = p.inicio ? Math.round((hoje - parseDate(p.inicio)) / 864e5) : 0;
-      const diasH = p.realFim ? (st.dias + 'd') : (dec >= 0 ? dec + 'd decorridos' : 'Não iniciado');
+      const diasH = fim ? (st.dias + 'd') : (dec >= 0 ? dec + 'd decorridos' : 'Não iniciado');
       if (st.ok === true) ok++; else if (st.ok === false) nok++;
       return `<tr>
         <td>${p.nome||'—'}</td><td>${p.consultor||'—'}</td>
-        <td>${p.inicio||'—'}</td><td>${p.prevFim||'—'}</td><td>${p.realFim||'—'}</td>
+        <td>${p.inicio||'—'}</td><td>${p.prevFim||'—'}</td><td>${fim||'—'}</td>
         <td style="font-size:11px">${sNome}</td>
         <td style="white-space:nowrap">${diasH}</td>
         <td>${st.html}</td>
@@ -3495,7 +3507,7 @@ function calcPrazo() {
   }, 'prazo');
 
   const taxaAno = totalAno > 0 ? Math.round(okAno / totalAno * 100) : null;
-  const diasList = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && p.inicio && p.realFim).map(p => diffDays(p.inicio, p.realFim)).filter(d => d !== null && d >= 0);
+  const diasList = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && p.inicio && dataFimReal(p)).map(p => diffDays(p.inicio, dataFimReal(p))).filter(d => d !== null && d >= 0);
   const avgDias   = diasList.length ? Math.round(diasList.reduce((a,b)=>a+b,0)/diasList.length) : null;
   // Filtra pelo mês selecionado para todos os cards
   const curPrazo  = filters['prazo'];
