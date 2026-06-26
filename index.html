@@ -1606,13 +1606,14 @@ function mesesAtivos(p) {
 //  PRAZO STATUS (por projeto)
 // ═══════════════════════════════════
 function prazoStatus(p) {
-  if (!p.inicio || !p.prevFim) return {ok: null, html: '<span style="color:var(--text-hint)">—</span>', dias: null};
+  if (!p.inicio) return {ok: null, html: '<span style="color:var(--text-hint)">—</span>', dias: null};
   const dIni  = parseDate(p.inicio);
-  const dPrev = parseDate(p.prevFim);
+  const dPrev = p.prevFim ? parseDate(p.prevFim) : null;
   const hoje  = new Date(); hoje.setHours(0,0,0,0);
 
   // ── DRO: prazo = duração do contrato (início → fim do contrato) ──
   if (p.modelo === 'DRO') {
+    if (!dPrev) return {ok: null, html: '<span style="color:var(--text-hint)">—</span>', dias: null};
     const rest = Math.round((dPrev - hoje) / 864e5);
     if (p.realFim) {
       const dias = diffDays(p.inicio, p.realFim);
@@ -1623,13 +1624,14 @@ function prazoStatus(p) {
     return { ok: true, dias: rest, html: `<span class="badge b-blue" style="margin-top:0">${rest}d restantes</span>` };
   }
 
-  // ── Estruturação Estratégica: prazo = 45 dias ──
-  const limite   = new Date(dIni.getTime() + 45 * 864e5);
+  // ── Estruturação Estratégica: 45 dias + 7 de "suspiro" = limite de 52 dias ──
+  const lim52 = new Date(dIni.getTime() + 52 * 864e5);
 
+  // Fechado: finalizou dentro de 52 dias do início?
   if (p.realFim) {
     const dReal = parseDate(p.realFim);
     const dias  = diffDays(p.inicio, p.realFim);
-    const ok    = dReal <= dPrev;
+    const ok    = dReal <= lim52;
     return {
       ok,
       dias,
@@ -1639,15 +1641,34 @@ function prazoStatus(p) {
     };
   }
 
-  const diasPrev = diffDays(p.inicio, p.prevFim);
-  const ok       = dPrev <= limite;
-  const rest     = Math.round((dPrev - hoje) / 864e5);
+  // Aberto: já atrasado se a previsão passar de 52 dias OU se já passou de 52 dias sem fechar
+  const diasPrev = p.prevFim ? diffDays(p.inicio, p.prevFim) : null;
   const dec      = Math.round((hoje - dIni) / 864e5);
+  const rest     = Math.round((lim52 - hoje) / 864e5);
+  const projLate = (hoje > lim52) || (dPrev && dPrev > lim52);
+  const ok       = !projLate;
 
   if (dec < 0) return { ok, dias: diasPrev, html: `<span class="badge b-gray" style="margin-top:0">Inicia em ${Math.abs(dec)}d</span>` };
-  if (!ok) return { ok, dias: diasPrev, html: `<span class="badge b-red" style="margin-top:0">⚠ Prev. ${diasPrev}d — fora do prazo</span>` };
-  if (rest <= 7) return { ok, dias: diasPrev, html: `<span class="badge b-amber" style="margin-top:0">⚡ ${rest}d restantes</span>` };
-  return { ok, dias: diasPrev, html: `<span class="badge b-blue" style="margin-top:0">${rest}d restantes</span>` };
+  if (!ok)     return { ok, dias: diasPrev, html: `<span class="badge b-red" style="margin-top:0">⚠ projeção fora do prazo (&gt;52d)</span>` };
+  if (rest <= 7) return { ok, dias: diasPrev, html: `<span class="badge b-amber" style="margin-top:0">⚡ ${rest}d p/ o limite</span>` };
+  return { ok, dias: diasPrev, html: `<span class="badge b-blue" style="margin-top:0">${rest}d p/ o limite</span>` };
+}
+
+// Mês onde o veredito de prazo conta: finalização (fechado) ou mês atual (aberto)
+function prazoVerdictMes(p) {
+  if (p.realFim) { const d = parseDate(p.realFim); return d ? {idx: d.getMonth(), ano: d.getFullYear()} : null; }
+  const h = new Date(); return {idx: h.getMonth(), ano: h.getFullYear()};
+}
+
+// Veredito de prazo ESPECÍFICO de um mês: o atraso (✗) só aparece no mês de finalização
+// (ou no mês atual, se aberto). Nos demais meses de execução o projeto fica no prazo (✓).
+function prazoStatusNoMes(p, mIdx, mAno) {
+  const real = prazoStatus(p);
+  if (real.ok === null) return real;            // DRO/sem dados → sem veredito
+  const vm = prazoVerdictMes(p);
+  if (vm && vm.idx === mIdx && vm.ano === mAno) return real;   // mês do veredito → real (pode ser ✗)
+  // mês de execução anterior ao fechamento → no prazo
+  return { ok: true, dias: real.dias, html: '<span class="badge b-green" style="margin-top:0">✓ em execução</span>' };
 }
 
 // Prazo inline para base (simpler)
@@ -3440,7 +3461,7 @@ function calcPrazo() {
     let ok = 0, nok = 0;
 
     const rows = doMes.map(p => {
-      const st  = prazoStatus(p);
+      const st  = prazoStatusNoMes(p, m.idx, m.ano);
       const idx = p.realFim ? SEMANAS.length : semanaIdx(p);
       const sNome = p.realFim ? '✓ Concluído' : idx >= 0 && idx < SEMANAS.length ? SEMANAS[idx] : '—';
       const dec = p.inicio ? Math.round((hoje - parseDate(p.inicio)) / 864e5) : 0;
@@ -3481,10 +3502,10 @@ function calcPrazo() {
   const curMPrazo = curPrazo ? ALL_MESES.find(x => x.key === curPrazo) : null;
   let totalCard = totalAno, okCard = okAno, nokCard = nokAno;
   if (curMPrazo) {
-    const doMesFilt = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && mesesAtivos(p).includes(curMPrazo.idx) && (p.inicio||'').includes(String(curMPrazo.ano)));
+    const doMesFilt = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && mesesAtivos(p).includes(curMPrazo.idx));
     totalCard = doMesFilt.length;
-    okCard  = doMesFilt.filter(p => prazoStatus(p).ok === true).length;
-    nokCard = doMesFilt.filter(p => prazoStatus(p).ok === false).length;
+    okCard  = doMesFilt.filter(p => prazoStatusNoMes(p, curMPrazo.idx, curMPrazo.ano).ok === true).length;
+    nokCard = doMesFilt.filter(p => prazoStatusNoMes(p, curMPrazo.idx, curMPrazo.ano).ok === false).length;
   }
   set('prazo-total', totalCard); set('prazo-ok', okCard); set('prazo-nok', nokCard);
   set('prazo-avg',   avgDias !== null ? avgDias + 'd' : '—');
@@ -4378,8 +4399,8 @@ function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
   const mesesPrazo = curM ? [curM] : ALL_MESES;
   let pTotal = 0, pOk = 0;
   mesesPrazo.forEach(m => {
-    const doMes = projects.filter(p => mesesAtivos(p).includes(m.idx));
-    doMes.forEach(p => { const st = prazoStatus(p); pTotal++; if (st.ok === true) pOk++; });
+    const doMes = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && mesesAtivos(p).includes(m.idx));
+    doMes.forEach(p => { const st = prazoStatusNoMes(p, m.idx, m.ano); pTotal++; if (st.ok === true) pOk++; });
   });
   const prazoV = pTotal > 0 ? Math.round(pOk / pTotal * 100) : null;
 
