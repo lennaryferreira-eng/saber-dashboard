@@ -821,7 +821,6 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
           <th style="min-width:130px;">Oportunidade</th>
           <th style="min-width:160px;">Escopos One-time</th>
           <th style="min-width:160px;">Escopos Recorrente</th>
-          <th style="min-width:120px;">Mês Mon.</th>
           <th style="min-width:130px;">Conversão</th>
           <th style="min-width:130px;">Motivo perda</th>
           <th style="min-width:110px;">Próx. Contato</th>
@@ -4867,7 +4866,7 @@ function getLtFiltered() {
   const fConvLT  = document.getElementById('lt-f-conv')?.value    || '';
   const fMesMon  = document.getElementById('lt-f-mesmon')?.value   || '';
   if (fConvLT)  list = list.filter(p => (p.conv || '') === fConvLT);
-  if (fMesMon)  list = list.filter(p => (p.mesMon || '') === fMesMon);
+  if (fMesMon)  list = list.filter(p => (p.monetizacoes||[]).some(m => (m.mesMon||'') === fMesMon));
   if (fOport)   list = list.filter(p => (p.oport || '') === fOport);
   if (fMes)  list = list.filter(p => {
     const d = parseDate(p.inicio);
@@ -5136,7 +5135,7 @@ function buildLeadTime() {
   const selMesMon = document.getElementById('lt-f-mesmon');
   if (selMesMon) {
     const curMM = selMesMon.value;
-    const mesesMon = [...new Set(projects.map(p => p.mesMon).filter(Boolean))].sort();
+    const mesesMon = [...new Set(projects.flatMap(p => (p.monetizacoes||[]).map(m => m.mesMon)).filter(Boolean))].sort((a,b)=>_mesRank(a)-_mesRank(b));
     selMesMon.innerHTML = '<option value="">Todos</option>' + mesesMon.map(m => `<option${m===curMM?' selected':''}>${m}</option>`).join('');
   }
   if (selMes) {
@@ -5165,7 +5164,7 @@ function buildLeadTime() {
 
 
   tbody.innerHTML = list.length === 0
-    ? '<tr><td colspan="18" style="text-align:center;padding:24px;color:var(--text-hint);font-size:12px;">Nenhum projeto encontrado</td></tr>'
+    ? '<tr><td colspan="17" style="text-align:center;padding:24px;color:var(--text-hint);font-size:12px;">Nenhum projeto encontrado</td></tr>'
     : list.map(p => {
 
         // ── coluna "Registrar entrega": select simples + campo de data oculto
@@ -5298,13 +5297,7 @@ function buildLeadTime() {
           + (p.escoposRec || '').replace(/</g,'&lt;').replace(/>/g,'&gt;')
           + '</div>'
           + '</td>'
-          // Mês Monetizado
-          + '<td style="padding:6px 8px;">'
-          + '<select class="sel" style="font-size:11px;width:110px;" onchange="ltSetField(' + p.id + ',\'mesMon\',this.value)">'
-          + '<option value="">—</option>'
-          + MESES_MON_LIST.map(m => '<option' + (m === (p.mesMon||'') ? ' selected' : '') + '>' + m + '</option>').join('')
-          + '</select>'
-          + '</td>'
+          // Mês Monetizado: removido do Lead Time — fonte da verdade é a aba Monetização (array)
           // Conversão
           + '<td style="padding:6px 8px;">'
           + '<select class="sel" style="font-size:11px;width:100%;" onchange="ltSetField(' + p.id + ',\'conv\',this.value)">'
