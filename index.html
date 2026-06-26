@@ -1322,6 +1322,7 @@ function migrarMon(p){
 
 const _MES_ORDEM = {'Janeiro':1,'Fevereiro':2,'Março':3,'Abril':4,'Maio':5,'Junho':6,'Julho':7,'Agosto':8,'Setembro':9,'Outubro':10,'Novembro':11,'Dezembro':12};
 function _mesRank(mesMon){ if(!mesMon)return 999999; const[lb,an]=mesMon.split('/'); return (parseInt(an)||0)*100 + (_MES_ORDEM[lb]||0); }
+function _mesesMonProj(p){ return [...new Set((p.monetizacoes||[]).map(m=>m.mesMon).filter(Boolean))].sort((a,b)=>_mesRank(a)-_mesRank(b)).join(' · '); }
 
 // Recalcula os campos-espelho a partir do array (chamar após qualquer alteração)
 function recomputeDerived(p){
@@ -3323,7 +3324,7 @@ function buildConvListas(consFilter, curM) {
       + '<span style="font-size:11px;font-weight:600;flex:1;">' + (p.nome||'—') + '</span>'
       + '<span style="font-size:9px;font-weight:600;padding:1px 6px;border-radius:20px;border:1px solid ' + statusCor + ';color:' + statusCor + ';">' + status + '</span>'
       + '</div>'
-      + '<div style="font-size:10px;color:var(--text-hint);">' + (p.consultor||'—') + (p.mesMon ? ' · ' + p.mesMon : '') + '</div>'
+      + '<div style="font-size:10px;color:var(--text-hint);">' + (p.consultor||'—') + (_mesesMonProj(p) ? ' · ' + _mesesMonProj(p) : '') + '</div>'
       + (val ? '<div>' + val + '</div>' : '')
       + '</div>';
   }
@@ -3370,7 +3371,7 @@ function calcConv() {
     totalAno += iniciados.length; monAno += monos.length;
 
     const rows = iniciados.length
-      ? iniciados.map(p => `<tr><td>${p.nome||'—'}</td><td>${p.consultor||'—'}</td><td>${semanaPill(p)}</td><td>${statusBadge2(p)}</td><td>${convBadge(p)}</td><td>${p.mesMon||'—'}</td><td>${p.valor||'—'}</td><td>${flagHTML(p.flag)}</td></tr>`).join('')
+      ? iniciados.map(p => `<tr><td>${p.nome||'—'}</td><td>${p.consultor||'—'}</td><td>${semanaPill(p)}</td><td>${statusBadge2(p)}</td><td>${convBadge(p)}</td><td>${_mesesMonProj(p)||'—'}</td><td>${p.valor||'—'}</td><td>${flagHTML(p.flag)}</td></tr>`).join('')
       : emptyRow(8, 'Nenhum projeto iniciado em ' + m.label);
 
     return `<div class="month-card">
@@ -4368,7 +4369,7 @@ function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
   const mesesConv = curM ? [curM] : ALL_MESES;
   let convIniciados = 0, convMon = 0;
   mesesConv.forEach(m => {
-    convIniciados += projects.filter(p => p.inicio && parseDate(p.inicio)?.getMonth() === m.idx && parseDate(p.inicio)?.getFullYear() === m.ano).length;
+    convIniciados += projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && p.inicio && parseDate(p.inicio)?.getMonth() === m.idx && parseDate(p.inicio)?.getFullYear() === m.ano).length;
     convMon       += projects.filter(p => { if (p.modelo === 'DRO') return false; return projMonetizouNoMes(p, m.label, m.ano); }).length;
   });
   const convV = convIniciados > 0 ? Math.round(convMon / convIniciados * 100) : null;
