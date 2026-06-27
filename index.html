@@ -1966,6 +1966,7 @@ function restoreBackup() {
     if (data.cap_data) Object.assign(capData, data.cap_data);
     if (data.cap_manual) Object.assign(capManual, data.cap_manual);
     if (data.pdi_data) { pdiData = normalizePdi(data.pdi_data); buildPdi(); }
+    if (data.conv_base && typeof data.conv_base === 'object') Object.assign(convBaseManual, data.conv_base);
     refreshAll();
     buildLeadTime();
     upd(); // salva no Supabase
@@ -3279,6 +3280,20 @@ function buildQuarterBody(containerId, monthFn, filterKey) {
 
 
 const cspManual = {};
+// Base de conversão por consultor (padrão 10; editável em casos excepcionais)
+const convBaseManual = {};
+function getConvBase(nome) {
+  const n = parseInt(convBaseManual && convBaseManual[nome], 10);
+  return (Number.isFinite(n) && n > 0) ? n : 10;
+}
+function setConvBase(nome, val) {
+  const n = parseInt(val, 10);
+  if (!Number.isFinite(n) || n <= 0 || n === 10) delete convBaseManual[nome]; // volta ao padrão 10
+  else convBaseManual[nome] = n;
+  if (typeof sbScheduleSave === 'function' && !VIEWER) sbScheduleSave();
+  try { buildPerformance(); } catch(e){}
+  try { perfSelecionaConsultor(nome); } catch(e){}
+}
 
 function buildCspManual() {
   const grid = document.getElementById('csp-manual-grid');
@@ -6127,7 +6142,7 @@ function buildPerformance() {
     mesesConv.forEach(m => {
       convMon += projects.filter(p => p.consultor === nome && (!p.modelo || p.modelo !== 'DRO') && projMonetizouNoMes(p, m.label, m.ano)).length;
     });
-    const convBase = 10;
+    const convBase = getConvBase(nome);
     const convV = Math.round(convMon / convBase * 100);
 
     // Prazo
@@ -6327,10 +6342,11 @@ function perfSelecionaConsultor(nome) {
 
   // ── CONVERSÃO ─────────────────────────────────────────────
   const monetizados = prjsCons.filter(p => meses.some(m => projMonetizouNoMes(p, m.label, m.ano)));
-  const convBase = 10;
+  const convBase = getConvBase(nome);
+  const baseEditada = convBase !== 10;
   const txConv = Math.round(monetizados.length / convBase * 100);
   const corConv = txConv >= 40 ? 'var(--green)' : 'var(--red)';
-  const badgeConv = `<span style="color:${corConv};font-weight:700;">${txConv}% ${txConv>=40?'✓':'✗'} meta 40% (${monetizados.length}/10)</span>`;
+  const badgeConv = `<span style="color:${corConv};font-weight:700;">${txConv}% ${txConv>=40?'✓':'✗'} meta 40% (${monetizados.length}/${convBase})</span>`;
   document.getElementById('perf-conv-badge').innerHTML = badgeConv;
 
   // Projetos monetizados no período
@@ -6344,8 +6360,12 @@ function perfSelecionaConsultor(nome) {
   }).join('');
   document.getElementById('perf-conv-content').innerHTML = `
     <div style="display:flex;gap:12px;margin:12px 0;">
-      <div class="mcard c-gray" style="flex:1;padding:10px 14px;">
-        <div class="mlabel">Base fixa</div><div class="mval">10</div></div>
+      <div class="mcard c-${baseEditada?'amber':'gray'}" style="flex:1;padding:10px 14px;">
+        <div class="mlabel">Base ${baseEditada?'(ajustada)':'(padrão 10)'}</div>
+        <div class="mval" style="display:flex;align-items:center;gap:6px;">
+          <input type="number" min="1" max="20" value="${convBase}" onchange="setConvBase('${nome.replace(/'/g,"\\'")}', this.value)" style="width:50px;text-align:center;font-family:inherit;font-size:inherit;font-weight:inherit;background:transparent;border:1px solid var(--border);border-radius:6px;color:inherit;padding:2px 4px;" title="Base de projetos para o cálculo da conversão. Padrão 10 — edite só em casos excepcionais.">
+          ${baseEditada?`<button onclick="setConvBase('${nome.replace(/'/g,"\\'")}', 10)" title="Voltar ao padrão 10" style="background:none;border:none;color:var(--text-hint);cursor:pointer;font-size:11px;">↺</button>`:''}
+        </div></div>
       <div class="mcard c-green" style="flex:1;padding:10px 14px;">
         <div class="mlabel">Monetizados</div><div class="mval">${monetizados.length}</div></div>
       <div class="mcard c-${txConv>=40?'green':'red'}" style="flex:1;padding:10px 14px;">
@@ -6615,6 +6635,7 @@ async function sbSave() {
       cap_manual: JSON.stringify(capManual),
       mon_metas:  JSON.stringify(monMetas),
       pdi_data:   JSON.stringify(pdiData),
+      conv_base:  JSON.stringify(convBaseManual),
     };
     const sendPayload = async (pl) => {
       let r = await fetch(SB_URL + '/rest/v1/saber_data?id=eq.main', {
@@ -6633,14 +6654,19 @@ async function sbSave() {
       return r;
     };
     let res = await sendPayload(payload);
-    // Se a coluna pdi_data ainda não existe no Supabase, NÃO bloqueia o resto: salva sem ela
-    if (!res.ok && res.status === 400) {
+    // Se alguma coluna opcional ainda não existe no Supabase (ex.: pdi_data, conv_base),
+    // remove só a coluna que faltou e tenta de novo — nunca bloqueia o restante.
+    let _tries = 0;
+    while (!res.ok && res.status === 400 && _tries < 4) {
       const t0 = await res.clone().text().catch(() => '');
-      if (/pdi_data|PGRST204|column/i.test(t0)) {
-        console.warn('Coluna pdi_data ausente no Supabase — salvando o restante sem o PDI. Crie a coluna pdi_data (text) para persistir o PDI.');
-        const { pdi_data, ...core } = payload;
-        res = await sendPayload(core);
-      }
+      const mc = t0.match(/'([a-z_]+)' column/i) || t0.match(/column ['"]([a-z_]+)['"]/i);
+      const col = mc && mc[1];
+      if (col && Object.prototype.hasOwnProperty.call(payload, col) && /PGRST204|schema cache|could not find/i.test(t0)) {
+        console.warn('Coluna ' + col + ' ausente no Supabase — salvando sem ela. Crie a coluna ' + col + ' (text) para persistir esse dado.');
+        delete payload[col];
+        res = await sendPayload(payload);
+        _tries++;
+      } else break;
     }
     if (!res.ok) {
       const errText = await res.text();
@@ -6658,7 +6684,7 @@ async function sbSave() {
       const backup = {
         projects, nps_data: npsData, csp_manual: cspManual,
         mon_metas: monMetas, cap_data: capData, cap_manual: capManual,
-        pdi_data: pdiData,
+        pdi_data: pdiData, conv_base: convBaseManual,
         saved_at: sbLastSaved.toISOString(), total: projects.length
       };
       const backupStr = JSON.stringify(backup);
@@ -6684,7 +6710,7 @@ async function sbSave() {
         const emergency = {
           projects, nps_data: npsData, csp_manual: cspManual,
           mon_metas: monMetas, cap_data: capData, cap_manual: capManual,
-          pdi_data: pdiData,
+          pdi_data: pdiData, conv_base: convBaseManual,
           saved_at: new Date().toISOString()
         };
         localStorage.setItem('saber_emergency', JSON.stringify(emergency));
@@ -6706,7 +6732,8 @@ function sbExport() {
     cap_data: capData,
     cap_manual: capManual,
     mon_metas:  monMetas,
-    pdi_data:   pdiData
+    pdi_data:   pdiData,
+    conv_base:  convBaseManual
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
   const a    = document.createElement('a');
@@ -6730,6 +6757,7 @@ function sbImport(input) {
       if (data.cap_manual)  Object.assign(capManual, data.cap_manual);
       if (data.mon_metas)   Object.assign(monMetas,  data.mon_metas);
       if (data.pdi_data) pdiData = normalizePdi(data.pdi_data);
+      if (data.conv_base && typeof data.conv_base === 'object') Object.assign(convBaseManual, data.conv_base);
 
       buildCspManual();
       buildPdi();
@@ -6840,6 +6868,9 @@ async function sbLoad() {
       }
       if (row.pdi_data) {
         try { pdiData = normalizePdi(JSON.parse(row.pdi_data)); } catch(e){}
+      }
+      if (row.conv_base) {
+        try { const cb = JSON.parse(row.conv_base); if (cb && typeof cb === 'object') Object.assign(convBaseManual, cb); } catch(e){}
       }
     }
 
