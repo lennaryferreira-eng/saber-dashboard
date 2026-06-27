@@ -1606,12 +1606,18 @@ function mesesAtivos(p) {
 //  PRAZO STATUS (por projeto)
 // ═══════════════════════════════════
 // Data de finalização REAL do projeto: a Decolagem (entregas[6].real) é a principal;
-// se não houver, usa a Conclusão Real (realFim).
+// se não houver, usa a Conclusão Real (realFim). (Usada para EXIBIÇÃO.)
 function dataFimReal(p) {
   const ent = p.entregas || {};
   if (ent[6] && ent[6].real) return ent[6].real;
   if (p.realFim) return p.realFim;
   return null;
+}
+
+// Data de finalização para JULGAMENTO de prazo: Decolagem → Conclusão Real → Prev. Conclusão.
+// Sem nenhuma das três (só início) o projeto é "aberto de verdade" e cai na projeção de 52 dias.
+function fimPrazo(p) {
+  return dataFimReal(p) || p.prevFim || null;
 }
 
 function prazoStatus(p) {
@@ -1636,8 +1642,8 @@ function prazoStatus(p) {
   // ── Estruturação Estratégica: 45 dias + 7 de "suspiro" = limite de 52 dias ──
   const lim52 = new Date(dIni.getTime() + 52 * 864e5);
 
-  // Finalizado: usa a data da Decolagem (ou Conclusão Real). Finalizou dentro de 52 dias do início?
-  const fim = dataFimReal(p);
+  // Finalizado (ou previsto): usa Decolagem → Conclusão Real → Prev. Conclusão. Dentro de 52 dias?
+  const fim = fimPrazo(p);
   if (fim) {
     const dReal = parseDate(fim);
     const dias  = diffDays(p.inicio, fim);
@@ -1682,7 +1688,7 @@ function prazoStatusNoMes(p, mIdx, mAno) {
   const deadline = new Date(dIni.getTime() + 52 * 864e5);
   const mStart = new Date(mAno, mIdx, 1);
   const hoje = new Date(); const hojeMStart = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-  const fim = dataFimReal(p);
+  const fim = fimPrazo(p);
   const dFim = fim ? parseDate(fim) : null;
   // mês da finalização → veredito real (✓ no prazo ou ✗ fora, com os dias)
   if (dFim && dFim.getMonth() === mIdx && dFim.getFullYear() === mAno) return base;
@@ -1701,7 +1707,7 @@ function prazoNoMesCard(p, mIdx, mAno) {
   const deadline = new Date(dIni.getTime() + 52 * 864e5);
   const mStart = new Date(mAno, mIdx, 1);
   const hoje = new Date(); const hojeMStart = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-  const fim = dataFimReal(p);
+  const fim = fimPrazo(p);
   const dFim = fim ? parseDate(fim) : null;
   if (dFim && dFim.getMonth() === mIdx && dFim.getFullYear() === mAno) return true;  // mês da finalização
   return (mStart > deadline) && (dFim ? (dFim >= mStart) : (mStart <= hojeMStart));   // mês de atraso
