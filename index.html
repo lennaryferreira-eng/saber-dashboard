@@ -1643,7 +1643,8 @@ function prazoStatus(p) {
   const lim52 = new Date(dIni.getTime() + 52 * 864e5);
 
   // Finalizado (ou previsto): usa Decolagem → Conclusão Real → Prev. Conclusão. Dentro de 52 dias?
-  const fim = fimPrazo(p);
+  // Finalizado DE VERDADE (Decolagem → Conclusão Real). A previsão NÃO conta como finalização.
+  const fim = dataFimReal(p);
   if (fim) {
     const dReal = parseDate(fim);
     const dias  = diffDays(p.inicio, fim);
@@ -1657,15 +1658,14 @@ function prazoStatus(p) {
     };
   }
 
-  // Aberto: já atrasado se a previsão passar de 52 dias OU se já passou de 52 dias sem fechar
+  // Aberto: atrasado a partir da data em que passa de 52 dias do início (a previsão não esconde isso)
   const diasPrev = p.prevFim ? diffDays(p.inicio, p.prevFim) : null;
   const dec      = Math.round((hoje - dIni) / 864e5);
   const rest     = Math.round((lim52 - hoje) / 864e5);
-  const projLate = (hoje > lim52) || (dPrev && dPrev > lim52);
-  const ok       = !projLate;
+  const ok       = !(hoje > lim52);
 
   if (dec < 0) return { ok, dias: diasPrev, html: `<span class="badge b-gray" style="margin-top:0">Inicia em ${Math.abs(dec)}d</span>` };
-  if (!ok)     return { ok, dias: diasPrev, html: `<span class="badge b-red" style="margin-top:0">⚠ projeção fora do prazo (&gt;52d)</span>` };
+  if (!ok)     return { ok, dias: diasPrev, html: `<span class="badge b-red" style="margin-top:0">✗ ${dec}d — fora do prazo</span>` };
   if (rest <= 7) return { ok, dias: diasPrev, html: `<span class="badge b-amber" style="margin-top:0">⚡ ${rest}d p/ o limite</span>` };
   return { ok, dias: diasPrev, html: `<span class="badge b-blue" style="margin-top:0">${rest}d p/ o limite</span>` };
 }
@@ -1678,39 +1678,43 @@ function prazoVerdictMes(p) {
 }
 
 // Veredito de prazo ESPECÍFICO de um mês.
-// Régua: deadline = início + 52 dias (45 + 7 de suspiro). Depois do MÊS do deadline, o atraso
-// (✗) conta em TODOS os meses seguintes até a finalização. No mês da finalização, usa o veredito
-// real. Nos meses até o deadline, fica no prazo (✓ em execução).
+// Régua: deadline = início + 52 dias. O atraso (✗) começa A PARTIR DA DATA do deadline e conta
+// em todos os meses cobertos pelo período [deadline → finalização real, ou hoje se aberto].
+// No mês da finalização real, usa o veredito real. Antes do deadline, fica no prazo (✓).
 function prazoStatusNoMes(p, mIdx, mAno) {
   const base = prazoStatus(p);
   if (base.ok === null || !p.inicio) return base;   // DRO/sem dados
   const dIni = parseDate(p.inicio);
   const deadline = new Date(dIni.getTime() + 52 * 864e5);
   const mStart = new Date(mAno, mIdx, 1);
-  const hoje = new Date(); const hojeMStart = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-  const fim = fimPrazo(p);
+  const mEnd   = new Date(mAno, mIdx + 1, 0);
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const fim = dataFimReal(p);                 // finalização REAL (previsão não conta)
   const dFim = fim ? parseDate(fim) : null;
-  // mês da finalização → veredito real (✓ no prazo ou ✗ fora, com os dias)
+  // mês da finalização real → veredito real (✓ no prazo ou ✗ fora, com os dias)
   if (dFim && dFim.getMonth() === mIdx && dFim.getFullYear() === mAno) return base;
-  // mês de atraso: passou do mês do deadline; se finalizado, até o mês de finalização; se aberto, até o mês atual
-  const overdue = (mStart > deadline) && (dFim ? (dFim >= mStart) : (mStart <= hojeMStart));
+  // atraso: o período [deadline, fim/hoje] cobre este mês?
+  const endpoint = dFim || hoje;
+  const overdue = (endpoint > deadline) && (deadline <= mEnd) && (endpoint >= mStart);
   if (overdue) return { ok: false, dias: base.dias, html: '<span class="badge b-red" style="margin-top:0">✗ atrasado</span>' };
   return { ok: true, dias: base.dias, html: '<span class="badge b-green" style="margin-top:0">✓ em execução</span>' };
 }
 
 // O projeto deve aparecer no card do mês mIdx/mAno?
-// = meses de execução (mesesAtivos) + mês da finalização + meses de atraso (até finalizar, ou até hoje se aberto).
+// = meses de execução (mesesAtivos) + mês da finalização real + meses cobertos pelo atraso.
 function prazoNoMesCard(p, mIdx, mAno) {
   if (p.modelo === 'DRO' || !p.inicio) return false;
   if (mAno === 2026 && mesesAtivos(p).includes(mIdx)) return true;
   const dIni = parseDate(p.inicio);
   const deadline = new Date(dIni.getTime() + 52 * 864e5);
   const mStart = new Date(mAno, mIdx, 1);
-  const hoje = new Date(); const hojeMStart = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-  const fim = fimPrazo(p);
+  const mEnd   = new Date(mAno, mIdx + 1, 0);
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const fim = dataFimReal(p);
   const dFim = fim ? parseDate(fim) : null;
   if (dFim && dFim.getMonth() === mIdx && dFim.getFullYear() === mAno) return true;  // mês da finalização
-  return (mStart > deadline) && (dFim ? (dFim >= mStart) : (mStart <= hojeMStart));   // mês de atraso
+  const endpoint = dFim || hoje;
+  return (endpoint > deadline) && (deadline <= mEnd) && (endpoint >= mStart);          // mês de atraso
 }
 
 // Prazo inline para base (simpler)
