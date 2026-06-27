@@ -3082,8 +3082,12 @@ function addProject() {
 }
 
 function removeProject(id) {
-  projects = projects.filter(p => p.id !== id);
-  renderBase();
+  if (typeof VIEWER !== 'undefined' && VIEWER) return;       // modo visualização não exclui
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!p) return;
+  if (!confirm('Excluir o projeto "' + (p.nome || '—') + '"?\nEsta ação não pode ser desfeita.')) return;
+  projects = projects.filter(x => String(x.id) !== String(id));  // comparação por string (id pode vir como texto)
+  renderBase();   // re-renderiza e salva (upd → sbScheduleSave)
 }
 
 function setField(el) {
