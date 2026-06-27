@@ -1622,6 +1622,11 @@ function fimPrazo(p) {
 
 function prazoStatus(p) {
   if (!p.inicio) return {ok: null, html: '<span style="color:var(--text-hint)">—</span>', dias: null};
+  // Reembolso → projeto INTERROMPIDO: não conta como atraso nem como no prazo.
+  if (p.dataReembolso) {
+    const dias = diffDays(p.inicio, p.dataReembolso);
+    return { ok: null, interrompido: true, dias, html: '<span class="badge b-gray" style="margin-top:0">⊘ interrompido</span>' };
+  }
   const dIni  = parseDate(p.inicio);
   const dPrev = p.prevFim ? parseDate(p.prevFim) : null;
   const hoje  = new Date(); hoje.setHours(0,0,0,0);
@@ -1704,6 +1709,12 @@ function prazoStatusNoMes(p, mIdx, mAno) {
 // = meses de execução (mesesAtivos) + mês da finalização real + meses cobertos pelo atraso.
 function prazoNoMesCard(p, mIdx, mAno) {
   if (p.modelo === 'DRO' || !p.inicio) return false;
+  // Interrompido (reembolso): aparece nos meses de execução até o mês do reembolso; sem meses de atraso.
+  if (p.dataReembolso) {
+    if (mAno !== 2026 || !mesesAtivos(p).includes(mIdx)) return false;
+    const dr = parseDate(p.dataReembolso);
+    return !dr || (new Date(mAno, mIdx, 1) <= new Date(dr.getFullYear(), dr.getMonth(), 1));
+  }
   if (mAno === 2026 && mesesAtivos(p).includes(mIdx)) return true;
   const dIni = parseDate(p.inicio);
   const deadline = new Date(dIni.getTime() + 52 * 864e5);
@@ -3489,7 +3500,7 @@ function calcPrazo() {
     selPrazoCons.innerHTML = '<option value="">Todos</option>' + cons.map(c=>`<option${c===curC?' selected':''}>${c}</option>`).join('');
   }
   buildFilterBar('filter-bar-prazo', 'prazo', calcPrazo);
-  let totalAno = 0, okAno = 0, nokAno = 0;
+  let totalAno = 0, okAno = 0, nokAno = 0, avaliadosAno = 0, interrAno = 0;
   const hoje = new Date(); hoje.setHours(0,0,0,0);
 
   // filtros de consultor e semana
@@ -3504,7 +3515,7 @@ function calcPrazo() {
   }
   buildQuarterBody('prazo-body', m => {
     const doMes = projects.filter(p => prazoNoMesCard(p, m.idx, m.ano));
-    let ok = 0, nok = 0;
+    let ok = 0, nok = 0, interr = 0;
 
     const rows = doMes.map(p => {
       const fim = dataFimReal(p);
@@ -3513,7 +3524,7 @@ function calcPrazo() {
       const sNome = fim ? '✓ Concluído' : idx >= 0 && idx < SEMANAS.length ? SEMANAS[idx] : '—';
       const dec = p.inicio ? Math.round((hoje - parseDate(p.inicio)) / 864e5) : 0;
       const diasH = fim ? (st.dias + 'd') : (dec >= 0 ? dec + 'd decorridos' : 'Não iniciado');
-      if (st.ok === true) ok++; else if (st.ok === false) nok++;
+      if (st.ok === true) ok++; else if (st.ok === false) nok++; else if (st.interrompido) interr++;
       return `<tr>
         <td>${p.nome||'—'}</td><td>${p.consultor||'—'}</td>
         <td>${p.inicio||'—'}</td><td>${p.prevFim||'—'}</td><td>${fim||'—'}</td>
@@ -3525,8 +3536,9 @@ function calcPrazo() {
     }).join('');
 
     const total = doMes.length;
-    const taxa  = total > 0 ? Math.round((ok) / total * 100) : null;
-    totalAno += total; okAno += ok; nokAno += nok;
+    const avaliados = ok + nok;
+    const taxa  = avaliados > 0 ? Math.round(ok / avaliados * 100) : null;
+    totalAno += total; okAno += ok; nokAno += nok; avaliadosAno += avaliados; interrAno += interr;
 
     return `<div class="month-card">
       <div class="month-header">
@@ -3536,12 +3548,12 @@ function calcPrazo() {
           <div class="prog-bg" style="width:60px;margin-top:0;"><div class="prog-fill" style="width:${taxa!==null?pct(taxa,100):0}%;background:var(--blue)"></div></div>
         </div>
       </div>
-      <div class="month-stats">Projetos: <strong>${total}</strong> · <span style="color:var(--green)">✓ ${ok}</span> · <span style="color:var(--red)">✗ ${nok}</span></div>
+      <div class="month-stats">Projetos: <strong>${total}</strong> · <span style="color:var(--green)">✓ ${ok}</span> · <span style="color:var(--red)">✗ ${nok}</span>${interr>0?` · <span style="color:var(--text-hint)">⊘ ${interr}</span>`:''}</div>
       <div class="tbl-wrap"><table><thead><tr><th>Projeto</th><th>Consultor</th><th>Início</th><th>Prev. Conclusão</th><th>Conclusão Real</th><th>Semana</th><th>Dias</th><th>Status</th><th>Flag</th></tr></thead><tbody>${rows||emptyRow(9,'Nenhum projeto ativo')}</tbody></table></div>
     </div>`;
   }, 'prazo');
 
-  const taxaAno = totalAno > 0 ? Math.round(okAno / totalAno * 100) : null;
+  const taxaAno = avaliadosAno > 0 ? Math.round(okAno / avaliadosAno * 100) : null;
   const diasList = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && p.inicio && dataFimReal(p)).map(p => diffDays(p.inicio, dataFimReal(p))).filter(d => d !== null && d >= 0);
   const avgDias   = diasList.length ? Math.round(diasList.reduce((a,b)=>a+b,0)/diasList.length) : null;
   // Filtra pelo mês selecionado para todos os cards
@@ -4447,7 +4459,7 @@ function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
   let pTotal = 0, pOk = 0;
   mesesPrazo.forEach(m => {
     const doMes = projects.filter(p => prazoNoMesCard(p, m.idx, m.ano));
-    doMes.forEach(p => { const st = prazoStatusNoMes(p, m.idx, m.ano); pTotal++; if (st.ok === true) pOk++; });
+    doMes.forEach(p => { const st = prazoStatusNoMes(p, m.idx, m.ano); if (st.ok === true) { pTotal++; pOk++; } else if (st.ok === false) pTotal++; });
   });
   const prazoV = pTotal > 0 ? Math.round(pOk / pTotal * 100) : null;
 
@@ -6026,7 +6038,7 @@ function buildPerformance() {
     let pTotal = 0, pOk = 0;
     mesesPrazo.forEach(m => {
       const doMes = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && p.consultor === nome && mesesAtivos(p).includes(m.idx));
-      doMes.forEach(p => { const st = prazoStatus(p); pTotal++; if (st.ok === true) pOk++; });
+      doMes.forEach(p => { const st = prazoStatus(p); if (st.ok === true) { pTotal++; pOk++; } else if (st.ok === false) pTotal++; });
     });
     const prazoV = pTotal > 0 ? Math.round(pOk / pTotal * 100) : null;
 
@@ -6261,10 +6273,9 @@ function perfSelecionaConsultor(nome) {
   });
   prjsPrazo.forEach(p => {
     const st = prazoStatus(p);
-    pTotal++;
-    if (st.ok === true) pOk++;
+    if (st.ok === true) { pTotal++; pOk++; } else if (st.ok === false) pTotal++;
     const cor = st.ok === true ? 'var(--green)' : st.ok === false ? 'var(--red)' : 'var(--text-hint)';
-    const icon = st.ok === true ? '✓ No prazo' : st.ok === false ? `✗ ${st.dias}d fora` : '—';
+    const icon = st.ok === true ? '✓ No prazo' : st.ok === false ? `✗ ${st.dias}d fora` : st.interrompido ? '⊘ interrompido' : '—';
     prazoRows += `<tr>
       <td style="padding:6px 8px;font-size:12px;">${p.nome}</td>
       <td style="padding:6px 8px;font-size:11px;color:var(--text-hint);">${fmtD(p.inicio)}</td>
