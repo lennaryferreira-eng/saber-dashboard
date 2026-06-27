@@ -419,7 +419,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
     <div id="ov-csp-card" class="mcard c-accent"><div id="ov-csp-border" class="ov-border-bar" style="background:var(--accent);"></div><div class="mlabel">Taxa CSP</div><div class="mval" id="ov-csp-val" style="transition:color .3s;">—</div><div class="mmeta">Meta: ≤ 5%</div><div class="prog-bg"><div class="prog-fill" id="ov-csp-bar" style="width:0%;background:var(--accent)"></div></div></div>
     <div id="ov-conv-card" class="mcard c-green"><div id="ov-conv-border" class="ov-border-bar" style="background:var(--green);"></div><div class="mlabel">Taxa de Conversão</div><div class="mval" id="ov-conv-val" style="transition:color .3s;">—</div><div class="mmeta">Meta: 40%</div><div class="prog-bg"><div class="prog-fill" id="ov-conv-bar" style="width:0%;background:var(--green)"></div></div></div>
     <div id="ov-prazo-card" class="mcard c-blue"><div id="ov-prazo-border" class="ov-border-bar" style="background:var(--blue);"></div><div class="mlabel">Projetos no Prazo</div><div class="mval" id="ov-prazo-val" style="transition:color .3s;">—</div><div class="mmeta">Meta: 80%</div><div class="prog-bg"><div class="prog-fill" id="ov-prazo-bar" style="width:0%;background:var(--blue)"></div></div></div>
-    <div id="ov-pdi-card" class="mcard c-purple"><div id="ov-pdi-border" class="ov-border-bar" style="background:var(--purple);"></div><div class="mlabel">PDI do Time</div><div class="mval" id="ov-pdi-val" style="transition:color .3s;">—</div><div class="mmeta">Meta: 100%</div><div class="prog-bg"><div class="prog-fill" id="ov-pdi-bar" style="width:0%;background:var(--purple)"></div></div></div>
+    <div id="ov-pdi-card" class="mcard c-purple"><div id="ov-pdi-border" class="ov-border-bar" style="background:var(--purple);"></div><div class="mlabel">PDI do Time</div><div class="mval" id="ov-pdi-val" style="transition:color .3s;">—</div><div class="mmeta">Meta: 80%</div><div class="prog-bg"><div class="prog-fill" id="ov-pdi-bar" style="width:0%;background:var(--purple)"></div></div></div>
     <div id="ov-nps-card" class="mcard c-amber"><div id="ov-nps-border" class="ov-border-bar" style="background:var(--amber);"></div><div class="mlabel">NPS</div><div class="mval" id="ov-nps-val" style="transition:color .3s;">—</div><div class="mmeta">Meta: 50</div><div class="prog-bg"><div class="prog-fill" id="ov-nps-bar" style="width:0%;background:var(--amber)"></div></div></div>
     <div id="ov-mon-card" class="mcard c-gray"><div id="ov-mon-border" class="ov-border-bar" style="background:var(--text-hint);"></div><div class="mlabel">Monetização</div><div class="mval" id="ov-mon" style="font-size:18px;">R$ 0</div><div id="ov-mon-sub" style="font-size:10px;color:var(--text-hint);margin-top:2px;"></div><div class="mmeta">Meta: <span id="ov-mon-meta-lbl">a definir</span></div><div class="prog-bg"><div class="prog-fill" id="ov-mon-bar" style="width:0%;background:var(--text-hint)"></div></div></div>
   </div>
@@ -676,16 +676,19 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
 </section>
 
 <section id="sec-pdi" class="section">
-  <div class="sec-head"><h2 class="sec-title">PDI do Time</h2><p class="sec-desc">Plano de Desenvolvimento Individual — até 5 consultores. Meta: 100%.</p></div>
+  <div class="sec-head"><h2 class="sec-title">PDI do Time</h2><p class="sec-desc">Plano de Desenvolvimento Individual de todo o time (consultores, designers e demais profissionais). Informe o % do PDI fechado por pessoa no fechamento de cada quarter (Mar/Jun/Set/Dez ★). Meta: 80%.</p></div>
   <div class="mgrid mg3">
     <div class="mcard c-purple"><div class="mlabel">PDI médio 2026</div><div class="mval" id="pdi-ano">—</div></div>
-    <div class="mcard c-purple"><div class="mlabel">Em dia (último mês)</div><div class="mval" id="pdi-ultimo">—</div></div>
+    <div class="mcard c-purple"><div class="mlabel">Último fechamento</div><div class="mval" id="pdi-ultimo">—</div></div>
     <div class="mcard c-purple"><div class="mlabel">Membros</div><div class="mval" id="pdi-membros">5</div></div>
   </div>
   <div class="card">
     <div class="card-title">Acompanhamento por membro</div>
     <div class="tbl-wrap"><table><thead id="pdi-thead"></thead><tbody id="pdi-tbody"></tbody></table></div>
-    <div style="font-size:11px;color:var(--text-hint);margin-top:9px;padding-top:9px;border-top:1px solid var(--border);">% calculado automaticamente.</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:9px;padding-top:9px;border-top:1px solid var(--border);">
+      <button onclick="pdiAddRow()" style="font-family:var(--sans);font-size:11px;padding:5px 12px;border:1px solid var(--border);border-radius:20px;background:var(--surface2);color:var(--text-muted);cursor:pointer;">➕ Adicionar pessoa</button>
+      <span style="font-size:11px;color:var(--text-hint);">Consultores linkam ao card de Performance · "Outro" para designers e demais.</span>
+    </div>
   </div>
 </section>
 
@@ -1218,6 +1221,9 @@ const QUARTERS = [
   ]}
 ];
 const ALL_MESES = QUARTERS.flatMap(q => q.meses);
+// Meses de fechamento de cada quarter (último mês): Mar(2), Jun(5), Set(8), Dez(11). PDI só conta nesses meses.
+const QUARTER_CLOSE_IDX = QUARTERS.map(q => q.meses[q.meses.length - 1].idx);
+const isQuarterClose = idx => QUARTER_CLOSE_IDX.includes(idx);
 
 // map "Abril/2026" -> 3
 const MES_MON_MAP = {};
@@ -1240,6 +1246,7 @@ const FLAGS    = ['—','Verde','Amarelo','Vermelho'];
 // ═══════════════════════════════════
 let projects = [];
 let npsData  = {}; // id -> {nota, comentario}
+let pdiData  = { rows: [] }; // { rows:[{nome,cargo,obs,m:{monthIdx:pct}}] }
 let npsChart = null;
 
 
@@ -1958,6 +1965,7 @@ function restoreBackup() {
     if (data.mon_metas) Object.assign(monMetas, data.mon_metas);
     if (data.cap_data) Object.assign(capData, data.cap_data);
     if (data.cap_manual) Object.assign(capManual, data.cap_manual);
+    if (data.pdi_data) { pdiData = normalizePdi(data.pdi_data); buildPdi(); }
     refreshAll();
     buildLeadTime();
     upd(); // salva no Supabase
@@ -3581,39 +3589,123 @@ function buildPdi() {
   const tbody = document.getElementById('pdi-tbody');
   if (!thead || !tbody) return;
   thead.innerHTML = '<tr><th>#</th><th>Nome</th><th>Cargo</th>' +
-    ALL_MESES.map(m => `<th style="font-size:9px;white-space:nowrap">${m.label.slice(0,3)}</th>`).join('') +
-    '<th>Obs</th></tr>';
-  tbody.innerHTML = [1,2,3,4,5].map(n => `
-    <tr>
-      <td style="color:var(--text-hint);font-size:10px;">${String(n).padStart(2,'0')}</td>
-      <td contenteditable="true" placeholder="Nome">—</td>
-      <td contenteditable="true" placeholder="Cargo">—</td>
-      ${ALL_MESES.map(() => `<td><select class="sel pdi-sel" onchange="calcPdi()"><option value="">—</option><option>Em dia</option><option>Atrasado</option><option>Não iniciado</option></select></td>`).join('')}
-      <td contenteditable="true" placeholder="Obs">—</td>
-    </tr>`).join('');
+    ALL_MESES.map(m => isQuarterClose(m.idx)
+      ? `<th style="font-size:9px;white-space:nowrap;color:var(--purple);font-weight:800;" title="Fechamento de quarter — mês que conta no PDI">${m.label.slice(0,3)} ★</th>`
+      : `<th style="display:none"></th>`).join('') +
+    '<th>Obs</th><th></th></tr>';
+  const squad = squadList();
+  if (!pdiData || !Array.isArray(pdiData.rows) || !pdiData.rows.length) pdiData = { rows: defaultPdiRows() };
+  tbody.innerHTML = pdiData.rows.map((row, ri) => {
+    const nome = row.nome || '';
+    const isCons = squad.includes(nome);
+    const custom = (nome && !isCons) ? `<option value="${nome}" selected>${nome}</option>` : '';
+    const optsNome = `<option value=""${nome === '' ? ' selected' : ''}>—</option>`
+      + squad.map(c => `<option${c === nome ? ' selected' : ''}>${c}</option>`).join('')
+      + custom
+      + `<option value="__outro__">➕ Outro…</option>`;
+    return `<tr>
+      <td style="color:var(--text-hint);font-size:10px;">${String(ri + 1).padStart(2, '0')}</td>
+      <td><select class="sel pdi-nome" onchange="pdiNomeChange(this)" style="font-size:11px;min-width:104px;">${optsNome}</select></td>
+      <td contenteditable="true" placeholder="Cargo" oninput="capturaPdi()" onblur="capturaPdi()">${row.cargo ? row.cargo : '—'}</td>
+      ${ALL_MESES.map(m => { const v = (row.m && row.m[m.idx] != null) ? row.m[m.idx] : ''; return `<td${isQuarterClose(m.idx) ? '' : ' style="display:none"'}><input class="sel pdi-pct" type="number" min="0" max="100" inputmode="numeric" placeholder="—" value="${v}" oninput="pdiEdit()" onblur="pdiClamp(this);capturaPdi()" style="width:54px;text-align:center;" title="% do PDI fechado neste fechamento de quarter"></td>`; }).join('')}
+      <td contenteditable="true" placeholder="Obs" oninput="capturaPdi()" onblur="capturaPdi()">${row.obs ? row.obs : '—'}</td>
+      <td><button onclick="pdiRemoveRow(${ri})" title="Remover pessoa" style="background:none;border:none;color:var(--text-hint);cursor:pointer;font-size:13px;padding:2px 6px;">✕</button></td>
+    </tr>`;
+  }).join('');
+  const mem = document.getElementById('pdi-membros'); if (mem) mem.textContent = pdiData.rows.length;
+  calcPdi();
+}
+
+// ── Roster do PDI (time todo: consultores + designers + demais) ─
+function squadList() { return (window.CONS_MON || ['Caio','Leonam','Loma','Camila','Cleiton']); }
+function defaultPdiRows() { return squadList().map(c => ({ nome: c, cargo: '', obs: '', m: {} })); }
+// Normaliza pdiData salvo (array novo OU formato antigo por índice) para { rows:[...] }
+function normalizePdi(obj) {
+  if (!obj || typeof obj !== 'object') return { rows: defaultPdiRows() };
+  const mk = r => ({ nome: r?.nome || '', cargo: r?.cargo || '', obs: r?.obs || '', m: (r && r.m) || {} });
+  if (Array.isArray(obj.rows)) return { rows: obj.rows.length ? obj.rows.map(mk) : defaultPdiRows() };
+  const keys = Object.keys(obj).filter(k => /^\d+$/.test(k)).sort((a, b) => a - b);
+  if (keys.length) return { rows: keys.map(k => mk(obj[k])) };
+  return { rows: defaultPdiRows() };
+}
+// Trocou o nome no seletor; "Outro…" abre prompt para digitar designer/profissional
+function pdiNomeChange(sel) {
+  if (sel.value === '__outro__') {
+    const nome = (prompt('Nome do profissional (designer, etc.):') || '').trim();
+    if (nome) {
+      const outroOpt = sel.options[sel.options.length - 1];
+      if (![...sel.options].some(o => o.value === nome)) sel.add(new Option(nome, nome), outroOpt);
+      sel.value = nome;
+    } else { sel.value = ''; }
+  }
+  capturaPdi();
+}
+// Adiciona / remove pessoa
+function pdiAddRow() { capturaPdi(); pdiData.rows.push({ nome: '', cargo: '', obs: '', m: {} }); buildPdi(); if (typeof sbScheduleSave === 'function' && !VIEWER) sbScheduleSave(); }
+function pdiRemoveRow(ri) {
+  capturaPdi();
+  pdiData.rows.splice(ri, 1);
+  if (!pdiData.rows.length) pdiData.rows.push({ nome: '', cargo: '', obs: '', m: {} });
+  buildPdi();
+  if (typeof sbScheduleSave === 'function' && !VIEWER) sbScheduleSave();
+}
+
+// Lê o % de uma célula do PDI (0–100) ou null se vazio/inválido
+function pdiCellPct(cell) {
+  if (!cell) return null;
+  const raw = String(cell.value || '').trim();
+  if (raw === '') return null;
+  const n = parseFloat(raw.replace(',', '.'));
+  if (isNaN(n)) return null;
+  return Math.max(0, Math.min(100, Math.round(n)));
+}
+// Normaliza o valor digitado (0–100) ao sair do campo
+function pdiClamp(el) {
+  const v = pdiCellPct(el);
+  el.value = (v === null ? '' : v);
+}
+// Editou um % → recalcula e persiste
+function pdiEdit() { calcPdi(); capturaPdi(); }
+
+// Captura a tabela do PDI para pdiData.rows e agenda salvamento
+function capturaPdi() {
+  const rows = [...document.querySelectorAll('#pdi-tbody tr')];
+  const clean = s => { const t = String(s || '').trim(); return (t === '—' || t === 'Cargo' || t === 'Obs') ? '' : t; };
+  const arr = rows.map(r => {
+    const tds  = r.querySelectorAll('td');
+    const inps = [...r.querySelectorAll('.pdi-pct')];
+    const m = {};
+    inps.forEach((inp, mi) => { const v = pdiCellPct(inp); if (v !== null) m[mi] = v; });
+    let nome = (r.querySelector('.pdi-nome')?.value || '').trim();
+    if (nome === '__outro__') nome = '';
+    // Obs é a penúltima td (a última é o botão remover)
+    return { nome, cargo: clean(tds[2]?.textContent), obs: clean(tds[tds.length - 2]?.textContent), m };
+  });
+  pdiData = { rows: arr };
+  if (typeof sbScheduleSave === 'function' && !VIEWER) sbScheduleSave();
 }
 
 function calcPdi() {
   const rows   = [...document.querySelectorAll('#pdi-tbody tr')];
   const total  = rows.length;
   const scores = ALL_MESES.map((m, mi) => {
-    const vals = rows.map(r => r.querySelectorAll('.pdi-sel')[mi]?.value).filter(v => v === 'Em dia' || v === 'Atrasado');
+    const vals = rows.map(r => pdiCellPct(r.querySelectorAll('.pdi-pct')[mi])).filter(v => v !== null);
     if (!vals.length) return null;
-    const em = vals.filter(v => v === 'Em dia').length;
-    return Math.round(em / vals.length * 100);
+    return Math.round(vals.reduce((a,b) => a+b, 0) / vals.length);   // média dos % fechados no mês
   });
 
-  const valid  = scores.filter(v => v !== null);
+  // PDI só conta nos meses de fechamento de quarter (Mar/Jun/Set/Dez)
+  const valid  = scores.filter((v, mi) => v !== null && isQuarterClose(mi));
   const avg    = valid.length ? Math.round(valid.reduce((a,b) => a+b, 0) / valid.length) : null;
-  const last   = [...scores].reverse().find(v => v !== null);
+  const last   = scores.reduce((acc, v, mi) => (v !== null && isQuarterClose(mi)) ? v : acc, undefined);
   const disp   = avg !== null ? avg + '%' : '—';
 
   set('pdi-ano',    disp);
-  set('pdi-ultimo', last !== undefined ? last + '%' : '—');
+  set('pdi-ultimo', last !== undefined ? last + '%' : '—');   // último fechamento de quarter
   set('ov-pdi',  disp); set('ov2-pdi', disp);
   setStyle('ov-pdi-bar',  'width', avg !== null ? pct(avg, 100) + '%' : '0%');
   setStyle('ov2-pdi-bar', 'width', avg !== null ? pct(avg, 100) + '%' : '0%');
-  if (avg !== null) { const [bc,bt] = badgeFor(avg, 100, false); setBadge('ov2-pdi-badge', bc, bt); }
+  if (avg !== null) { const [bc,bt] = badgeFor(avg, 80, false); setBadge('ov2-pdi-badge', bc, bt); }
   upd();
   return avg;
 }
@@ -4525,22 +4617,27 @@ function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
   ['ov-mon-border','ov2-mon-border'].forEach(id => { const el=document.getElementById(id); if(el) el.style.background=monColor; });
   if (avgPct2 !== null) { const [bmc, bmt] = badgeFor(avgPct2, 100, false); setBadge('ov2-mon-badge', bmc, bmt); }
 
-  // ── PDI: só Em dia e Atrasado, ignora — e Não iniciado ───────
+  // ── PDI: % fechado por consultor; score do mês = média dos % ─
   const pdiRows = [...document.querySelectorAll('#pdi-tbody tr')];
   const pdiScores = ALL_MESES.map((m, mi) => {
-    const vals = pdiRows.map(r => r.querySelectorAll('.pdi-sel')[mi]?.value).filter(v => v === 'Em dia' || v === 'Atrasado');
+    const vals = pdiRows.map(r => pdiCellPct(r.querySelectorAll('.pdi-pct')[mi])).filter(v => v !== null);
     if (!vals.length) return null;
-    return Math.round(vals.filter(v => v === 'Em dia').length / vals.length * 100);
+    return Math.round(vals.reduce((a,b)=>a+b,0) / vals.length);
   });
+  // PDI só vale nos meses de fechamento de quarter (Mar/Jun/Set/Dez)
   const pdiIdx = curM ? ALL_MESES.findIndex(m => m.key === curM.key) : -1;
-  const pdiFiltered = pdiIdx >= 0 ? [pdiScores[pdiIdx]] : pdiScores;
-  const pdiValid = pdiFiltered.filter(v => v !== null);
-  const pdiV = pdiValid.length ? Math.round(pdiValid.reduce((a,b)=>a+b,0)/pdiValid.length) : null;
+  let pdiV;
+  if (pdiIdx >= 0) {
+    pdiV = isQuarterClose(pdiIdx) ? pdiScores[pdiIdx] : null;   // mês fora do fechamento → não calcula
+  } else {
+    const pdiValid = pdiScores.filter((v, mi) => v !== null && isQuarterClose(mi));
+    pdiV = pdiValid.length ? Math.round(pdiValid.reduce((a,b)=>a+b,0)/pdiValid.length) : null;
+  }
 
   setOv('csp',   cspV   !== null ? cspV + '%'     : '—', cspV,   5,   true,  'var(--accent)');
   setOv('conv',  convV  !== null ? convV + '%'     : '—', convV,  40,  false, 'var(--green)');
   setOv('prazo', prazoV !== null ? prazoV + '%'    : '—', prazoV, 80,  false, 'var(--blue)');
-  setOv('pdi',   pdiV   !== null ? pdiV + '%'      : '—', pdiV,   100, false, 'var(--purple)');
+  setOv('pdi',   pdiV   !== null ? pdiV + '%'      : '—', pdiV,   80, false, 'var(--purple)');
   setOv('nps',   npsV   !== null ? npsV.toString() : '—', npsV,   50,  false, 'var(--amber)');
 
   // atualiza análises com o mês do filtro
@@ -6017,7 +6114,7 @@ function buildPerformance() {
   if (!el) return;
 
   const CONS = window.CONS_MON || ['Caio','Leonam','Loma','Camila','Cleiton'];
-  const METAS = { conv: 40, prazo: 80, pdi: 100, nps: 50, npsResp: 60 };
+  const METAS = { conv: 40, prazo: 80, pdi: 80, nps: 50, npsResp: 60 };
 
   // ── Calcula KPIs por consultor ─────────────────────────────
   const cards = CONS.map(nome => {
@@ -6071,12 +6168,14 @@ function buildPerformance() {
     let pdiV = null;
     if (pdiRows.length) {
       const mIdx = curM ? ALL_MESES.findIndex(m => m.key === curM.key) : -1;
-      const row  = pdiRows.find(r => r.querySelector('td')?.textContent?.trim() === nome);
+      const row  = pdiRows.find(r => (r.querySelector('.pdi-nome')?.value || '').trim() === nome);
       if (row) {
-        const sels = [...row.querySelectorAll('.pdi-sel')];
-        const target = mIdx >= 0 ? [sels[mIdx]] : sels;
-        const vals = target.filter(s => s && (s.value === 'Em dia' || s.value === 'Atrasado'));
-        if (vals.length) pdiV = Math.round(vals.filter(s => s.value === 'Em dia').length / vals.length * 100);
+        const inps = [...row.querySelectorAll('.pdi-pct')];
+        // PDI só conta nos meses de fechamento de quarter (Mar/Jun/Set/Dez)
+        let vals;
+        if (mIdx >= 0) vals = isQuarterClose(mIdx) ? [pdiCellPct(inps[mIdx])].filter(v => v !== null) : [];
+        else vals = inps.map((inp, i) => isQuarterClose(i) ? pdiCellPct(inp) : null).filter(v => v !== null);
+        if (vals.length) pdiV = Math.round(vals.reduce((a,b)=>a+b,0) / vals.length);
       }
     }
 
@@ -6370,40 +6469,40 @@ function perfSelecionaConsultor(nome) {
 
   // ── PDI ───────────────────────────────────────────────────
   const pdiRows2 = [...document.querySelectorAll('#pdi-tbody tr')];
-  const pdiRow = pdiRows2.find(r => r.querySelector('td')?.textContent?.trim() === nome);
+  const pdiRow = pdiRows2.find(r => (r.querySelector('.pdi-nome')?.value || '').trim() === nome);
   let pdiHTML = '';
   if (pdiRow) {
-    const sels = [...pdiRow.querySelectorAll('.pdi-sel')];
+    const inps = [...pdiRow.querySelectorAll('.pdi-pct')];
     const mIdx = curM ? ALL_MESES.findIndex(m => m.key === curM.key) : -1;
-    const target = mIdx >= 0 ? sels.slice(mIdx, mIdx+1) : sels;
-    const emDia = target.filter(s => s?.value === 'Em dia').length;
-    const atrasado = target.filter(s => s?.value === 'Atrasado').length;
-    const total = target.filter(s => s && (s.value === 'Em dia' || s.value === 'Atrasado')).length;
-    const pct = total > 0 ? Math.round(emDia / total * 100) : null;
-    const corPdi = pct === null ? 'var(--text-hint)' : pct >= 100 ? 'var(--green)' : 'var(--red)';
+    const mesNaoFecha = mIdx >= 0 && !isQuarterClose(mIdx);
+    // Colunas = só fechamentos de quarter (Mar/Jun/Set/Dez)
+    const mesesCols = mIdx >= 0 ? (isQuarterClose(mIdx) ? [ALL_MESES[mIdx]] : []) : ALL_MESES.filter(m => isQuarterClose(m.idx));
+    const vals = mesesCols.map(m => pdiCellPct(inps[m.idx])).filter(v => v !== null);
+    const pct = vals.length ? Math.round(vals.reduce((a,b)=>a+b,0) / vals.length) : null;
+    const corPdi = pct === null ? 'var(--text-hint)' : pct >= 80 ? 'var(--green)' : 'var(--red)';
     document.getElementById('perf-pdi-badge').innerHTML = pct !== null
-      ? `<span style="color:${corPdi};font-weight:700;">${pct}% ${pct>=100?'✓':'✗'} meta 100%</span>` : '—';
-    // Tabela de meses
-    const mesesCols = mIdx >= 0 ? [ALL_MESES[mIdx]] : ALL_MESES;
-    pdiHTML = `
+      ? `<span style="color:${corPdi};font-weight:700;">${pct}% ${pct>=80?'✓':'✗'} meta 80%</span>` : '—';
+    if (mesNaoFecha) {
+      pdiHTML = '<p style="padding:12px;font-size:12px;color:var(--text-hint);">PDI é avaliado apenas no mês de fechamento de cada quarter (Março, Junho, Setembro, Dezembro).</p>';
+    } else {
+      pdiHTML = `
       <div style="display:flex;gap:12px;margin:12px 0;">
-        <div class="mcard c-green" style="flex:1;padding:10px 14px;"><div class="mlabel">Em dia</div><div class="mval">${emDia}</div></div>
-        <div class="mcard c-red" style="flex:1;padding:10px 14px;"><div class="mlabel">Atrasado</div><div class="mval">${atrasado}</div></div>
-        <div class="mcard c-${pct===null?'gray':pct>=100?'green':'red'}" style="flex:1;padding:10px 14px;"><div class="mlabel">Taxa</div><div class="mval">${pct !== null ? pct+'%' : '—'}</div></div>
+        <div class="mcard c-${pct===null?'gray':pct>=80?'green':'red'}" style="flex:1;padding:10px 14px;"><div class="mlabel">PDI médio (fechamentos)</div><div class="mval">${pct !== null ? pct+'%' : '—'}</div></div>
+        <div class="mcard c-purple" style="flex:1;padding:10px 14px;"><div class="mlabel">Meta</div><div class="mval">80%</div></div>
       </div>
       <table style="width:100%;border-collapse:collapse;">
         <thead><tr style="background:var(--surface2);">
           ${mesesCols.map(m => `<th style="padding:6px 8px;font-size:10px;text-align:center;">${m.label}</th>`).join('')}
         </tr></thead>
         <tbody><tr>
-          ${mesesCols.map((m,i) => {
-            const sel = mIdx >= 0 ? sels[mIdx] : sels[i];
-            const v = sel?.value || '—';
-            const cor = v === 'Em dia' ? 'var(--green)' : v === 'Atrasado' ? 'var(--red)' : 'var(--text-hint)';
-            return `<td style="padding:6px 8px;font-size:11px;text-align:center;font-weight:600;color:${cor};">${v}</td>`;
+          ${mesesCols.map(m => {
+            const v = pdiCellPct(inps[m.idx]);
+            const cor = v === null ? 'var(--text-hint)' : v >= 80 ? 'var(--green)' : 'var(--red)';
+            return `<td style="padding:6px 8px;font-size:11px;text-align:center;font-weight:600;color:${cor};">${v === null ? '—' : v+'%'}</td>`;
           }).join('')}
         </tr></tbody>
       </table>`;
+    }
   } else {
     document.getElementById('perf-pdi-badge').innerHTML = '—';
     pdiHTML = '<p style="padding:12px;font-size:12px;color:var(--text-hint);">Consultor não encontrado na tabela PDI.</p>';
@@ -6515,20 +6614,33 @@ async function sbSave() {
       cap_data:   JSON.stringify(capData),
       cap_manual: JSON.stringify(capManual),
       mon_metas:  JSON.stringify(monMetas),
+      pdi_data:   JSON.stringify(pdiData),
     };
-    // Tenta PATCH primeiro (atualiza linha existente)
-    let res = await fetch(SB_URL + '/rest/v1/saber_data?id=eq.main', {
-      method: 'PATCH',
-      headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-      body: JSON.stringify(payload)
-    });
-    // Se não existir ainda, cria com POST
-    if (res.status === 404 || res.status === 406) {
-      res = await fetch(SB_URL + '/rest/v1/saber_data', {
-        method: 'POST',
+    const sendPayload = async (pl) => {
+      let r = await fetch(SB_URL + '/rest/v1/saber_data?id=eq.main', {
+        method: 'PATCH',
         headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(pl)
       });
+      // Se não existir ainda, cria com POST
+      if (r.status === 404 || r.status === 406) {
+        r = await fetch(SB_URL + '/rest/v1/saber_data', {
+          method: 'POST',
+          headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+          body: JSON.stringify(pl)
+        });
+      }
+      return r;
+    };
+    let res = await sendPayload(payload);
+    // Se a coluna pdi_data ainda não existe no Supabase, NÃO bloqueia o resto: salva sem ela
+    if (!res.ok && res.status === 400) {
+      const t0 = await res.clone().text().catch(() => '');
+      if (/pdi_data|PGRST204|column/i.test(t0)) {
+        console.warn('Coluna pdi_data ausente no Supabase — salvando o restante sem o PDI. Crie a coluna pdi_data (text) para persistir o PDI.');
+        const { pdi_data, ...core } = payload;
+        res = await sendPayload(core);
+      }
     }
     if (!res.ok) {
       const errText = await res.text();
@@ -6546,6 +6658,7 @@ async function sbSave() {
       const backup = {
         projects, nps_data: npsData, csp_manual: cspManual,
         mon_metas: monMetas, cap_data: capData, cap_manual: capManual,
+        pdi_data: pdiData,
         saved_at: sbLastSaved.toISOString(), total: projects.length
       };
       const backupStr = JSON.stringify(backup);
@@ -6571,6 +6684,7 @@ async function sbSave() {
         const emergency = {
           projects, nps_data: npsData, csp_manual: cspManual,
           mon_metas: monMetas, cap_data: capData, cap_manual: capManual,
+          pdi_data: pdiData,
           saved_at: new Date().toISOString()
         };
         localStorage.setItem('saber_emergency', JSON.stringify(emergency));
@@ -6591,7 +6705,8 @@ function sbExport() {
     csp_manual: cspManual,
     cap_data: capData,
     cap_manual: capManual,
-    mon_metas:  monMetas
+    mon_metas:  monMetas,
+    pdi_data:   pdiData
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
   const a    = document.createElement('a');
@@ -6614,6 +6729,7 @@ function sbImport(input) {
       if (data.cap_data)    Object.assign(capData, data.cap_data);
       if (data.cap_manual)  Object.assign(capManual, data.cap_manual);
       if (data.mon_metas)   Object.assign(monMetas,  data.mon_metas);
+      if (data.pdi_data) pdiData = normalizePdi(data.pdi_data);
 
       buildCspManual();
       buildPdi();
@@ -6722,9 +6838,13 @@ async function sbLoad() {
         const cman = JSON.parse(row.cap_manual);
         if (cman && typeof cman === 'object') Object.assign(capManual, cman);
       }
+      if (row.pdi_data) {
+        try { pdiData = normalizePdi(JSON.parse(row.pdi_data)); } catch(e){}
+      }
     }
 
         refreshAll();
+    buildPdi();   // repõe o PDI salvo na tabela
     buildLeadTime();
     sbLastSaved = sbMaisRecente ? new Date(row.updated_at) : new Date();
     const totalProjs = projects.length;
