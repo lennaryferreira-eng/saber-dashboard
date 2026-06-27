@@ -1247,6 +1247,7 @@ const FLAGS    = ['—','Verde','Amarelo','Vermelho'];
 let projects = [];
 let npsData  = {}; // id -> {nota, comentario}
 let pdiData  = { rows: [] }; // { rows:[{nome,cargo,obs,m:{monthIdx:pct}}] }
+let perfFotos = {};          // nome -> dataURL (foto comprimida, sincronizada)
 let npsChart = null;
 
 
@@ -1967,6 +1968,7 @@ function restoreBackup() {
     if (data.cap_manual) Object.assign(capManual, data.cap_manual);
     if (data.pdi_data) { pdiData = normalizePdi(data.pdi_data); buildPdi(); }
     if (data.conv_base && typeof data.conv_base === 'object') Object.assign(convBaseManual, data.conv_base);
+    if (data.fotos && typeof data.fotos === 'object') Object.assign(perfFotos, data.fotos);
     refreshAll();
     buildLeadTime();
     upd(); // salva no Supabase
@@ -6241,17 +6243,22 @@ function buildPerformance() {
     const borderColor = isGold ? '#F59E0B' : isSilv ? '#9CA3AF' : 'var(--border)';
     const borderWidth = (isGold || isSilv) ? '2px' : '1px';
     const crown = isGold ? '<div style="text-align:center;font-size:20px;margin-bottom:-6px;margin-top:-4px;">👑</div>' : '';
-    const foto = localStorage.getItem('perf-foto-' + c.nome) || '';
+    const foto = perfFotos[c.nome] || localStorage.getItem('perf-foto-' + c.nome) || '';
 
+    const scoreCor = c.pctMedio >= 80 ? 'var(--green)' : c.pctMedio >= 50 ? 'var(--amber)' : 'var(--red)';
     const scoreBar = c.pctMedio !== null
-      ? `<div style="margin:10px 0 4px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-            <span style="font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Score geral</span>
-            <span style="font-size:12px;font-weight:700;color:${c.pctMedio>=80?'var(--green)':c.pctMedio>=50?'var(--amber)':'var(--red)'};">${c.atingidos}/${c.totalComDado} KPIs · ${c.pctMedio}%</span>
+      ? `<div style="margin:10px 0 8px;padding:8px 10px;border-radius:9px;background:linear-gradient(180deg,rgba(245,158,11,.10),rgba(245,158,11,.03));border:1px solid rgba(184,134,11,.28);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <span style="font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#B8860B;display:flex;align-items:center;gap:4px;"><span style="font-size:10px;">★</span>Score geral</span>
+            <span style="font-size:13px;font-weight:800;color:${scoreCor};">${c.atingidos}/${c.totalComDado} KPIs · ${c.pctMedio}%</span>
           </div>
-          <div class="prog-bg"><div class="prog-fill" style="width:${c.pctMedio}%;background:${c.pctMedio>=80?'var(--green)':c.pctMedio>=50?'var(--amber)':'var(--red)'};"></div></div>
+          <div style="height:10px;border-radius:7px;background:rgba(184,134,11,.14);box-shadow:inset 0 1px 2px rgba(0,0,0,.18);overflow:hidden;position:relative;">
+            <div style="width:${c.pctMedio}%;height:100%;border-radius:7px;background:linear-gradient(90deg,#9A6B0C 0%,#E8A317 45%,#FFD24D 100%);box-shadow:0 0 ${isGold?'8px':'5px'} rgba(245,158,11,${isGold?'.6':'.4'});position:relative;transition:width .45s ease;">
+              <div style="position:absolute;inset:0;border-radius:7px;background:linear-gradient(180deg,rgba(255,255,255,.5),rgba(255,255,255,0) 55%);"></div>
+            </div>
+          </div>
         </div>`
-      : `<div style="margin:10px 0 4px;font-size:11px;color:var(--text-hint);">Sem dados no período</div>`;
+      : `<div style="margin:10px 0 8px;font-size:11px;color:var(--text-hint);">Sem dados no período</div>`;
 
     const kpiRows = c.kpis.map(k => {
       if (k.val === null) return `
@@ -6282,12 +6289,16 @@ function buildPerformance() {
     const avatarHtml = foto
       ? `<img src="${foto}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid ${borderColor};">`
       : `<div style="width:56px;height:56px;border-radius:50%;background:${c.dot};opacity:.15;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:var(--text);border:2px solid ${borderColor};">${c.nome[0]}</div>`;
+    const removeFotoBtn = foto
+      ? `<button onclick="event.preventDefault();event.stopPropagation();perfRemoveFoto('${c.nome.replace(/'/g,"\\'")}')" title="Remover foto" style="position:absolute;top:-4px;right:-4px;width:18px;height:18px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--text-muted);font-size:11px;line-height:1;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.2);">✕</button>`
+      : '';
 
     return `<div class="perf-card" data-nome="${c.nome}" onclick="perfSelecionaConsultor('${c.nome}')" style="background:var(--surface);border:${borderWidth} solid ${borderColor};border-radius:10px;padding:16px;width:200px;flex-shrink:0;cursor:pointer;transition:outline .15s;${(isGold||isSilv)?'box-shadow:0 4px 16px rgba(0,0,0,.08);':''}">
       ${crown}
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-        <label title="Clique para trocar foto" style="cursor:pointer;position:relative;">
+        <label title="Clique para ${foto?'trocar':'adicionar'} foto" style="cursor:pointer;position:relative;display:inline-block;">
           ${avatarHtml}
+          ${removeFotoBtn}
           <input type="file" accept="image/*" style="display:none;" onchange="perfUploadFoto('${c.nome}',this)">
         </label>
         <div>
@@ -6533,12 +6544,40 @@ function perfSelecionaConsultor(nome) {
 function perfUploadFoto(nome, input) {
   const file = input.files[0];
   if (!file) return;
+  if (VIEWER) return; // modo visualização não edita
   const reader = new FileReader();
   reader.onload = e => {
-    localStorage.setItem('perf-foto-' + nome, e.target.result);
-    buildPerformance();
+    const img = new Image();
+    img.onload = () => {
+      const size = 200;                       // avatar pequeno → leve
+      const canvas = document.createElement('canvas');
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      // recorte central tipo "cover"
+      const scale = Math.max(size / img.width, size / img.height);
+      const w = img.width * scale, h = img.height * scale;
+      ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+      let dataUrl;
+      try { dataUrl = canvas.toDataURL('image/jpeg', 0.82); }
+      catch (err) { alert('Não foi possível processar a imagem.'); return; }
+      perfFotos[nome] = dataUrl;
+      try { localStorage.setItem('perf-foto-' + nome, dataUrl); } catch (le) {} // cache local
+      if (typeof sbScheduleSave === 'function' && !VIEWER) sbScheduleSave();      // sincroniza
+      buildPerformance();
+    };
+    img.onerror = () => alert('Arquivo de imagem inválido.');
+    img.src = e.target.result;
   };
   reader.readAsDataURL(file);
+}
+
+// Remove a foto de um consultor (volta para a inicial)
+function perfRemoveFoto(nome) {
+  if (VIEWER) return;
+  delete perfFotos[nome];
+  try { localStorage.removeItem('perf-foto-' + nome); } catch (e) {}
+  if (typeof sbScheduleSave === 'function' && !VIEWER) sbScheduleSave();
+  buildPerformance();
 }
 
 // ═══════════════════════════════════
@@ -6636,6 +6675,7 @@ async function sbSave() {
       mon_metas:  JSON.stringify(monMetas),
       pdi_data:   JSON.stringify(pdiData),
       conv_base:  JSON.stringify(convBaseManual),
+      fotos:      JSON.stringify(perfFotos),
     };
     const sendPayload = async (pl) => {
       let r = await fetch(SB_URL + '/rest/v1/saber_data?id=eq.main', {
@@ -6684,7 +6724,7 @@ async function sbSave() {
       const backup = {
         projects, nps_data: npsData, csp_manual: cspManual,
         mon_metas: monMetas, cap_data: capData, cap_manual: capManual,
-        pdi_data: pdiData, conv_base: convBaseManual,
+        pdi_data: pdiData, conv_base: convBaseManual, fotos: perfFotos,
         saved_at: sbLastSaved.toISOString(), total: projects.length
       };
       const backupStr = JSON.stringify(backup);
@@ -6710,7 +6750,7 @@ async function sbSave() {
         const emergency = {
           projects, nps_data: npsData, csp_manual: cspManual,
           mon_metas: monMetas, cap_data: capData, cap_manual: capManual,
-          pdi_data: pdiData, conv_base: convBaseManual,
+          pdi_data: pdiData, conv_base: convBaseManual, fotos: perfFotos,
           saved_at: new Date().toISOString()
         };
         localStorage.setItem('saber_emergency', JSON.stringify(emergency));
@@ -6733,7 +6773,8 @@ function sbExport() {
     cap_manual: capManual,
     mon_metas:  monMetas,
     pdi_data:   pdiData,
-    conv_base:  convBaseManual
+    conv_base:  convBaseManual,
+    fotos:      perfFotos
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
   const a    = document.createElement('a');
@@ -6758,6 +6799,8 @@ function sbImport(input) {
       if (data.mon_metas)   Object.assign(monMetas,  data.mon_metas);
       if (data.pdi_data) pdiData = normalizePdi(data.pdi_data);
       if (data.conv_base && typeof data.conv_base === 'object') Object.assign(convBaseManual, data.conv_base);
+    if (data.fotos && typeof data.fotos === 'object') Object.assign(perfFotos, data.fotos);
+      if (data.fotos && typeof data.fotos === 'object') Object.assign(perfFotos, data.fotos);
 
       buildCspManual();
       buildPdi();
@@ -6871,6 +6914,9 @@ async function sbLoad() {
       }
       if (row.conv_base) {
         try { const cb = JSON.parse(row.conv_base); if (cb && typeof cb === 'object') Object.assign(convBaseManual, cb); } catch(e){}
+      }
+      if (row.fotos) {
+        try { const ft = JSON.parse(row.fotos); if (ft && typeof ft === 'object') Object.assign(perfFotos, ft); } catch(e){}
       }
     }
 
