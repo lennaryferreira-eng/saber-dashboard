@@ -6552,8 +6552,16 @@ function perfSelecionaConsultor(nome) {
     if (btn) btn.style.opacity = '1';
   });
 
-  const prjsCons = projects.filter(p => p.consultor === nome && (!p.modelo || p.modelo !== 'DRO'));
+  const prjsCons = projects.filter(p => p.consultor === nome && !isDroFam(p));
   const meses = curM ? [curM] : ALL_MESES;
+  // DRO/DRX do investidor ativos no período (sinalização — não contam na taxa de prazo)
+  const _droDrxAtivo = (p, m) => {
+    const dI = parseDate(p.inicio); if(!dI) return false;
+    const dF = p.modelo==='DRX' ? new Date(dI.getTime()+42*864e5) : (parseDate(p.prevFim||p.realFim) || new Date(dI.getTime()+270*864e5));
+    const mStart = new Date(m.ano, m.idx, 1), mEnd = new Date(m.ano, m.idx+1, 0, 23,59,59);
+    return dI <= mEnd && dF >= mStart && calcStatus2(p) !== 'Churn';
+  };
+  const prjsDroDrx = projects.filter(p => p.consultor === nome && isDroFam(p) && meses.some(m => _droDrxAtivo(p, m)));
 
   // ── CONVERSÃO ─────────────────────────────────────────────
   const monetizados = prjsCons.filter(p => meses.some(m => projMonetizouNoMes(p, m.label, m.ano)));
@@ -6619,14 +6627,33 @@ function perfSelecionaConsultor(nome) {
   });
   const txPrazo = pTotal > 0 ? Math.round(pOk / pTotal * 100) : null;
   const corPrazo = txPrazo === null ? 'var(--text-hint)' : txPrazo >= 80 ? 'var(--green)' : 'var(--red)';
+  // Sinalização DRO/DRX no card de prazo
+  const droDrxRows = prjsDroDrx.map(p => {
+    const isDrx = p.modelo === 'DRX';
+    const bc = isDrx ? '#0d9488' : '#8E5BC4';
+    const bl = isDrx ? 'DR-X' : 'DRO';
+    let info;
+    if (isDrx) { const sm = drxSemana(p); info = sm===0 ? 'não iniciado' : sm>=7 ? 'encerrado' : ('Semana '+sm+'/6'); }
+    else { const cs = droGetCiclos(p); const ci = droCicloAtualIdx(cs); const sm = cs[ci]?droSemana(cs[ci]):0; info = 'Ciclo '+(cs[ci]?cs[ci].num:1) + (sm>=1&&sm<=12?(' · sem '+sm+'/12'):''); }
+    return '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;">'
+      + '<span style="width:8px;height:8px;border-radius:50%;background:'+bc+';flex-shrink:0;"></span>'
+      + '<span style="font-size:12px;font-weight:600;flex:1;">'+p.nome+'</span>'
+      + '<span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;background:'+bc+'22;color:'+bc+';">'+bl+'</span>'
+      + '<span style="font-size:11px;color:var(--text-hint);">em andamento · '+info+'</span></div>';
+  }).join('');
+  const droDrxBadge = prjsDroDrx.length ? ' · <span style="color:#8E5BC4;font-weight:700;">+'+prjsDroDrx.length+' DRO/DRX</span>' : '';
+  const droDrxMini = prjsDroDrx.length ? '<div class="mcard" style="flex:1;padding:10px 14px;border-left:3px solid #8E5BC4;"><div class="mlabel">DRO/DRX ativos</div><div class="mval" style="color:#8E5BC4;">'+prjsDroDrx.length+'</div></div>' : '';
+  const droDrxBlock = prjsDroDrx.length ? '<div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--border);"><div style="font-size:11px;font-weight:700;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Também em andamento no período · DRO/DRX <span style="font-weight:400;text-transform:none;">(não contam na taxa de prazo)</span></div><div style="display:flex;flex-direction:column;gap:6px;">'+droDrxRows+'</div></div>' : '';
   document.getElementById('perf-prazo-badge').innerHTML = txPrazo !== null
-    ? `<span style="color:${corPrazo};font-weight:700;">${txPrazo}% ${txPrazo>=80?'✓':'✗'} meta 80%</span>` : '—';
+    ? `<span style="color:${corPrazo};font-weight:700;">${txPrazo}% ${txPrazo>=80?'✓':'✗'} meta 80%</span>${droDrxBadge}`
+    : (prjsDroDrx.length ? `<span style="color:#8E5BC4;font-weight:700;">${prjsDroDrx.length} DRO/DRX em andamento</span>` : '—');
   document.getElementById('perf-prazo-content').innerHTML = `
     <div style="display:flex;gap:12px;margin:12px 0;">
       <div class="mcard c-gray" style="flex:1;padding:10px 14px;"><div class="mlabel">Total</div><div class="mval">${pTotal}</div></div>
       <div class="mcard c-green" style="flex:1;padding:10px 14px;"><div class="mlabel">No prazo</div><div class="mval">${pOk}</div></div>
       <div class="mcard c-red" style="flex:1;padding:10px 14px;"><div class="mlabel">Fora do prazo</div><div class="mval">${pTotal-pOk}</div></div>
       <div class="mcard c-${txPrazo===null?'gray':txPrazo>=80?'green':'red'}" style="flex:1;padding:10px 14px;"><div class="mlabel">Taxa</div><div class="mval">${txPrazo !== null ? txPrazo+'%' : '—'}</div></div>
+      ${droDrxMini}
     </div>
     <table style="width:100%;border-collapse:collapse;">
       <thead><tr style="background:var(--surface2);">
@@ -6636,7 +6663,7 @@ function perfSelecionaConsultor(nome) {
         <th style="padding:6px 8px;font-size:10px;text-align:left;">Status</th>
       </tr></thead>
       <tbody>${prazoRows || '<tr><td colspan="4" style="padding:12px;text-align:center;color:var(--text-hint);font-size:12px;">Nenhum projeto no período</td></tr>'}</tbody>
-    </table>`;
+    </table>${droDrxBlock}`;
 
   // ── NPS ───────────────────────────────────────────────────
   // Finalizados no período (filtra pelo realFim ou prevFim)
