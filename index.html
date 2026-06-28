@@ -296,7 +296,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
   <button class="nav-tab tab-base" onclick="show('base')">Base de Projetos</button>
   <button class="nav-tab" onclick="show('conversao')">Tx. Conversão</button>
   <button class="nav-tab" onclick="show('leadtime')">Lead Time</button>
-  <button class="nav-tab" onclick="show('dro')">DRO</button>
+  <button class="nav-tab" onclick="show('dro')">DRO/DRX</button>
   <button class="nav-tab" onclick="show('pipeline')">Pipeline</button>
   <button class="nav-tab" onclick="show('monetizacao')">Monetização</button>
   <button class="nav-tab" onclick="show('prazo')">Projetos no Prazo</button>
@@ -376,6 +376,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
           <option value="">Todos</option>
           <option value="Estruturação Estratégica">Estruturação Estratégica</option>
           <option value="DRO">DRO</option>
+          <option value="DRX">DRX</option>
         </select>
       </div>
       <div style="width:1px;height:20px;background:var(--border);margin:0 2px;"></div>
@@ -554,7 +555,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
 <!-- PIPELINE -->
 <section id="sec-dro" class="section">
   <div class="sec-head">
-    <h2 class="sec-title">DRO</h2>
+    <h2 class="sec-title">DRO / DRX</h2>
     <p class="sec-sub">Acompanhamento por ciclos de 3 meses — fases, comitês, trava governante e auditorias</p>
   </div>
 
@@ -937,6 +938,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
           <select id="np-modelo" class="sel" style="width:100%;font-size:14px;" onchange="npModeloChange()">
             <option value="Estruturação Estratégica">Estruturação Estratégica</option>
             <option value="DRO">DRO</option>
+          <option value="DRX">DRX</option>
           </select>
         </div>
 
@@ -1351,7 +1353,7 @@ function recomputeDerived(p){
 // Iteradores de agregação (usados a partir do Passo 2 — definidos já aqui, inofensivos)
 function monReceitaNoMes(label, ano){
   let ot=0, rec=0;
-  (projects||[]).forEach(p => { if (p.modelo === 'DRO') return;
+  (projects||[]).forEach(p => { if (isDroFam(p)) return;
     (p.monetizacoes||[]).forEach(m => { if (!m.mesMon) return; const[lb,an]=m.mesMon.split('/');
       if (lb===label && parseInt(an)===ano){ ot+=monPV(m.valorOT); rec+=monPV(m.valorRec); } }); });
   return {ot, rec, total: ot+rec};
@@ -1403,7 +1405,7 @@ function pipeEventosDoMes(label, ano){
   const mesIdx = (_MES_ORDEM[label]||0) - 1;
   const out = [];
   (typeof projects !== 'undefined' ? projects : []).forEach(p => {
-    if (p.modelo === 'DRO') return;
+    if (isDroFam(p)) return;
     (p.pipeEventos||[]).forEach(ev => {
       const dt = parseDate(ev.data);
       if (dt && dt.getMonth() === mesIdx && dt.getFullYear() === ano){
@@ -1465,7 +1467,7 @@ function calcStatus2(p) {
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   if (!p.inicio) return 'Início em breve';
   // DRO: finalizado apenas quando prevFim (fim do contrato) passou
-  if (p.modelo === 'DRO') {
+  if (isDroFam(p)) {
     if (p.prevFim && parseDate(p.prevFim) < hoje) return 'Finalizado';
     return 'Em andamento';
   }
@@ -1640,7 +1642,7 @@ function prazoStatus(p) {
   const hoje  = new Date(); hoje.setHours(0,0,0,0);
 
   // ── DRO: prazo = duração do contrato (início → fim do contrato) ──
-  if (p.modelo === 'DRO') {
+  if (isDroFam(p)) {
     if (!dPrev) return {ok: null, html: '<span style="color:var(--text-hint)">—</span>', dias: null};
     const rest = Math.round((dPrev - hoje) / 864e5);
     if (p.realFim) {
@@ -1716,7 +1718,7 @@ function prazoStatusNoMes(p, mIdx, mAno) {
 // O projeto deve aparecer no card do mês mIdx/mAno?
 // = meses de execução (mesesAtivos) + mês da finalização real + meses cobertos pelo atraso.
 function prazoNoMesCard(p, mIdx, mAno) {
-  if (p.modelo === 'DRO' || !p.inicio) return false;
+  if (isDroFam(p) || !p.inicio) return false;
   // Interrompido (reembolso): aparece nos meses de execução até o mês do reembolso; sem meses de atraso.
   if (p.dataReembolso) {
     if (mAno !== 2026 || !mesesAtivos(p).includes(mIdx)) return false;
@@ -1812,7 +1814,7 @@ function buildPipeline() {
 
   // base: Em andamento OU com oport preenchido, excluindo Monetizados
   let ativos = projects.filter(p => {
-    if (p.modelo === 'DRO') return false;
+    if (isDroFam(p)) return false;
     const temOport = p.oport && p.oport !== '—' && p.oport !== '' && p.oport !== 'Sem oportunidade';
     return calcStatus2(p) === 'Em andamento' || temOport;
   }).filter(p => p.conv !== 'Monetizado');
@@ -2100,7 +2102,7 @@ function buildPipeSemanaCal() {
     };
 
     projects.forEach(p => {
-      if (p.modelo === 'DRO') return;
+      if (isDroFam(p)) return;
       if (consFilter && p.consultor !== consFilter) return;
 
       // oportunidade no dia do próximo contato
@@ -2347,6 +2349,7 @@ function buildOutrosEscopos() {
 //  ABA DRO — acompanhamento por CICLOS de 3 meses
 //  (Teoria das Restrições: 7 travas, 3 fases, 3 comitês)
 // ════════════════════════════════════════════════════════
+function isDroFam(p){ return !!p && (p.modelo==='DRO' || p.modelo==='DRX'); }
 const DRO_TRAVAS = [
   ['T7','Exposição'],['T6','Atenção'],['T5','Interesse'],['T4','Qualificação'],
   ['T3','Compromisso'],['T2','Decisão'],['T1','Retenção']
@@ -2411,40 +2414,51 @@ function buildDRO(){
   if(!container) return;
   const consSelect=document.getElementById('dro-f-cons');
   if(consSelect && consSelect.options.length===1){
-    const cons=[...new Set(projects.filter(p=>p.modelo==='DRO').map(p=>p.consultor).filter(Boolean))].sort();
+    const cons=[...new Set(projects.filter(p=>isDroFam(p)).map(p=>p.consultor).filter(Boolean))].sort();
     cons.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;consSelect.appendChild(o);});
   }
   const consFilter=document.getElementById('dro-f-cons')?.value||'';
   const flagFilter=document.getElementById('dro-f-flag')?.value||'';
-  const lista=projects.filter(p=> p.modelo==='DRO' && calcStatus2(p)!=='Finalizado' &&
+  const lista=projects.filter(p=> isDroFam(p) && calcStatus2(p)!=='Finalizado' &&
     (!consFilter||p.consultor===consFilter) && (!flagFilter||p.flag===flagFilter));
 
   // ── Resumo da carteira ──
   const hoje=new Date(); hoje.setHours(0,0,0,0);
   let comSemana=0, comAtras=0, audTot=0, audAtras=0;
   lista.forEach(p=>{
-    droGetCiclos(p).forEach(c=>{
-      const sem=droSemana(c);
-      DRO_FASES.forEach(f=>{
-        const com=c[f.ck];
-        if(droComiteStatus(com,f.semFim,sem)==='atrasado') comAtras++;
-        if(com && com.prev && !com.real){ const dp=parseDate(com.prev); if(dp && dp>=hoje && (dp-hoje)/864e5<=7) comSemana++; }
+    if(p.modelo==='DRX'){
+      const sem=drxSemana(p); const dx=drxInit(p);
+      DRX_MARCOS.forEach(m=>{
+        const mo=dx.marcos[m.k];
+        if(drxMarcoStatus(mo,m.sem,sem)==='atrasado') comAtras++;
+        if(mo && mo.prev && !mo.real){ const dp=parseDate(mo.prev); if(dp && dp>=hoje && (dp-hoje)/864e5<=7) comSemana++; }
       });
-    });
+    } else {
+      droGetCiclos(p).forEach(c=>{
+        const sem=droSemana(c);
+        DRO_FASES.forEach(f=>{
+          const com=c[f.ck];
+          if(droComiteStatus(com,f.semFim,sem)==='atrasado') comAtras++;
+          if(com && com.prev && !com.real){ const dp=parseDate(com.prev); if(dp && dp>=hoje && (dp-hoje)/864e5<=7) comSemana++; }
+        });
+      });
+    }
     (p.droData?.auditorias||[]).forEach(a=>{ audTot++; if(!a.feita && a.dataPrev){ const dp=parseDate(a.dataPrev); if(dp && hoje>dp) audAtras++; } });
   });
   const kpi=(v,l,cor)=>`<div class="mcard" style="flex:1;min-width:110px;padding:10px 14px;"><div class="mval" style="color:${cor||'var(--text)'};">${v}</div><div class="mlabel">${l}</div></div>`;
   const resumo=`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;">
-    ${kpi(lista.length,'Clientes DRO','var(--dro,#8E5BC4)')}
-    ${kpi(comSemana,'Comitês esta semana','var(--amber)')}
+    ${kpi(lista.filter(x=>x.modelo==='DRO').length,'Clientes DRO','var(--dro,#8E5BC4)')}
+    ${kpi(lista.filter(x=>x.modelo==='DRX').length,'Clientes DRX','var(--drx,#0d9488)')}
+    ${kpi(comSemana,'Comitês/reuniões esta semana','var(--amber)')}
     ${kpi(comAtras,'Comitês atrasados', comAtras?'var(--red)':'var(--text)')}
     ${kpi(audTot,'Auditorias contratadas','var(--blue)')}
     ${kpi(audAtras,'Auditorias atrasadas', audAtras?'var(--red)':'var(--text)')}
   </div>`;
 
-  if(lista.length===0){ container.innerHTML=resumo+'<p style="color:var(--text-hint);font-size:13px;padding:16px 0;">Nenhum projeto DRO ativo.</p>'; return; }
+  if(lista.length===0){ container.innerHTML=resumo+'<p style="color:var(--text-hint);font-size:13px;padding:16px 0;">Nenhum projeto DRO/DRX ativo.</p>'; return; }
 
   container.innerHTML = resumo + lista.map(p=>{
+    if(p.modelo==='DRX') return drxCard(p, hoje);
     const d=droInitData(p);
     const ciclos=droGetCiclos(p);
     const atualIdx=droCicloAtualIdx(ciclos);
@@ -2578,27 +2592,7 @@ function buildDRO(){
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-top:12px;">${fasesHTML}</div>
         </div>
 
-        <!-- Auditorias -->
-        <div style="margin-top:14px;border:1px solid rgba(47,111,237,.22);border-radius:10px;padding:12px 13px;background:linear-gradient(180deg,rgba(47,111,237,.04),transparent);">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            <div style="font-size:12px;font-weight:700;">🔍 Auditorias <span style="font-weight:500;color:var(--text-hint);font-size:11px;">(${auditorias.filter(a=>a.feita).length}/${auditorias.length} concluídas)</span></div>
-            <button onclick="droShowAddAuditoria(${p.id})" style="font-size:11px;padding:3px 10px;border:1px dashed var(--border);border-radius:6px;background:transparent;color:var(--text-muted);cursor:pointer;">＋ Auditoria</button>
-          </div>
-          <div id="dro-aud-${p.id}">${audHTML}</div>
-          <div id="dro-aud-form-${p.id}" style="display:none;margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:12px;">
-            <div style="font-size:11px;font-weight:600;color:var(--text-hint);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px;">Nova Auditoria</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-              <div><label style="font-size:11px;color:var(--text-hint);display:block;margin-bottom:3px;">Nome</label><input type="text" id="dro-aud-nome-${p.id}" class="sel" placeholder="Ex: Auditoria de Mídia Paga" style="width:100%;font-size:12px;"></div>
-              <div><label style="font-size:11px;color:var(--text-hint);display:block;margin-bottom:3px;">Data Prevista</label><input type="date" id="dro-aud-dataprev-${p.id}" class="sel" style="width:100%;font-size:12px;"></div>
-              <div><label style="font-size:11px;color:var(--text-hint);display:block;margin-bottom:3px;">Responsável</label><input type="text" id="dro-aud-resp-${p.id}" class="sel" placeholder="Nome do responsável" style="width:100%;font-size:12px;"></div>
-              <div><label style="font-size:11px;color:var(--text-hint);display:block;margin-bottom:3px;">Entregáveis</label><input type="text" id="dro-aud-entregaveis-${p.id}" class="sel" placeholder="Ex: Relatório" style="width:100%;font-size:12px;"></div>
-            </div>
-            <div style="display:flex;gap:8px;justify-content:flex-end;">
-              <button onclick="droHideAddAuditoria(${p.id})" style="font-size:11px;padding:4px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;cursor:pointer;">Cancelar</button>
-              <button onclick="droConfirmAddAuditoria(${p.id})" style="font-size:11px;padding:4px 12px;border:none;border-radius:6px;background:var(--accent);color:#fff;cursor:pointer;font-weight:600;">Adicionar</button>
-            </div>
-          </div>
-        </div>
+        ${droAudBlock(p, hoje)}
       </div>
     </div>`;
   }).join('');
@@ -2609,6 +2603,153 @@ function droSetView(projId, idx){ const p=projects.find(x=>String(x.id)===String
 function droSetTrava(projId, ci, val){ const p=projects.find(x=>String(x.id)===String(projId)); if(!p) return; const d=droInitData(p); if(!d.ciclos[ci]) d.ciclos[ci]={}; d.ciclos[ci].trava=val; upd(); buildDRO(); }
 function droSetFoco(projId, ci, val){ const p=projects.find(x=>String(x.id)===String(projId)); if(!p) return; const d=droInitData(p); if(!d.ciclos[ci]) d.ciclos[ci]={}; d.ciclos[ci].foco=val; upd(); }
 function droSetComite(projId, ci, ck, field, val){ const p=projects.find(x=>String(x.id)===String(projId)); if(!p) return; const d=droInitData(p); if(!d.ciclos[ci]) d.ciclos[ci]={}; if(!d.ciclos[ci][ck]) d.ciclos[ci][ck]={prev:'',real:''}; d.ciclos[ci][ck][field]=val; upd(); buildDRO(); }
+
+
+// ════════════════════════════════════════════════════════
+//  DR-X — diagnóstico único de 6 semanas (3 reuniões-marco)
+// ════════════════════════════════════════════════════════
+const DRX_MARCOS = [
+  { k:'kickoff',   nome:'Kick-off',                  sem:1, fase:'Fase 1 · Onboarding (S1)' },
+  { k:'validacao', nome:'Validação da Trava',        sem:3, fase:'Fase 2 · Diagnóstica (S2–3)' },
+  { k:'final',     nome:'Comitê Final · Decolagem',  sem:6, fase:'Final · Decolagem (S6)' }
+];
+const DRX_QUICKWIN = { T7:'Setup de mídia', T6:'Pack de criativos', T5:'Landing page', T4:'Playbook comercial', T3:'Kit anti-no-show', T2:'Arsenal de fechamento', T1:'Régua de retenção' };
+
+function drxInit(p){
+  const d=droInitData(p);
+  if(!d.drx || typeof d.drx!=='object') d.drx={};
+  if(!d.drx.marcos) d.drx.marcos={};
+  ['kickoff','validacao','final'].forEach(k=>{ if(!d.drx.marcos[k]) d.drx.marcos[k]={prev:'',real:''}; });
+  if(!Array.isArray(d.drx.travasSec)) d.drx.travasSec=[];
+  if(typeof d.drx.travaPrim!=='string') d.drx.travaPrim='';
+  return d.drx;
+}
+function drxSemana(p){
+  const ini=parseDate(p.inicio); if(!ini) return 0;
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  if(hoje<ini) return 0;
+  const fim=new Date(ini.getFullYear(),ini.getMonth(),ini.getDate()+42);
+  if(hoje>=fim) return 7;
+  return Math.min(6, Math.floor((hoje-ini)/864e5/7)+1);
+}
+function drxMarcoStatus(mo, semAlvo, semAtual){
+  if(mo && mo.real) return 'feito';
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  if(mo && mo.prev){ const dp=parseDate(mo.prev); if(dp && hoje>dp) return 'atrasado'; }
+  if(semAtual===0) return 'futuro';
+  if(semAtual>semAlvo) return 'atrasado';
+  if(semAtual>=semAlvo) return 'agora';
+  return 'pendente';
+}
+
+function drxCard(p, hoje){
+  const dx=drxInit(p);
+  if(p.droExpanded===undefined) p.droExpanded=true;
+  const exp=p.droExpanded;
+  const sem=drxSemana(p);
+  const semPct = sem<=0?0: sem>=7?100: Math.round(sem/6*100);
+  const semTxt = sem===0?'não iniciado': sem>=7?'encerrado':('Semana '+sem+'/6');
+  const qw = dx.travaPrim? (DRX_QUICKWIN[dx.travaPrim]||'') : '';
+
+  const chain = DRO_TRAVAS.map(([k,n])=>{
+    const prim=dx.travaPrim===k; const sec=dx.travasSec.includes(k);
+    const bg = prim?'var(--drx,#0d9488)': sec?'rgba(13,148,136,.25)':'var(--surface3,#ecebe8)';
+    const co = prim?'#fff': sec?'var(--drx,#0d9488)':'var(--text-hint)';
+    return '<div style="flex:1;text-align:center;font-size:9px;font-weight:700;padding:4px 2px;border-radius:4px;background:'+bg+';color:'+co+';" title="'+k+' '+n+'">'+k+'</div>';
+  }).join('');
+
+  const marcosHTML = DRX_MARCOS.map(m=>{
+    const mo=dx.marcos[m.k]||{prev:'',real:''};
+    const st=drxMarcoStatus(mo,m.sem,sem);
+    const map={feito:['var(--green)','✓ feito'],atrasado:['var(--red)','⚠ atrasado'],agora:['var(--amber)','● agora'],pendente:['var(--text-hint)','○ pendente'],futuro:['var(--text-hint)','○ futuro']};
+    const cor=map[st][0], txt=map[st][1];
+    return '<div style="border:1px solid var(--border);border-radius:9px;padding:9px 10px;">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;"><b style="font-size:11px;">🏁 '+m.nome+'</b><span style="font-size:10px;font-weight:700;color:'+cor+';">'+txt+'</span></div>'
+      + '<div style="font-size:9px;color:var(--text-hint);margin-bottom:6px;">'+m.fase+'</div>'
+      + '<div style="display:flex;gap:6px;">'
+      + '<label style="flex:1;font-size:9px;color:var(--text-hint);">prev<input type="date" class="sel" style="width:100%;font-size:10px;padding:1px 3px;" value="'+dv(mo.prev)+'" onchange="drxSetMarco('+p.id+',\''+m.k+'\',\'prev\',this.value)"></label>'
+      + '<label style="flex:1;font-size:9px;color:var(--text-hint);">real<input type="date" class="sel" style="width:100%;font-size:10px;padding:1px 3px;" value="'+dv(mo.real)+'" onchange="drxSetMarco('+p.id+',\''+m.k+'\',\'real\',this.value)"></label>'
+      + '</div></div>';
+  }).join('');
+
+  const travaOpts = (cur)=>DRO_TRAVAS.map(([k,n])=>'<option value="'+k+'" '+(cur===k?'selected':'')+'>'+k+' '+n+'</option>').join('');
+  const sec0=dx.travasSec[0]||'', sec1=dx.travasSec[1]||'';
+  const oportSel = (v)=>'<option value="'+v+'" '+(p.oport===v?'selected':'')+'>'+v+'</option>';
+
+  return ''
+  + '<div class="card" style="margin-bottom:1rem;">'
+  +   '<div onclick="const pr=projects.find(x=>String(x.id)===String('+p.id+'));pr.droExpanded=!pr.droExpanded;buildDRO();" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;cursor:pointer;'+(exp?'margin-bottom:12px;':'')+'">'
+  +     '<div><div style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;"><span style="width:9px;height:9px;border-radius:50%;background:var(--drx,#0d9488);display:inline-block;"></span>'+p.nome+' <span class="badge" style="background:rgba(13,148,136,.14);color:var(--drx,#0d9488);font-size:10px;margin-top:0;">DR-X</span></div>'
+  +     '<div style="font-size:12px;color:var(--text-hint);margin-top:2px;">'+(p.consultor||'—')+' · '+(p.inicio||'?')+' → '+(p.prevFim||'?')+' · 6 semanas'+(p.gmv? ' · GMV R$ '+Number(p.gmv).toLocaleString('pt-BR'):'')+'</div></div>'
+  +     '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;" onclick="event.stopPropagation()">'+flagHTML(p.flag)
+  +       '<select class="sel" style="font-size:11px;padding:2px 6px;" onchange="const pr=projects.find(x=>String(x.id)===String('+p.id+'));pr.oport=this.value;upd();"><option value="" '+(!p.oport?'selected':'')+'>Sem oportunidade</option>'+oportSel('Mapeado (AQL)')+oportSel('Apresentar proposta (SQL)')+oportSel('Proposta apresentada (SAL)')+oportSel('Follow (COMMIT)')+'</select>'
+  +       '<span style="font-size:16px;color:var(--text-hint);line-height:1;display:inline-block;transform:rotate('+(exp?'0':'180deg')+');">⌃</span>'
+  +     '</div>'
+  +   '</div>'
+  +   '<div style="display:'+(exp?'block':'none')+'">'
+  +     '<div style="border:1px solid rgba(13,148,136,.25);border-radius:10px;padding:13px;background:linear-gradient(180deg,rgba(13,148,136,.05),transparent);">'
+  +       '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;"><b style="font-size:13px;">Diagnóstico DR-X · 6 semanas</b><span style="font-size:10px;font-weight:700;color:'+(sem>=1&&sem<=6?'var(--drx,#0d9488)':'var(--text-hint)')+';">'+semTxt+'</span>'+(qw?'<span style="margin-left:auto;font-size:10px;font-weight:700;color:var(--drx,#0d9488);background:rgba(13,148,136,.1);padding:2px 8px;border-radius:20px;">⚡ Quick Win: '+qw+'</span>':'')+'</div>'
+  +       '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;"><span style="font-size:10px;color:var(--text-hint);">Trava primária:</span>'
+  +         '<select class="sel" style="font-size:11px;padding:2px 6px;" onchange="drxSetTravaPrim('+p.id+',this.value)"><option value="" '+(!dx.travaPrim?'selected':'')+'>— definir —</option>'+travaOpts(dx.travaPrim)+'</select>'
+  +         '<span style="font-size:10px;color:var(--text-hint);">Secundárias:</span>'
+  +         '<select class="sel" style="font-size:11px;padding:2px 6px;" onchange="drxSetTravaSec('+p.id+',0,this.value)"><option value="" '+(!sec0?'selected':'')+'>—</option>'+travaOpts(sec0)+'</select>'
+  +         '<select class="sel" style="font-size:11px;padding:2px 6px;" onchange="drxSetTravaSec('+p.id+',1,this.value)"><option value="" '+(!sec1?'selected':'')+'>—</option>'+travaOpts(sec1)+'</select>'
+  +       '</div>'
+  +       '<div style="display:flex;gap:3px;margin-bottom:8px;">'+chain+'</div>'
+  +       '<div style="height:7px;border-radius:5px;background:var(--surface3,#ecebe8);overflow:hidden;"><div style="height:100%;width:'+semPct+'%;background:var(--drx,#0d9488);border-radius:5px;"></div></div>'
+  +       '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-hint);margin-top:2px;"><span>Sem 1</span><span>Sem 6 · Decolagem</span></div>'
+  +       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;margin-top:12px;">'+marcosHTML+'</div>'
+  +     '</div>'
+  +     droAudBlock(p, hoje)
+  +   '</div>'
+  + '</div>';
+}
+
+// Bloco de auditorias compartilhado (DRO e DRX)
+function droAudBlock(p, hoje){
+  if(!hoje){ hoje=new Date(); hoje.setHours(0,0,0,0); }
+  const d=droInitData(p);
+  const auditorias=d.auditorias||[];
+  const audHTML = auditorias.length>0 ? auditorias.map((a,i)=>{
+    const feita=a.feita; const dp=a.dataPrev?parseDate(a.dataPrev):null; const atras=!feita&&dp&&hoje>dp;
+    const stcor=feita?'var(--green)':atras?'var(--red)':'var(--blue)';
+    const sttxt=feita?'Concluída':atras?('Atrasada '+Math.floor((hoje-dp)/864e5)+'d'):'Em andamento';
+    return '<div style="padding:8px 0;border-bottom:1px solid var(--border);">'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'
+      + '<div onclick="droToggleAuditoria('+p.id+','+i+')" style="width:20px;height:20px;border-radius:5px;border:2px solid '+(feita?'var(--green)':'var(--border)')+';background:'+(feita?'var(--green)':'transparent')+';display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">'+(feita?'<span style="color:#fff;font-size:11px;">✓</span>':'')+'</div>'
+      + '<span style="font-size:12px;font-weight:600;flex:1;">'+a.nome+'</span>'
+      + '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:'+stcor+'22;color:'+stcor+';">'+sttxt+'</span>'
+      + '<button onclick="droRemoveAuditoria('+p.id+','+i+')" style="font-size:10px;color:var(--text-hint);background:none;border:none;cursor:pointer;padding:0 4px;">✕</button>'
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px;padding-left:28px;">'
+      + '<div><span style="font-size:10px;color:var(--text-hint);">Prevista</span><input type="date" value="'+dv(a.dataPrev)+'" class="sel" style="font-size:11px;padding:2px 6px;width:100%;" onchange="droSetAuditoriaField('+p.id+','+i+',\'dataPrev\',this.value)"></div>'
+      + '<div><span style="font-size:10px;color:var(--text-hint);">Realizada</span><input type="date" value="'+dv(a.data)+'" class="sel" style="font-size:11px;padding:2px 6px;width:100%;" onchange="droSetAuditoriaData('+p.id+','+i+',this.value)"></div>'
+      + '<div><span style="font-size:10px;color:var(--text-hint);">Responsável</span><input type="text" value="'+(a.responsavel||'')+'" class="sel" placeholder="—" style="font-size:11px;padding:2px 6px;width:100%;" onblur="droSetAuditoriaField('+p.id+','+i+',\'responsavel\',this.value)"></div>'
+      + '<div><span style="font-size:10px;color:var(--text-hint);">Entregáveis</span><input type="text" value="'+(a.entregaveis||'')+'" class="sel" placeholder="—" style="font-size:11px;padding:2px 6px;width:100%;" onblur="droSetAuditoriaField('+p.id+','+i+',\'entregaveis\',this.value)"></div>'
+      + '</div></div>';
+  }).join('') : '<p style="font-size:12px;color:var(--text-hint);padding:6px 0;">Nenhuma auditoria contratada.</p>';
+  return '<div style="margin-top:14px;border:1px solid rgba(47,111,237,.22);border-radius:10px;padding:12px 13px;background:linear-gradient(180deg,rgba(47,111,237,.04),transparent);">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div style="font-size:12px;font-weight:700;">🔍 Auditorias <span style="font-weight:500;color:var(--text-hint);font-size:11px;">('+auditorias.filter(a=>a.feita).length+'/'+auditorias.length+' concluídas)</span></div>'
+    + '<button onclick="droShowAddAuditoria('+p.id+')" style="font-size:11px;padding:3px 10px;border:1px dashed var(--border);border-radius:6px;background:transparent;color:var(--text-muted);cursor:pointer;">＋ Auditoria</button></div>'
+    + '<div id="dro-aud-'+p.id+'">'+audHTML+'</div>'
+    + '<div id="dro-aud-form-'+p.id+'" style="display:none;margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:12px;">'
+    + '<div style="font-size:11px;font-weight:600;color:var(--text-hint);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px;">Nova Auditoria</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">'
+    + '<div><label style="font-size:11px;color:var(--text-hint);display:block;margin-bottom:3px;">Nome</label><input type="text" id="dro-aud-nome-'+p.id+'" class="sel" placeholder="Ex: Auditoria de Mídia Paga" style="width:100%;font-size:12px;"></div>'
+    + '<div><label style="font-size:11px;color:var(--text-hint);display:block;margin-bottom:3px;">Data Prevista</label><input type="date" id="dro-aud-dataprev-'+p.id+'" class="sel" style="width:100%;font-size:12px;"></div>'
+    + '<div><label style="font-size:11px;color:var(--text-hint);display:block;margin-bottom:3px;">Responsável</label><input type="text" id="dro-aud-resp-'+p.id+'" class="sel" placeholder="Nome do responsável" style="width:100%;font-size:12px;"></div>'
+    + '<div><label style="font-size:11px;color:var(--text-hint);display:block;margin-bottom:3px;">Entregáveis</label><input type="text" id="dro-aud-entregaveis-'+p.id+'" class="sel" placeholder="Ex: Relatório" style="width:100%;font-size:12px;"></div>'
+    + '</div><div style="display:flex;gap:8px;justify-content:flex-end;">'
+    + '<button onclick="droHideAddAuditoria('+p.id+')" style="font-size:11px;padding:4px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;cursor:pointer;">Cancelar</button>'
+    + '<button onclick="droConfirmAddAuditoria('+p.id+')" style="font-size:11px;padding:4px 12px;border:none;border-radius:6px;background:var(--accent);color:#fff;cursor:pointer;font-weight:600;">Adicionar</button>'
+    + '</div></div></div>';
+}
+
+// ── Setters DR-X ──
+function drxSetTravaPrim(projId, val){ const p=projects.find(x=>String(x.id)===String(projId)); if(!p) return; const dx=drxInit(p); dx.travaPrim=val; dx.travasSec=(dx.travasSec||[]).filter(k=>k!==val); upd(); buildDRO(); }
+function drxSetTravaSec(projId, slot, val){ const p=projects.find(x=>String(x.id)===String(projId)); if(!p) return; const dx=drxInit(p); const arr=dx.travasSec.slice(); while(arr.length<2) arr.push(''); arr[slot]=val; dx.travasSec=arr.filter(Boolean).filter(k=>k!==dx.travaPrim); upd(); buildDRO(); }
+function drxSetMarco(projId, mk, field, val){ const p=projects.find(x=>String(x.id)===String(projId)); if(!p) return; const dx=drxInit(p); if(!dx.marcos[mk]) dx.marcos[mk]={prev:'',real:''}; dx.marcos[mk][field]=val; upd(); buildDRO(); }
+
 
 
 function droAddAuditoria(projId) {
@@ -2733,7 +2874,7 @@ function buildGanttDRO() {
   });
 
   if (droPrjs.length === 0) {
-    container.innerHTML = '<p style="font-size:12px;color:var(--text-hint);">Nenhum projeto DRO ativo.</p>';
+    container.innerHTML = '<p style="font-size:12px;color:var(--text-hint);">Nenhum projeto DRO/DRX ativo.</p>';
     return;
   }
 
@@ -3072,7 +3213,7 @@ function confirmNovoProj() {
     id: Date.now(), nome, modelo,
     consultor,
     inicio, inicioLT: '', 
-    prevFim: prevFim || (modelo === 'DRO' ? '' : addDays(inicio, 45)), 
+    prevFim: prevFim || (modelo === 'DRO' ? '' : modelo === 'DRX' ? addDays(inicio, 42) : addDays(inicio, 45)), 
     realFim: '',
     flag, mon: 'Em andamento',
     conv: '', status2: 'Em andamento',
@@ -3080,7 +3221,7 @@ function confirmNovoProj() {
     oport: '', proximoContato: '', valorOport: '', valorOportRec: '', escopos: '', escoposRec: '',
     entregas: {},
     prevManual: !!prevFim,
-    droData: modelo === 'DRO' ? { comites: [], auditorias: [] } : undefined
+    droData: (modelo === 'DRO' || modelo === 'DRX') ? { comites: [], auditorias: [] } : undefined
   };
 
   projects.unshift(novoProj);
@@ -3200,6 +3341,7 @@ function renderBase() {
         <select class="sel" style="font-size:11px;padding:2px 4px;" data-f="modelo" data-id="${p.id}" onchange="setField(this)">
           <option value="D&P" ${(!p.modelo||p.modelo==='D&P')?'selected':''}>D&P</option>
           <option value="DRO" ${p.modelo==='DRO'?'selected':''}>DRO</option>
+          <option value="DRX" ${p.modelo==='DRX'?'selected':''}>DRX</option>
         </select>
       </td>
       <td contenteditable="true" data-f="consultor" data-id="${p.id}" onblur="setField(this)">${p.consultor}</td>
@@ -3373,7 +3515,7 @@ function buildFunil(consFilter) {
   if (!el) return;
 
   let ativos = projects.filter(p => {
-    if (p.modelo === 'DRO') return false;
+    if (isDroFam(p)) return false;
     const temOport = p.oport && p.oport !== '—' && p.oport !== '' && p.oport !== 'Sem oportunidade';
     return calcStatus2(p) === 'Em andamento' || temOport;
   }).filter(p => p.conv !== 'Monetizado');
@@ -3496,7 +3638,7 @@ function calcConv() {
     if (consFilter) iniciados = iniciados.filter(p => p.consultor === consFilter);
     // numerador: projetos cujo mês monetizado é este mês
     // numerador: projetos com ao menos UMA monetização neste mês (cliente único conta 1x)
-    let monos = projects.filter(p => { if (p.modelo === 'DRO') return false; return projMonetizouNoMes(p, m.label, m.ano); });
+    let monos = projects.filter(p => { if (isDroFam(p)) return false; return projMonetizouNoMes(p, m.label, m.ano); });
     if (consFilter) monos = monos.filter(p => p.consultor === consFilter);
     const taxa  = iniciados.length > 0 ? Math.round(monos.length / iniciados.length * 100) : null;
     totalAno += iniciados.length; monAno += monos.length;
@@ -3869,7 +4011,7 @@ function calcNps() {
       return d.getMonth() === m.idx && d.getFullYear() === m.ano;
     });
     const finalizadosMes = projects.filter(p => {
-      if (p.modelo === 'DRO') return false;
+      if (isDroFam(p)) return false;
       const df = parseDate(p.realFim || p.prevFim);
       return df && df.getMonth() === m.idx && df.getFullYear() === m.ano && calcStatus2(p) === 'Finalizado';
     }).length;
@@ -4412,7 +4554,7 @@ function calcMon() {
   // realizado por mês/tipo (tabela de metas) — itera TODA monetização
   const realPorMes = {}, realOTPorMes = {}, realRecPorMes = {};
   projects.forEach(p => {
-    if (p.modelo === 'DRO') return;
+    if (isDroFam(p)) return;
     (p.monetizacoes||[]).forEach(m => {
       const mesKey = ALL_MESES.find(x => x.label + '/' + x.ano === m.mesMon)?.key;
       if (!mesKey) return;
@@ -4587,7 +4729,7 @@ function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
   let convIniciados = 0, convMon = 0;
   mesesConv.forEach(m => {
     convIniciados += projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && p.inicio && parseDate(p.inicio)?.getMonth() === m.idx && parseDate(p.inicio)?.getFullYear() === m.ano).length;
-    convMon       += projects.filter(p => { if (p.modelo === 'DRO') return false; return projMonetizouNoMes(p, m.label, m.ano); }).length;
+    convMon       += projects.filter(p => { if (isDroFam(p)) return false; return projMonetizouNoMes(p, m.label, m.ano); }).length;
   });
   const convV = convIniciados > 0 ? Math.round(convMon / convIniciados * 100) : null;
 
@@ -4703,7 +4845,7 @@ function buildOvAnalises(curM) {
 
   // Mês filtrado (curM) ou mês atual
   const mesLabel = curM ? curM.label + '/' + curM.ano : hoje.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
-  const iniciados   = projects.filter(p => { if (p.modelo === 'DRO') return false; const d = parseDate(p.inicio); return d && d.getMonth()===mesIdx && d.getFullYear()===mesAno; });
+  const iniciados   = projects.filter(p => { if (isDroFam(p)) return false; const d = parseDate(p.inicio); return d && d.getMonth()===mesIdx && d.getFullYear()===mesAno; });
   const finalizados = projects.filter(p => { const d = parseDate(p.realFim||p.prevFim); return d && d.getMonth()===mesIdx && d.getFullYear()===mesAno && calcStatus2(p)==='Finalizado'; });
   const isMonetizado = p => p.conv === 'Monetizado' || p.mon === 'Monetizado';
   const iniMon  = iniciados.filter(p => isMonetizado(p)).length;
@@ -4794,7 +4936,7 @@ function buildOvAnalises(curM) {
   let somaOT = 0, somaRec = 0, nOT = 0, nRec = 0;
   (curM ? [curM] : ALL_MESES).forEach(m => {
     projects.forEach(p => {
-      if (p.modelo === 'DRO') return;
+      if (isDroFam(p)) return;
       (p.monetizacoes||[]).forEach(ev => {
         if (!ev.mesMon) return;
         const [lb, an] = ev.mesMon.split('/');
@@ -5660,7 +5802,7 @@ function buildCapHistTable() {
   const rows = getHistMeses().map(m => {
     const ini  = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && p.inicio && parseDate(p.inicio)?.getMonth() === m.idx && parseDate(p.inicio)?.getFullYear() === m.ano);
     const conv = projects.filter(p => {
-      if (p.modelo === 'DRO') return false;
+      if (isDroFam(p)) return false;
       return projMonetizouNoMes(p, m.label, m.ano);
     });
     const taxa = ini.length > 0 ? Math.round(conv.length / ini.length * 100) : null;
@@ -5816,7 +5958,7 @@ function buildGantt() {
   // filtra projetos na janela — exclui Churn e Pausado
   let prjs = projects.filter(p => {
     if (!p.inicio) return false;
-    if (p.modelo === 'DRO') return false; // DRO tem aba própria
+    if (isDroFam(p)) return false; // DRO tem aba própria
     const s2 = calcStatus2(p);
     if (s2 === 'Churn' || s2 === 'Pausado') return false;
     const dI = parseDate(p.inicio);
@@ -5913,7 +6055,7 @@ function buildGantt() {
       // pesoAuditor=true quando filtrado por auditor — DRO conta 1 (não 0.25)
       return lista.reduce((acc, p) => {
         if (!temEntregaNaSemana(p, s) && p.modelo !== 'DRO') return acc;
-        if (p.modelo === 'DRO') {
+        if (isDroFam(p)) {
           const ini = parseDate(p.inicio);
           const fim = parseDate(p.realFim || p.prevFim);
           const sEnd = new Date(s.getTime() + 6 * 864e5);
@@ -6122,11 +6264,11 @@ function buildGantt() {
         }).join('');
 
         // DRO tem barra contínua com estilo diferenciado
-        const isDRO = p.modelo === 'DRO';
+        const isDRO = isDroFam(p);
         const barColor = isDRO ? 'var(--purple, #8E5BC4)' : semStatusColor;
         const barStyle = isDRO ? 'background:' + barColor + ';left:' + leftPct + '%;right:' + rightPct + '%;display:flex;align-items:center;justify-content:center;overflow:visible;opacity:0.85;border:1px dashed rgba(255,255,255,0.4);' : 'background:' + semStatusColor + ';left:' + leftPct + '%;right:' + rightPct + '%;display:flex;align-items:center;justify-content:center;overflow:visible;';
         bar = '<div class="gantt-bar" style="' + barStyle + '">'
-          + (isDRO ? '<span style="font-size:8px;font-weight:700;color:#fff;white-space:nowrap;padding:0 4px;line-height:1;letter-spacing:.5px;">DRO</span>' : '')
+          + (isDRO ? '<span style="font-size:8px;font-weight:700;color:#fff;white-space:nowrap;padding:0 4px;line-height:1;letter-spacing:.5px;">'+p.modelo+'</span>' : '')
           + '<span style="font-size:8px;font-weight:600;color:#fff;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.4);padding:0 2px;line-height:1;position:relative;z-index:2;">' + semLabel + '</span>'
           + markers
           + '</div>';
@@ -6194,7 +6336,7 @@ function buildPerformance() {
     const prazoV = pTotal > 0 ? Math.round(pOk / pTotal * 100) : null;
 
     // NPS — base = finalizados do consultor no período (por realFim/prevFim)
-    const npsBase = projects.filter(p => { if (p.modelo === 'DRO') return false;
+    const npsBase = projects.filter(p => { if (isDroFam(p)) return false;
       if (p.consultor !== nome || calcStatus2(p) !== 'Finalizado') return false;
       if (!curM) return true;
       const dataFim = p.realFim || p.prevFim;
