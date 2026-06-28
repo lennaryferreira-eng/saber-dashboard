@@ -907,7 +907,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
   <div style="margin-top:2rem;">
     <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);margin-bottom:12px;display:flex;align-items:center;gap:8px;">
       <span style="width:10px;height:10px;border-radius:50%;background:#8E5BC4;display:inline-block;"></span>
-      Projetos DRO
+      Projetos DRO/DRX
     </div>
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
       <select class="base-sel" id="dro-cap-auditor" onchange="buildGantt()" style="font-size:11px;">
@@ -2837,7 +2837,7 @@ function buildGanttDRO() {
 
   // Todos os projetos DRO ativos
   const todosAtivos = projects.filter(p => {
-    if (p.modelo !== 'DRO' || !p.inicio) return false;
+    if (!isDroFam(p) || !p.inicio) return false;
     const s2 = calcStatus2(p);
     if (s2 === 'Finalizado' || s2 === 'Churn' || s2 === 'Pausado') return false;
     if (p.prevFim && parseDate(p.prevFim) < hoje) return false;
@@ -2892,67 +2892,74 @@ function buildGanttDRO() {
   const rows = droPrjs.map(p => {
     const dI = parseDate(p.inicio);
     if (!dI) return '';
-    const dF = parseDate(p.prevFim || p.realFim) || new Date(dI.getTime() + 180 * 864e5);
+    const isDrx = p.modelo === 'DRX';
+    const dF = isDrx
+      ? new Date(dI.getTime() + 42 * 864e5)
+      : (parseDate(p.prevFim || p.realFim) || new Date(dI.getTime() + 270 * 864e5));
     const dot = dotColors[p.consultor] || 'var(--text-hint)';
     const nome = p.nome.length > 26 ? p.nome.slice(0,24) + '…' : p.nome;
+    const baseColor = isDrx ? '#0d9488' : '#8E5BC4';
+    const badgeTxt  = isDrx ? 'DR-X' : 'DRO';
 
-    // Mapeia eventos da semana: comitês e auditorias
-    const comites = (p.droData?.comites || []);
-    const auditorias = (p.droData?.auditorias || []);
+    // Eventos (marcos/comitês/auditorias) com data efetiva (real > prevista > agendada)
+    const eventos = [];
+    if (isDrx) {
+      const dx = drxInit(p);
+      const shortM = { kickoff:'Kick-off', validacao:'Validação', final:'Decolagem' };
+      DRX_MARCOS.forEach(m => {
+        const mo = dx.marcos[m.k] || {};
+        const d = mo.real ? parseDate(mo.real) : mo.prev ? parseDate(mo.prev) : new Date(dI.getTime() + (m.sem-1)*7*864e5);
+        if (d) eventos.push({ d, label: shortM[m.k], feito: !!mo.real });
+      });
+    } else {
+      const ciclos = droGetCiclos(p);
+      const multi = ciclos.length > 1;
+      ciclos.forEach(c => {
+        DRO_FASES.forEach(f => {
+          const com = c[f.ck] || {};
+          const d = com.real ? parseDate(com.real) : com.prev ? parseDate(com.prev) : new Date(c.inicio.getTime() + f.semFim*7*864e5);
+          if (d) eventos.push({ d, label: f.cnome.split(' ')[0] + (multi ? (' C'+c.num) : ''), feito: !!com.real });
+        });
+      });
+    }
+    (p.droData?.auditorias || []).forEach(a => {
+      if (a.dataPrev) { const d = parseDate(a.dataPrev); if (d) eventos.push({ d, label:'🔍 '+a.nome, feito: !!a.feita }); }
+    });
 
     const cells = semanas.map(s => {
-      const sEnd = new Date(s.getTime() + 6 * 864e5);
+      const sEnd   = new Date(s.getTime() + 6 * 864e5);
       const isHoje = hoje >= s && hoje <= sEnd;
-      const sISO = s.getFullYear()+'-'+String(s.getMonth()+1).padStart(2,'0')+'-'+String(s.getDate()).padStart(2,'0');
-      const eISO = sEnd.getFullYear()+'-'+String(sEnd.getMonth()+1).padStart(2,'0')+'-'+String(sEnd.getDate()).padStart(2,'0');
-
-      // Projeto ativo nesta semana?
+      const bgHoje = isHoje ? 'rgba(212,0,26,.04)' : '';
       const active = dI <= sEnd && dF >= s;
-      if (!active) return '<td style="background:' + (isHoje?'rgba(212,0,26,.04)':'') + ';"></td>';
+      if (!active) return '<td style="background:' + bgHoje + ';"></td>';
 
-      // Eventos desta semana
-      const labels = [];
-
-      // Comitês com data registrada nesta semana
-      comites.forEach((c, i) => {
-        if (c && c.data && c.data >= sISO && c.data <= eISO) {
-          labels.push({ text: 'Comitê ' + (i+1), color: 'var(--blue)', feito: true });
-        }
-      });
-
-      // Auditorias previstas nesta semana
-      auditorias.forEach(a => {
-        if (a.dataPrev && a.dataPrev >= sISO && a.dataPrev <= eISO) {
-          labels.push({ text: a.nome, color: a.feita ? 'var(--green)' : 'var(--purple,#8E5BC4)', feito: a.feita });
-        }
-      });
-
-      let barContent = '';
-      if (labels.length > 0) {
-        const labelText = labels.map(l => l.text).join('<br>');
-        const barColor = labels[0].color;
-        barContent = '<div class="gantt-bar" style="background:' + barColor + ';left:0%;right:0%;display:flex;align-items:center;justify-content:center;overflow:visible;">'
-          + '<span style="font-size:8px;font-weight:600;color:#fff;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.4);padding:0 2px;line-height:1.3;">' + labelText + '</span>'
+      const here     = eventos.filter(e => e.d >= s && e.d <= sEnd);
+      const leftPct  = dI > s    ? Math.round((dI - s)    / (7*864e5) * 100) : 0;
+      const rightPct = dF < sEnd ? Math.round((sEnd - dF) / (7*864e5) * 100) : 0;
+      let barContent;
+      if (here.length) {
+        const txt = here.map(e => (e.feito ? '✓ ' : '') + e.label).join('<br>');
+        barContent = '<div class="gantt-bar" style="background:' + baseColor + ';left:' + leftPct + '%;right:' + rightPct + '%;display:flex;align-items:center;justify-content:center;overflow:visible;">'
+          + '<span style="font-size:8px;font-weight:600;color:#fff;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.4);padding:0 2px;line-height:1.25;">' + txt + '</span>'
           + '</div>';
       } else {
-        // Sem evento: barra fina de fundo indicando projeto ativo
-        barContent = '<div style="position:absolute;top:50%;left:0;right:0;height:2px;background:#8E5BC4;opacity:0.2;transform:translateY(-50%);"></div>';
+        barContent = '<div class="gantt-bar" style="background:' + baseColor + ';left:' + leftPct + '%;right:' + rightPct + '%;opacity:.28;"></div>';
       }
-
-      return '<td style="position:relative;background:' + (isHoje?'rgba(212,0,26,.04)':'') + ';">' + barContent + '</td>';
+      return '<td style="position:relative;background:' + bgHoje + ';">' + barContent + '</td>';
     }).join('');
 
     const nameCell = '<td style="position:sticky;left:0;z-index:2;background:var(--surface);padding:6px 8px;border-bottom:1px solid var(--border);">'
       + '<div style="display:flex;align-items:center;gap:6px;">'
       + '<span style="width:8px;height:8px;border-radius:50%;background:' + dot + ';flex-shrink:0;"></span>'
       + '<span style="font-size:11px;font-weight:500;">' + nome + '</span>'
-      + '<span style="font-size:9px;background:#8E5BC4;color:#fff;padding:1px 5px;border-radius:10px;margin-left:2px;">DRO</span>'
+      + '<span style="font-size:9px;background:' + baseColor + ';color:#fff;padding:1px 5px;border-radius:10px;margin-left:2px;">' + badgeTxt + '</span>'
       + '</div>'
       + '<div style="font-size:10px;color:var(--text-hint);padding-left:14px;">' + (p.consultor||'') + '</div>'
       + '</td>';
 
     return '<tr>' + nameCell + cells + '</tr>';
   }).join('');
+
 
   container.innerHTML = '<div style="overflow-x:auto;">'
     + '<table style="border-collapse:collapse;width:100%;font-size:11px;">'
@@ -6019,7 +6026,7 @@ function buildGantt() {
 
   // DROs filtrados pelo mesmo consultor do Gantt principal (usado na carga semanal)
   const droParaCarga = projects.filter(p => {
-    if (p.modelo !== 'DRO' || !p.inicio) return false;
+    if (!isDroFam(p) || !p.inicio) return false;
     const s2 = calcStatus2(p);
     if (s2 === 'Finalizado' || s2 === 'Churn' || s2 === 'Pausado') return false;
     const hoje2 = new Date(); hoje2.setHours(0,0,0,0);
@@ -6049,18 +6056,18 @@ function buildGantt() {
       const dFp = [_dFprevP, _dFrealP, _dFdecolP].filter(Boolean).reduce((a,b) => a > b ? a : b);
       return dIp <= sEnd && dFp >= sDate;
     }
-    // DRO conta como 0.25 na carga semanal (1 comitê mensal ≈ 1/4 de projeto)
+    // DRO/DRX contam 1 slot cheio na carga semanal (igual a um projeto EE)
     // droParaCarga e projsComDRO definidos acima
     function cargaComDRO(lista, s, pesoAuditor) {
-      // pesoAuditor=true quando filtrado por auditor — DRO conta 1 (não 0.25)
+      // DRO/DRX contam 1 slot (mesma lógica de um projeto EE)
       return lista.reduce((acc, p) => {
-        if (!temEntregaNaSemana(p, s) && p.modelo !== 'DRO') return acc;
+        if (!temEntregaNaSemana(p, s) && !isDroFam(p)) return acc;
         if (isDroFam(p)) {
           const ini = parseDate(p.inicio);
           const fim = parseDate(p.realFim || p.prevFim);
           const sEnd = new Date(s.getTime() + 6 * 864e5);
           if (ini && ini <= sEnd && (!fim || fim >= s)) {
-            return acc + (pesoAuditor ? 1 : 0.25);
+            return acc + 1;
           }
           return acc;
         }
