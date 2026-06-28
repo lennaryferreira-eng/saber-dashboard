@@ -39,6 +39,10 @@ nav::-webkit-scrollbar{display:none;}
 .nav-tab:hover{color:var(--text);}
 .nav-tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:500;}
 .nav-tab.tab-base.active{color:var(--blue);border-bottom-color:var(--blue);}
+.nav-group{display:flex;flex-direction:column;justify-content:flex-end;flex-shrink:0;}
+.nav-group-label{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-hint);text-align:center;padding:6px 10px 3px;white-space:nowrap;}
+.nav-group-tabs{display:flex;}
+.nav-sep{width:1px;background:var(--border);margin:10px 8px 6px;align-self:stretch;flex-shrink:0;}
 
 /* MAIN */
 main{max-width:1200px;margin:0 auto;padding:2rem 2rem 4rem;}
@@ -292,19 +296,36 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
 </header>
 
 <nav>
-  <button class="nav-tab" onclick="show('visao')">Visão Geral</button>
-  <button class="nav-tab tab-base" onclick="show('base')">Base de Projetos</button>
-  <button class="nav-tab" onclick="show('conversao')">Tx. Conversão</button>
-  <button class="nav-tab" onclick="show('leadtime')">Lead Time</button>
-  <button class="nav-tab" onclick="show('dro')">DRO/DRX</button>
-  <button class="nav-tab" onclick="show('pipeline')">Pipeline</button>
-  <button class="nav-tab" onclick="show('monetizacao')">Monetização</button>
-  <button class="nav-tab" onclick="show('prazo')">Projetos no Prazo</button>
-  <button class="nav-tab" onclick="show('csp')">Taxa CSP</button>
-  <button class="nav-tab" onclick="show('nps')">NPS</button>
-  <button class="nav-tab" onclick="show('pdi')">PDI do Time</button>
-  <button class="nav-tab" onclick="show('capacity')">Capacity</button>
-  <button class="nav-tab" onclick="show('performance')">Performance</button>
+  <div class="nav-group">
+    <div class="nav-group-label">Geral</div>
+    <div class="nav-group-tabs">
+      <button class="nav-tab" onclick="show('visao')">Visão Geral</button>
+      <button class="nav-tab tab-base" onclick="show('base')">Base de Projetos</button>
+    </div>
+  </div>
+  <div class="nav-sep"></div>
+  <div class="nav-group">
+    <div class="nav-group-label">OKRs</div>
+    <div class="nav-group-tabs">
+      <button class="nav-tab" onclick="show('conversao')">Tx. Conversão</button>
+      <button class="nav-tab" onclick="show('prazo')">Projetos no Prazo</button>
+      <button class="nav-tab" onclick="show('csp')">Taxa CSP</button>
+      <button class="nav-tab" onclick="show('nps')">NPS</button>
+      <button class="nav-tab" onclick="show('pdi')">PDI do Time</button>
+    </div>
+  </div>
+  <div class="nav-sep"></div>
+  <div class="nav-group">
+    <div class="nav-group-label">Gestão</div>
+    <div class="nav-group-tabs">
+      <button class="nav-tab" onclick="show('leadtime')">Lead Time</button>
+      <button class="nav-tab" onclick="show('dro')">DRO/DRX</button>
+      <button class="nav-tab" onclick="show('pipeline')">Pipeline</button>
+      <button class="nav-tab" onclick="show('monetizacao')">Monetização</button>
+      <button class="nav-tab" onclick="show('capacity')">Capacity</button>
+      <button class="nav-tab" onclick="show('performance')">Performance</button>
+    </div>
+  </div>
 </nav>
 
 <main>
