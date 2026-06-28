@@ -432,19 +432,11 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
       <div class="card" style="margin:0;">
         <div class="card-title">Projetos iniciados</div>
         <div style="font-size:32px;font-weight:700;color:var(--blue);" id="ov-ini-mes">0</div>
-        <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;">
-          <span style="font-size:11px;"><span style="font-weight:700;color:var(--green);" id="ov-ini-mon">0</span> <span style="color:var(--text-hint);">monetizados</span></span>
-          <span style="font-size:11px;"><span style="font-weight:700;color:var(--text-muted);" id="ov-ini-nmon">0</span> <span style="color:var(--text-hint);">não monetizados</span></span>
-        </div>
       </div>
       <!-- Projetos Finalizados -->
       <div class="card" style="margin:0;">
         <div class="card-title">Projetos finalizados</div>
         <div style="font-size:32px;font-weight:700;color:var(--green);" id="ov-fin-mes">0</div>
-        <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;">
-          <span style="font-size:11px;"><span style="font-weight:700;color:var(--green);" id="ov-fin-mon">0</span> <span style="color:var(--text-hint);">monetizados</span></span>
-          <span style="font-size:11px;"><span style="font-weight:700;color:var(--red);" id="ov-fin-nmon">0</span> <span style="color:var(--text-hint);">não monetizados</span></span>
-        </div>
       </div>
       <!-- Projetos em andamento -->
       <div class="card" style="margin:0;">
@@ -576,11 +568,12 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
 </section>
 
 <section id="sec-pipeline" class="section">
-  <div class="sec-head"><h2 class="sec-title">Pipeline</h2><p class="sec-desc">Funil de oportunidades — One-time e Recorrente.</p></div>
+  <div class="sec-head"><h2 class="sec-title">Pipeline</h2><p class="sec-desc">Funil reverso de oportunidades — de Mapeado até Follow.</p></div>
 
   <!-- PIPE DA SEMANA -->
   <div class="card" style="margin-bottom:1.2rem;">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap;">
+      <button onclick="toggleSection(this)" title="Minimizar seção" style="background:none;border:none;cursor:pointer;color:var(--text-hint);font-size:16px;line-height:1;padding:2px 6px;transition:transform .2s;flex-shrink:0;">⌃</button>
       <div class="card-title" style="margin:0;">Pipe da Semana</div>
       <div style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:wrap;">
         <select class="base-sel" id="pipe-semana-cons" onchange="buildPipeSemana()" style="font-size:11px;">
@@ -603,6 +596,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
         <button onclick="navSemanaHoje()" style="padding:4px 10px;border:1px solid var(--accent);border-radius:var(--r-sm);background:var(--accent);color:#fff;cursor:pointer;font-size:11px;font-weight:700;">Hoje</button>
       </div>
     </div>
+    <div class="collapsible-body">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;padding:10px 14px;background:var(--surface2);border-radius:var(--r-sm);flex-wrap:wrap;">
       <span style="font-size:11px;font-weight:600;color:var(--text-hint);letter-spacing:.06em;text-transform:uppercase;">Meta da semana</span>
       <input type="number" id="pipe-meta-semana" min="0" step="1000" placeholder="R$ 0"
@@ -612,10 +606,12 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
     </div>
     <div id="pipe-semana-cal"></div>
     <div id="pipe-semana-body" style="margin-top:1rem;"></div>
+    </div>
   </div>
 
   <div class="card" style="margin-bottom:1.2rem;">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem;flex-wrap:wrap;">
+      <button onclick="toggleSection(this)" title="Minimizar seção" style="background:none;border:none;cursor:pointer;color:var(--text-hint);font-size:16px;line-height:1;padding:2px 6px;transition:transform .2s;flex-shrink:0;">⌃</button>
       <div class="card-title" style="margin:0;">Funil de oportunidades</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-left:auto;">
         <select class="base-sel" id="pipe-f-cons" onchange="buildPipeline()" style="font-size:11px;"><option value="">Todos consultores</option></select>
@@ -634,12 +630,13 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
         <button class="base-clear" onclick="clearPipeFunilFilters()" style="font-size:11px;">Limpar</button>
       </div>
     </div>
-    <div id="pipe-funil"></div>
+    <div class="collapsible-body"><div id="pipe-funil"></div></div>
   </div>
 
   <!-- REGISTRO DE OPORTUNIDADES & PROPOSTAS -->
   <div class="card" style="margin-bottom:1.2rem;">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap;">
+      <button onclick="toggleSection(this)" title="Minimizar seção" style="background:none;border:none;cursor:pointer;color:var(--text-hint);font-size:16px;line-height:1;padding:2px 6px;transition:transform .2s;flex-shrink:0;">⌃</button>
       <div class="card-title" style="margin:0;">Registro de Oportunidades &amp; Propostas</div>
       <div style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:wrap;">
         <select class="base-sel" id="pev-mes" onchange="buildPipeEventos()" style="font-size:11px;"></select>
@@ -648,9 +645,11 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
         <button onclick="openNovoPipeEvento()" class="add-project-btn" style="font-size:11px;">+ Registrar evento</button>
       </div>
     </div>
+    <div class="collapsible-body">
     <p style="font-size:11px;color:var(--text-hint);margin:-0.5rem 0 1rem;">Histórico datado de oportunidades levantadas e propostas apresentadas. Não altera o Pipe da Semana.</p>
     <div id="pev-matriz"></div>
     <div id="pev-lista" style="margin-top:1rem;"></div>
+    </div>
   </div>
 
 
@@ -1800,6 +1799,16 @@ function clearPipeSemanaFilters() {
   buildPipeSemana();
 }
 
+function toggleSection(btn){
+  const card = btn.closest('.card');
+  if(!card) return;
+  const body = card.querySelector('.collapsible-body');
+  if(!body) return;
+  const hidden = body.style.display === 'none';
+  body.style.display = hidden ? '' : 'none';
+  btn.style.transform = hidden ? '' : 'rotate(180deg)';
+}
+
 function buildPipeline() {
   const selCons = document.getElementById('pipe-f-cons');
   if (selCons) {
@@ -1823,103 +1832,80 @@ function buildPipeline() {
   if (fOport) ativos = ativos.filter(p => p.oport === fOport);
 
   const oEtapas = ['Mapeado (AQL)','Apresentar proposta (SQL)','Proposta apresentada (SAL)','Follow (COMMIT)'];
-
   function parseVal(v) { const n = parseFloat((v||'').replace(/\./g,'').replace(',','.')); return isNaN(n) ? 0 : n; }
+  const stageIdx = o => oEtapas.indexOf(o);
 
-  // Cada projeto gera entrada OT se tiver valorOport, entrada Rec se tiver valorOportRec
-  // A contagem e valor é por campo, não por projeto
-  function buildSide(tipo, valField, escField, color) {
-    if (fTipo && fTipo !== (valField === 'valorOport' ? 'ot' : 'rec')) return '';
-    const withOport = ativos.filter(p => oEtapas.includes(p.oport));
+  // Oportunidades = projetos ativos com etapa de oportunidade definida
+  let oports = ativos.filter(p => oEtapas.includes(p.oport));
+  const hasOT  = p => !!p.escopos    || parseVal(p.valorOport)    > 0;
+  const hasRec = p => !!p.escoposRec || parseVal(p.valorOportRec) > 0;
+  if (fTipo === 'ot')  oports = oports.filter(hasOT);
+  if (fTipo === 'rec') oports = oports.filter(hasRec);
 
-    const etapas = [
-      { label: 'Mapeado (AQL)',              prjs: withOport.filter(p => oEtapas.includes(p.oport)) },
-      { label: 'Apresentar proposta (SQL)',  prjs: withOport.filter(p => ['Apresentar proposta (SQL)','Proposta apresentada (SAL)','Follow (COMMIT)'].includes(p.oport)) },
-      { label: 'Proposta apresentada (SAL)', prjs: withOport.filter(p => ['Proposta apresentada (SAL)','Follow (COMMIT)'].includes(p.oport)) },
-      { label: 'Follow (COMMIT)',            prjs: withOport.filter(p => p.oport === 'Follow (COMMIT)') },
-    ];
+  // Funil reverso / cumulativo: cada etapa conta quem está NELA OU ALÉM
+  const corEtapa = ['var(--blue)','var(--blue)','var(--amber)','var(--green)'];
+  const etapas = oEtapas.map((label, i) => {
+    const prjs = oports.filter(p => stageIdx(p.oport) >= i);
+    return {
+      label, count: prjs.length, cor: corEtapa[i],
+      valOT:  prjs.reduce((a,p)=> a + parseVal(p.valorOport), 0),
+      valRec: prjs.reduce((a,p)=> a + parseVal(p.valorOportRec), 0),
+    };
+  });
+  const maxC  = Math.max(...etapas.map(e => e.count), 1);
+  const totOT  = oports.reduce((a,p)=> a + parseVal(p.valorOport), 0);
+  const totRec = oports.reduce((a,p)=> a + parseVal(p.valorOportRec), 0);
 
-    // conta apenas projetos com valor preenchido no lado correspondente
-    const etapasComValor = etapas.map(e => ({
-      ...e,
-      count: e.prjs.filter(p => parseVal(p[valField]) > 0).length,
-      valor: e.prjs.reduce((a, p) => a + parseVal(p[valField]), 0),
-    }));
-
-    const maxC = Math.max(...etapasComValor.map(e => e.count), 1);
-
-    return '<div style="flex:1;min-width:0;">'
-      + '<div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:' + color + ';padding:4px 8px;background:rgba(0,0,0,.05);border-radius:4px;margin-bottom:10px;">' + tipo + '</div>'
-      + '<div style="display:flex;flex-direction:column;gap:8px;">'
-      + etapasComValor.map((e, i) => {
-          const pct = Math.max(8, Math.round(e.count / maxC * 100));
-          return '<div>'
-            + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">'
-            + '<span style="font-size:10px;font-weight:600;color:var(--text);flex:1;">' + e.label + '</span>'
-            + '<span style="font-size:10px;color:var(--text-muted);">' + e.count + ' oport.</span>'
-            + (e.valor > 0 ? '<span style="font-size:10px;font-weight:600;color:' + color + ';">' + BRL(e.valor) + '</span>' : '')
-            + '</div>'
-            + '<div style="background:var(--surface3);border-radius:3px;height:26px;overflow:hidden;">'
-            + '<div style="height:100%;width:' + pct + '%;background:' + color + ';border-radius:3px;opacity:.85;display:flex;align-items:center;padding:0 8px;transition:width .4s;">'
-            + '<span style="font-size:9px;font-weight:700;color:#fff;">' + e.count + '</span>'
-            + '</div></div>'
-            + '</div>';
-        }).join('')
-      + '</div>'
-      // total pipeline
-      + (etapasComValor[0].valor > 0 ? '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;">'
-          + 'Pipeline: <strong style="color:' + color + ';">' + BRL(etapasComValor[0].valor) + '</strong></div>' : '')
-      // tabela por etapa
-      + '<div style="margin-top:10px;">'
-      + '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
-      + '<thead><tr>'
-      + ['Projeto','Consultor','Etapa','Escopo','Valor'].map(h =>
-          '<th style="text-align:left;padding:4px 8px;border-bottom:1px solid var(--border);font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">' + h + '</th>'
-        ).join('')
-      + '</tr></thead><tbody>'
-      + (function() {
-          const rows = withOport
-            .filter(p => parseVal(p[valField]) > 0 || p[escField])
-            .sort((a,b) => oEtapas.indexOf(a.oport) - oEtapas.indexOf(b.oport));
-          if (!rows.length) return '<tr><td colspan="5" style="padding:12px 8px;color:var(--text-hint);text-align:center;">Nenhum projeto com ' + tipo.toLowerCase() + ' mapeado</td></tr>';
-          const oColors = {'Mapeado (AQL)':'var(--blue)','Apresentar proposta (SQL)':'var(--blue)','Proposta apresentada (SAL)':'var(--amber)','Follow (COMMIT)':'var(--green)'};
-          return rows.map(p => {
-            const oc = oColors[p.oport] || 'var(--text-hint)';
-            const val = parseVal(p[valField]);
-            return '<tr style="border-bottom:1px solid var(--border);">'
-              + '<td style="padding:5px 8px;color:var(--text);">' + (p.nome||'—') + '</td>'
-              + '<td style="padding:5px 8px;color:var(--text-muted);">' + (p.consultor||'—') + '</td>'
-              + '<td style="padding:5px 8px;"><span style="font-size:9px;font-weight:600;padding:1px 6px;border-radius:20px;background:rgba(0,0,0,.06);color:' + oc + ';">' + p.oport + '</span></td>'
-              + '<td style="padding:5px 8px;color:var(--text-muted);font-size:10px;">' + (p[escField]||'—') + '</td>'
-              + '<td style="padding:5px 8px;font-weight:600;color:' + color + ';">' + (val > 0 ? BRL(val) : '—') + '</td>'
-              + '</tr>';
-          }).join('');
-        })()
-      + '</tbody></table></div>'
-      + '</div>';
-  }
-
-  // barra de projetos ativos
-  const barAtivos = '<div style="margin-bottom:16px;">'
-    + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">'
-    + '<span style="font-size:11px;font-weight:600;color:var(--text);">Projetos ativos</span>'
-    + '<span style="font-size:11px;color:var(--text-muted);">' + ativos.length + ' projetos</span>'
-    + '</div>'
-    + '<div style="background:var(--surface3);border-radius:4px;height:32px;overflow:hidden;">'
-    + '<div style="height:100%;width:100%;background:var(--blue);border-radius:4px;opacity:.85;display:flex;align-items:center;padding:0 12px;">'
-    + '<span style="font-size:10px;font-weight:700;color:#fff;">' + ativos.length + ' — Projetos ativos</span>'
-    + '</div></div></div>';
-
-  el.innerHTML = barAtivos
-    + '<div style="display:flex;gap:4px;align-items:center;margin-bottom:12px;">'
-    + '<div style="flex:1;height:1px;background:var(--border);"></div>'
-    + '<span style="font-size:9px;font-weight:700;color:var(--text-hint);letter-spacing:.08em;padding:0 8px;">DIVISÃO POR ESCOPO</span>'
-    + '<div style="flex:1;height:1px;background:var(--border);"></div>'
-    + '</div>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">'
-    + buildSide('One-time',   'valorOport',    'escopos',    'var(--accent)')
-    + buildSide('Recorrente', 'valorOportRec', 'escoposRec', 'var(--blue)')
+  const barAtivos = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">'
+    + '<span style="font-size:11px;font-weight:600;color:var(--text);">Oportunidades no funil</span>'
+    + '<span style="font-size:11px;color:var(--text-muted);">' + oports.length + ' (de ' + ativos.length + ' projetos ativos)</span>'
     + '</div>';
+
+  const funilHTML = '<div style="display:flex;flex-direction:column;gap:8px;">'
+    + etapas.map(e => {
+        const pct = Math.max(6, Math.round(e.count / maxC * 100));
+        const valTxt = [e.valOT>0?('OT '+BRL(e.valOT)):'', e.valRec>0?('Rec '+BRL(e.valRec)):''].filter(Boolean).join(' · ');
+        return '<div>'
+          + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">'
+          + '<span style="font-size:11px;font-weight:600;color:var(--text);flex:1;">' + e.label + '</span>'
+          + '<span style="font-size:10px;color:var(--text-muted);">' + e.count + ' oport.</span>'
+          + (valTxt?('<span style="font-size:10px;font-weight:600;color:var(--text-hint);">' + valTxt + '</span>'):'')
+          + '</div>'
+          + '<div style="background:var(--surface3);border-radius:3px;height:30px;overflow:hidden;">'
+          + '<div style="height:100%;width:' + pct + '%;background:' + e.cor + ';border-radius:3px;opacity:.85;display:flex;align-items:center;padding:0 10px;transition:width .4s;min-width:fit-content;">'
+          + '<span style="font-size:11px;font-weight:700;color:#fff;">' + e.count + '</span>'
+          + '</div></div></div>';
+      }).join('')
+    + '</div>';
+
+  const totalHTML = (totOT>0||totRec>0) ? '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;display:flex;gap:18px;flex-wrap:wrap;">'
+    + (totOT>0?('<span>Pipeline One-time: <strong style="color:var(--accent);">'+BRL(totOT)+'</strong></span>'):'')
+    + (totRec>0?('<span>Pipeline Recorrente: <strong style="color:var(--blue);">'+BRL(totRec)+'</strong></span>'):'')
+    + '</div>' : '';
+
+  const oColors = {'Mapeado (AQL)':'var(--blue)','Apresentar proposta (SQL)':'var(--blue)','Proposta apresentada (SAL)':'var(--amber)','Follow (COMMIT)':'var(--green)'};
+  const rows = oports.slice().sort((a,b)=> (stageIdx(b.oport)-stageIdx(a.oport)) || (a.nome||'').localeCompare(b.nome||''));
+  const tabela = '<div style="margin-top:14px;overflow-x:auto;">'
+    + '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
+    + '<thead><tr>'
+    + ['Projeto','Consultor','Etapa','Escopo','Valor'].map(h => '<th style="text-align:left;padding:4px 8px;border-bottom:1px solid var(--border);font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">'+h+'</th>').join('')
+    + '</tr></thead><tbody>'
+    + (rows.length ? rows.map(p => {
+        const oc = oColors[p.oport] || 'var(--text-hint)';
+        const esc = [p.escopos, p.escoposRec].filter(Boolean).join(' · ') || '—';
+        const v = parseVal(p.valorOport), vr = parseVal(p.valorOportRec);
+        const valTxt = [v>0?('OT '+BRL(v)):'', vr>0?('Rec '+BRL(vr)):''].filter(Boolean).join(' · ') || '—';
+        return '<tr style="border-bottom:1px solid var(--border);">'
+          + '<td style="padding:5px 8px;color:var(--text);">' + (p.nome||'—') + '</td>'
+          + '<td style="padding:5px 8px;color:var(--text-muted);">' + (p.consultor||'—') + '</td>'
+          + '<td style="padding:5px 8px;"><span style="font-size:9px;font-weight:600;padding:1px 6px;border-radius:20px;background:rgba(0,0,0,.06);color:' + oc + ';">' + p.oport + '</span></td>'
+          + '<td style="padding:5px 8px;color:var(--text-muted);font-size:10px;">' + esc + '</td>'
+          + '<td style="padding:5px 8px;font-weight:600;color:var(--text);">' + valTxt + '</td>'
+          + '</tr>';
+      }).join('') : '<tr><td colspan="5" style="padding:12px 8px;color:var(--text-hint);text-align:center;">Nenhuma oportunidade no funil</td></tr>')
+    + '</tbody></table></div>';
+
+  el.innerHTML = barAtivos + funilHTML + totalHTML + tabela;
 
   // Atualiza também a Pipe da Semana
   buildPipeSemana();
@@ -4865,11 +4851,7 @@ function buildOvAnalises(curM) {
   const finMon  = finalizados.filter(p => isMonetizado(p)).length;
   const finNMon = finalizados.length - finMon;
   set('ov-ini-mes',  iniciados.length);
-  set('ov-ini-mon',  iniMon);
-  set('ov-ini-nmon', iniNMon);
   set('ov-fin-mes',  finalizados.length);
-  set('ov-fin-mon',  finMon);
-  set('ov-fin-nmon', finNMon);
 
   // Projetos em andamento no mês — mesma regra de "Projetos no Prazo" (mesesAtivos), exclui DRO
   const emAndamento = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && mesesAtivos(p).includes(mesIdx));
