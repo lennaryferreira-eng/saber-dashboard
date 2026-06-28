@@ -2843,16 +2843,21 @@ function droSetAuditoriaData(projId, idx, val) {
 // ═══════════════════════════════════════════════════════
 //  GANTT DRO — seção no Capacity
 // ═══════════════════════════════════════════════════════
-function buildGanttDRO() {
+function buildGanttDRO(semanasExt) {
   const container = document.getElementById('gantt-dro-list');
   if (!container) return;
 
   const hoje = new Date(); hoje.setHours(0,0,0,0);
-  const diaSem = hoje.getDay();
-  const seg0 = new Date(hoje); seg0.setDate(hoje.getDate() - (diaSem === 0 ? 6 : diaSem - 1) - 4*7);
-  const semanas = Array.from({length: 26}, (_, i) => {
-    const d = new Date(seg0); d.setDate(seg0.getDate() + i*7); return d;
-  });
+  let semanas;
+  if (Array.isArray(semanasExt) && semanasExt.length) {
+    semanas = semanasExt;
+  } else {
+    const diaSem = hoje.getDay();
+    const seg0 = new Date(hoje); seg0.setDate(hoje.getDate() - (diaSem === 0 ? 6 : diaSem - 1) - 1*7);
+    semanas = Array.from({length: 26}, (_, i) => {
+      const d = new Date(seg0); d.setDate(seg0.getDate() + i*7); return d;
+    });
+  }
 
   // Filtros — consultor vem do filtro principal do Gantt, auditor é próprio da seção DRO
   const consFilter    = document.getElementById('gantt-cons-filter')?.value || '';
@@ -5858,21 +5863,24 @@ function buildCapacity() {
 }
 
 
-function buildCargaSemanal(prjsAll) {
+function buildCargaSemanal(prjsAll, semanasExt) {
   const el = document.getElementById('carga-consultor');
   if (!el) return;
 
   // Últimas 8 semanas + próximas 4
   const hoje = new Date(); hoje.setHours(0,0,0,0);
-  const diaSem = hoje.getDay();
-  const seg0 = new Date(hoje); seg0.setDate(hoje.getDate() - (diaSem === 0 ? 6 : diaSem - 1) - 7*7);
-
-  const semanas = Array.from({length: 12}, (_, i) => {
-    const seg = new Date(seg0); seg.setDate(seg0.getDate() + i*7);
+  const mkSem = seg => {
     const dom = new Date(seg); dom.setDate(seg.getDate() + 6); dom.setHours(23,59,59,999);
-    const isAtual = i === 7;
-    return { seg, dom, label: seg.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}), isAtual };
-  });
+    return { seg, dom, label: seg.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}), isAtual: hoje >= seg && hoje <= dom };
+  };
+  let semanas;
+  if (Array.isArray(semanasExt) && semanasExt.length) {
+    semanas = semanasExt.map(d => mkSem(new Date(d)));
+  } else {
+    const diaSem = hoje.getDay();
+    const seg0 = new Date(hoje); seg0.setDate(hoje.getDate() - (diaSem === 0 ? 6 : diaSem - 1) - 1*7);
+    semanas = Array.from({length: 12}, (_, i) => { const seg = new Date(seg0); seg.setDate(seg0.getDate() + i*7); return mkSem(seg); });
+  }
 
   // Consultores únicos dos projetos filtrados
   const cons = [...new Set(prjsAll.map(p => p.consultor).filter(Boolean))].sort();
@@ -6042,7 +6050,7 @@ function buildGantt() {
   prjs.sort((a, b) => (a.inicio || '') < (b.inicio || '') ? -1 : 1);
 
   
-  buildGanttDRO();
+  buildGanttDRO(semanas);
 
   // Lê auditorCapFilter APÓS buildGanttDRO para garantir que o select está populado
   const auditorCapFilter = document.getElementById('dro-cap-auditor')?.value || '';
@@ -6063,7 +6071,7 @@ function buildGantt() {
     return true;
   });
   const projsComDRO = [...prjs, ...droParaCarga];
-  buildCargaSemanal(projsComDRO);
+  buildCargaSemanal(projsComDRO, semanas);
 
   const cargaDiv = document.getElementById('carga-semanal');
   if (cargaDiv) {
