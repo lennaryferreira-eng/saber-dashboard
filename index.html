@@ -888,6 +888,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
       </div>
     </div>
     <div id="carga-semanal" style="margin-bottom:1.2rem;"></div>
+    <div id="carga-consultor" style="margin-bottom:1.2rem;"></div>
     <div class="gantt-wrap">
       <table class="gantt-table"><thead id="gantt-thead"></thead><tbody id="gantt-tbody"></tbody></table>
     </div>
@@ -5836,7 +5837,7 @@ function buildCapacity() {
 
 
 function buildCargaSemanal(prjsAll) {
-  const el = document.getElementById('carga-semanal');
+  const el = document.getElementById('carga-consultor');
   if (!el) return;
 
   // Últimas 8 semanas + próximas 4
@@ -6040,6 +6041,7 @@ function buildGantt() {
     return true;
   });
   const projsComDRO = [...prjs, ...droParaCarga];
+  buildCargaSemanal(projsComDRO);
 
   const cargaDiv = document.getElementById('carga-semanal');
   if (cargaDiv) {
