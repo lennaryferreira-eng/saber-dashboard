@@ -40,7 +40,11 @@ nav::-webkit-scrollbar{display:none;}
 .nav-tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:500;}
 .nav-tab.tab-base.active{color:var(--blue);border-bottom-color:var(--blue);}
 .nav-group{display:flex;flex-direction:column;justify-content:flex-end;flex-shrink:0;}
-.nav-group-label{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-hint);text-align:center;padding:6px 10px 3px;white-space:nowrap;}
+.nav-inner{display:flex;margin:0 auto;}
+.nav-group-label{font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;text-align:center;margin:7px auto 5px;padding:3px 12px;border-radius:20px;white-space:nowrap;width:fit-content;}
+.nav-group-label.g-geral{color:var(--text-muted);background:rgba(120,120,120,.12);}
+.nav-group-label.g-okrs{color:var(--accent);background:rgba(200,16,46,.10);}
+.nav-group-label.g-gestao{color:var(--blue);background:rgba(47,111,237,.10);}
 .nav-group-tabs{display:flex;}
 .nav-sep{width:1px;background:var(--border);margin:10px 8px 6px;align-self:stretch;flex-shrink:0;}
 
@@ -296,8 +300,9 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
 </header>
 
 <nav>
+  <div class="nav-inner">
   <div class="nav-group">
-    <div class="nav-group-label">Geral</div>
+    <div class="nav-group-label g-geral">Geral</div>
     <div class="nav-group-tabs">
       <button class="nav-tab" onclick="show('visao')">Visão Geral</button>
       <button class="nav-tab tab-base" onclick="show('base')">Base de Projetos</button>
@@ -305,7 +310,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
   </div>
   <div class="nav-sep"></div>
   <div class="nav-group">
-    <div class="nav-group-label">OKRs</div>
+    <div class="nav-group-label g-okrs">OKRs</div>
     <div class="nav-group-tabs">
       <button class="nav-tab" onclick="show('conversao')">Tx. Conversão</button>
       <button class="nav-tab" onclick="show('prazo')">Projetos no Prazo</button>
@@ -316,7 +321,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
   </div>
   <div class="nav-sep"></div>
   <div class="nav-group">
-    <div class="nav-group-label">Gestão</div>
+    <div class="nav-group-label g-gestao">Gestão</div>
     <div class="nav-group-tabs">
       <button class="nav-tab" onclick="show('leadtime')">Lead Time</button>
       <button class="nav-tab" onclick="show('dro')">DRO/DRX</button>
@@ -325,6 +330,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
       <button class="nav-tab" onclick="show('capacity')">Capacity</button>
       <button class="nav-tab" onclick="show('performance')">Performance</button>
     </div>
+  </div>
   </div>
 </nav>
 
