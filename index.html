@@ -1822,12 +1822,13 @@ function buildPipeline() {
   const el = document.getElementById('pipe-funil');
   if (!el) return;
 
-  // base: Em andamento OU com oport preenchido, excluindo Monetizados
+  // base: qualquer projeto (não-DRO) Em andamento OU com oportunidade definida.
+  // Inclui monetizados e projetos em decolagem — eles ainda podem ter oportunidade aberta (upsell/cross-sell).
   let ativos = projects.filter(p => {
     if (isDroFam(p)) return false;
     const temOport = p.oport && p.oport !== '—' && p.oport !== '' && p.oport !== 'Sem oportunidade';
     return calcStatus2(p) === 'Em andamento' || temOport;
-  }).filter(p => p.conv !== 'Monetizado');
+  });
   if (consFilter) ativos = ativos.filter(p => p.consultor === consFilter);
   if (fOport) ativos = ativos.filter(p => p.oport === fOport);
 
@@ -1858,7 +1859,7 @@ function buildPipeline() {
 
   const barAtivos = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">'
     + '<span style="font-size:11px;font-weight:600;color:var(--text);">Oportunidades no funil</span>'
-    + '<span style="font-size:11px;color:var(--text-muted);">' + oports.length + ' (de ' + ativos.length + ' projetos ativos)</span>'
+    + '<span style="font-size:11px;color:var(--text-muted);">' + oports.length + ' (de ' + ativos.length + ' projetos no pipeline)</span>'
     + '</div>';
 
   const funilHTML = '<div style="display:flex;flex-direction:column;gap:8px;">'
@@ -1896,7 +1897,7 @@ function buildPipeline() {
         const v = parseVal(p.valorOport), vr = parseVal(p.valorOportRec);
         const valTxt = [v>0?('OT '+BRL(v)):'', vr>0?('Rec '+BRL(vr)):''].filter(Boolean).join(' · ') || '—';
         return '<tr style="border-bottom:1px solid var(--border);">'
-          + '<td style="padding:5px 8px;color:var(--text);">' + (p.nome||'—') + '</td>'
+          + '<td style="padding:5px 8px;color:var(--text);">' + (p.nome||'—') + (p.conv==="Monetizado"?' <span style="font-size:8px;font-weight:700;padding:1px 5px;border-radius:10px;background:rgba(31,157,85,.15);color:var(--green);">monetizado</span>':'') + '</td>'
           + '<td style="padding:5px 8px;color:var(--text-muted);">' + (p.consultor||'—') + '</td>'
           + '<td style="padding:5px 8px;"><span style="font-size:9px;font-weight:600;padding:1px 6px;border-radius:20px;background:rgba(0,0,0,.06);color:' + oc + ';">' + p.oport + '</span></td>'
           + '<td style="padding:5px 8px;color:var(--text-muted);font-size:10px;">' + esc + '</td>'
