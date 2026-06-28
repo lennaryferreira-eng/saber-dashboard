@@ -888,7 +888,6 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
       </div>
     </div>
     <div id="carga-semanal" style="margin-bottom:1.2rem;"></div>
-    <div id="carga-consultor" style="margin-bottom:1.2rem;"></div>
     <div class="gantt-wrap">
       <table class="gantt-table"><thead id="gantt-thead"></thead><tbody id="gantt-tbody"></tbody></table>
     </div>
@@ -917,6 +916,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
     </div>
     <div id="gantt-dro-list"></div>
   </div>
+    <div id="carga-consultor" style="margin-top:1.6rem;padding-top:1.2rem;border-top:1px solid var(--border);"></div>
 </section>
 
 <!-- MODAL NOVO PROJETO -->
@@ -2517,6 +2517,7 @@ function buildDRO(){
         </div>
       </div>`;
     }).join('');
+    const audCardsHTML = (d.auditorias||[]).map(a=>droAudMini(a, hoje)).join('');
 
     // Auditorias (preservadas)
     const auditorias=d.auditorias||[];
@@ -2590,7 +2591,7 @@ function buildDRO(){
           <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-hint);margin-top:2px;"><span>Sem 1</span><span>Sem 12</span></div>
 
           <!-- 3 fases + 3 comitês -->
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-top:12px;">${fasesHTML}</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-top:12px;">${fasesHTML}${audCardsHTML}</div>
         </div>
 
         ${droAudBlock(p, hoje)}
@@ -2659,19 +2660,27 @@ function drxCard(p, hoje){
     return '<div style="flex:1;text-align:center;font-size:9px;font-weight:700;padding:4px 2px;border-radius:4px;background:'+bg+';color:'+co+';" title="'+k+' '+n+'">'+k+'</div>';
   }).join('');
 
-  const marcosHTML = DRX_MARCOS.map(m=>{
+  const dI = parseDate(p.inicio);
+  const _stMap={feito:['var(--green)','✓ feito'],atrasado:['var(--red)','⚠ atrasado'],agora:['var(--amber)','● agora'],pendente:['var(--text-hint)','○ pendente'],futuro:['var(--text-hint)','○ futuro']};
+  const _marcoItems = DRX_MARCOS.map(m=>{
     const mo=dx.marcos[m.k]||{prev:'',real:''};
     const st=drxMarcoStatus(mo,m.sem,sem);
-    const map={feito:['var(--green)','✓ feito'],atrasado:['var(--red)','⚠ atrasado'],agora:['var(--amber)','● agora'],pendente:['var(--text-hint)','○ pendente'],futuro:['var(--text-hint)','○ futuro']};
-    const cor=map[st][0], txt=map[st][1];
-    return '<div style="border:1px solid var(--border);border-radius:9px;padding:9px 10px;">'
+    const cor=_stMap[st][0], txt=_stMap[st][1];
+    const d = mo.real?parseDate(mo.real): mo.prev?parseDate(mo.prev): (dI? new Date(dI.getTime()+(m.sem-1)*7*864e5):null);
+    const html='<div style="border:1px solid var(--border);border-radius:9px;padding:9px 10px;">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;"><b style="font-size:11px;">🏁 '+m.nome+'</b><span style="font-size:10px;font-weight:700;color:'+cor+';">'+txt+'</span></div>'
       + '<div style="font-size:9px;color:var(--text-hint);margin-bottom:6px;">'+m.fase+'</div>'
       + '<div style="display:flex;gap:6px;">'
       + '<label style="flex:1;font-size:9px;color:var(--text-hint);">prev<input type="date" class="sel" style="width:100%;font-size:10px;padding:1px 3px;" value="'+dv(mo.prev)+'" onchange="drxSetMarco('+p.id+',\''+m.k+'\',\'prev\',this.value)"></label>'
       + '<label style="flex:1;font-size:9px;color:var(--text-hint);">real<input type="date" class="sel" style="width:100%;font-size:10px;padding:1px 3px;" value="'+dv(mo.real)+'" onchange="drxSetMarco('+p.id+',\''+m.k+'\',\'real\',this.value)"></label>'
       + '</div></div>';
-  }).join('');
+    return {d, html};
+  });
+  const _audItems = ((p.droData&&p.droData.auditorias)||[]).map(a=>{
+    const d = a.data?parseDate(a.data): a.dataPrev?parseDate(a.dataPrev): null;
+    return {d, html: droAudMini(a, hoje)};
+  });
+  const marcosHTML = [..._marcoItems, ..._audItems].sort((x,y)=>{ if(!x.d&&!y.d) return 0; if(!x.d) return 1; if(!y.d) return -1; return x.d-y.d; }).map(i=>i.html).join('');
 
   const travaOpts = (cur)=>DRO_TRAVAS.map(([k,n])=>'<option value="'+k+'" '+(cur===k?'selected':'')+'>'+k+' '+n+'</option>').join('');
   const sec0=dx.travasSec[0]||'', sec1=dx.travasSec[1]||'';
@@ -2706,6 +2715,19 @@ function drxCard(p, hoje){
   + '</div>';
 }
 
+// Card compacto de auditoria (exibição junto às etapas no painel)
+function droAudMini(a, hoje){
+  if(!hoje){ hoje=new Date(); hoje.setHours(0,0,0,0); }
+  const feita=a.feita; const dp=a.dataPrev?parseDate(a.dataPrev):null; const atras=!feita&&dp&&hoje>dp;
+  const cor=feita?'var(--green)':atras?'var(--red)':'#2f6fed';
+  const txt=feita?'✓ concluída':atras?('⚠ atrasada '+Math.floor((hoje-dp)/864e5)+'d'):'○ prevista';
+  const fmt=x=>{ if(!x) return ''; const q=String(x).split('-'); return q.length===3?(q[2]+'/'+q[1]):x; };
+  const datas=[a.dataPrev?('prev '+fmt(a.dataPrev)):'', a.data?('real '+fmt(a.data)):''].filter(Boolean).join(' · ')||'sem data';
+  return '<div style="border:1px solid '+cor+'66;border-radius:9px;padding:9px 10px;background:'+cor+'0f;">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;gap:6px;"><b style="font-size:11px;">🔍 '+a.nome+'</b><span style="font-size:10px;font-weight:700;color:'+cor+';white-space:nowrap;">'+txt+'</span></div>'
+    + '<div style="font-size:9px;color:var(--text-hint);">Auditoria · '+datas+'</div>'
+    + '</div>';
+}
 // Bloco de auditorias compartilhado (DRO e DRX)
 function droAudBlock(p, hoje){
   if(!hoje){ hoje=new Date(); hoje.setHours(0,0,0,0); }
