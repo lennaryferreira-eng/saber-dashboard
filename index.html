@@ -555,7 +555,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
 <section id="sec-dro" class="section">
   <div class="sec-head">
     <h2 class="sec-title">DRO</h2>
-    <p class="sec-sub">Projetos de acompanhamento mensal — comitês e auditorias</p>
+    <p class="sec-sub">Acompanhamento por ciclos de 3 meses — fases, comitês, trava governante e auditorias</p>
   </div>
 
   <div class="tbl-filters" style="margin-bottom:1rem;">
@@ -2343,136 +2343,195 @@ function buildOutrosEscopos() {
 
 // ═══════════════════════════════════════════════════════
 //  ABA DRO
-// ═══════════════════════════════════════════════════════
-function buildDRO() {
-  const container = document.getElementById('dro-list');
-  if (!container) return;
+// ════════════════════════════════════════════════════════
+//  ABA DRO — acompanhamento por CICLOS de 3 meses
+//  (Teoria das Restrições: 7 travas, 3 fases, 3 comitês)
+// ════════════════════════════════════════════════════════
+const DRO_TRAVAS = [
+  ['T7','Exposição'],['T6','Atenção'],['T5','Interesse'],['T4','Qualificação'],
+  ['T3','Compromisso'],['T2','Decisão'],['T1','Retenção']
+];
+const DRO_FASES = [
+  { nome:'Diagnóstico', sem:'sem 1–4',  cor:'var(--blue)',  ck:'c1', cnome:'C1 Validação', semFim:4,  resumo:'Kickoff, Árvore de Objetivos, 7 travas, CRT, Nuvem de Conflitos.' },
+  { nome:'Otimização',  sem:'sem 5–8',  cor:'var(--amber)', ck:'c2', cnome:'C2 Expansão',  semFim:8,  resumo:'Sprint plano de ação, SWOT, PUV, ICP, AEMR, Forecast.' },
+  { nome:'Expansão',    sem:'sem 9–12', cor:'var(--green)', ck:'c3', cnome:'C3 Final',      semFim:12, resumo:'Escalar, identificar nova restrição, Matriz de Expansão.' }
+];
 
-  // Popula filtro de consultores
-  const consSelect = document.getElementById('dro-f-cons');
-  if (consSelect && consSelect.options.length === 1) {
-    const cons = [...new Set(projects.filter(p => p.modelo === 'DRO').map(p => p.consultor).filter(Boolean))].sort();
-    cons.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; consSelect.appendChild(o); });
+function droInitData(p){
+  if(!p.droData || typeof p.droData!=='object') p.droData={};
+  if(!Array.isArray(p.droData.ciclos)) p.droData.ciclos=[];
+  if(!Array.isArray(p.droData.auditorias)) p.droData.auditorias=[];
+  return p.droData;
+}
+function droAddMonths(d,n){ return new Date(d.getFullYear(), d.getMonth()+n, d.getDate()); }
+// Gera os ciclos a partir do contrato (início → prevFim), mesclando o que está salvo
+function droGetCiclos(p){
+  const d=droInitData(p);
+  const ini=parseDate(p.inicio); if(!ini) return [];
+  const fim=parseDate(p.prevFim) || droAddMonths(ini,3);
+  let meses=(fim.getFullYear()-ini.getFullYear())*12+(fim.getMonth()-ini.getMonth());
+  if(fim.getDate()>ini.getDate()) meses+=1;
+  const n=Math.max(1, Math.ceil(meses/3));
+  const out=[];
+  for(let i=0;i<n;i++){
+    const s=d.ciclos[i]||{};
+    out.push({ num:i+1, inicio:droAddMonths(ini,i*3), fim:droAddMonths(ini,(i+1)*3),
+      trava:s.trava||'', foco:s.foco||'',
+      c1:s.c1||{prev:'',real:''}, c2:s.c2||{prev:'',real:''}, c3:s.c3||{prev:'',real:''} });
   }
+  return out;
+}
+// Semana atual dentro do ciclo: 0 = não começou, 1–12, 13 = encerrado
+function droSemana(ciclo){
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  if(hoje<ciclo.inicio) return 0;
+  if(hoje>=ciclo.fim) return 13;
+  return Math.min(12, Math.floor((hoje-ciclo.inicio)/864e5/7)+1);
+}
+function droCicloAtualIdx(ciclos){
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  for(let i=0;i<ciclos.length;i++){ if(hoje>=ciclos[i].inicio && hoje<ciclos[i].fim) return i; }
+  if(ciclos.length && hoje<ciclos[0].inicio) return 0;
+  return Math.max(0, ciclos.length-1);
+}
+// Status de um comitê: feito / atrasado / agora / pendente / futuro
+function droComiteStatus(com, semFim, semAtual){
+  if(com && com.real) return 'feito';
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  if(com && com.prev){ const dp=parseDate(com.prev); if(dp && hoje>dp) return 'atrasado'; }
+  if(semAtual>13 || semAtual===0) return 'futuro';
+  if(semAtual>semFim) return 'atrasado';
+  if(semAtual>=semFim-1) return 'agora';
+  return 'pendente';
+}
+function droTravaLabel(k){ const t=DRO_TRAVAS.find(x=>x[0]===k); return t? (t[0]+' '+t[1]) : ''; }
 
-  const consFilter = document.getElementById('dro-f-cons')?.value || '';
-  const flagFilter = document.getElementById('dro-f-flag')?.value || '';
-
-  const lista = projects.filter(p =>
-    p.modelo === 'DRO' &&
-    calcStatus2(p) !== 'Finalizado' &&
-    (!consFilter || p.consultor === consFilter) &&
-    (!flagFilter || p.flag === flagFilter)
-  );
-
-  if (lista.length === 0) {
-    container.innerHTML = '<p style="color:var(--text-hint);font-size:13px;padding:16px 0;">Nenhum projeto DRO ativo.</p>';
-    return;
+function buildDRO(){
+  const container=document.getElementById('dro-list');
+  if(!container) return;
+  const consSelect=document.getElementById('dro-f-cons');
+  if(consSelect && consSelect.options.length===1){
+    const cons=[...new Set(projects.filter(p=>p.modelo==='DRO').map(p=>p.consultor).filter(Boolean))].sort();
+    cons.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;consSelect.appendChild(o);});
   }
+  const consFilter=document.getElementById('dro-f-cons')?.value||'';
+  const flagFilter=document.getElementById('dro-f-flag')?.value||'';
+  const lista=projects.filter(p=> p.modelo==='DRO' && calcStatus2(p)!=='Finalizado' &&
+    (!consFilter||p.consultor===consFilter) && (!flagFilter||p.flag===flagFilter));
 
-  container.innerHTML = lista.map(p => {
-    if (!p.droData) p.droData = { comites: [], auditorias: [] };
-    const d = p.droData;
+  // ── Resumo da carteira ──
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  let comSemana=0, comAtras=0, audTot=0, audAtras=0;
+  lista.forEach(p=>{
+    droGetCiclos(p).forEach(c=>{
+      const sem=droSemana(c);
+      DRO_FASES.forEach(f=>{
+        const com=c[f.ck];
+        if(droComiteStatus(com,f.semFim,sem)==='atrasado') comAtras++;
+        if(com && com.prev && !com.real){ const dp=parseDate(com.prev); if(dp && dp>=hoje && (dp-hoje)/864e5<=7) comSemana++; }
+      });
+    });
+    (p.droData?.auditorias||[]).forEach(a=>{ audTot++; if(!a.feita && a.dataPrev){ const dp=parseDate(a.dataPrev); if(dp && hoje>dp) audAtras++; } });
+  });
+  const kpi=(v,l,cor)=>`<div class="mcard" style="flex:1;min-width:110px;padding:10px 14px;"><div class="mval" style="color:${cor||'var(--text)'};">${v}</div><div class="mlabel">${l}</div></div>`;
+  const resumo=`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;">
+    ${kpi(lista.length,'Clientes DRO','var(--dro,#8E5BC4)')}
+    ${kpi(comSemana,'Comitês esta semana','var(--amber)')}
+    ${kpi(comAtras,'Comitês atrasados', comAtras?'var(--red)':'var(--text)')}
+    ${kpi(audTot,'Auditorias contratadas','var(--blue)')}
+    ${kpi(audAtras,'Auditorias atrasadas', audAtras?'var(--red)':'var(--text)')}
+  </div>`;
 
-    // Progresso do contrato
-    const hoje = new Date(); hoje.setHours(0,0,0,0);
-    const dInicio = parseDate(p.inicio);
-    const dFim = parseDate(p.prevFim);
-    let progresso = 0;
-    let diasTotal = 0;
-    let diasPassados = 0;
-    if (dInicio && dFim) {
-      diasTotal = Math.round((dFim - dInicio) / 86400000);
-      diasPassados = Math.round((hoje - dInicio) / 86400000);
-      progresso = Math.min(100, Math.max(0, Math.round(diasPassados / diasTotal * 100)));
-    }
+  if(lista.length===0){ container.innerHTML=resumo+'<p style="color:var(--text-hint);font-size:13px;padding:16px 0;">Nenhum projeto DRO ativo.</p>'; return; }
 
-    // Meses do contrato para os comitês
-    const meses = [];
-    if (dInicio && dFim) {
-      let cur = new Date(dInicio);
-      cur.setDate(1);
-      while (cur <= dFim) {
-        meses.push(cur.toLocaleDateString('pt-BR', {month:'short', year:'2-digit'}));
-        cur.setMonth(cur.getMonth() + 1);
-      }
-    }
+  container.innerHTML = resumo + lista.map(p=>{
+    const d=droInitData(p);
+    const ciclos=droGetCiclos(p);
+    const atualIdx=droCicloAtualIdx(ciclos);
+    if(p.droCicloView===undefined || p.droCicloView>=ciclos.length) p.droCicloView=atualIdx;
+    const vi=p.droCicloView;
+    const ciclo=ciclos[vi];
+    if(p.droExpanded===undefined) p.droExpanded=true;
+    const exp=p.droExpanded;
+    const fmtBR=dt=>dt? dt.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'}) : '?';
 
-    // Comitês
-    const comitesMarcados = d.comites || [];
-    const comitesHTML = meses.map((mes, i) => {
-      const c = comitesMarcados[i] || {};
-      const feito = !!c.data;
-      return `
-        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;min-width:52px;">
-          <div onclick="droToggleComite(${p.id}, ${i})"
-            style="width:22px;height:22px;border-radius:50%;border:2px solid ${feito?'var(--green)':'var(--border)'};
-            background:${feito?'var(--green)':'transparent'};display:flex;align-items:center;justify-content:center;
-            cursor:pointer;transition:all .2s;" title="${feito?c.data:'Registrar comitê'}">
-            ${feito?'<span style="color:#fff;font-size:11px;">✓</span>':''}
-          </div>
-          <span style="font-size:9px;color:var(--text-hint);white-space:nowrap;">${mes}</span>
-          ${feito?`<input type="date" value="${dv(c.data)}" style="font-size:9px;width:80px;padding:1px 3px;border:none;border-bottom:1px solid var(--border);background:transparent;color:var(--text-muted);"
-            onchange="droSetComiteData(${p.id}, ${i}, this.value)">`:
-            `<span style="font-size:9px;color:var(--border);">—</span>`}
-        </div>`;
+    // Trilha de ciclos
+    const trilha = ciclos.map((c,i)=>{
+      const sem=droSemana(c);
+      const done = sem>=13;
+      const cur = i===atualIdx;
+      const sel = i===vi;
+      const bg = done?'var(--green)': cur?'var(--surface)':'var(--surface)';
+      const bc = done?'var(--green)': cur?'var(--dro,#8E5BC4)':'var(--border)';
+      const col= done?'#fff': cur?'var(--dro,#8E5BC4)':'var(--text-hint)';
+      const line = i<ciclos.length-1 ? `<div style="flex:1;height:2px;min-width:12px;background:${done?'var(--green)':'var(--border)'};"></div>` : '';
+      return `<div onclick="droSetView(${p.id},${i})" style="display:flex;flex-direction:column;align-items:center;gap:3px;min-width:92px;cursor:pointer;">
+        <div style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:2px solid ${bc};background:${bg};color:${col};${sel?'box-shadow:0 0 0 3px rgba(142,91,196,.15);':''}">${done?'✓':c.num}</div>
+        <div style="font-size:9px;color:var(--text-hint);text-align:center;line-height:1.25;">Ciclo ${c.num}<br>${fmtBR(c.inicio)}–${fmtBR(droAddMonths(c.inicio,2))}<br><b style="color:${c.trava?'var(--dro,#8E5BC4)':'var(--text-hint)'};">${c.trava?droTravaLabel(c.trava).split(' ')[0]:'—'}</b></div>
+      </div>${line?'<div style="display:flex;align-items:center;flex:0 0 auto;">'+line+'</div>':''}`;
     }).join('');
 
-    // Auditorias previstas
-    const auditorias = d.auditorias || [];
-    const audHTML = auditorias.length > 0 ? auditorias.map((a, i) => `
-      <div style="padding:8px 0;border-bottom:1px solid var(--border);">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-          <div onclick="droToggleAuditoria(${p.id}, ${i})"
-            style="width:20px;height:20px;border-radius:4px;border:2px solid ${a.feita?'var(--blue)':'var(--border)'};
-            background:${a.feita?'var(--blue)':'transparent'};display:flex;align-items:center;justify-content:center;
-            cursor:pointer;flex-shrink:0;transition:all .2s;">
-            ${a.feita?'<span style="color:#fff;font-size:11px;">✓</span>':''}
-          </div>
-          <span style="font-size:12px;font-weight:600;flex:1;">${a.nome}</span>
-          <button onclick="droRemoveAuditoria(${p.id}, ${i})"
-            style="font-size:10px;color:var(--text-hint);background:none;border:none;cursor:pointer;padding:0 4px;">✕</button>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:6px;padding-left:28px;">
-          <div>
-            <span style="font-size:10px;color:var(--text-hint);">Prevista</span>
-            <input type="date" value="${dv(a.dataPrev)}" class="sel" style="font-size:11px;padding:2px 6px;width:100%;"
-              onchange="droSetAuditoriaField(${p.id}, ${i}, 'dataPrev', this.value)">
-          </div>
-          <div>
-            <span style="font-size:10px;color:var(--text-hint);">Realizada</span>
-            <input type="date" value="${dv(a.data)}" class="sel" style="font-size:11px;padding:2px 6px;width:100%;"
-              onchange="droSetAuditoriaData(${p.id}, ${i}, this.value)">
-          </div>
-          <div>
-            <span style="font-size:10px;color:var(--text-hint);">Responsável</span>
-            <input type="text" value="${a.responsavel||''}" class="sel" placeholder="—" style="font-size:11px;padding:2px 6px;width:100%;"
-              onblur="droSetAuditoriaField(${p.id}, ${i}, 'responsavel', this.value)">
-          </div>
-          <div>
-            <span style="font-size:10px;color:var(--text-hint);">Entregáveis</span>
-            <input type="text" value="${a.entregaveis||''}" class="sel" placeholder="—" style="font-size:11px;padding:2px 6px;width:100%;"
-              onblur="droSetAuditoriaField(${p.id}, ${i}, 'entregaveis', this.value)">
-          </div>
-        </div>
-      </div>`).join('') :
-      '<p style="font-size:12px;color:var(--text-hint);padding:6px 0;">Nenhuma auditoria prevista.</p>';
+    // Cadeia de travas T7→T1
+    const chain = DRO_TRAVAS.map(([k,n])=>{
+      const gov = ciclo.trava===k;
+      return `<div style="flex:1;text-align:center;font-size:9px;font-weight:700;padding:4px 2px;border-radius:4px;background:${gov?'var(--dro,#8E5BC4)':'var(--surface3,#ecebe8)'};color:${gov?'#fff':'var(--text-hint)'};" title="${k} ${n}">${k}</div>`;
+    }).join('');
 
-    // Toggle expand/collapse — expandido por padrão
-    if (p.droExpanded === undefined) p.droExpanded = true;
-    const expanded = p.droExpanded;
+    // Ponteiro de semana
+    const sem=droSemana(ciclo);
+    const semPct = sem<=0?0: sem>=13?100: Math.round(sem/12*100);
+    const semTxt = sem===0?'não iniciado': sem>=13?'encerrado':`Semana ${sem}/12`;
+
+    // 3 fases + 3 comitês
+    const fasesHTML = DRO_FASES.map(f=>{
+      const com=ciclo[f.ck]||{prev:'',real:''};
+      const stt=droComiteStatus(com,f.semFim,sem);
+      const stMap={feito:['var(--green)','✓ feito'],atrasado:['var(--red)','⚠ atrasado'],agora:['var(--amber)','● agora'],pendente:['var(--text-hint)','○ pendente'],futuro:['var(--text-hint)','○ futuro']};
+      const [scor,stxt]=stMap[stt];
+      return `<div style="border:1px solid var(--border);border-radius:9px;overflow:hidden;">
+        <div style="font-size:11px;font-weight:700;padding:6px 9px;color:#fff;background:${f.cor};display:flex;justify-content:space-between;">${f.nome}<span style="font-weight:500;opacity:.85;">${f.sem}</span></div>
+        <div style="padding:8px 9px;font-size:10px;color:var(--text-muted);">
+          ${f.resumo}
+          <div style="margin-top:7px;border-top:1px dashed var(--border);padding-top:7px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;"><b style="font-size:10px;">🏁 ${f.cnome}</b><span style="font-size:10px;font-weight:700;color:${scor};">${stxt}</span></div>
+            <div style="display:flex;gap:5px;">
+              <label style="flex:1;font-size:9px;color:var(--text-hint);">prev<input type="date" class="sel" style="width:100%;font-size:10px;padding:1px 3px;" value="${dv(com.prev)}" onchange="droSetComite(${p.id},${vi},'${f.ck}','prev',this.value)"></label>
+              <label style="flex:1;font-size:9px;color:var(--text-hint);">real<input type="date" class="sel" style="width:100%;font-size:10px;padding:1px 3px;" value="${dv(com.real)}" onchange="droSetComite(${p.id},${vi},'${f.ck}','real',this.value)"></label>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+
+    // Auditorias (preservadas)
+    const auditorias=d.auditorias||[];
+    const audHTML = auditorias.length>0 ? auditorias.map((a,i)=>{
+      const feita=a.feita; const atras = !feita && a.dataPrev && parseDate(a.dataPrev) && hoje>parseDate(a.dataPrev);
+      const stcor=feita?'var(--green)':atras?'var(--red)':'var(--blue)';
+      const sttxt=feita?'Concluída':atras?('Atrasada '+Math.floor((hoje-parseDate(a.dataPrev))/864e5)+'d'):'Em andamento';
+      return `<div style="padding:8px 0;border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <div onclick="droToggleAuditoria(${p.id},${i})" style="width:20px;height:20px;border-radius:5px;border:2px solid ${feita?'var(--green)':'var(--border)'};background:${feita?'var(--green)':'transparent'};display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">${feita?'<span style="color:#fff;font-size:11px;">✓</span>':''}</div>
+          <span style="font-size:12px;font-weight:600;flex:1;">${a.nome}</span>
+          <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:${stcor}22;color:${stcor};">${sttxt}</span>
+          <button onclick="droRemoveAuditoria(${p.id},${i})" style="font-size:10px;color:var(--text-hint);background:none;border:none;cursor:pointer;padding:0 4px;">✕</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px;padding-left:28px;">
+          <div><span style="font-size:10px;color:var(--text-hint);">Prevista</span><input type="date" value="${dv(a.dataPrev)}" class="sel" style="font-size:11px;padding:2px 6px;width:100%;" onchange="droSetAuditoriaField(${p.id},${i},'dataPrev',this.value)"></div>
+          <div><span style="font-size:10px;color:var(--text-hint);">Realizada</span><input type="date" value="${dv(a.data)}" class="sel" style="font-size:11px;padding:2px 6px;width:100%;" onchange="droSetAuditoriaData(${p.id},${i},this.value)"></div>
+          <div><span style="font-size:10px;color:var(--text-hint);">Responsável</span><input type="text" value="${a.responsavel||''}" class="sel" placeholder="—" style="font-size:11px;padding:2px 6px;width:100%;" onblur="droSetAuditoriaField(${p.id},${i},'responsavel',this.value)"></div>
+          <div><span style="font-size:10px;color:var(--text-hint);">Entregáveis</span><input type="text" value="${a.entregaveis||''}" class="sel" placeholder="—" style="font-size:11px;padding:2px 6px;width:100%;" onblur="droSetAuditoriaField(${p.id},${i},'entregaveis',this.value)"></div>
+        </div>
+      </div>`;
+    }).join('') : '<p style="font-size:12px;color:var(--text-hint);padding:6px 0;">Nenhuma auditoria contratada.</p>';
 
     return `
     <div class="card" style="margin-bottom:1rem;">
-      <!-- Cabeçalho — clicável para expandir/recolher -->
       <div onclick="const pr=projects.find(x=>String(x.id)===String(${p.id}));pr.droExpanded=!pr.droExpanded;buildDRO();"
-        style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;cursor:pointer;${expanded?'margin-bottom:14px;':''}">
+        style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;cursor:pointer;${exp?'margin-bottom:12px;':''}">
         <div>
-          <div style="font-size:15px;font-weight:700;">${p.nome}</div>
-          <div style="font-size:12px;color:var(--text-hint);margin-top:2px;">
-            ${p.consultor} · ${p.inicio||'?'} → ${p.prevFim||'?'}
-            ${p.gmv ? ' · GMV: R$ '+Number(p.gmv).toLocaleString('pt-BR') : ''}
-          </div>
+          <div style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;"><span style="width:9px;height:9px;border-radius:50%;background:var(--dro,#8E5BC4);display:inline-block;"></span>${p.nome} <span class="badge" style="background:rgba(142,91,196,.14);color:var(--dro,#8E5BC4);font-size:10px;margin-top:0;">DRO</span></div>
+          <div style="font-size:12px;color:var(--text-hint);margin-top:2px;">${p.consultor||'—'} · ${p.inicio||'?'} → ${p.prevFim||'?'} · ${ciclos.length} ciclos${p.gmv? ' · GMV R$ '+Number(p.gmv).toLocaleString('pt-BR'):''}</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;" onclick="event.stopPropagation()">
           ${flagHTML(p.flag)}
@@ -2483,106 +2542,74 @@ function buildDRO() {
             <option value="Proposta apresentada (SAL)" ${p.oport==='Proposta apresentada (SAL)'?'selected':''}>Proposta apresentada (SAL)</option>
             <option value="Follow (COMMIT)" ${p.oport==='Follow (COMMIT)'?'selected':''}>Follow (COMMIT)</option>
           </select>
-          <div style="display:flex;align-items:center;gap:4px;">
-            <span style="font-size:11px;color:var(--text-hint);">📅</span>
-            <input type="date" class="sel" style="font-size:11px;padding:2px 6px;" value="${dv(p.proximoContato)}"
-              onchange="const pr=projects.find(x=>String(x.id)===String(${p.id}));pr.proximoContato=this.value;upd();">
-          </div>
-          <span style="font-size:16px;color:var(--text-hint);line-height:1;transition:transform .2s;display:inline-block;transform:rotate(${expanded?'0':'180deg'});">⌃</span>
+          <span style="font-size:16px;color:var(--text-hint);line-height:1;display:inline-block;transform:rotate(${exp?'0':'180deg'});">⌃</span>
         </div>
       </div>
 
-      <!-- Corpo expansível -->
-      <div style="display:${expanded?'block':'none'}">
+      <div style="display:${exp?'block':'none'}">
+        <!-- Trilha de ciclos -->
+        <div style="display:flex;align-items:center;margin:6px 0 8px;overflow-x:auto;">${trilha}</div>
 
-      <!-- Barra de progresso do contrato -->
-      <div style="margin-bottom:16px;">
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-hint);margin-bottom:4px;">
-          <span>Progresso do contrato</span>
-          <span>${progresso}% · ${Math.max(0, diasTotal - diasPassados)} dias restantes</span>
-        </div>
-        <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;">
-          <div style="height:100%;width:${progresso}%;background:${progresso>=80?'var(--red)':progresso>=50?'var(--amber)':'var(--green)'};border-radius:3px;transition:width .3s;"></div>
-        </div>
-      </div>
-
-      <!-- Comitês mensais -->
-      <div style="margin-bottom:16px;">
-        <div style="font-size:11px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">
-          Comitês Mensais (${comitesMarcados.filter(c=>c&&c.data).length}/${meses.length} realizados)
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:12px;">
-          ${comitesHTML}
-        </div>
-      </div>
-
-      <!-- Auditorias -->
-      <div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <div style="font-size:11px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.5px;">
-            Auditorias Previstas (${auditorias.filter(a=>a.feita).length}/${auditorias.length})
-          </div>
-          <button onclick="droShowAddAuditoria(${p.id})"
-            style="font-size:11px;padding:3px 10px;border:1px dashed var(--border);border-radius:6px;
-            background:transparent;color:var(--text-muted);cursor:pointer;">+ Auditoria</button>
-        </div>
-        <div id="dro-aud-${p.id}">${audHTML}</div>
-        <div id="dro-aud-form-${p.id}" style="display:none;margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:12px;">
-          <div style="font-size:11px;font-weight:600;color:var(--text-hint);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px;">Nova Auditoria</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-            <div>
-              <label style="font-size:11px;color:var(--text-hint);display:block;margin-bottom:3px;">Nome</label>
-              <input type="text" id="dro-aud-nome-${p.id}" class="sel" placeholder="Ex: Auditoria de Marca" style="width:100%;font-size:12px;">
-            </div>
-            <div>
-              <label style="font-size:11px;color:var(--text-hint);display:block;margin-bottom:3px;">Data Prevista</label>
-              <input type="date" id="dro-aud-dataprev-${p.id}" class="sel" style="width:100%;font-size:12px;">
-            </div>
-            <div>
-              <label style="font-size:11px;color:var(--text-hint);display:block;margin-bottom:3px;">Responsável</label>
-              <input type="text" id="dro-aud-resp-${p.id}" class="sel" placeholder="Nome do responsável" style="width:100%;font-size:12px;">
-            </div>
-            <div>
-              <label style="font-size:11px;color:var(--text-hint);display:block;margin-bottom:3px;">Entregáveis</label>
-              <input type="text" id="dro-aud-entregaveis-${p.id}" class="sel" placeholder="Ex: Relatório, Apresentação" style="width:100%;font-size:12px;">
+        <!-- Ciclo selecionado -->
+        <div style="border:1px solid rgba(142,91,196,.25);border-radius:10px;padding:13px;background:linear-gradient(180deg,rgba(142,91,196,.05),transparent);">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+            <b style="font-size:13px;">Ciclo ${ciclo.num} · ${fmtBR(ciclo.inicio)}–${fmtBR(droAddMonths(ciclo.inicio,2))}</b>
+            <span style="font-size:10px;font-weight:700;color:${sem>=1&&sem<=12?'var(--dro,#8E5BC4)':'var(--text-hint)'};">${semTxt}</span>
+            <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
+              <span style="font-size:10px;color:var(--text-hint);">Trava governante:</span>
+              <select class="sel" style="font-size:11px;padding:2px 6px;" onchange="droSetTrava(${p.id},${vi},this.value)">
+                <option value="" ${!ciclo.trava?'selected':''}>— definir —</option>
+                ${DRO_TRAVAS.map(([k,n])=>`<option value="${k}" ${ciclo.trava===k?'selected':''}>${k} ${n}</option>`).join('')}
+              </select>
             </div>
           </div>
-          <div style="display:flex;gap:8px;justify-content:flex-end;">
-            <button onclick="droHideAddAuditoria(${p.id})"
-              style="font-size:11px;padding:4px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;cursor:pointer;">Cancelar</button>
-            <button onclick="droConfirmAddAuditoria(${p.id})"
-              style="font-size:11px;padding:4px 12px;border:none;border-radius:6px;background:var(--accent);color:#fff;cursor:pointer;font-weight:600;">Adicionar</button>
+
+          <!-- Cadeia de travas -->
+          <div style="display:flex;gap:3px;margin-bottom:8px;">${chain}</div>
+
+          <!-- Foco do ciclo -->
+          <input type="text" class="sel" style="width:100%;font-size:11px;padding:4px 8px;margin-bottom:10px;" placeholder="Foco / injeção do ciclo (ex.: explorar ao máximo antes de elevar)" value="${(ciclo.foco||'').replace(/"/g,'&quot;')}" onblur="droSetFoco(${p.id},${vi},this.value)">
+
+          <!-- Ponteiro de semana -->
+          <div style="height:7px;border-radius:5px;background:var(--surface3,#ecebe8);overflow:hidden;"><div style="height:100%;width:${semPct}%;background:var(--dro,#8E5BC4);border-radius:5px;"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-hint);margin-top:2px;"><span>Sem 1</span><span>Sem 12</span></div>
+
+          <!-- 3 fases + 3 comitês -->
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-top:12px;">${fasesHTML}</div>
+        </div>
+
+        <!-- Auditorias -->
+        <div style="margin-top:14px;border:1px solid rgba(47,111,237,.22);border-radius:10px;padding:12px 13px;background:linear-gradient(180deg,rgba(47,111,237,.04),transparent);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div style="font-size:12px;font-weight:700;">🔍 Auditorias <span style="font-weight:500;color:var(--text-hint);font-size:11px;">(${auditorias.filter(a=>a.feita).length}/${auditorias.length} concluídas)</span></div>
+            <button onclick="droShowAddAuditoria(${p.id})" style="font-size:11px;padding:3px 10px;border:1px dashed var(--border);border-radius:6px;background:transparent;color:var(--text-muted);cursor:pointer;">＋ Auditoria</button>
+          </div>
+          <div id="dro-aud-${p.id}">${audHTML}</div>
+          <div id="dro-aud-form-${p.id}" style="display:none;margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:12px;">
+            <div style="font-size:11px;font-weight:600;color:var(--text-hint);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px;">Nova Auditoria</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+              <div><label style="font-size:11px;color:var(--text-hint);display:block;margin-bottom:3px;">Nome</label><input type="text" id="dro-aud-nome-${p.id}" class="sel" placeholder="Ex: Auditoria de Mídia Paga" style="width:100%;font-size:12px;"></div>
+              <div><label style="font-size:11px;color:var(--text-hint);display:block;margin-bottom:3px;">Data Prevista</label><input type="date" id="dro-aud-dataprev-${p.id}" class="sel" style="width:100%;font-size:12px;"></div>
+              <div><label style="font-size:11px;color:var(--text-hint);display:block;margin-bottom:3px;">Responsável</label><input type="text" id="dro-aud-resp-${p.id}" class="sel" placeholder="Nome do responsável" style="width:100%;font-size:12px;"></div>
+              <div><label style="font-size:11px;color:var(--text-hint);display:block;margin-bottom:3px;">Entregáveis</label><input type="text" id="dro-aud-entregaveis-${p.id}" class="sel" placeholder="Ex: Relatório" style="width:100%;font-size:12px;"></div>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+              <button onclick="droHideAddAuditoria(${p.id})" style="font-size:11px;padding:4px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;cursor:pointer;">Cancelar</button>
+              <button onclick="droConfirmAddAuditoria(${p.id})" style="font-size:11px;padding:4px 12px;border:none;border-radius:6px;background:var(--accent);color:#fff;cursor:pointer;font-weight:600;">Adicionar</button>
+            </div>
           </div>
         </div>
       </div>
-      </div><!-- fim corpo expansível -->
     </div>`;
   }).join('');
 }
 
-// ── Helpers DRO ──────────────────────────────────────────
-function droToggleComite(projId, idx) {
-  const p = projects.find(x => String(x.id) === String(projId));
-  if (!p) return;
-  if (!p.droData) p.droData = { comites: [], auditorias: [] };
-  if (!p.droData.comites[idx]) p.droData.comites[idx] = {};
-  const c = p.droData.comites[idx];
-  if (c.data) {
-    c.data = '';
-  } else {
-    c.data = new Date().toISOString().slice(0,10);
-  }
-  upd(); buildDRO();
-}
+// ── Setters de ciclo ──
+function droSetView(projId, idx){ const p=projects.find(x=>String(x.id)===String(projId)); if(!p) return; p.droCicloView=idx; buildDRO(); }
+function droSetTrava(projId, ci, val){ const p=projects.find(x=>String(x.id)===String(projId)); if(!p) return; const d=droInitData(p); if(!d.ciclos[ci]) d.ciclos[ci]={}; d.ciclos[ci].trava=val; upd(); buildDRO(); }
+function droSetFoco(projId, ci, val){ const p=projects.find(x=>String(x.id)===String(projId)); if(!p) return; const d=droInitData(p); if(!d.ciclos[ci]) d.ciclos[ci]={}; d.ciclos[ci].foco=val; upd(); }
+function droSetComite(projId, ci, ck, field, val){ const p=projects.find(x=>String(x.id)===String(projId)); if(!p) return; const d=droInitData(p); if(!d.ciclos[ci]) d.ciclos[ci]={}; if(!d.ciclos[ci][ck]) d.ciclos[ci][ck]={prev:'',real:''}; d.ciclos[ci][ck][field]=val; upd(); buildDRO(); }
 
-function droSetComiteData(projId, idx, val) {
-  const p = projects.find(x => String(x.id) === String(projId));
-  if (!p) return;
-  if (!p.droData) p.droData = { comites: [], auditorias: [] };
-  if (!p.droData.comites[idx]) p.droData.comites[idx] = {};
-  p.droData.comites[idx].data = val;
-  upd();
-}
 
 function droAddAuditoria(projId) {
   // mantido para compatibilidade
