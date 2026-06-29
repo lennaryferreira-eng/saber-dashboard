@@ -45,6 +45,8 @@ nav::-webkit-scrollbar{display:none;}
 .nav-group-label.g-geral{color:var(--text-muted);background:rgba(120,120,120,.12);}
 .nav-group-label.g-okrs{color:var(--accent);background:rgba(200,16,46,.10);}
 .nav-group-label.g-gestao{color:var(--blue);background:rgba(47,111,237,.10);}
+.aud-lbl{display:block;font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-hint);margin-bottom:3px;}
+.aud-inp{width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:12px;font-family:var(--sans);background:var(--surface);color:var(--text);box-sizing:border-box;}
 .nav-group-tabs{display:flex;}
 .nav-sep{width:1px;background:var(--border);margin:10px 8px 6px;align-self:stretch;flex-shrink:0;}
 
@@ -329,6 +331,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
       <button class="nav-tab" onclick="show('monetizacao')">Monetização</button>
       <button class="nav-tab" onclick="show('capacity')">Capacity</button>
       <button class="nav-tab" onclick="show('performance')">Performance</button>
+      <button class="nav-tab" onclick="show('auditoria')">Auditoria de Entregas</button>
     </div>
   </div>
   </div>
@@ -687,6 +690,22 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
   </div>
 
 
+</section>
+
+<section id="sec-auditoria" class="section">
+  <div class="sec-head"><h2 class="sec-title">Auditoria de Entregas</h2><p class="sec-desc">Avaliação de qualidade das entregas — 9 dimensões · Squad Saber.</p></div>
+  <div class="card" style="margin-bottom:1.2rem;">
+    <div class="card-title">Nova avaliação</div>
+    <div id="aud-form"></div>
+  </div>
+  <div id="aud-kpis" class="mgrid mg3" style="margin-bottom:1.2rem;"></div>
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap;">
+      <div class="card-title" style="margin:0;">Avaliações</div>
+      <div id="aud-filtros" style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;"></div>
+    </div>
+    <div id="aud-lista"></div>
+  </div>
 </section>
 
 <section id="sec-prazo" class="section">
@@ -1284,6 +1303,7 @@ let projects = [];
 let npsData  = {}; // id -> {nota, comentario}
 let pdiData  = { rows: [] }; // { rows:[{nome,cargo,obs,m:{monthIdx:pct}}] }
 let perfFotos = {};          // nome -> dataURL (foto comprimida, sincronizada)
+let auditorias = [];         // [{id, consultor, tipoEntrega, cliente, data, n:{d1..d9}, obs:{d1..d9}, rec}]
 let npsChart = null;
 
 
@@ -1993,6 +2013,7 @@ function restoreBackup() {
     if (data.pdi_data) { pdiData = normalizePdi(data.pdi_data); buildPdi(); }
     if (data.conv_base && typeof data.conv_base === 'object') Object.assign(convBaseManual, data.conv_base);
     if (data.fotos && typeof data.fotos === 'object') Object.assign(perfFotos, data.fotos);
+    if (data.auditorias && Array.isArray(data.auditorias)) auditorias = data.auditorias;
     refreshAll();
     buildLeadTime();
     upd(); // salva no Supabase
@@ -5067,6 +5088,7 @@ function show(sec) {
     else if (sec === 'pdi')         calcPdi();
     else if (sec === 'capacity')    buildCapacity();
     else if (sec === 'performance') buildPerformance();
+    else if (sec === 'auditoria')   buildAuditoria();
   } catch(e) { console.error('show(' + sec + ') erro:', e); }
 }
 
@@ -6843,6 +6865,303 @@ function perfRemoveFoto(nome) {
 // ═══════════════════════════════════
 //  SUPABASE — SYNC EM TEMPO REAL
 // ═══════════════════════════════════
+
+// ═══════════════════════════════════
+//  AUDITORIA DE ENTREGAS — 9 DIMENSÕES (port do Monitor de Consultores)
+// ═══════════════════════════════════
+const AUD_DIMS = [
+  {id:'d1',nome:'Controle narrativo',desc:'Tese central, progressão lógica, reencadramento do negativo',g:'G1',cor:'#1f9d55'},
+  {id:'d2',nome:'Escuta ativa e equilíbrio',desc:'Checkpoints, incorporação do cliente, didática preventiva',g:'G1',cor:'#1f9d55'},
+  {id:'d3',nome:'Gestão de objeções',desc:'Validar antes de redirecionar, resolução ao vivo, autoridade sob pressão',g:'G1',cor:'#1f9d55'},
+  {id:'d4',nome:'Tradução técnica → negócio',desc:'Personalização dos dados, consequência financeira, continuidade',g:'G2',cor:'#2f6fed'},
+  {id:'d5',nome:'Arquitetura de urgência',desc:'Custo da inação, momentum, roadmap como âncora temporal',g:'G2',cor:'#2f6fed'},
+  {id:'d6',nome:'Arquitetura de conversão',desc:'Solução como consequência, timing da proposta, posicionamento do preço',g:'G2',cor:'#2f6fed'},
+  {id:'d7',nome:'Construção de confiança',desc:'Fonte da autoridade, consistência entre entregas, presença em tensão',g:'G2',cor:'#2f6fed'},
+  {id:'d8',nome:'Domínio do negócio do cliente',desc:'Leitura do modelo, calibração ao setor, linguagem do cliente',g:'G3',cor:'#8E5BC4'},
+  {id:'d9',nome:'Qualidade técnica da entrega',desc:'Critérios da skill específica da entrega avaliada',g:'G3',cor:'#8E5BC4'},
+];
+const AUD_GRUPOS = {
+  G1:{nome:'Condução & Comunicação', cor:'#1f9d55', ids:['d1','d2','d3']},
+  G2:{nome:'Conversão & Negociação', cor:'#2f6fed', ids:['d4','d5','d6','d7']},
+  G3:{nome:'Domínio Técnico',        cor:'#8E5BC4', ids:['d8','d9']},
+};
+const AUD_TIPOS = ['Kickoff','Pesquisa de Mercado','Diagnóstico de Vendas','Diagnóstico de Mídia Paga','Apresentação Final','Reunião de Negociação','Outra'];
+
+const AUD_D9_SKILLS = {
+  'Kickoff': [
+    {bloco:'Entendimento do negócio',items:[{id:'1.1',label:'Modelo de negócio mapeado (como vende, para quem, ticket médio)'},{id:'1.2',label:'Histórico de marketing entendido (o que funcionou e o que não)'},{id:'1.3',label:'Dores e gargalos atuais identificados'}]},
+    {bloco:'Dados e acessos',items:[{id:'2.1',label:'Compromisso do cliente para envio dos acessos necessários'},{id:'2.2',label:'Decisores e pessoas-chave identificados'}]},
+    {bloco:'Cobertura das entregas futuras',items:[{id:'3.1',label:'Insumos para Pesquisa de Mercado'},{id:'3.2',label:'Insumos para Diagnóstico de Mídia Paga'},{id:'3.3',label:'Insumos para Diagnóstico de Criativos'},{id:'3.4',label:'Insumos para Diagnóstico de Vendas'}]},
+    {bloco:'Clareza do produto',items:[{id:'4.1',label:'Cliente sabe onde está no processo e o que vem a seguir'}]},
+  ],
+  'Pesquisa de Mercado': [
+    {bloco:'Sizing de mercado',items:[{id:'1.1',label:'TAM/SAM/SOM apresentado com valores monetários'},{id:'1.2',label:'Fontes dos dados citadas (mínimo 3)'},{id:'1.3',label:'Números coerentes com o porte e capacidade do cliente'},{id:'1.4',label:'Estudo disponibilizado ao cliente para leitura posterior'}]},
+    {bloco:'Estudo de concorrentes',items:[{id:'2.1',label:'3 a 5 concorrentes principais mapeados'},{id:'2.2',label:'Tabela comparativa com Proposta de Valor, Diferenciais e Fraquezas'},{id:'2.3',label:'Oportunidade clara de diferenciação identificada'}]},
+    {bloco:'Persona (B2C)',items:[{id:'3A.1',label:'Persona com nome, dados demográficos e perfil psicográfico'},{id:'3A.2',label:'Motivos de contratação e desistência (emocional e racional)'},{id:'3A.3',label:'Lista de objeções de compra mapeada'}]},
+    {bloco:'ICP + Comitê de Compra (B2B)',items:[{id:'3B.1',label:'ICP com filtros claros (setor, tamanho, localização, dor)'},{id:'3B.2',label:'Comitê de compra mapeado (quem decide, influencia, usa)'},{id:'3B.3',label:'Motivos de contratação e desistência com viés B2B'}]},
+    {bloco:'Jobs To Be Done',items:[{id:'4.1',label:'3 a 5 Jobs na estrutura correta (Quando X, quero Y, para Z)'},{id:'4.2',label:'Jobs cobrem aspectos funcionais E emocionais'},{id:'4.3',label:'Jobs específicos do cliente — não genéricos'}]},
+    {bloco:'Qualidade da apresentação',items:[{id:'5.1',label:'Insights não óbvios — visão externa'},{id:'5.2',label:'Cliente saiu entendendo o mercado e reconhecendo o público'}]},
+  ],
+  'Diagnóstico de Vendas': [
+    {bloco:'Diagnóstico consultivo',items:[{id:'1B.1',label:'Vazamentos de receita mapeados'},{id:'1B.2',label:'Estrutura comercial ideal apresentada para o porte'},{id:'1B.3',label:'Ponto de partida factível definido'},{id:'1B.4',label:'Cliente entendeu o custo da ausência de processo'}]},
+    {bloco:'Cliente Oculto',items:[{id:'2.1',label:'Teste em pelo menos 2 canais'},{id:'2.2',label:'Tempo de resposta registrado com evidência'},{id:'2.3',label:'Qualidade do atendimento avaliada com evidência'}]},
+    {bloco:'Plano de ação comercial',items:[{id:'3.1',label:'Pelo menos 3 ações corretivas de alto impacto'},{id:'3.2',label:'Correção ou implantação de CRM no plano'},{id:'3.3',label:'Ações factíveis para o porte e maturidade'},{id:'3.4',label:'5W2H com métricas de sucesso por ação'}]},
+    {bloco:'Qualidade da apresentação',items:[{id:'4.1',label:'Diagnóstico sem gerar defensiva'},{id:'4.2',label:'Cliente saiu sabendo o que mudar no comercial'}]},
+  ],
+  'Diagnóstico de Mídia Paga': [
+    {bloco:'Direcionamento consultivo',items:[{id:'1C.1',label:'Benchmarks de mercado apresentados'},{id:'1C.2',label:'Canal recomendado com justificativa clara'},{id:'1C.3',label:'Lógica explicada de forma compreensível'},{id:'1C.4',label:'Estrutura mínima recomendada para começar'}]},
+    {bloco:'Eficiência de investimentos',items:[{id:'2.2',label:'Gargalo principal do funil identificado com evidência'},{id:'2.3',label:'Recomendação clara de alocação de verba por canal'}]},
+    {bloco:'Plano de ação',items:[{id:'3.1',label:'Lista de recomendações táticas e estratégicas'},{id:'3.2',label:'5W2H com pelo menos 5 ações prioritárias'},{id:'3.3',label:'Ações com prazos e responsáveis'},{id:'3.4',label:'Ações específicas — sem genéricos'}]},
+    {bloco:'Qualidade da apresentação',items:[{id:'4.1',label:'Cliente entendeu o diagnóstico'},{id:'4.2',label:'Cliente validou ou aprovou o plano ao final'}]},
+  ],
+  'Apresentação Final': [
+    {bloco:'Escopo contratual',items:[{id:'1.1',label:'3 criativos para anúncio finalizados'},{id:'1.2',label:'Landing Page (wireframe) com copy real'},{id:'1.3',label:'Manual de copy entregue'},{id:'1.4',label:'Manual de Identidade Visual (MIV) entregue'},{id:'1.5',label:'Plano de ação detalhado apresentado'},{id:'1.6',label:'Forecast 3 meses com cenários'}]},
+    {bloco:'Análises consolidadas',items:[{id:'2.1',label:'Auditoria de mídia paga referenciada'},{id:'2.2',label:'Diagnóstico de criativos referenciado'},{id:'2.3',label:'Diagnóstico de canais digitais referenciado'},{id:'2.4',label:'Processo comercial referenciado'},{id:'2.5',label:'Estudo competitivo referenciado'}]},
+    {bloco:'Qualidade do plano estratégico',items:[{id:'3.1',label:'Mapa estratégico: onde estava → descobertas → para onde vai'},{id:'3.2',label:'Plano cobre os 5 pilares'},{id:'3.3',label:'Plano alinhado à maturidade e orçamento real'},{id:'3.4',label:'Gargalo principal identificado e priorizado'}]},
+    {bloco:'Qualidade da apresentação final',items:[{id:'4.1',label:'Todos os decisores presentes'},{id:'4.2',label:'Forecast validado pelo cliente'},{id:'4.3',label:'Cliente sabe o que será feito na próxima semana'},{id:'4.4',label:'Go Live (data de início) definido'},{id:'4.5',label:'Pasta com arquivos enviada ou comprometida'},{id:'4.6',label:'NPS enviado ao cliente — OBRIGATÓRIO'}]},
+  ],
+};
+
+let audFiltro = { consultor:'', tipo:'', cliente:'', mes:'' };
+let audReviewD9 = {};   // d9_itens do parse, guardados para salvar
+
+function audConsultores(){ return (typeof squadList==='function') ? squadList() : ['Caio','Leonam','Loma','Camila','Cleiton']; }
+function audClientes(){ return [...new Set(projects.map(p=>p.nome).filter(Boolean))].sort((a,b)=>a.localeCompare(b)); }
+
+function audScore(a,id){ const v=a&&a.scores&&a.scores[id]; const x=parseFloat(v); return isNaN(x)?null:x; }
+function audNotaGeral(a){ if(a&&typeof a.nota==='number') return a.nota; const arr=AUD_DIMS.map(d=>audScore(a,d.id)).filter(x=>x!==null); if(!arr.length) return null; return Math.round(arr.reduce((s,x)=>s+x,0)/arr.length); }
+function audGrupoMedia(a,g){ const arr=AUD_GRUPOS[g].ids.map(id=>audScore(a,id)).filter(x=>x!==null); if(!arr.length) return null; return Math.round(arr.reduce((s,x)=>s+x,0)/arr.length); }
+function audGaps(a){ const xs=AUD_DIMS.map(d=>({nome:d.nome,v:audScore(a,d.id)})).filter(o=>o.v!==null); xs.sort((p,q)=>p.v-q.v); return xs.slice(0,2); }
+function audClassif(n){ if(n===null) return {txt:'—',cor:'var(--text-hint)'}; if(n>=90) return {txt:'Excelente',cor:'var(--green)'}; if(n>=75) return {txt:'Bom',cor:'var(--blue)'}; if(n>=55) return {txt:'Regular',cor:'var(--amber)'}; return {txt:'Insuficiente',cor:'var(--accent)'}; }
+function audMediaDimensao(list){ let best=null; AUD_DIMS.forEach(d=>{ const xs=list.map(a=>audScore(a,d.id)).filter(x=>x!==null); if(!xs.length) return; const m=xs.reduce((s,x)=>s+x,0)/xs.length; if(best===null||m<best.media) best={id:d.id,nome:d.nome,media:m}; }); return best; }
+
+// ── PARSER (idêntico ao Monitor) ──
+function audParseScores(txt){
+  const scores={};
+  AUD_DIMS.forEach(d=>{
+    const re=new RegExp(d.id+'[^\\d]*(\\d{1,3})','i');
+    const m=txt.match(re);
+    scores[d.id]= m ? Math.min(100,Math.max(0,parseInt(m[1]))) : 70;
+  });
+  return scores;
+}
+function audParseObs(txt){
+  txt=txt.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  const obs={};
+  AUD_DIMS.forEach(d=>{
+    obs[d.id]={analise:'',plano:''};
+    const re=new RegExp('\\n'+d.id+'[^\\d]*\\d{1,3}[^\\n]*\\n([\\s\\S]*?)(?=\\nd\\d[^\\d]|\\nRecomenda|$)','i');
+    const m=('\n'+txt).match(re);
+    if(!m) return;
+    let bloco=m[1];
+    if(d.id==='d9'){ bloco=bloco.split('\n').filter(l=>!l.match(/^[\dA-Za-z]+\.[\dA-Za-z]+\s*:[\s]*(✅|⚠️|❌)/)).join('\n'); }
+    const mA=bloco.match(/[aá]n[aá]lise[:\s]+([\s\S]*?)(?=plano de a[çc][aã]o|$)/i);
+    if(mA) obs[d.id].analise=mA[1].replace(/\*+/g,'').trim();
+    if(d.id!=='d9'){
+      const mP=bloco.match(/plano de a[çc][aã]o[:\s]+([\s\S]*?)(?=\n\n|$)/i);
+      if(mP) obs[d.id].plano=mP[1].replace(/\*+/g,'').trim();
+    }
+    if(d.id!=='d9'&&!obs[d.id].analise&&!obs[d.id].plano){
+      const linhas=bloco.split('\n').map(l=>l.trim()).filter(l=>l&&!l.match(/^d\d/i)&&l.length>5);
+      obs[d.id].analise=linhas.join(' ').replace(/\*+/g,'').trim();
+    }
+  });
+  return obs;
+}
+function audParseRec(txt){ const m=txt.match(/recomenda[çc][aã]o[:\s]*([\s\S]*?)(?:\n\n|$)/i); return m?m[1].replace(/\*+/g,'').trim():''; }
+function audParseD9(txt){
+  txt=txt.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  const mB=txt.match(/\nd9[:\s]*\d{1,3}[^\n]*\n([\s\S]*?)(?=\nd[1-8][:\s]|\nRecomenda|$)/i);
+  if(!mB) return {};
+  const itens={};
+  const reItem=/([\dA-Za-z]+\.[\dA-Za-z]+)\s*:\s*(✅|⚠️|❌)/g;
+  let m;
+  while((m=reItem.exec(mB[1]))!==null){ const v=m[2]==='✅'?1:m[2]==='⚠️'?0.5:0; itens[m[1]]=v; }
+  return itens;
+}
+
+// ── FORMULÁRIO (identificação + colar análise) ──
+function audFormHTML(){
+  const opt = (arr,sel) => arr.map(x=>'<option '+(x===sel?'selected':'')+'>'+x+'</option>').join('');
+  return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px;">'
+    + '<div><label class="aud-lbl">Consultor</label><select id="aud-f-consultor" class="aud-inp"><option value="">Selecione…</option>'+opt(audConsultores())+'</select></div>'
+    + '<div><label class="aud-lbl">Tipo de entrega</label><select id="aud-f-tipo" class="aud-inp"><option value="">Selecione…</option>'+opt(AUD_TIPOS)+'</select></div>'
+    + '<div><label class="aud-lbl">Cliente</label><select id="aud-f-cliente" class="aud-inp"><option value="">Selecione…</option>'+opt(audClientes())+'</select></div>'
+    + '<div><label class="aud-lbl">Data da reunião</label><input id="aud-f-data" type="date" class="aud-inp"></div>'
+    + '</div>'
+    + '<div style="background:var(--surface2);border:1px dashed var(--border);border-radius:var(--r-sm);padding:14px;">'
+    + '<label class="aud-lbl">Cole a análise do Claude (dimensões d1–d8 + skill d9)</label>'
+    + '<textarea id="aud-analise" class="aud-inp" rows="5" placeholder="Cole aqui o texto da análise — a página distribui as notas nas 9 dimensões, extrai análise/plano e marca o checklist da d9."></textarea>'
+    + '<div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center;">'
+    + '<button onclick="audImportar()" style="background:var(--accent);color:#fff;border:none;border-radius:20px;padding:8px 20px;font-size:12px;font-weight:600;cursor:pointer;">✦ Importar e preencher</button>'
+    + '<button onclick="audManual()" style="background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:20px;padding:8px 18px;font-size:12px;cursor:pointer;">Preencher manual</button>'
+    + '<span id="aud-form-msg" style="font-size:12px;color:var(--text-hint);"></span>'
+    + '</div></div>'
+    + '<div id="aud-review" style="display:none;margin-top:18px;"></div>';
+}
+
+function audIdentOk(){
+  const g=id=>(document.getElementById(id)?.value||'').trim();
+  const msg=document.getElementById('aud-form-msg');
+  if(!g('aud-f-consultor')||!g('aud-f-tipo')||!g('aud-f-cliente')){ if(msg){msg.textContent='Selecione consultor, tipo de entrega e cliente antes.';msg.style.color='var(--accent)';} return false; }
+  return true;
+}
+function audImportar(){
+  if(!audIdentOk()) return;
+  const txt=(document.getElementById('aud-analise')?.value||'').trim();
+  const msg=document.getElementById('aud-form-msg');
+  if(txt.length<30){ if(msg){msg.textContent='Cole o texto da análise do Claude.';msg.style.color='var(--accent)';} return; }
+  const scores=audParseScores(txt), obs=audParseObs(txt), rec=audParseRec(txt);
+  audReviewD9=audParseD9(txt);
+  audRenderReview(scores,obs,rec);
+  if(msg){msg.textContent='✓ Importado — revise e salve.';msg.style.color='var(--green)';}
+}
+function audManual(){
+  if(!audIdentOk()) return;
+  const scores={},obs={}; AUD_DIMS.forEach(d=>{scores[d.id]=70;obs[d.id]={analise:'',plano:''};});
+  audReviewD9={};
+  audRenderReview(scores,obs,'');
+}
+
+function audRenderReview(scores,obs,rec){
+  const entrega=(document.getElementById('aud-f-tipo')?.value||'');
+  let html='';
+  ['G1','G2','G3'].forEach(gk=>{
+    const gr=AUD_GRUPOS[gk];
+    html+='<div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:'+gr.cor+';margin:16px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--border);">'+gr.nome+'</div>';
+    gr.ids.forEach(id=>{
+      const d=AUD_DIMS.find(x=>x.id===id), sc=scores[id]!=null?scores[id]:70;
+      const o=obs[id]||{}, oa=o.analise||'', op=o.plano||'';
+      if(id==='d9'){
+        html+='<div style="padding:10px 0;border-bottom:1px solid var(--border);">'
+          + '<div style="display:grid;grid-template-columns:1fr 230px;gap:14px;align-items:start;">'
+          + '<div><div style="font-size:13px;font-weight:600;color:'+d.cor+';">'+d.nome+'</div><div style="font-size:11px;color:var(--text-hint);margin-bottom:6px;">'+d.desc+' · '+(entrega||'—')+'</div>'
+          + '<textarea id="aud-analise-d9" rows="2" class="aud-inp" placeholder="Observação técnica…" style="border-left:2px solid '+d.cor+';">'+oa+'</textarea></div>'
+          + '<div style="display:flex;flex-direction:column;gap:6px;"><input type="range" min="0" max="100" value="'+sc+'" id="aud-range-d9" oninput="audSyncDim(\'d9\',\'range\')" style="accent-color:'+d.cor+';"><input type="number" min="0" max="100" value="'+sc+'" id="aud-num-d9" oninput="audSyncDim(\'d9\',\'num\')" class="aud-inp" style="text-align:center;font-weight:700;"></div>'
+          + '</div><div id="aud-d9-checklist" style="margin-top:10px;"></div></div>';
+      } else {
+        html+='<div style="display:grid;grid-template-columns:1fr 230px;gap:14px;align-items:start;padding:10px 0;border-bottom:1px solid var(--border);">'
+          + '<div><div style="font-size:13px;font-weight:600;color:'+d.cor+';">'+d.nome+'</div><div style="font-size:11px;color:var(--text-hint);margin-bottom:6px;">'+d.desc+'</div>'
+          + '<textarea id="aud-analise-'+id+'" rows="2" class="aud-inp" placeholder="Análise: o que foi observado…" style="border-left:2px solid '+d.cor+';margin-bottom:6px;">'+oa+'</textarea>'
+          + '<textarea id="aud-plano-'+id+'" rows="2" class="aud-inp" placeholder="Plano de ação: o que melhorar…" style="border-left:2px solid var(--amber);">'+op+'</textarea></div>'
+          + '<div style="display:flex;flex-direction:column;gap:6px;"><input type="range" min="0" max="100" value="'+sc+'" id="aud-range-'+id+'" oninput="audSyncDim(\''+id+'\',\'range\')" style="accent-color:'+d.cor+';"><input type="number" min="0" max="100" value="'+sc+'" id="aud-num-'+id+'" oninput="audSyncDim(\''+id+'\',\'num\')" class="aud-inp" style="text-align:center;font-weight:700;"></div>'
+          + '</div>';
+      }
+    });
+  });
+  html+='<div style="margin-top:14px;"><label class="aud-lbl">Recomendação geral</label><textarea id="aud-rec" class="aud-inp" rows="2" placeholder="Principal recomendação…">'+(rec||'')+'</textarea></div>';
+  html+='<div style="margin-top:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">'
+    + '<div style="font-size:13px;">Nota geral: <strong id="aud-media" style="font-size:22px;color:var(--accent);">—</strong><span style="font-size:12px;color:var(--text-hint);">/100</span></div>'
+    + '<button onclick="audSalvar()" style="background:var(--accent);color:#fff;border:none;border-radius:20px;padding:9px 24px;font-size:13px;font-weight:600;cursor:pointer;">Salvar avaliação</button>'
+    + '<button onclick="audCancelar()" style="background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:20px;padding:9px 18px;font-size:12px;cursor:pointer;">Cancelar</button>'
+    + '</div>';
+  const rv=document.getElementById('aud-review'); rv.innerHTML=html; rv.style.display='block';
+  audRenderD9Checklist(entrega);
+  audAtualizarMedia();
+}
+
+function audRenderD9Checklist(entrega){
+  const box=document.getElementById('aud-d9-checklist'); if(!box) return;
+  const skill=AUD_D9_SKILLS[entrega];
+  if(!skill){ box.innerHTML='<div style="font-size:11px;color:var(--text-hint);">Sem checklist específico para "'+(entrega||'—')+'". Ajuste a nota da d9 manualmente.</div>'; return; }
+  let html='';
+  skill.forEach(b=>{
+    html+='<div style="margin-bottom:8px;"><div style="font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-hint);margin-bottom:3px;">'+b.bloco+'</div>';
+    b.items.forEach(it=>{
+      const v=audReviewD9[it.id]; const icon=v===1?'✅':v===0.5?'⚠️':v===0?'❌':'—';
+      html+='<div style="display:flex;gap:8px;align-items:flex-start;font-size:11px;color:var(--text-muted);padding:2px 0;"><span style="width:18px;text-align:center;">'+icon+'</span><span>'+it.id+' — '+it.label+'</span></div>';
+    });
+    html+='</div>';
+  });
+  box.innerHTML=html;
+}
+function audSyncDim(id,from){
+  const r=document.getElementById('aud-range-'+id), n=document.getElementById('aud-num-'+id);
+  if(from==='range'){ n.value=r.value; } else { let v=Math.min(100,Math.max(0,parseInt(n.value)||0)); n.value=v; r.value=v; }
+  audAtualizarMedia();
+}
+function audGetScores(){ const s={}; AUD_DIMS.forEach(d=>{ const el=document.getElementById('aud-num-'+d.id); s[d.id]=el?Math.min(100,Math.max(0,parseInt(el.value)||0)):70; }); return s; }
+function audAtualizarMedia(){ const s=audGetScores(); const m=Math.round(Object.values(s).reduce((a,b)=>a+b,0)/9); const el=document.getElementById('aud-media'); if(el){ el.textContent=m; el.style.color=audClassif(m).cor; } }
+function audCancelar(){ const rv=document.getElementById('aud-review'); if(rv){rv.style.display='none';rv.innerHTML='';} }
+
+function audSalvar(){
+  const g=id=>(document.getElementById(id)?.value||'').trim();
+  const scores=audGetScores();
+  const obs={};
+  AUD_DIMS.forEach(d=>{
+    if(d.id==='d9') obs.d9={analise:g('aud-analise-d9'),plano:''};
+    else obs[d.id]={analise:g('aud-analise-'+d.id),plano:g('aud-plano-'+d.id)};
+  });
+  const nota=Math.round(Object.values(scores).reduce((a,b)=>a+b,0)/9);
+  auditorias.push({ id:'a'+Date.now()+Math.floor(Math.random()*1000), consultor:g('aud-f-consultor'), entrega:g('aud-f-tipo'), cliente:g('aud-f-cliente'), data:g('aud-f-data'), scores, observacoes:obs, recomendacao:g('aud-rec'), nota, d9_itens:audReviewD9 });
+  // reset
+  ['aud-f-consultor','aud-f-tipo','aud-f-cliente','aud-f-data','aud-analise'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  audReviewD9={}; audCancelar();
+  if(typeof upd==='function') upd();
+  audRenderLista();
+  const m=document.getElementById('aud-form-msg'); if(m){m.textContent='✓ Avaliação salva.';m.style.color='var(--green)';}
+}
+
+function audRemover(id){ if(!confirm('Excluir esta avaliação?')) return; auditorias=auditorias.filter(a=>a.id!==id); if(typeof upd==='function') upd(); audRenderLista(); }
+function audSetFiltro(k,v){ audFiltro[k]=v; audRenderLista(); }
+function audLimparFiltro(){ audFiltro={consultor:'',tipo:'',cliente:'',mes:''}; audRenderLista(); }
+function audFiltradas(){
+  return auditorias.filter(a=>{
+    if(audFiltro.consultor && a.consultor!==audFiltro.consultor) return false;
+    if(audFiltro.tipo && a.entrega!==audFiltro.tipo) return false;
+    if(audFiltro.cliente && a.cliente!==audFiltro.cliente) return false;
+    if(audFiltro.mes){ const d=parseDate(a.data); const key=d?(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')):''; if(key!==audFiltro.mes) return false; }
+    return true;
+  });
+}
+
+function buildAuditoria(){
+  const f=document.getElementById('aud-form');
+  if(f && !f.dataset.ready){ f.innerHTML=audFormHTML(); f.dataset.ready='1'; }
+  audRenderLista();
+}
+
+function audRenderLista(){
+  const list=audFiltradas();
+  const notas=list.map(audNotaGeral).filter(x=>x!==null);
+  const mediaGeral=notas.length?Math.round(notas.reduce((s,x)=>s+x,0)/notas.length):null;
+  const fraca=audMediaDimensao(list);
+  const kpis=document.getElementById('aud-kpis');
+  if(kpis) kpis.innerHTML=
+      '<div class="mcard c-blue"><div class="mlabel">Avaliações</div><div class="mval">'+list.length+'</div><div class="mmeta">no filtro atual</div></div>'
+    + '<div class="mcard c-green"><div class="mlabel">Nota geral média</div><div class="mval">'+(mediaGeral!==null?mediaGeral:'—')+'<span style="font-size:13px;color:var(--text-hint);font-weight:400;">/100</span></div></div>'
+    + '<div class="mcard c-red"><div class="mlabel">Dimensão mais fraca</div><div class="mval" style="font-size:15px;line-height:1.2;">'+(fraca?fraca.nome:'—')+'</div><div class="mmeta">'+(fraca?('média '+Math.round(fraca.media)+'/100'):'sem dados')+'</div></div>';
+
+  const fb=document.getElementById('aud-filtros');
+  if(fb){
+    const sel=(k,label,items)=>'<select onchange="audSetFiltro(\''+k+'\',this.value)" class="base-sel"><option value="">'+label+'</option>'+items.map(x=>'<option '+(audFiltro[k]===x?'selected':'')+'>'+x+'</option>').join('')+'</select>';
+    const meses=[...new Set(auditorias.map(a=>{const d=parseDate(a.data);return d?(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')):null;}).filter(Boolean))].sort().reverse();
+    fb.innerHTML=sel('consultor','Todos consultores',audConsultores())+sel('tipo','Todas entregas',AUD_TIPOS)+sel('cliente','Todos clientes',audClientes())
+      + '<select onchange="audSetFiltro(\'mes\',this.value)" class="base-sel"><option value="">Todos meses</option>'+meses.map(m=>'<option '+(audFiltro.mes===m?'selected':'')+'>'+m+'</option>').join('')+'</select>'
+      + '<button class="base-clear" onclick="audLimparFiltro()">Limpar</button>';
+  }
+
+  const box=document.getElementById('aud-lista'); if(!box) return;
+  if(!list.length){ box.innerHTML='<div style="font-size:12px;color:var(--text-hint);padding:18px 0;text-align:center;">Nenhuma avaliação ainda. Use o formulário acima para lançar a primeira.</div>'; return; }
+  const rows=list.slice().sort((a,b)=>(b.data||'').localeCompare(a.data||''));
+  box.innerHTML='<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">'
+    + '<thead><tr>'+['Consultor','Entrega','Cliente','Data','Nota','Gaps',''].map(h=>'<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">'+h+'</th>').join('')+'</tr></thead><tbody>'
+    + rows.map(a=>{
+        const ng=audNotaGeral(a), cl=audClassif(ng), gaps=audGaps(a);
+        const dataFmt=a.data?((parseDate(a.data)||{}).toLocaleDateString?parseDate(a.data).toLocaleDateString('pt-BR'):a.data):'—';
+        return '<tr style="border-bottom:1px solid var(--border);">'
+          + '<td style="padding:6px 8px;color:var(--text);">'+(a.consultor||'—')+'</td>'
+          + '<td style="padding:6px 8px;color:var(--text-muted);">'+(a.entrega||'—')+'</td>'
+          + '<td style="padding:6px 8px;color:var(--text-muted);">'+(a.cliente||'—')+'</td>'
+          + '<td style="padding:6px 8px;color:var(--text-muted);">'+dataFmt+'</td>'
+          + '<td style="padding:6px 8px;"><span style="font-weight:700;color:'+cl.cor+';">'+(ng!==null?ng:'—')+'</span> <span style="font-size:10px;color:var(--text-hint);">'+cl.txt+'</span></td>'
+          + '<td style="padding:6px 8px;color:var(--text-muted);font-size:10px;">'+(gaps.length?gaps.map(g=>g.nome).join(' · '):'—')+'</td>'
+          + '<td style="padding:6px 8px;text-align:right;"><button onclick="audRemover(\''+a.id+'\')" title="Excluir" style="background:none;border:none;cursor:pointer;color:var(--text-hint);font-size:13px;">✕</button></td>'
+          + '</tr>';
+      }).join('')
+    + '</tbody></table></div>';
+}
+
 const SB_URL = 'https://riawjqvezolgyldldyzi.supabase.co';
 // URL do Google Apps Script (cole aqui após publicar)
 const SHEETS_URL = 'https://script.google.com/a/macros/v4company.com/s/AKfycbzy462VGOLbHKckALmznzaBvZwrRMMBTSr9J3CZEt2xj_hF2pWWzHvU1BZXzNw-1HKG/exec';
@@ -6905,6 +7224,7 @@ async function syncSheets() {
       cap_data:   JSON.stringify(capData),
       cap_manual: JSON.stringify(capManual),
       pdi_data:   JSON.stringify(typeof pdiData !== 'undefined' ? pdiData : {}),
+      auditorias: JSON.stringify(auditorias),
     };
     // Envia como text/plain para bypassar CORS preflight
     const body = JSON.stringify(payload);
@@ -6936,6 +7256,7 @@ async function sbSave() {
       pdi_data:   JSON.stringify(pdiData),
       conv_base:  JSON.stringify(convBaseManual),
       fotos:      JSON.stringify(perfFotos),
+      auditorias: JSON.stringify(auditorias),
     };
     const sendPayload = async (pl) => {
       let r = await fetch(SB_URL + '/rest/v1/saber_data?id=eq.main', {
@@ -6985,6 +7306,7 @@ async function sbSave() {
         projects, nps_data: npsData, csp_manual: cspManual,
         mon_metas: monMetas, cap_data: capData, cap_manual: capManual,
         pdi_data: pdiData, conv_base: convBaseManual, fotos: perfFotos,
+        auditorias,
         saved_at: sbLastSaved.toISOString(), total: projects.length
       };
       const backupStr = JSON.stringify(backup);
@@ -7011,6 +7333,7 @@ async function sbSave() {
           projects, nps_data: npsData, csp_manual: cspManual,
           mon_metas: monMetas, cap_data: capData, cap_manual: capManual,
           pdi_data: pdiData, conv_base: convBaseManual, fotos: perfFotos,
+        auditorias,
           saved_at: new Date().toISOString()
         };
         localStorage.setItem('saber_emergency', JSON.stringify(emergency));
@@ -7034,7 +7357,8 @@ function sbExport() {
     mon_metas:  monMetas,
     pdi_data:   pdiData,
     conv_base:  convBaseManual,
-    fotos:      perfFotos
+    fotos:      perfFotos,
+    auditorias
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
   const a    = document.createElement('a');
@@ -7061,6 +7385,7 @@ function sbImport(input) {
       if (data.conv_base && typeof data.conv_base === 'object') Object.assign(convBaseManual, data.conv_base);
     if (data.fotos && typeof data.fotos === 'object') Object.assign(perfFotos, data.fotos);
       if (data.fotos && typeof data.fotos === 'object') Object.assign(perfFotos, data.fotos);
+      if (data.auditorias && Array.isArray(data.auditorias)) auditorias = data.auditorias;
 
       buildCspManual();
       buildPdi();
@@ -7177,6 +7502,9 @@ async function sbLoad() {
       }
       if (row.fotos) {
         try { const ft = JSON.parse(row.fotos); if (ft && typeof ft === 'object') Object.assign(perfFotos, ft); } catch(e){}
+      }
+      if (row.auditorias) {
+        try { const av = JSON.parse(row.auditorias); if (Array.isArray(av)) auditorias = av; } catch(e){}
       }
     }
 
