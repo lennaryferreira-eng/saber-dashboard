@@ -425,7 +425,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
       <table>
         <thead>
           <tr>
-            <th style="width:36px;min-width:36px;">#</th><th style="min-width:160px;">Projeto</th><th>Modelo</th><th>Consultor</th><th>GMV (R$)</th><th>Tier</th><th>Designer</th><th>Copy</th>
+            <th style="width:36px;min-width:36px;">#</th><th style="min-width:160px;">Projeto</th><th>Modelo</th><th>Consultor</th><th>GMV (R$)</th><th>Tier</th><th>Fee (R$)</th><th>Designer</th><th>Copy</th>
             <th>Dt. Início</th><th>Dt. Prev. Conclusão</th><th>Dt. Conclusão Real</th>
             <th>Prazo</th><th>Flag</th>
             <th>Status</th>
@@ -443,6 +443,13 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
 <section id="sec-visao" class="section active">
   <div class="sec-head"><h2 class="sec-title">Visão Geral</h2><p class="sec-desc">Todos os indicadores consolidados — 2026.</p></div>
   <div id="filter-bar-visao" class="filter-bar"></div>
+  <div id="ov-fee-card" style="margin-bottom:1.1rem;background:linear-gradient(135deg,var(--accent),#8f0c1f);border-radius:12px;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;box-shadow:0 6px 18px rgba(200,16,46,.20);flex-wrap:wrap;">
+    <div>
+      <div id="ov-fee-label" style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.82);">Movimentado pelo squad</div>
+      <div id="ov-fee-val" style="font-size:34px;font-weight:800;color:#fff;line-height:1.1;margin-top:4px;">R$ 0</div>
+    </div>
+    <div id="ov-fee-meta" style="text-align:right;color:rgba(255,255,255,.85);font-size:12px;font-weight:500;"></div>
+  </div>
   <div class="mgrid mg3">
     <div id="ov-csp-card" class="mcard c-accent"><div id="ov-csp-border" class="ov-border-bar" style="background:var(--accent);"></div><div class="mlabel">Taxa CSP</div><div class="mval" id="ov-csp-val" style="transition:color .3s;">—</div><div class="mmeta">Meta: ≤ 5%</div><div class="prog-bg"><div class="prog-fill" id="ov-csp-bar" style="width:0%;background:var(--accent)"></div></div></div>
     <div id="ov-conv-card" class="mcard c-green"><div id="ov-conv-border" class="ov-border-bar" style="background:var(--green);"></div><div class="mlabel">Taxa de Conversão</div><div class="mval" id="ov-conv-val" style="transition:color .3s;">—</div><div class="mmeta">Meta: 40%</div><div class="prog-bg"><div class="prog-fill" id="ov-conv-bar" style="width:0%;background:var(--green)"></div></div></div>
@@ -3326,30 +3333,27 @@ function renderBase() {
     if (p.inicio && !p.prevManual && p.modelo !== 'DRO') p.prevFim = addDays(p.inicio, 45);
   });
 
-  // summary cards
-  const total   = projects.length;
-  const mon  = projects.filter(p => p.conv === 'Monetizado').length;
-  const nmon = projects.filter(p => p.conv === 'Não monetizado').length;
-  let   receita = 0;
-  projects.forEach(p => {
-    if (p.conv === 'Monetizado') {
-      const v = parseFloat((p.valor||'').replace(/\./g,'').replace(',','.'));
-      if (!isNaN(v)) receita += v;
-    }
-  });
+  // lista filtrada — cards E tabela respeitam os filtros
+  const filtered = getBaseFiltered();
+
+  // summary cards (sobre a lista filtrada)
+  const parseMoney = v => { const n = parseFloat((v||'').toString().replace(/\./g,'').replace(',','.')); return isNaN(n) ? 0 : n; };
+  const total = filtered.length;
+  const mon   = filtered.filter(p => p.conv === 'Monetizado').length;
+  const nmon  = filtered.filter(p => p.conv === 'Não monetizado').length;
+  const emand = filtered.filter(p => calcStatus2(p) === 'Em andamento').length;
+  const receitaSquad = filtered.reduce((a, p) => a + parseMoney(p.fee), 0);
   document.getElementById('base-summary').innerHTML = `
     <div class="mcard c-blue"><div class="mlabel">Total</div><div class="mval">${total}</div><div class="mmeta">projetos</div></div>
     <div class="mcard c-green"><div class="mlabel">Monetizados 2026</div><div class="mval">${mon}</div></div>
     <div class="mcard c-red"><div class="mlabel">Não monetizados</div><div class="mval">${nmon}</div></div>
-    <div class="mcard c-amber"><div class="mlabel">Em andamento</div><div class="mval">${projects.filter(p=>calcStatus2(p)==='Em andamento').length}</div></div>
-    <div class="mcard c-gray"><div class="mlabel">Receita total</div><div class="mval" style="font-size:18px;">${BRL(receita)}</div></div>`;
+    <div class="mcard c-amber"><div class="mlabel">Em andamento</div><div class="mval">${emand}</div></div>
+    <div class="mcard c-gray"><div class="mlabel">Receita do Squad</div><div class="mval" style="font-size:18px;">${BRL(receitaSquad)}</div><div class="mmeta">fees pagos</div></div>`;
 
   // atualiza selects e botões de sort
   updateBaseSelectOptions();
   updateSortButtons();
 
-  // lista filtrada e ordenada
-  const filtered = getBaseFiltered();
   const baseCountEl = document.getElementById('base-count');
   if (baseCountEl) baseCountEl.textContent = filtered.length < projects.length
     ? `${filtered.length} de ${projects.length} projetos`
@@ -3373,6 +3377,7 @@ function renderBase() {
       <td contenteditable="true" data-f="consultor" data-id="${p.id}" onblur="setField(this)">${p.consultor}</td>
       <td contenteditable="true" data-f="gmv" data-id="${p.id}" onblur="setField(this)" style="min-width:90px;">${p.gmv||'—'}</td>
       <td style="padding:6px 10px;text-align:center;">${tierBadge(p.gmv)}</td>
+      <td contenteditable="true" data-f="fee" data-id="${p.id}" onblur="setField(this)" style="min-width:90px;">${p.fee||'—'}</td>
       <td contenteditable="true" data-f="designer" data-id="${p.id}" onblur="setField(this)" style="min-width:100px;">${p.designer||'—'}</td>
       <td contenteditable="true" data-f="copy" data-id="${p.id}" onblur="setField(this)" style="min-width:100px;">${p.copy||'—'}</td>
       <td><input type="date" class="sel" value="${dv(p.inicio)}" data-f="inicio" data-id="${p.id}" onchange="setField(this)"></td>
@@ -4880,6 +4885,20 @@ function buildOvAnalises(curM) {
   const finNMon = finalizados.length - finMon;
   set('ov-ini-mes',  iniciados.length);
   set('ov-fin-mes',  finalizados.length);
+
+  // ── Movimentado pelo squad (soma dos fees pagos pelo cliente) ──
+  // mês selecionado: fees dos projetos iniciados no mês · ano todo: total geral
+  (function(){
+    if (!document.getElementById('ov-fee-val')) return;
+    const base = curM ? iniciados : projects.filter(p => !isDroFam(p));
+    const totalFee = base.reduce((a, p) => a + parseVal(p.fee), 0);
+    const comFee = base.filter(p => parseVal(p.fee) > 0).length;
+    set('ov-fee-val', BRL(totalFee));
+    const lbl = document.getElementById('ov-fee-label');
+    if (lbl) lbl.textContent = curM ? ('Movimentado pelo squad · ' + mesLabel) : 'Movimentado pelo squad · Total 2026';
+    const meta = document.getElementById('ov-fee-meta');
+    if (meta) meta.textContent = comFee + ' projeto' + (comFee === 1 ? '' : 's') + ' com fee';
+  })();
 
   // Projetos em andamento no mês — mesma regra de "Projetos no Prazo" (mesesAtivos), exclui DRO
   const emAndamento = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && mesesAtivos(p).includes(mesIdx));
