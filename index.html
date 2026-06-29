@@ -706,6 +706,20 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
     </div>
     <div id="aud-lista"></div>
   </div>
+  <div class="card" style="margin-top:1.2rem;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap;">
+      <div class="card-title" style="margin:0;">Análises por recorte</div>
+      <div id="aud-agg-tabs" style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;"></div>
+    </div>
+    <div id="aud-agg-body"></div>
+  </div>
+  <div class="card" style="margin-top:1.2rem;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap;">
+      <div class="card-title" style="margin:0;">Heatmap de dimensões</div>
+      <div id="aud-heat-tabs" style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;"></div>
+    </div>
+    <div id="aud-heat-body" style="overflow-x:auto;"></div>
+  </div>
 </section>
 
 <section id="sec-prazo" class="section">
@@ -6923,6 +6937,8 @@ const AUD_D9_SKILLS = {
 };
 
 let audFiltro = { consultor:'', tipo:'', cliente:'', mes:'' };
+let audAgg = 'consultor';
+let audHeat = 'consultor';
 let audReviewD9 = {};   // d9_itens do parse, guardados para salvar
 
 function audConsultores(){ return (typeof squadList==='function') ? squadList() : ['Caio','Leonam','Loma','Camila','Cleiton']; }
@@ -7115,6 +7131,69 @@ function audFiltradas(){
   });
 }
 
+
+// ── AGREGAÇÕES + HEATMAP ──
+function audKeyOf(a,recorte){
+  if(recorte==='consultor') return a.consultor||'—';
+  if(recorte==='entrega') return a.entrega||'—';
+  if(recorte==='cliente') return a.cliente||'—';
+  if(recorte==='mes'){ const d=parseDate(a.data); return d?(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')):'—'; }
+  return '—';
+}
+function audAggData(recorte,list){
+  const groups={};
+  list.forEach(a=>{ const k=audKeyOf(a,recorte); (groups[k]=groups[k]||[]).push(a); });
+  return Object.keys(groups).map(k=>{
+    const arr=groups[k];
+    const notas=arr.map(audNotaGeral).filter(x=>x!==null);
+    const media=notas.length?Math.round(notas.reduce((s,x)=>s+x,0)/notas.length):null;
+    const dims={};
+    AUD_DIMS.forEach(d=>{ const xs=arr.map(a=>audScore(a,d.id)).filter(x=>x!==null); dims[d.id]=xs.length?Math.round(xs.reduce((s,x)=>s+x,0)/xs.length):null; });
+    return {nome:k,count:arr.length,media,dims};
+  }).sort((a,b)=>(b.media||0)-(a.media||0));
+}
+function audSetAgg(k){ audAgg=k; audRenderAgg(); }
+function audRenderAgg(){
+  const tabs=document.getElementById('aud-agg-tabs');
+  const tbtn=(k,l)=>'<button onclick="audSetAgg(\''+k+'\')" style="font-size:11px;padding:4px 12px;border-radius:20px;border:1px solid var(--border);cursor:pointer;'+(audAgg===k?'background:var(--accent);color:#fff;border-color:var(--accent);':'background:var(--surface);color:var(--text-muted);')+'">'+l+'</button>';
+  if(tabs) tabs.innerHTML=[['consultor','Consultor'],['entrega','Entrega'],['cliente','Cliente'],['mes','Mês']].map(x=>tbtn(x[0],x[1])).join('');
+  const body=document.getElementById('aud-agg-body'); if(!body) return;
+  let data=audAggData(audAgg,audFiltradas());
+  if(audAgg==='mes') data=data.slice().sort((a,b)=>a.nome.localeCompare(b.nome));
+  if(!data.length){ body.innerHTML='<div style="font-size:12px;color:var(--text-hint);padding:12px 0;">Sem dados no filtro atual.</div>'; return; }
+  body.innerHTML=data.map(row=>{
+    const cl=audClassif(row.media), w=Math.max(2,row.media||0);
+    return '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">'
+      +'<div style="width:150px;font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+row.nome+'</div>'
+      +'<div style="flex:1;background:var(--surface3);border-radius:4px;height:22px;overflow:hidden;min-width:120px;"><div style="height:100%;width:'+w+'%;background:'+cl.cor+';opacity:.85;border-radius:4px;display:flex;align-items:center;padding:0 8px;"><span style="font-size:11px;font-weight:700;color:#fff;">'+(row.media!==null?row.media:'—')+'</span></div></div>'
+      +'<div style="width:96px;font-size:10px;color:var(--text-hint);text-align:right;">'+row.count+' aval. · '+cl.txt+'</div>'
+      +'</div>';
+  }).join('');
+}
+function audHeatColor(v){ if(v===null) return 'background:var(--surface3);color:var(--text-hint);'; const h=Math.round(v*1.2); return 'background:hsl('+h+',70%,85%);color:#333;'; }
+function audSetHeat(k){ audHeat=k; audRenderHeat(); }
+function audRenderHeat(){
+  const tabs=document.getElementById('aud-heat-tabs');
+  const tbtn=(k,l)=>'<button onclick="audSetHeat(\''+k+'\')" style="font-size:11px;padding:4px 12px;border-radius:20px;border:1px solid var(--border);cursor:pointer;'+(audHeat===k?'background:var(--accent);color:#fff;border-color:var(--accent);':'background:var(--surface);color:var(--text-muted);')+'">'+l+'</button>';
+  if(tabs) tabs.innerHTML=[['consultor','Por consultor'],['entrega','Por entrega']].map(x=>tbtn(x[0],x[1])).join('');
+  const body=document.getElementById('aud-heat-body'); if(!body) return;
+  const data=audAggData(audHeat,audFiltradas());
+  if(!data.length){ body.innerHTML='<div style="font-size:12px;color:var(--text-hint);padding:12px 0;">Sem dados no filtro atual.</div>'; return; }
+  let html='<table style="border-collapse:collapse;font-size:11px;min-width:100%;">';
+  html+='<thead><tr><th style="text-align:left;padding:5px 8px;color:var(--text-hint);font-size:9px;text-transform:uppercase;letter-spacing:.05em;position:sticky;left:0;background:var(--surface);z-index:1;">'+(audHeat==='consultor'?'Consultor':'Entrega')+'</th>';
+  AUD_DIMS.forEach(d=>{ html+='<th title="'+d.nome+'" style="padding:5px 6px;color:var(--text-hint);font-size:9px;font-weight:600;text-align:center;">'+d.id.toUpperCase()+'</th>'; });
+  html+='<th style="padding:5px 8px;color:var(--text-hint);font-size:9px;text-align:center;">Geral</th></tr></thead><tbody>';
+  data.forEach(row=>{
+    html+='<tr><td style="padding:5px 8px;color:var(--text);white-space:nowrap;position:sticky;left:0;background:var(--surface);max-width:160px;overflow:hidden;text-overflow:ellipsis;">'+row.nome+'</td>';
+    AUD_DIMS.forEach(d=>{ const v=row.dims[d.id]; html+='<td style="padding:7px 6px;text-align:center;font-weight:600;'+audHeatColor(v)+'border:1px solid #fff;">'+(v!==null?v:'—')+'</td>'; });
+    const cl=audClassif(row.media);
+    html+='<td style="padding:7px 8px;text-align:center;font-weight:700;color:'+cl.cor+';">'+(row.media!==null?row.media:'—')+'</td></tr>';
+  });
+  html+='</tbody></table>';
+  html+='<div style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:10px;color:var(--text-hint);flex-wrap:wrap;"><span>0</span><div style="flex:0 0 160px;height:10px;border-radius:5px;background:linear-gradient(90deg,hsl(0,70%,85%),hsl(60,70%,85%),hsl(120,70%,85%));"></div><span>100</span><span style="margin-left:8px;">células mais avermelhadas = dimensões a desenvolver</span></div>';
+  body.innerHTML=html;
+}
+
 function buildAuditoria(){
   const f=document.getElementById('aud-form');
   if(f && !f.dataset.ready){ f.innerHTML=audFormHTML(); f.dataset.ready='1'; }
@@ -7123,6 +7202,7 @@ function buildAuditoria(){
 
 function audRenderLista(){
   const list=audFiltradas();
+  audRenderAgg(); audRenderHeat();
   const notas=list.map(audNotaGeral).filter(x=>x!==null);
   const mediaGeral=notas.length?Math.round(notas.reduce((s,x)=>s+x,0)/notas.length):null;
   const fraca=audMediaDimensao(list);
