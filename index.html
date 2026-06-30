@@ -6432,6 +6432,18 @@ function buildPerformance() {
     const convBase = getConvBase(nome);
     const convV = Math.round(convMon / convBase * 100);
 
+    // Projetos em andamento no mês (desempate 1)
+    const mesesAtiv = curM ? [curM] : ALL_MESES;
+    const setAtiv = new Set();
+    mesesAtiv.forEach(m => {
+      projects.forEach(p => {
+        if (p.modelo === 'DRO') return;
+        if (p.consultor !== nome) return;
+        if (mesesAtivos(p).includes(m.idx)) setAtiv.add(p.id);
+      });
+    });
+    const projAndamento = setAtiv.size;
+
     // Prazo
     const mesesPrazo = curM ? [curM] : ALL_MESES;
     let pTotal = 0, pOk = 0;
@@ -6501,18 +6513,18 @@ function buildPerformance() {
       ? Math.round(atingidos / kpisComDado.length * 100)
       : null;
 
-    return { nome, dot, kpis, atingidos, totalComDado, pctMedio };
+    return { nome, dot, kpis, atingidos, totalComDado, pctMedio, projAndamento, convV };
   });
 
-  // Ordena: 1) mais KPIs atingidos 2) mais KPIs com dados 3) maior % médio
+  // Ordena: 1) mais KPIs atingidos · desempate 1) mais projetos em andamento no mês · desempate 2) maior taxa de conversão
   cards.sort((a,b) => {
     if (b.atingidos !== a.atingidos) return b.atingidos - a.atingidos;
-    if (b.totalComDado !== a.totalComDado) return b.totalComDado - a.totalComDado;
-    return (b.pctMedio||0) - (a.pctMedio||0);
+    if (b.projAndamento !== a.projAndamento) return b.projAndamento - a.projAndamento;
+    return (b.convV||0) - (a.convV||0);
   });
   // Define rank considerando empates
   // Se dois têm o mesmo score → ambos são 1º (gold); próximo é 3º (prata)
-  const scores = cards.map(c => c.atingidos * 1000000 + c.totalComDado * 10000 + (c.pctMedio||0));
+  const scores = cards.map(c => c.atingidos * 1000000 + c.projAndamento * 10000 + (c.convV||0));
   const rankMap = cards.map((c, idx) => {
     if (idx === 0) return 1;
     return scores[idx] === scores[0] ? 1 : scores[idx] === scores[1] ? 2 : idx + 1;
