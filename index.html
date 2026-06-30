@@ -294,6 +294,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
       <button onclick="sbExport()" style="font-family:var(--sans);font-size:11px;padding:5px 12px;border:1px solid var(--border);border-radius:20px;background:var(--surface2);color:var(--text-muted);cursor:pointer;transition:all .15s;" onmouseover="this.style.background='var(--surface3)'" onmouseout="this.style.background='var(--surface2)'">↓ Exportar dados</button>
       <label style="font-family:var(--sans);font-size:11px;padding:5px 12px;border:1px solid var(--border);border-radius:20px;background:var(--surface2);color:var(--text-muted);cursor:pointer;transition:all .15s;" onmouseover="this.style.background='var(--surface3)'" onmouseout="this.style.background='var(--surface2)'">↑ Importar dados<input type="file" accept=".json" style="display:none" onchange="sbImport(this)"></label>
       <button onclick="restoreBackup()" title="Restaurar último backup local" style="font-family:var(--sans);font-size:11px;padding:5px 10px;border:1px solid var(--border);border-radius:20px;background:var(--surface2);color:var(--text-muted);cursor:pointer;">↩ Backup</button>
+      <button onclick="openConsultoresModal()" title="Gerenciar consultores do squad" style="font-family:var(--sans);font-size:11px;padding:5px 12px;border:1px solid var(--border);border-radius:20px;background:var(--surface2);color:var(--text-muted);cursor:pointer;transition:all .15s;" onmouseover="this.style.background='var(--surface3)'" onmouseout="this.style.background='var(--surface2)'">👥 Consultores</button>
     <button id="perfil-btn" onclick="openLoginModal()" style="font-family:var(--sans);font-size:11px;font-weight:700;padding:5px 12px;border:1px solid var(--border);border-radius:20px;background:var(--surface2);color:var(--text);cursor:pointer;letter-spacing:.04em;">🔒 ENTRAR</button>
     </div>
     <span id="last-upd">—</span>
@@ -1229,6 +1230,29 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<div class="modal-overlay" id="modal-consultores" onclick="if(event.target===this)closeConsultoresModal()">
+  <div class="modal-box" style="max-width:540px;">
+    <div class="modal-header">
+      <span class="modal-title">Gerenciar consultores</span>
+      <button class="modal-close" onclick="closeConsultoresModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:11px;color:var(--text-hint);margin:0 0 12px;">Define quem aparece nos filtros e listas do painel (e nas listas suspensas da Auditoria). A ordem aqui é a ordem usada nas telas.</p>
+      <div id="cons-modal-rows"></div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+        <button onclick="consAddRow()" style="font-size:11px;padding:6px 14px;border:1px solid var(--border);border-radius:20px;background:var(--surface);color:var(--text-muted);cursor:pointer;">+ Adicionar</button>
+        <button onclick="consPuxarProjetos()" style="font-size:11px;padding:6px 14px;border:1px solid var(--border);border-radius:20px;background:var(--surface);color:var(--text-muted);cursor:pointer;">↻ Puxar dos projetos</button>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:18px;">
+        <button onclick="consSalvar()" style="background:var(--accent);color:#fff;border:none;border-radius:20px;padding:8px 22px;font-size:12px;font-weight:600;cursor:pointer;">Salvar</button>
+        <button onclick="closeConsultoresModal()" style="background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:20px;padding:8px 18px;font-size:12px;cursor:pointer;">Cancelar</button>
+        <span id="cons-modal-msg" style="font-size:11px;color:var(--text-hint);"></span>
+      </div>
+      <div style="margin-top:14px;font-size:10px;color:var(--text-hint);border-top:1px solid var(--border);padding-top:10px;">Renomear aqui muda os filtros, mas não reescreve o consultor já gravado nos projetos antigos. Salva no Supabase (precisa da coluna <code>consultores</code>).</div>
+    </div>
+  </div>
+</div>
+
 <script>
 var _carregandoInicial = false; // flag de carga inicial (declarada no topo para evitar TDZ)
 
@@ -2028,6 +2052,7 @@ function restoreBackup() {
     if (data.conv_base && typeof data.conv_base === 'object') Object.assign(convBaseManual, data.conv_base);
     if (data.fotos && typeof data.fotos === 'object') Object.assign(perfFotos, data.fotos);
     if (data.auditorias && Array.isArray(data.auditorias)) auditorias = data.auditorias;
+    if (data.consultores) { if (Array.isArray(data.consultores.list) && data.consultores.list.length) window.CONS_MON = data.consultores.list; if (data.consultores.colors) window.dotColors = Object.assign({}, window.dotColors||{}, data.consultores.colors); }
     refreshAll();
     buildLeadTime();
     upd(); // salva no Supabase
@@ -7271,6 +7296,68 @@ function audRenderLista(){
     + '</tbody></table></div>';
 }
 
+
+// ═══════════════════════════════════
+//  GERENCIAR CONSULTORES
+// ═══════════════════════════════════
+const CONS_CORES = [
+  {v:'var(--blue)',  nome:'Azul'},
+  {v:'var(--green)', nome:'Verde'},
+  {v:'var(--accent)',nome:'Vermelho'},
+  {v:'var(--purple)',nome:'Roxo'},
+  {v:'var(--amber)', nome:'Âmbar'},
+  {v:'var(--text-muted)', nome:'Cinza'},
+];
+function consRowHTML(nome, cor){
+  cor = cor || 'var(--blue)';
+  const opts = CONS_CORES.map(c=>'<option value="'+c.v+'" '+(c.v===cor?'selected':'')+'>'+c.nome+'</option>').join('');
+  const safe = (nome||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+  return '<div class="cons-row" style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">'
+    +'<span class="cons-dot" style="width:12px;height:12px;border-radius:50%;background:'+cor+';flex-shrink:0;"></span>'
+    +'<input class="cons-nome aud-inp" value="'+safe+'" placeholder="Nome do consultor" style="flex:1;">'
+    +'<select class="cons-cor aud-inp" style="width:120px;" onchange="this.closest(\'.cons-row\').querySelector(\'.cons-dot\').style.background=this.value;">'+opts+'</select>'
+    +'<button onclick="this.closest(\'.cons-row\').remove();" title="Remover" style="background:none;border:none;cursor:pointer;color:var(--text-hint);font-size:14px;">✕</button>'
+    +'</div>';
+}
+function openConsultoresModal(){
+  const list = (typeof squadList==='function') ? squadList() : (window.CONS_MON||[]);
+  const colors = window.dotColors||{};
+  const box = document.getElementById('cons-modal-rows');
+  box.innerHTML = list.map(n=>consRowHTML(n, colors[n])).join('');
+  const msg=document.getElementById('cons-modal-msg'); if(msg) msg.textContent='';
+  document.getElementById('modal-consultores').style.display='flex';
+}
+function closeConsultoresModal(){ document.getElementById('modal-consultores').style.display='none'; }
+function consAddRow(){ document.getElementById('cons-modal-rows').insertAdjacentHTML('beforeend', consRowHTML('', 'var(--blue)')); }
+function consPuxarProjetos(){
+  const atuais = [...document.querySelectorAll('#cons-modal-rows .cons-nome')].map(i=>i.value.trim()).filter(Boolean);
+  const doProj = [...new Set((typeof projects!=='undefined'?projects:[]).map(p=>p.consultor).filter(Boolean))];
+  const novos = doProj.filter(n=>!atuais.includes(n));
+  const box=document.getElementById('cons-modal-rows');
+  novos.forEach((n,i)=> box.insertAdjacentHTML('beforeend', consRowHTML(n, CONS_CORES[(atuais.length+i)%5].v)));
+  const msg=document.getElementById('cons-modal-msg');
+  if(msg){ msg.textContent = novos.length ? ('+'+novos.length+' adicionado(s) dos projetos.') : 'Nenhum consultor novo nos projetos.'; msg.style.color = novos.length?'var(--green)':'var(--text-hint)'; }
+}
+function consSalvar(){
+  const rows=[...document.querySelectorAll('#cons-modal-rows .cons-row')];
+  const list=[], colors={};
+  rows.forEach(r=>{
+    const nome=r.querySelector('.cons-nome').value.trim();
+    if(!nome || list.includes(nome)) return;
+    list.push(nome); colors[nome]=r.querySelector('.cons-cor').value;
+  });
+  const msg=document.getElementById('cons-modal-msg');
+  if(!list.length){ if(msg){msg.textContent='Adicione ao menos um consultor.';msg.style.color='var(--accent)';} return; }
+  window.CONS_MON = list;
+  window.dotColors = Object.assign({}, window.dotColors||{}, colors);
+  if(typeof upd==='function') upd();
+  // refresca telas e as listas suspensas da Auditoria
+  const af=document.getElementById('aud-form'); if(af) af.dataset.ready='';
+  if(typeof refreshAll==='function') refreshAll();
+  if(typeof buildAuditoria==='function') buildAuditoria();
+  closeConsultoresModal();
+}
+
 const SB_URL = 'https://riawjqvezolgyldldyzi.supabase.co';
 // URL do Google Apps Script (cole aqui após publicar)
 const SHEETS_URL = 'https://script.google.com/a/macros/v4company.com/s/AKfycbzy462VGOLbHKckALmznzaBvZwrRMMBTSr9J3CZEt2xj_hF2pWWzHvU1BZXzNw-1HKG/exec';
@@ -7334,6 +7421,7 @@ async function syncSheets() {
       cap_manual: JSON.stringify(capManual),
       pdi_data:   JSON.stringify(typeof pdiData !== 'undefined' ? pdiData : {}),
       auditorias: JSON.stringify(auditorias),
+      consultores: JSON.stringify({list:window.CONS_MON||[], colors:window.dotColors||{}}),
     };
     // Envia como text/plain para bypassar CORS preflight
     const body = JSON.stringify(payload);
@@ -7366,6 +7454,7 @@ async function sbSave() {
       conv_base:  JSON.stringify(convBaseManual),
       fotos:      JSON.stringify(perfFotos),
       auditorias: JSON.stringify(auditorias),
+      consultores: JSON.stringify({list:window.CONS_MON||[], colors:window.dotColors||{}}),
     };
     const sendPayload = async (pl) => {
       let r = await fetch(SB_URL + '/rest/v1/saber_data?id=eq.main', {
@@ -7416,6 +7505,7 @@ async function sbSave() {
         mon_metas: monMetas, cap_data: capData, cap_manual: capManual,
         pdi_data: pdiData, conv_base: convBaseManual, fotos: perfFotos,
         auditorias,
+        consultores: {list:window.CONS_MON||[], colors:window.dotColors||{}},
         saved_at: sbLastSaved.toISOString(), total: projects.length
       };
       const backupStr = JSON.stringify(backup);
@@ -7443,6 +7533,7 @@ async function sbSave() {
           mon_metas: monMetas, cap_data: capData, cap_manual: capManual,
           pdi_data: pdiData, conv_base: convBaseManual, fotos: perfFotos,
         auditorias,
+        consultores: {list:window.CONS_MON||[], colors:window.dotColors||{}},
           saved_at: new Date().toISOString()
         };
         localStorage.setItem('saber_emergency', JSON.stringify(emergency));
@@ -7467,7 +7558,8 @@ function sbExport() {
     pdi_data:   pdiData,
     conv_base:  convBaseManual,
     fotos:      perfFotos,
-    auditorias
+    auditorias,
+    consultores: {list:window.CONS_MON||[], colors:window.dotColors||{}}
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
   const a    = document.createElement('a');
@@ -7495,6 +7587,7 @@ function sbImport(input) {
     if (data.fotos && typeof data.fotos === 'object') Object.assign(perfFotos, data.fotos);
       if (data.fotos && typeof data.fotos === 'object') Object.assign(perfFotos, data.fotos);
       if (data.auditorias && Array.isArray(data.auditorias)) auditorias = data.auditorias;
+    if (data.consultores) { if (Array.isArray(data.consultores.list) && data.consultores.list.length) window.CONS_MON = data.consultores.list; if (data.consultores.colors) window.dotColors = Object.assign({}, window.dotColors||{}, data.consultores.colors); }
 
       buildCspManual();
       buildPdi();
@@ -7614,6 +7707,9 @@ async function sbLoad() {
       }
       if (row.auditorias) {
         try { const av = JSON.parse(row.auditorias); if (Array.isArray(av)) auditorias = av; } catch(e){}
+      }
+      if (row.consultores) {
+        try { const cm = JSON.parse(row.consultores); if (cm && Array.isArray(cm.list) && cm.list.length) window.CONS_MON = cm.list; if (cm && cm.colors) window.dotColors = Object.assign({}, window.dotColors||{}, cm.colors); } catch(e){}
       }
     }
 
