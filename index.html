@@ -2035,13 +2035,26 @@ function closeLoginModal() {
 
 
 function restoreBackup() {
-  const raw = localStorage.getItem('saber_backup');
-  const at  = localStorage.getItem('saber_backup_at');
-  if (!raw) { alert('Nenhum backup local encontrado.'); return; }
-  const d = new Date(at).toLocaleString('pt-BR');
-  if (!confirm('Restaurar backup de ' + d + '?\n\nIsso vai sobrescrever os dados atuais.')) return;
+  // Procura entre os backups rotativos + emergência o mais recente QUE TENHA projetos
+  const keys = ['saber_backup_1','saber_backup_2','saber_backup_3','saber_emergency','saber_backup'];
+  let best = null;
+  for (const k of keys) {
+    const raw = localStorage.getItem(k);
+    if (!raw) continue;
+    try {
+      const d = JSON.parse(raw);
+      const n = Array.isArray(d.projects) ? d.projects.length : 0;
+      if (n > 0) {
+        const when = new Date(d.saved_at || d.exported_at || 0).getTime();
+        if (!best || when > best.when) best = { key:k, data:d, n, when };
+      }
+    } catch(e){}
+  }
+  if (!best) { alert('Nenhum backup local com projetos foi encontrado neste navegador.'); return; }
+  const dstr = best.when ? new Date(best.when).toLocaleString('pt-BR') : 'data desconhecida';
+  if (!confirm('Restaurar backup "' + best.key + '" de ' + dstr + ' com ' + best.n + ' projetos?\n\nIsso vai sobrescrever os dados atuais.')) return;
   try {
-    const data = JSON.parse(raw);
+    const data = best.data;
     if (data.projects && Array.isArray(data.projects)) projects = data.projects;
     if (data.nps_data) Object.assign(npsData, data.nps_data);
     if (data.csp_manual) Object.assign(cspManual, data.csp_manual);
@@ -2056,7 +2069,7 @@ function restoreBackup() {
     refreshAll();
     buildLeadTime();
     upd(); // salva no Supabase
-    alert('Backup de ' + d + ' restaurado e salvo!');
+    alert('Backup restaurado: ' + best.n + ' projetos (' + best.key + ').');
   } catch(e) { alert('Erro ao restaurar: ' + e.message); }
 }
 
@@ -7451,6 +7464,12 @@ async function syncSheets() {
 
 async function sbSave() {
   if (VIEWER) return; // modo visualização: nunca grava no Supabase
+  // TRAVA DE SEGURANÇA: nunca sobrescreve o banco com dados vazios (evita perda)
+  if (!Array.isArray(projects) || projects.length === 0) {
+    console.warn('sbSave ABORTADO: projects vazio — não vou sobrescrever o Supabase. Restaure um backup antes de editar.');
+    setSyncStatus('⚠ Save pausado: nenhum projeto carregado', 'var(--amber)');
+    return;
+  }
   sbPendingChanges = true;
   try {
     console.log(`sbSave: salvando ${projects.length} projetos no Supabase…`);
