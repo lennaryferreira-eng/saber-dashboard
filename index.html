@@ -7194,6 +7194,34 @@ function audRenderHeat(){
   body.innerHTML=html;
 }
 
+
+// ── DRILL-DOWN POR AVALIAÇÃO ──
+function audDetalheHTML(a){
+  const dims = AUD_DIMS.map(d=>{ const v=audScore(a,d.id); const o=(a.observacoes&&a.observacoes[d.id])||{}; return {nome:d.nome,cor:d.cor,v,analise:o.analise||'',plano:o.plano||''}; })
+    .filter(x=>x.v!==null).sort((p,q)=>p.v-q.v);
+  let html='<div style="padding:12px 16px;background:var(--surface2);border-radius:var(--r-sm);border:1px solid var(--border);">';
+  html+='<div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:8px;">Dimensões — da menor para a maior nota · plano de ação</div>';
+  html+=dims.map((d,i)=>{
+    const cl=audClassif(d.v), prio=i<2;
+    return '<div style="display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);">'
+      +'<div style="flex:0 0 40px;text-align:center;"><div style="font-size:18px;font-weight:800;color:'+cl.cor+';line-height:1;">'+d.v+'</div></div>'
+      +'<div style="flex:1;min-width:0;">'
+        +'<div style="font-size:12px;font-weight:600;color:var(--text);">'+(prio?'<span style="color:var(--accent);" title="Dimensão prioritária">▲ </span>':'')+d.nome+'</div>'
+        +(d.plano?('<div style="font-size:11px;color:var(--text);margin-top:3px;"><strong style="color:var(--amber);">Plano:</strong> '+d.plano+'</div>'):'<div style="font-size:11px;color:var(--text-hint);margin-top:3px;">Sem plano de ação registrado.</div>')
+        +(d.analise?('<div style="font-size:10px;color:var(--text-muted);margin-top:2px;"><em>'+d.analise+'</em></div>'):'')
+      +'</div></div>';
+  }).join('');
+  if(a.recomendacao) html+='<div style="margin-top:10px;font-size:11px;color:var(--text);"><strong style="color:var(--accent);">Recomendação:</strong> '+a.recomendacao+'</div>';
+  html+='</div>';
+  return html;
+}
+function audToggleDet(id){
+  const det=document.getElementById('auddet-'+id); if(!det) return;
+  const open=(det.style.display==='none'||!det.style.display);
+  det.style.display=open?'table-row':'none';
+  const ch=document.getElementById('audchev-'+id); if(ch) ch.style.transform=open?'rotate(90deg)':'';
+}
+
 function buildAuditoria(){
   const f=document.getElementById('aud-form');
   if(f && !f.dataset.ready){ f.innerHTML=audFormHTML(); f.dataset.ready='1'; }
@@ -7229,15 +7257,16 @@ function audRenderLista(){
     + rows.map(a=>{
         const ng=audNotaGeral(a), cl=audClassif(ng), gaps=audGaps(a);
         const dataFmt=a.data?((parseDate(a.data)||{}).toLocaleDateString?parseDate(a.data).toLocaleDateString('pt-BR'):a.data):'—';
-        return '<tr style="border-bottom:1px solid var(--border);">'
-          + '<td style="padding:6px 8px;color:var(--text);">'+(a.consultor||'—')+'</td>'
+        return '<tr onclick="audToggleDet(\''+a.id+'\')" style="border-bottom:1px solid var(--border);cursor:pointer;">'
+          + '<td style="padding:6px 8px;color:var(--text);white-space:nowrap;"><span id="audchev-'+a.id+'" style="display:inline-block;transition:transform .15s;color:var(--text-hint);margin-right:6px;font-size:10px;">▸</span>'+(a.consultor||'—')+'</td>'
           + '<td style="padding:6px 8px;color:var(--text-muted);">'+(a.entrega||'—')+'</td>'
           + '<td style="padding:6px 8px;color:var(--text-muted);">'+(a.cliente||'—')+'</td>'
           + '<td style="padding:6px 8px;color:var(--text-muted);">'+dataFmt+'</td>'
           + '<td style="padding:6px 8px;"><span style="font-weight:700;color:'+cl.cor+';">'+(ng!==null?ng:'—')+'</span> <span style="font-size:10px;color:var(--text-hint);">'+cl.txt+'</span></td>'
           + '<td style="padding:6px 8px;color:var(--text-muted);font-size:10px;">'+(gaps.length?gaps.map(g=>g.nome).join(' · '):'—')+'</td>'
-          + '<td style="padding:6px 8px;text-align:right;"><button onclick="audRemover(\''+a.id+'\')" title="Excluir" style="background:none;border:none;cursor:pointer;color:var(--text-hint);font-size:13px;">✕</button></td>'
-          + '</tr>';
+          + '<td style="padding:6px 8px;text-align:right;"><button onclick="event.stopPropagation();audRemover(\''+a.id+'\')" title="Excluir" style="background:none;border:none;cursor:pointer;color:var(--text-hint);font-size:13px;">✕</button></td>'
+          + '</tr>'
+          + '<tr id="auddet-'+a.id+'" style="display:none;"><td colspan="7" style="padding:2px 8px 12px;">'+audDetalheHTML(a)+'</td></tr>';
       }).join('')
     + '</tbody></table></div>';
 }
