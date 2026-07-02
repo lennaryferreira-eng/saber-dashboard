@@ -7744,6 +7744,10 @@ function updateCoordUI() {
 
 async function switchCoord(coord) {
   if (coord === currentCoord) return;
+  // CRÍTICO: cancela qualquer save pendente da coordenação anterior — sem isso, um save
+  // agendado (debounce de 1.5s) pode disparar já apontando pra tabela nova, gravando
+  // os dados errados nela.
+  clearTimeout(sbSaveTimer);
   currentCoord = coord;
   SB_TABLE = (coord === 'ter') ? 'ter_data' : 'saber_data';
   _resetCoordState();
