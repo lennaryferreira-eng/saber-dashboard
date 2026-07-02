@@ -35,6 +35,10 @@ header{padding:2rem 3rem 1.75rem;border-bottom:2px solid var(--accent);display:f
 /* NAV */
 nav{background:var(--surface);border-bottom:2px solid var(--accent);padding:0 2rem;display:flex;position:sticky;top:0;z-index:100;overflow-x:auto;box-shadow:0 1px 4px rgba(0,0,0,.06);}
 nav::-webkit-scrollbar{display:none;}
+.coord-switch{background:#0A0606;padding:8px 2rem;display:flex;justify-content:center;gap:8px;position:sticky;top:0;z-index:101;}
+.coord-btn{font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.03em;color:rgba(255,255,255,.55);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:6px 16px;cursor:pointer;transition:all .15s;}
+.coord-btn:hover{color:#fff;background:rgba(255,255,255,.12);}
+.coord-btn.active{color:#fff;background:var(--accent);border-color:var(--accent);}
 .nav-tab{font-family:var(--sans);font-size:12px;color:var(--text-muted);padding:13px 16px;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;}
 .nav-tab:hover{color:var(--text);}
 .nav-tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:500;}
@@ -301,6 +305,11 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
     <span id="sync-status" style="font-size:11px;color:var(--text-hint);display:block;margin-top:2px;text-align:right;">Conectando…</span>
   </div>
 </header>
+
+<div class="coord-switch">
+  <button id="coord-btn-saber" class="coord-btn active" onclick="switchCoord('saber')">Coordenação SABER</button>
+  <button id="coord-btn-ter" class="coord-btn" onclick="switchCoord('ter')">Coordenação TER</button>
+</div>
 
 <nav>
   <div class="nav-inner">
@@ -7701,6 +7710,48 @@ const SHEETS_URL = 'https://script.google.com/a/macros/v4company.com/s/AKfycbzy4
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJpYXdqcXZlem9sZ3lsZGxkeXppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyMDM3NDUsImV4cCI6MjA5MTc3OTc0NX0.1hmeQ7YCM0LvekZc7aNYy-D4jyVwxC6jK_W3kn5PVwA';
 const SB_HEADERS = { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY };
 
+// ═══════════════════════════════════
+//  COORDENAÇÕES (SABER / TER) — cada uma grava numa tabela própria no Supabase
+// ═══════════════════════════════════
+let currentCoord = 'saber';       // 'saber' | 'ter'
+let SB_TABLE = 'saber_data';      // 'saber_data' | 'ter_data'
+
+function _resetCoordState() {
+  projects = [];
+  npsData = {};
+  pdiData = { rows: [] };
+  auditorias = [];
+  Object.keys(cspManual).forEach(k => delete cspManual[k]);
+  Object.keys(monMetas).forEach(k => delete monMetas[k]);
+  Object.keys(aqlMetas).forEach(k => delete aqlMetas[k]);
+  Object.keys(capData).forEach(k => delete capData[k]);
+  Object.keys(capManual).forEach(k => delete capManual[k]);
+  window.CONS_MON = [];
+  window.dotColors = {};
+}
+
+function updateCoordUI() {
+  const bSaber = document.getElementById('coord-btn-saber');
+  const bTer = document.getElementById('coord-btn-ter');
+  if (bSaber) bSaber.classList.toggle('active', currentCoord === 'saber');
+  if (bTer) bTer.classList.toggle('active', currentCoord === 'ter');
+  document.querySelectorAll('.nav-group').forEach(g => {
+    const isGeral = !!g.querySelector('.g-geral');
+    g.style.display = (currentCoord === 'ter' && !isGeral) ? 'none' : '';
+  });
+  document.querySelectorAll('.nav-sep').forEach(s => { s.style.display = (currentCoord === 'ter') ? 'none' : ''; });
+}
+
+async function switchCoord(coord) {
+  if (coord === currentCoord) return;
+  currentCoord = coord;
+  SB_TABLE = (coord === 'ter') ? 'ter_data' : 'saber_data';
+  _resetCoordState();
+  updateCoordUI();
+  await sbLoad();
+  show('visao');
+}
+
 let sbSaveTimer = null;
 let sbLastSaved = null;
 let sbChannel   = null;
@@ -7801,14 +7852,14 @@ async function sbSave() {
       consultores: JSON.stringify({list:window.CONS_MON||[], colors:window.dotColors||{}}),
     };
     const sendPayload = async (pl) => {
-      let r = await fetch(SB_URL + '/rest/v1/saber_data?id=eq.main', {
+      let r = await fetch(SB_URL + '/rest/v1/' + SB_TABLE + '?id=eq.main', {
         method: 'PATCH',
         headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
         body: JSON.stringify(pl)
       });
       // Se não existir ainda, cria com POST
       if (r.status === 404 || r.status === 406) {
-        r = await fetch(SB_URL + '/rest/v1/saber_data', {
+        r = await fetch(SB_URL + '/rest/v1/' + SB_TABLE, {
           method: 'POST',
           headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
           body: JSON.stringify(pl)
@@ -7953,7 +8004,7 @@ function sbImport(input) {
 async function sbLoad() {
   try {
     setSyncStatus('Carregando…', 'var(--text-hint)');
-    const res = await fetch(SB_URL + '/rest/v1/saber_data?id=eq.main&select=*', {
+    const res = await fetch(SB_URL + '/rest/v1/' + SB_TABLE + '?id=eq.main&select=*', {
       headers: SB_HEADERS
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -8086,7 +8137,7 @@ async function sbLoad() {
 function sbStartPolling() {
   setInterval(async () => {
     try {
-      const res = await fetch(SB_URL + '/rest/v1/saber_data?id=eq.main&select=updated_at', {
+      const res = await fetch(SB_URL + '/rest/v1/' + SB_TABLE + '?id=eq.main&select=updated_at', {
         headers: SB_HEADERS
       });
       const rows = await res.json();
