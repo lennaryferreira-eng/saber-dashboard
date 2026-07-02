@@ -320,6 +320,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
       <button class="nav-tab" onclick="show('csp')">Taxa CSP</button>
       <button class="nav-tab" onclick="show('nps')">NPS</button>
       <button class="nav-tab" onclick="show('pdi')">PDI do Time</button>
+      <button class="nav-tab" onclick="show('aql')">AQL</button>
     </div>
   </div>
   <div class="nav-sep"></div>
@@ -671,26 +672,42 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
     <div class="collapsible-body"><div id="pipe-funil"></div></div>
   </div>
 
-  <!-- REGISTRO DE OPORTUNIDADES & PROPOSTAS -->
+
+</section>
+
+<section id="sec-aql" class="section">
+  <div class="sec-head"><h2 class="sec-title">AQL</h2><p class="sec-desc">Registro manual de oportunidades (AQL) e propostas levantadas pelo squad. Meta mensal distribuída por consultor.</p></div>
+
   <div class="card" style="margin-bottom:1.2rem;">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap;">
-      <button onclick="toggleSection(this)" title="Minimizar seção" style="background:none;border:none;cursor:pointer;color:var(--text-hint);font-size:16px;line-height:1;padding:2px 6px;transition:transform .2s;flex-shrink:0;">⌃</button>
+      <div class="card-title" style="margin:0;">Meta de AQLs do mês</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+      <span style="font-size:11px;color:var(--text-hint);">Meta total do mês selecionado abaixo:</span>
+      <input type="number" min="0" step="1" id="aql-meta-total" class="sel" style="width:90px;font-size:12px;" placeholder="0" onchange="saveAqlMetaTotal(this.value)">
+      <span style="font-size:11px;color:var(--text-hint);">AQLs</span>
+    </div>
+    <div id="aql-meta-chips" style="display:flex;gap:12px;flex-wrap:wrap;"></div>
+  </div>
+
+  <div class="card" style="margin-bottom:1.2rem;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap;">
       <div class="card-title" style="margin:0;">Registro de Oportunidades &amp; Propostas</div>
       <div style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:wrap;">
-        <select class="base-sel" id="pev-mes" onchange="buildPipeEventos()" style="font-size:11px;"></select>
-        <select class="base-sel" id="pev-semana" onchange="buildPipeEventos()" style="font-size:11px;"><option value="">Todas as semanas</option></select>
-        <select class="base-sel" id="pev-cons" onchange="buildPipeEventos()" style="font-size:11px;"><option value="">Todos consultores</option></select>
+        <select class="base-sel" id="pev-mes" onchange="buildAql()" style="font-size:11px;"></select>
+        <select class="base-sel" id="pev-semana" onchange="buildAql()" style="font-size:11px;"><option value="">Todas as semanas</option></select>
+        <select class="base-sel" id="pev-cons" onchange="buildAql()" style="font-size:11px;"><option value="">Todos consultores</option></select>
         <button onclick="openNovoPipeEvento()" class="add-project-btn" style="font-size:11px;">+ Registrar evento</button>
       </div>
     </div>
-    <div class="collapsible-body">
-    <p style="font-size:11px;color:var(--text-hint);margin:-0.5rem 0 1rem;">Histórico datado de oportunidades levantadas e propostas apresentadas. Não altera o Pipe da Semana.</p>
-    <div id="pev-matriz"></div>
-    <div id="pev-lista" style="margin-top:1rem;"></div>
-    </div>
+    <p style="font-size:11px;color:var(--text-hint);margin:-0.5rem 0 1rem;">Histórico datado de oportunidades levantadas e propostas apresentadas — registro manual. Não altera o Pipe da Semana.</p>
+    <div id="pev-lista"></div>
   </div>
 
-
+  <div class="card">
+    <div class="card-title">Evolução semana a semana por consultor</div>
+    <div class="chart-wrap"><canvas id="aqlChart" role="img" aria-label="Evolução de AQLs por consultor"></canvas></div>
+  </div>
 </section>
 
 <section id="sec-auditoria" class="section">
@@ -2002,8 +2019,8 @@ function buildPipeline() {
 
   // Atualiza também a Pipe da Semana
   buildPipeSemana();
-  // Atualiza o registro de eventos de pipeline
-  if (document.getElementById('pev-lista')) buildPipeEventos();
+  // Atualiza o registro de eventos de pipeline (aba AQL)
+  if (document.getElementById('pev-lista')) buildAql();
 }
 
 
@@ -2059,6 +2076,7 @@ function restoreBackup() {
     if (data.nps_data) Object.assign(npsData, data.nps_data);
     if (data.csp_manual) Object.assign(cspManual, data.csp_manual);
     if (data.mon_metas) Object.assign(monMetas, data.mon_metas);
+    if (data.aql_metas) Object.assign(aqlMetas, data.aql_metas);
     if (data.cap_data) Object.assign(capData, data.cap_data);
     if (data.cap_manual) Object.assign(capManual, data.cap_manual);
     if (data.pdi_data) { pdiData = normalizePdi(data.pdi_data); buildPdi(); }
@@ -4209,6 +4227,8 @@ function buildNpsChart(data) {
 // ═══════════════════════════════════
 // Armazena metas mensais: { 'jan': {ot: 5000, rec: 3000}, 'fev': {...} }
 const monMetas = {};
+// Armazena metas mensais de AQL: { 'jan': {total: 20, cons_Caio_pct: 25, ...} }
+const aqlMetas = {};
 
 
 
@@ -4380,6 +4400,129 @@ function _pevMesAtualKey() {
   return m ? (m.label + '/' + m.ano) : (ALL_MESES.length ? ALL_MESES[0].label + '/' + ALL_MESES[0].ano : '');
 }
 
+
+// ═══════════════════════════════════
+//  AQL — meta por consultor + gráfico de evolução (dados: p.pipeEventos, aqlMetas)
+// ═══════════════════════════════════
+let aqlChartObj = null;
+const AQL_PALETTE = { 'var(--blue)':'#2f6fed','var(--green)':'#1f9d55','var(--accent)':'#c8102e','var(--purple)':'#8E5BC4','var(--amber)':'#c07a10','var(--text-muted)':'#8a8a8a' };
+const AQL_FALLBACK = ['#2f6fed','#1f9d55','#c8102e','#8E5BC4','#c07a10','#607D8B'];
+
+function _aqlMesAtual() {
+  const selMes = document.getElementById('pev-mes');
+  if (!selMes || !selMes.value) return null;
+  const [label, anoStr] = selMes.value.split('/');
+  const ano = parseInt(anoStr);
+  const m = ALL_MESES.find(x => x.label === label && x.ano === ano);
+  return m ? { label, ano, key: m.key } : null;
+}
+
+function buildAql() {
+  buildPipeEventos();  // popula pev-mes/pev-semana/pev-cons e a lista pev-lista
+  buildAqlMetas();
+  buildAqlChart();
+}
+
+function buildAqlMetas() {
+  const mesInfo = _aqlMesAtual();
+  const totalInput = document.getElementById('aql-meta-total');
+  const chips = document.getElementById('aql-meta-chips');
+  if (!mesInfo) { if (chips) chips.innerHTML = ''; return; }
+  const { label, ano, key: mesKey } = mesInfo;
+  const meta = aqlMetas[mesKey] || {};
+  if (totalInput) totalInput.value = meta.total || '';
+  const total = meta.total || 0;
+
+  // Realizado = eventos tipo "Oportunidade" (AQL) registrados manualmente no mês
+  const evs = pipeEventosDoMes(label, ano).filter(e => e.tipo === 'Oportunidade');
+  const porCons = {};
+  evs.forEach(e => { porCons[e.consultor] = (porCons[e.consultor] || 0) + 1; });
+
+  window.CONS_MON = window.CONS_MON || ['Caio','Leonam','Loma','Camila','Cleiton'];
+  const dotColors = window.dotColors || {};
+  if (!chips) return;
+
+  chips.innerHTML = window.CONS_MON.map(nome => {
+    const pct = parseFloat(meta['cons_' + nome + '_pct'] || 0);
+    const metaCons = pct > 0 ? Math.round(total * pct / 100) : 0;
+    const real = porCons[nome] || 0;
+    const pctAtg = metaCons > 0 ? Math.min(200, Math.round(real / metaCons * 100)) : null;
+    const cor = v => v === null ? 'var(--text-hint)' : v >= 100 ? 'var(--green)' : v >= 70 ? 'var(--amber)' : 'var(--red)';
+    const dot = dotColors[nome] || 'var(--accent-dim)';
+    return '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;min-width:150px;flex:1;">'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
+      + '<div style="width:24px;height:24px;border-radius:50%;background:' + dot + ';opacity:.15;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text);flex-shrink:0;">' + nome[0] + '</div>'
+      + '<div style="font-size:12px;font-weight:700;">' + nome + '</div>'
+      + '</div>'
+      + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">'
+      + '<span style="font-size:10px;color:var(--text-hint);">% meta:</span>'
+      + '<input type="number" min="0" max="100" step="1" class="sel" style="width:50px;font-size:11px;text-align:center;" value="' + (pct || '') + '" onchange="saveAqlMetaConsPct(\'' + mesKey + '\',\'' + nome + '\',this)">'
+      + '<span style="font-size:10px;color:var(--text-hint);">%</span>'
+      + '</div>'
+      + '<div style="font-size:10px;color:var(--text-hint);margin-bottom:3px;">Meta: <b style="color:var(--text);">' + (metaCons > 0 ? metaCons : '—') + '</b></div>'
+      + '<div style="font-size:16px;font-weight:700;color:' + cor(pctAtg) + ';">' + real + '<span style="font-size:10px;font-weight:400;color:var(--text-hint);"> AQLs' + (pctAtg !== null ? ' · ' + pctAtg + '%' : '') + '</span></div>'
+      + '</div>';
+  }).join('');
+}
+
+function saveAqlMetaTotal(val) {
+  const mesInfo = _aqlMesAtual(); if (!mesInfo) return;
+  if (!aqlMetas[mesInfo.key]) aqlMetas[mesInfo.key] = {};
+  const v = parseFloat(val);
+  aqlMetas[mesInfo.key].total = isNaN(v) ? 0 : v;
+  buildAqlMetas(); upd();
+}
+function saveAqlMetaConsPct(mesKey, nome, el) {
+  const v = parseFloat(el.value);
+  if (!aqlMetas[mesKey]) aqlMetas[mesKey] = {};
+  aqlMetas[mesKey]['cons_' + nome + '_pct'] = isNaN(v) ? 0 : v;
+  buildAqlMetas(); upd();
+}
+
+function buildAqlChart() {
+  const canvas = document.getElementById('aqlChart');
+  if (!canvas || typeof Chart === 'undefined') return;
+  const mesInfo = _aqlMesAtual();
+  if (!mesInfo) return;
+  const { label, ano } = mesInfo;
+  const consF = document.getElementById('pev-cons')?.value || '';
+  const semanas = getSemanasDoMes(label, ano);
+  let evs = pipeEventosDoMes(label, ano).filter(e => e.tipo === 'Oportunidade');
+  if (consF) evs = evs.filter(e => e.consultor === consF);
+  window.CONS_MON = window.CONS_MON || ['Caio','Leonam','Loma','Camila','Cleiton'];
+  const consultores = consF ? [consF] : window.CONS_MON;
+  const dotColors = window.dotColors || {};
+
+  function semIdx(dataStr) {
+    const dt = parseDate(dataStr); if (!dt) return -1;
+    for (let i = 0; i < semanas.length; i++) { if (dt >= semanas[i].ini && dt <= semanas[i].fim) return i; }
+    return -1;
+  }
+
+  const datasets = consultores.map((nome, i) => {
+    const counts = semanas.map(() => 0);
+    evs.filter(e => e.consultor === nome).forEach(e => { const si = semIdx(e.data); if (si >= 0) counts[si]++; });
+    const cor = AQL_PALETTE[dotColors[nome]] || AQL_FALLBACK[i % AQL_FALLBACK.length];
+    return { label: nome, data: counts, borderColor: cor, backgroundColor: cor, borderWidth: 2, pointRadius: 3, pointBackgroundColor: cor, tension: .3, fill: false, spanGaps: true };
+  });
+
+  if (aqlChartObj) aqlChartObj.destroy();
+  if (!semanas.length) return;
+  aqlChartObj = new Chart(canvas, {
+    type: 'line',
+    data: { labels: semanas.map(s => s.label + ' (' + s.range + ')'), datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } },
+                 tooltip: { callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y + ' AQL' + (c.parsed.y === 1 ? '' : 's') } } },
+      scales: {
+        y: { beginAtZero: true, ticks: { precision: 0, color: '#A09A94', font: { size: 11 } }, grid: { color: 'rgba(0,0,0,.05)' }, border: { display: false } },
+        x: { ticks: { color: '#A09A94', font: { size: 10 } }, grid: { display: false }, border: { display: false } }
+      }
+    }
+  });
+}
+
 function buildPipeEventos() {
   const selMes = document.getElementById('pev-mes');
   if (selMes && !selMes.dataset.init) {
@@ -4498,7 +4641,7 @@ function delPipeEvento(projId, evId) {
   const p = projects.find(x => String(x.id) === String(projId));
   if (!p || !Array.isArray(p.pipeEventos)) return;
   p.pipeEventos = p.pipeEventos.filter(e => String(e.id) !== String(evId));
-  buildPipeEventos(); upd();
+  buildAql(); upd();
 }
 function updPipeEvento(projId, evId, field, val) {
   const p = projects.find(x => String(x.id) === String(projId));
@@ -4506,7 +4649,7 @@ function updPipeEvento(projId, evId, field, val) {
   const e = p.pipeEventos.find(x => String(x.id) === String(evId));
   if (!e) return;
   e[field] = val;
-  buildPipeEventos(); upd();
+  buildAql(); upd();
 }
 
 // Integração com o Lead Time: ao atualizar o próximo contato, registra o evento
@@ -4565,7 +4708,7 @@ function confirmNovoPipeEvento() {
   const selMes = document.getElementById('pev-mes');
   const dt = parseDate(data);
   if (selMes && dt) { const mm = ALL_MESES.find(x => x.idx === dt.getMonth() && x.ano === dt.getFullYear()); if (mm) selMes.value = mm.label + '/' + mm.ano; }
-  buildPipeEventos(); upd();
+  buildAql(); upd();
 }
 
 function saveMonMeta(mesKey, tipo, el) {
@@ -5141,6 +5284,7 @@ function show(sec) {
     else if (sec === 'capacity')    buildCapacity();
     else if (sec === 'performance') buildPerformance();
     else if (sec === 'auditoria')   buildAuditoria();
+    else if (sec === 'aql')         buildAql();
   } catch(e) { console.error('show(' + sec + ') erro:', e); }
 }
 
@@ -5422,7 +5566,8 @@ function ltSetField(id, field, val) {
     buildFunil(consFilter);
   }
   // ao atualizar o próximo contato no Lead Time, registra evento de pipeline
-  if (field === 'proximoContato') registrarEventoDoLeadTime(p);
+  // Registro automático de AQL/Proposta DESATIVADO — a partir de agora só entra via registro manual na aba AQL.
+  // if (field === 'proximoContato') registrarEventoDoLeadTime(p);
 }
 function ltShowDateInput(id) {
   const sel  = document.getElementById('lt-sel-' + id);
@@ -7442,6 +7587,7 @@ async function syncSheets() {
       nps_data:   JSON.stringify(npsData),
       csp_manual: JSON.stringify(cspManual),
       mon_metas:  JSON.stringify(monMetas),
+      aql_metas:  JSON.stringify(aqlMetas),
       cap_data:   JSON.stringify(capData),
       cap_manual: JSON.stringify(capManual),
       pdi_data:   JSON.stringify(typeof pdiData !== 'undefined' ? pdiData : {}),
@@ -7481,6 +7627,7 @@ async function sbSave() {
       cap_data:   JSON.stringify(capData),
       cap_manual: JSON.stringify(capManual),
       mon_metas:  JSON.stringify(monMetas),
+      aql_metas:  JSON.stringify(aqlMetas),
       pdi_data:   JSON.stringify(pdiData),
       conv_base:  JSON.stringify(convBaseManual),
       fotos:      JSON.stringify(perfFotos),
@@ -7533,7 +7680,7 @@ async function sbSave() {
     try {
       const backup = {
         projects, nps_data: npsData, csp_manual: cspManual,
-        mon_metas: monMetas, cap_data: capData, cap_manual: capManual,
+        mon_metas: monMetas, aql_metas: aqlMetas, cap_data: capData, cap_manual: capManual,
         pdi_data: pdiData, conv_base: convBaseManual, fotos: perfFotos,
         auditorias,
         consultores: {list:window.CONS_MON||[], colors:window.dotColors||{}},
@@ -7561,7 +7708,7 @@ async function sbSave() {
       try {
         const emergency = {
           projects, nps_data: npsData, csp_manual: cspManual,
-          mon_metas: monMetas, cap_data: capData, cap_manual: capManual,
+          mon_metas: monMetas, aql_metas: aqlMetas, cap_data: capData, cap_manual: capManual,
           pdi_data: pdiData, conv_base: convBaseManual, fotos: perfFotos,
         auditorias,
         consultores: {list:window.CONS_MON||[], colors:window.dotColors||{}},
@@ -7586,6 +7733,7 @@ function sbExport() {
     cap_data: capData,
     cap_manual: capManual,
     mon_metas:  monMetas,
+    aql_metas:  aqlMetas,
     pdi_data:   pdiData,
     conv_base:  convBaseManual,
     fotos:      perfFotos,
@@ -7613,6 +7761,7 @@ function sbImport(input) {
       if (data.cap_data)    Object.assign(capData, data.cap_data);
       if (data.cap_manual)  Object.assign(capManual, data.cap_manual);
       if (data.mon_metas)   Object.assign(monMetas,  data.mon_metas);
+      if (data.aql_metas)   Object.assign(aqlMetas,  data.aql_metas);
       if (data.pdi_data) pdiData = normalizePdi(data.pdi_data);
       if (data.conv_base && typeof data.conv_base === 'object') Object.assign(convBaseManual, data.conv_base);
     if (data.fotos && typeof data.fotos === 'object') Object.assign(perfFotos, data.fotos);
@@ -7723,6 +7872,12 @@ async function sbLoad() {
           if (mm && typeof mm === 'object') Object.assign(monMetas, mm);
         } catch(e){}
       }
+      if (row.aql_metas) {
+        try {
+          const am = JSON.parse(row.aql_metas);
+          if (am && typeof am === 'object') Object.assign(aqlMetas, am);
+        } catch(e){}
+      }
       if (row.cap_manual) {
         const cman = JSON.parse(row.cap_manual);
         if (cman && typeof cman === 'object') Object.assign(capManual, cman);
@@ -7803,6 +7958,7 @@ projects = []; // dados carregados do Supabase
           projects = d.projects;
           if (d.nps_data) Object.assign(npsData, d.nps_data);
           if (d.mon_metas) Object.assign(monMetas, d.mon_metas);
+          if (d.aql_metas) Object.assign(aqlMetas, d.aql_metas);
           if (d.csp_manual) Object.assign(cspManual, d.csp_manual);
           localStorage.removeItem('saber_emergency');
           localStorage.removeItem('saber_emergency_at');
