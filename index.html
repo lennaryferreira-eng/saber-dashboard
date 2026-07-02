@@ -679,8 +679,13 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
   <div class="sec-head"><h2 class="sec-title">AQL</h2><p class="sec-desc">Registro manual de oportunidades (AQL) e propostas levantadas pelo squad. Meta mensal distribuída por consultor.</p></div>
 
   <div class="card" style="margin-bottom:1.2rem;">
+    <div class="card-title" style="margin:0 0 1rem;">Consolidado do squad</div>
+    <div id="aql-consolidado"></div>
+  </div>
+
+  <div class="card" style="margin-bottom:1.2rem;">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap;">
-      <div class="card-title" style="margin:0;">Meta de AQLs do mês</div>
+      <div class="card-title" style="margin:0;">Meta de AQLs do mês — por consultor</div>
     </div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
       <span style="font-size:11px;color:var(--text-hint);">Meta total do mês selecionado abaixo:</span>
@@ -704,9 +709,20 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
     <div id="pev-lista"></div>
   </div>
 
-  <div class="card">
-    <div class="card-title">Evolução semana a semana por consultor</div>
+  <div class="card" style="margin-bottom:1.2rem;">
+    <div class="card-title">Funil de conversão — AQL → Proposta → Fechado</div>
+    <p style="font-size:11px;color:var(--text-hint);margin:-0.3rem 0 1rem;">Considera os projetos com registro no mês/consultor filtrados acima. "Fechado" reflete o status atual de conversão do projeto (pode ter fechado depois do mês do registro).</p>
+    <div id="aql-funil"></div>
+  </div>
+
+  <div class="card" style="margin-bottom:1.2rem;">
+    <div class="card-title">Evolução semana a semana — mês selecionado</div>
     <div class="chart-wrap"><canvas id="aqlChart" role="img" aria-label="Evolução de AQLs por consultor"></canvas></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Histórico mensal — últimos meses</div>
+    <div class="chart-wrap"><canvas id="aqlHistChart" role="img" aria-label="Histórico mensal de AQLs"></canvas></div>
   </div>
 </section>
 
@@ -4417,10 +4433,69 @@ function _aqlMesAtual() {
   return m ? { label, ano, key: m.key } : null;
 }
 
+// Info de ritmo (so faz sentido quando o mes selecionado e o mes corrente)
+function _aqlRitmoInfo(mesInfo) {
+  if (!mesInfo) return null;
+  const hoje = new Date();
+  const mesIdx = (_MES_ORDEM[mesInfo.label] || 0) - 1;
+  const isMesAtual = hoje.getMonth() === mesIdx && hoje.getFullYear() === mesInfo.ano;
+  if (!isMesAtual) return null;
+  const diasNoMes = new Date(mesInfo.ano, mesIdx + 1, 0).getDate();
+  const diaAtual = hoje.getDate();
+  const pctTempo = Math.round(diaAtual / diasNoMes * 100);
+  let diasUteisRest = 0;
+  for (let d = diaAtual + 1; d <= diasNoMes; d++) {
+    const dow = new Date(mesInfo.ano, mesIdx, d).getDay();
+    if (dow !== 0 && dow !== 6) diasUteisRest++;
+  }
+  return { pctTempo, diasUteisRest, diaAtual, diasNoMes };
+}
+// Compara % da meta batida com % do mes decorrido
+function _aqlRitmoStatus(pctMeta, pctTempo) {
+  if (pctMeta === null || pctMeta === undefined) return null;
+  const diff = pctMeta - pctTempo;
+  if (diff >= 0) return { txt: 'No ritmo', cor: 'var(--green)' };
+  if (diff >= -15) return { txt: 'Atenção', cor: 'var(--amber)' };
+  return { txt: 'Atrasado', cor: 'var(--accent)' };
+}
+
 function buildAql() {
   buildPipeEventos();  // popula pev-mes/pev-semana/pev-cons e a lista pev-lista
+  buildAqlConsolidado();
   buildAqlMetas();
+  buildAqlFunil();
   buildAqlChart();
+  buildAqlHistorico();
+}
+
+// Card "Consolidado do squad": total realizado vs meta geral do mes + ritmo
+function buildAqlConsolidado() {
+  const box = document.getElementById('aql-consolidado');
+  if (!box) return;
+  const mesInfo = _aqlMesAtual();
+  if (!mesInfo) { box.innerHTML = ''; return; }
+  const meta = aqlMetas[mesInfo.key] || {};
+  const total = meta.total || 0;
+  const evs = pipeEventosDoMes(mesInfo.label, mesInfo.ano); // squad inteiro, sempre
+  const realizado = evs.length;
+  const pctMeta = total > 0 ? Math.round(realizado / total * 100) : null;
+  const ritmoInfo = _aqlRitmoInfo(mesInfo);
+  const status = ritmoInfo ? _aqlRitmoStatus(pctMeta, ritmoInfo.pctTempo) : null;
+  const faltam = Math.max(0, total - realizado);
+  const porDia = (ritmoInfo && ritmoInfo.diasUteisRest > 0) ? (faltam / ritmoInfo.diasUteisRest).toFixed(1) : null;
+  const barCor = pctMeta === null ? 'var(--text-hint)' : pctMeta >= 100 ? 'var(--green)' : pctMeta >= 70 ? 'var(--amber)' : 'var(--accent)';
+
+  let html = '<div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap;">';
+  html += '<div><div style="font-size:32px;font-weight:800;line-height:1;">' + realizado + '<span style="font-size:16px;font-weight:400;color:var(--text-hint);"> / ' + (total || '\u2014') + ' AQLs</span></div>'
+        + '<div style="font-size:11px;color:var(--text-hint);margin-top:4px;">' + mesInfo.label + '/' + mesInfo.ano + (pctMeta !== null ? ' \u00b7 ' + pctMeta + '% da meta' : '') + '</div></div>';
+  if (status) html += '<span style="background:' + status.cor + '1a;color:' + status.cor + ';border:1px solid ' + status.cor + ';border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;">' + status.txt + '</span>';
+  if (ritmoInfo) html += '<div style="font-size:11px;color:var(--text-hint);">Dia ' + ritmoInfo.diaAtual + '/' + ritmoInfo.diasNoMes + ' do mes (' + ritmoInfo.pctTempo + '% decorrido)</div>';
+  if (porDia !== null && faltam > 0) html += '<div style="font-size:11px;color:var(--text-hint);">Faltam <b style="color:var(--text);">' + faltam + '</b> AQLs em <b style="color:var(--text);">' + ritmoInfo.diasUteisRest + '</b> dias uteis (~<b style="color:var(--text);">' + porDia + '</b>/dia)</div>';
+  html += '</div>';
+  if (total > 0) {
+    html += '<div style="margin-top:14px;height:8px;background:var(--surface3);border-radius:4px;overflow:hidden;"><div style="height:100%;width:' + Math.min(100, pctMeta) + '%;background:' + barCor + ';"></div></div>';
+  }
+  box.innerHTML = html;
 }
 
 function buildAqlMetas() {
@@ -4433,14 +4508,16 @@ function buildAqlMetas() {
   if (totalInput) totalInput.value = meta.total || '';
   const total = meta.total || 0;
 
-  // Realizado = eventos tipo "Oportunidade" (AQL) registrados manualmente no mês
-  const evs = pipeEventosDoMes(label, ano); // cada registro da lista conta como 1 AQL, independente do tipo
+  // Realizado = cada registro da lista conta como 1 AQL, independente do tipo
+  const evs = pipeEventosDoMes(label, ano);
   const porCons = {};
   evs.forEach(e => { porCons[e.consultor] = (porCons[e.consultor] || 0) + 1; });
 
   window.CONS_MON = window.CONS_MON || ['Caio','Leonam','Loma','Camila','Cleiton'];
   const dotColors = window.dotColors || {};
   if (!chips) return;
+
+  const ritmoInfo = _aqlRitmoInfo(mesInfo);
 
   chips.innerHTML = window.CONS_MON.map(nome => {
     const pct = parseFloat(meta['cons_' + nome + '_pct'] || 0);
@@ -4449,20 +4526,60 @@ function buildAqlMetas() {
     const pctAtg = metaCons > 0 ? Math.min(200, Math.round(real / metaCons * 100)) : null;
     const cor = v => v === null ? 'var(--text-hint)' : v >= 100 ? 'var(--green)' : v >= 70 ? 'var(--amber)' : 'var(--red)';
     const dot = dotColors[nome] || 'var(--accent-dim)';
+    const status = ritmoInfo ? _aqlRitmoStatus(pctAtg, ritmoInfo.pctTempo) : null;
     return '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;min-width:150px;flex:1;">'
       + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
       + '<div style="width:24px;height:24px;border-radius:50%;background:' + dot + ';opacity:.15;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text);flex-shrink:0;">' + nome[0] + '</div>'
       + '<div style="font-size:12px;font-weight:700;">' + nome + '</div>'
+      + (status ? '<span style="margin-left:auto;font-size:9px;font-weight:700;color:' + status.cor + ';border:1px solid ' + status.cor + ';border-radius:10px;padding:1px 7px;">' + status.txt + '</span>' : '')
       + '</div>'
       + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">'
       + '<span style="font-size:10px;color:var(--text-hint);">% meta:</span>'
       + '<input type="number" min="0" max="100" step="1" class="sel" style="width:50px;font-size:11px;text-align:center;" value="' + (pct || '') + '" onchange="saveAqlMetaConsPct(\'' + mesKey + '\',\'' + nome + '\',this)">'
       + '<span style="font-size:10px;color:var(--text-hint);">%</span>'
       + '</div>'
-      + '<div style="font-size:10px;color:var(--text-hint);margin-bottom:3px;">Meta: <b style="color:var(--text);">' + (metaCons > 0 ? metaCons : '—') + '</b></div>'
-      + '<div style="font-size:16px;font-weight:700;color:' + cor(pctAtg) + ';">' + real + '<span style="font-size:10px;font-weight:400;color:var(--text-hint);"> AQLs' + (pctAtg !== null ? ' · ' + pctAtg + '%' : '') + '</span></div>'
+      + '<div style="font-size:10px;color:var(--text-hint);margin-bottom:3px;">Meta: <b style="color:var(--text);">' + (metaCons > 0 ? metaCons : '\u2014') + '</b></div>'
+      + '<div style="font-size:16px;font-weight:700;color:' + cor(pctAtg) + ';">' + real + '<span style="font-size:10px;font-weight:400;color:var(--text-hint);"> AQLs' + (pctAtg !== null ? ' \u00b7 ' + pctAtg + '%' : '') + '</span></div>'
       + '</div>';
   }).join('');
+}
+
+// Funil AQL -> Proposta -> Fechado, para os registros do mes/consultor filtrados
+function buildAqlFunil() {
+  const box = document.getElementById('aql-funil');
+  if (!box) return;
+  const mesInfo = _aqlMesAtual();
+  if (!mesInfo) { box.innerHTML = ''; return; }
+  const consF = document.getElementById('pev-cons')?.value || '';
+  let evs = pipeEventosDoMes(mesInfo.label, mesInfo.ano);
+  if (consF) evs = evs.filter(e => e.consultor === consF);
+
+  const totalAQL = evs.length;
+  const propostas = evs.filter(e => e.tipo === 'Proposta').length;
+  const projIds = [...new Set(evs.map(e => e.projId))];
+  const fechados = projIds.filter(id => {
+    const p = (typeof projects !== 'undefined' ? projects : []).find(pp => pp.id === id);
+    return p && p.conv === 'Monetizado';
+  }).length;
+
+  const etapas = [
+    { nome: 'AQL', v: totalAQL, cor: 'var(--blue)' },
+    { nome: 'Proposta', v: propostas, cor: 'var(--amber)' },
+    { nome: 'Fechado', v: fechados, cor: 'var(--green)' },
+  ];
+  const max = Math.max(1, totalAQL);
+  box.innerHTML = '<div style="display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap;">' + etapas.map((e, i) => {
+    const w = Math.round(e.v / max * 100);
+    const pctDoAnterior = i === 0 ? null : (etapas[i-1].v > 0 ? Math.round(e.v / etapas[i-1].v * 100) : 0);
+    return '<div style="flex:1;min-width:140px;">'
+      + '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">'
+      + '<span style="font-size:11px;font-weight:600;color:var(--text-muted);">' + e.nome + '</span>'
+      + '<span style="font-size:18px;font-weight:800;color:' + e.cor + ';">' + e.v + '</span>'
+      + '</div>'
+      + '<div style="height:10px;background:var(--surface3);border-radius:5px;overflow:hidden;"><div style="height:100%;width:' + Math.max(3, w) + '%;background:' + e.cor + ';"></div></div>'
+      + (pctDoAnterior !== null ? '<div style="font-size:10px;color:var(--text-hint);margin-top:3px;">' + pctDoAnterior + '% do estágio anterior</div>' : '<div style="font-size:10px;color:var(--text-hint);margin-top:3px;">&nbsp;</div>')
+      + '</div>';
+  }).join('') + '</div>';
 }
 
 function saveAqlMetaTotal(val) {
@@ -4470,13 +4587,13 @@ function saveAqlMetaTotal(val) {
   if (!aqlMetas[mesInfo.key]) aqlMetas[mesInfo.key] = {};
   const v = parseFloat(val);
   aqlMetas[mesInfo.key].total = isNaN(v) ? 0 : v;
-  buildAqlMetas(); upd();
+  buildAql(); upd();
 }
 function saveAqlMetaConsPct(mesKey, nome, el) {
   const v = parseFloat(el.value);
   if (!aqlMetas[mesKey]) aqlMetas[mesKey] = {};
   aqlMetas[mesKey]['cons_' + nome + '_pct'] = isNaN(v) ? 0 : v;
-  buildAqlMetas(); upd();
+  buildAql(); upd();
 }
 
 function buildAqlChart() {
@@ -4515,6 +4632,55 @@ function buildAqlChart() {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } },
                  tooltip: { callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y + ' AQL' + (c.parsed.y === 1 ? '' : 's') } } },
+      scales: {
+        y: { beginAtZero: true, ticks: { precision: 0, color: '#A09A94', font: { size: 11 } }, grid: { color: 'rgba(0,0,0,.05)' }, border: { display: false } },
+        x: { ticks: { color: '#A09A94', font: { size: 10 } }, grid: { display: false }, border: { display: false } }
+      }
+    }
+  });
+}
+
+// Histórico mensal (últimos até 6 meses terminando no mês selecionado) — realizado x meta, respeita filtro de consultor
+let aqlHistChartObj = null;
+function buildAqlHistorico() {
+  const canvas = document.getElementById('aqlHistChart');
+  if (!canvas || typeof Chart === 'undefined') return;
+  const mesInfo = _aqlMesAtual();
+  if (!mesInfo) return;
+  const consF = document.getElementById('pev-cons')?.value || '';
+
+  const idxSel = ALL_MESES.findIndex(m => m.key === mesInfo.key && m.ano === mesInfo.ano);
+  if (idxSel < 0) return;
+  const janela = ALL_MESES.slice(Math.max(0, idxSel - 5), idxSel + 1);
+
+  const labels = janela.map(m => m.label.slice(0, 3) + '/' + String(m.ano).slice(2));
+  const realizadoArr = janela.map(m => {
+    let evs = pipeEventosDoMes(m.label, m.ano);
+    if (consF) evs = evs.filter(e => e.consultor === consF);
+    return evs.length;
+  });
+  const metaArr = janela.map(m => {
+    const meta = aqlMetas[m.key] || {};
+    let mv = meta.total || 0;
+    if (consF) {
+      const pct = parseFloat(meta['cons_' + consF + '_pct'] || 0);
+      mv = pct > 0 ? Math.round(mv * pct / 100) : 0;
+    }
+    return mv || null;
+  });
+
+  if (aqlHistChartObj) aqlHistChartObj.destroy();
+  aqlHistChartObj = new Chart(canvas, {
+    data: {
+      labels,
+      datasets: [
+        { type: 'bar', label: 'Realizado', data: realizadoArr, backgroundColor: '#2f6fed', borderRadius: 4, order: 2 },
+        { type: 'line', label: 'Meta', data: metaArr, borderColor: '#c8102e', borderWidth: 2, borderDash: [6, 4], pointRadius: 3, pointBackgroundColor: '#c8102e', fill: false, spanGaps: true, order: 1 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } },
       scales: {
         y: { beginAtZero: true, ticks: { precision: 0, color: '#A09A94', font: { size: 11 } }, grid: { color: 'rgba(0,0,0,.05)' }, border: { display: false } },
         x: { ticks: { color: '#A09A94', font: { size: 10 } }, grid: { display: false }, border: { display: false } }
