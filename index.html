@@ -4434,7 +4434,7 @@ function buildAqlMetas() {
   const total = meta.total || 0;
 
   // Realizado = eventos tipo "Oportunidade" (AQL) registrados manualmente no mês
-  const evs = pipeEventosDoMes(label, ano).filter(e => e.tipo === 'Oportunidade');
+  const evs = pipeEventosDoMes(label, ano); // cada registro da lista conta como 1 AQL, independente do tipo
   const porCons = {};
   evs.forEach(e => { porCons[e.consultor] = (porCons[e.consultor] || 0) + 1; });
 
@@ -4487,7 +4487,7 @@ function buildAqlChart() {
   const { label, ano } = mesInfo;
   const consF = document.getElementById('pev-cons')?.value || '';
   const semanas = getSemanasDoMes(label, ano);
-  let evs = pipeEventosDoMes(label, ano).filter(e => e.tipo === 'Oportunidade');
+  let evs = pipeEventosDoMes(label, ano); // cada registro da lista conta como 1 AQL, independente do tipo
   if (consF) evs = evs.filter(e => e.consultor === consF);
   window.CONS_MON = window.CONS_MON || ['Caio','Leonam','Loma','Camila','Cleiton'];
   const consultores = consF ? [consF] : window.CONS_MON;
