@@ -336,11 +336,11 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
   <div class="nav-group">
     <div class="nav-group-label g-gestao">Gestão</div>
     <div class="nav-group-tabs">
-      <button class="nav-tab" onclick="show('leadtime')">Lead Time</button>
+      <button class="nav-tab ter-ok" onclick="show('leadtime')">Lead Time</button>
       <button class="nav-tab" onclick="show('dro')">DRO/DRX</button>
       <button class="nav-tab" onclick="show('pipeline')">Pipeline</button>
       <button class="nav-tab" onclick="show('monetizacao')">Monetização</button>
-      <button class="nav-tab" onclick="show('capacity')">Capacity</button>
+      <button class="nav-tab ter-ok" onclick="show('capacity')">Capacity</button>
       <button class="nav-tab" onclick="show('performance')">Performance</button>
       <button class="nav-tab" onclick="show('auditoria')">Auditoria de Entregas</button>
     </div>
@@ -352,6 +352,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
 
 <!-- BASE -->
 <section id="sec-base" class="section">
+<div id="base-saber-view">
   <div class="sec-head" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
     <div>
       <h2 class="sec-title">Base de Projetos</h2>
@@ -451,6 +452,90 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
       </table>
     </div>
   </div>
+</div>
+
+<div id="base-ter-view" style="display:none;">
+  <div class="sec-head" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div>
+      <h2 class="sec-title">Base de Projetos — TER</h2>
+      <p class="sec-desc">Cadastre aqui. Todas as abas da TER se alimentam automaticamente.</p>
+    </div>
+    <button class="add-project-btn" onclick="openNovoProjTer()">+ Novo projeto</button>
+  </div>
+  <div class="mgrid mg5" id="base-ter-summary"></div>
+  <div class="card">
+    <div class="base-toolbar">
+      <div class="base-filter-group">
+        <span class="base-filter-label">Consultor</span>
+        <select class="base-sel" id="ft-consultor" onchange="renderBaseTer()"><option value="">Todos</option></select>
+      </div>
+      <div class="base-filter-group">
+        <span class="base-filter-label">Modelo</span>
+        <select class="base-sel" id="ft-modelo" onchange="renderBaseTer()">
+          <option value="">Todos</option>
+          <option>CRM Kommo basic</option>
+          <option>CRM Kommo PRO</option>
+          <option>Manutenção de CRM</option>
+          <option>Profissional de CRM</option>
+          <option>Sales Enablement</option>
+          <option>Diagnóstico 360</option>
+          <option>Treinamentos (avulsos)</option>
+        </select>
+      </div>
+      <div class="base-filter-group">
+        <span class="base-filter-label">Recorrência</span>
+        <select class="base-sel" id="ft-recorrencia" onchange="renderBaseTer()">
+          <option value="">Todas</option>
+          <option>One time</option>
+          <option>Recorrente</option>
+        </select>
+      </div>
+      <div class="base-filter-group">
+        <span class="base-filter-label">Status</span>
+        <select class="base-sel" id="ft-status" onchange="renderBaseTer()">
+          <option value="">Todos</option>
+          <option>Em andamento</option>
+          <option>Finalizado</option>
+          <option>Início em breve</option>
+          <option>Pausado</option>
+          <option>Cancelado</option>
+        </select>
+      </div>
+      <div class="base-filter-group">
+        <span class="base-filter-label">Flag</span>
+        <select class="base-sel" id="ft-flag" onchange="renderBaseTer()">
+          <option value="">Todas</option>
+          <option>Verde</option>
+          <option>Amarelo</option>
+          <option>Vermelho</option>
+        </select>
+      </div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
+        <button class="base-clear" onclick="clearBaseTerFilters()">✕ Limpar</button>
+        <span class="base-count" id="base-ter-count"></span>
+      </div>
+    </div>
+    <div class="edit-hint" style="margin-bottom:.75rem;">
+      <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M11 2L14 5L5 14H2V11L11 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+      Clique em qualquer campo de texto para editar
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:36px;min-width:36px;">#</th><th style="min-width:160px;">Projeto</th><th>Modelo</th><th>Consultor</th><th>Recorrência</th><th>GMV (R$)</th><th>Tier</th><th>Fee (R$)</th>
+            <th>Dt. Início</th><th>Dt. Prev. Conclusão</th><th>Dt. Conclusão Real</th>
+            <th>Prazo</th><th>Flag</th>
+            <th>Status</th>
+            <th style="min-width:140px;">Outros Escopos</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="base-ter-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
 </section>
 
 <!-- VISÃO GERAL -->
@@ -865,6 +950,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
 </section>
 
 <section id="sec-leadtime" class="section">
+<div id="lt-saber-view">
   <div class="sec-head"><h2 class="sec-title">Lead Time</h2><p class="sec-desc">Acompanhamento das entregas. Selecione a etapa e insira a data real — a barra mostra o andamento visualmente.</p></div>
 
   <!-- Bloco sticky: cards + análise + filtros ficam fixos enquanto tabela rola -->
@@ -944,9 +1030,66 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
       <tbody id="lt-tbody"></tbody>
     </table>
   </div>
+</div>
+
+<div id="lt-ter-view" style="display:none;">
+  <div class="sec-head"><h2 class="sec-title">Lead Time — TER</h2><p class="sec-desc">Acompanhamento das entregas da TER — 5 entregas (nomenclatura provisória por semana). Selecione a etapa e insira a data real; use o campo ao lado para observações.</p></div>
+
+  <div class="mgrid mg4" style="margin-bottom:.8rem;">
+    <div class="mcard c-blue"><div class="mlabel">Projetos</div><div class="mval" id="ltt-total">0</div></div>
+    <div class="mcard c-green"><div class="mlabel">Entregas no prazo</div><div class="mval" id="ltt-ok">0</div></div>
+    <div class="mcard c-red"><div class="mlabel">Entregas atrasadas</div><div class="mval" id="ltt-atraso">0</div></div>
+    <div class="mcard c-amber"><div class="mlabel">Atraso médio</div><div class="mval" id="ltt-avg">—</div><div class="mmeta">dias (onde houve atraso)</div></div>
+  </div>
+
+  <div class="card" style="padding:.7rem 1.1rem;margin-bottom:.8rem;">
+    <div class="lt-filter-bar" style="margin-bottom:0;">
+      <span class="base-filter-label">Consultor</span>
+      <select class="base-sel" id="ltt-f-cons" onchange="buildLeadTimeTer()"><option value="">Todos</option></select>
+      <span class="base-filter-label">Conversão</span>
+      <select class="base-sel" id="ltt-f-conv" onchange="buildLeadTimeTer()">
+        <option value="">Todas</option>
+        <option>Monetizado</option>
+        <option>Não monetizado</option>
+      </select>
+      <span class="base-filter-label">Oportunidade</span>
+      <select class="base-sel" id="ltt-f-oport" onchange="buildLeadTimeTer()">
+        <option value="">Todas</option>
+        <option>Mapeado (AQL)</option><option>Apresentar proposta (SQL)</option><option>Follow (COMMIT)</option><option>Sem oportunidade</option>
+      </select>
+      <button class="base-clear" onclick="clearLtTerFilters()">Limpar</button>
+      <span class="base-count" id="ltt-count"></span>
+    </div>
+  </div>
+
+  <div class="lt-scroll-body">
+    <table class="lt-table">
+      <thead>
+        <tr>
+          <th style="min-width:170px;">Consultor / Projeto</th>
+          <th style="min-width:90px;">GMV</th>
+          <th style="min-width:80px;">Tier</th>
+          <th>Início</th><th>Previsto</th>
+          <th style="min-width:180px;">Registrar entrega</th>
+          <th style="min-width:200px;">Observação</th>
+          <th style="min-width:200px;">Progresso</th>
+          <th style="min-width:80px;">Flag</th>
+          <th style="min-width:130px;">Oportunidade</th>
+          <th style="min-width:160px;">Escopos One-time</th>
+          <th style="min-width:160px;">Escopos Recorrente</th>
+          <th style="min-width:130px;">Conversão</th>
+          <th style="min-width:130px;">Motivo perda</th>
+          <th style="min-width:110px;">Próx. Contato</th>
+        </tr>
+      </thead>
+      <tbody id="ltt-tbody"></tbody>
+    </table>
+  </div>
+</div>
 </section>
 
 <section id="sec-capacity" class="section">
+<div id="cap-saber-view">
   <div class="sec-head">
     <h2 class="sec-title">Capacity</h2>
     <p class="sec-desc">Planejamento de capacidade por semana — semanas e status a partir do Lead Time.</p>
@@ -1026,6 +1169,54 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
     <div id="gantt-dro-list"></div>
   </div>
     <div id="carga-consultor" style="margin-top:1.6rem;padding-top:1.2rem;border-top:1px solid var(--border);"></div>
+</div>
+
+<div id="cap-ter-view" style="display:none;">
+  <div class="sec-head">
+    <h2 class="sec-title">Capacity — TER</h2>
+    <p class="sec-desc">Planejamento de capacidade por semana — semanas e status a partir do Lead Time da TER (5 entregas).</p>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:1rem;">
+      <div class="card-title" style="margin-bottom:0;">Andamento dos projetos</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <span style="font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Consultor</span>
+        <select class="base-sel" id="gantt-ter-cons-filter" onchange="buildGanttTer()"><option value="">Todos</option></select>
+        <span style="font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Status</span>
+        <select class="base-sel" id="gantt-ter-status-filter" onchange="buildGanttTer()">
+          <option value="">Todos</option>
+          <option>Em andamento</option>
+          <option>Finalizado</option>
+          <option>Início em breve</option>
+          <option>Pausado</option>
+          <option>Cancelado</option>
+        </select>
+        <span style="font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Mês início</span>
+        <select class="base-sel" id="gantt-ter-mes-filter" onchange="buildGanttTer()"><option value="">Todos</option></select>
+        <span style="font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Período</span>
+        <select class="base-sel" id="gantt-ter-period" onchange="buildGanttTer()">
+          <option value="3">3 meses</option>
+          <option value="6" selected>6 meses</option>
+          <option value="12">12 meses</option>
+        </select>
+      </div>
+    </div>
+    <div id="carga-semanal-ter" style="margin-bottom:1.2rem;"></div>
+    <div class="gantt-wrap">
+      <table class="gantt-table"><thead id="gantt-ter-thead"></thead><tbody id="gantt-ter-tbody"></tbody></table>
+    </div>
+    <div style="display:flex;gap:16px;margin-top:.75rem;flex-wrap:wrap;">
+      <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);"><span style="width:14px;height:8px;border-radius:2px;background:var(--blue);display:inline-block;opacity:.85;"></span>Em andamento</span>
+      <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);"><span style="width:14px;height:8px;border-radius:2px;background:var(--text-hint);display:inline-block;opacity:.85;"></span>Finalizado</span>
+      <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);"><span style="width:14px;height:8px;border-radius:2px;background:var(--amber);display:inline-block;opacity:.85;"></span>Pausado</span>
+      <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);"><span style="width:8px;height:8px;border-radius:50%;background:#4ade80;border:1.5px solid rgba(0,0,0,.2);display:inline-block;"></span>Entrega no prazo</span>
+      <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);"><span style="width:8px;height:8px;border-radius:50%;background:#f87171;border:1.5px solid rgba(0,0,0,.2);display:inline-block;"></span>Entrega atrasada</span>
+      <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);"><span style="width:8px;height:8px;border-radius:50%;background:#fff;border:1.5px solid rgba(0,0,0,.2);display:inline-block;"></span>Pendente</span>
+    </div>
+  </div>
+  <div id="carga-consultor-ter" style="margin-top:1.6rem;padding-top:1.2rem;border-top:1px solid var(--border);"></div>
+</div>
 </section>
 
 <!-- MODAL NOVO PROJETO -->
@@ -1291,6 +1482,69 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
         <span id="cons-modal-msg" style="font-size:11px;color:var(--text-hint);"></span>
       </div>
       <div style="margin-top:14px;font-size:10px;color:var(--text-hint);border-top:1px solid var(--border);padding-top:10px;">Renomear aqui muda os filtros, mas não reescreve o consultor já gravado nos projetos antigos. Salva no Supabase (precisa da coluna <code>consultores</code>).</div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-novo-projeto-ter" onclick="if(event.target===this)closeNovoProjTer()">
+  <div class="modal-box" style="max-width:480px;">
+    <div class="modal-header">
+      <span class="modal-title">Novo Projeto — TER</span>
+      <button class="modal-close" onclick="closeNovoProjTer()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div>
+          <label style="display:block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">Nome do projeto *</label>
+          <input id="npt-nome" type="text" class="sel" style="width:100%;font-size:14px;" placeholder="Ex: Frotix Tecnologia">
+        </div>
+        <div>
+          <label style="display:block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">Consultor responsável</label>
+          <input id="npt-consultor" type="text" class="sel" style="width:100%;font-size:14px;" placeholder="Ex: Camila">
+        </div>
+        <div>
+          <label style="display:block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">Modelo *</label>
+          <select id="npt-modelo" class="sel" style="width:100%;font-size:14px;">
+            <option>CRM Kommo basic</option>
+            <option>CRM Kommo PRO</option>
+            <option>Manutenção de CRM</option>
+            <option>Profissional de CRM</option>
+            <option>Sales Enablement</option>
+            <option>Diagnóstico 360</option>
+            <option>Treinamentos (avulsos)</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">Recorrência *</label>
+          <select id="npt-recorrencia" class="sel" style="width:100%;font-size:14px;">
+            <option>One time</option>
+            <option>Recorrente</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <div style="flex:1;">
+            <label style="display:block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">GMV (R$)</label>
+            <input id="npt-gmv" type="text" class="sel" style="width:100%;font-size:14px;" placeholder="0">
+          </div>
+          <div style="flex:1;">
+            <label style="display:block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">Fee (R$)</label>
+            <input id="npt-fee" type="text" class="sel" style="width:100%;font-size:14px;" placeholder="0">
+          </div>
+        </div>
+        <div>
+          <label style="display:block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">Data de início</label>
+          <input id="npt-inicio" type="date" class="sel" style="width:100%;font-size:14px;">
+        </div>
+        <div>
+          <label style="display:block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">Data prevista de conclusão</label>
+          <input id="npt-prevfim" type="date" class="sel" style="width:100%;font-size:14px;">
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:6px;">
+          <button onclick="salvarNovoProjTer()" style="background:var(--accent);color:#fff;border:none;border-radius:20px;padding:9px 24px;font-size:13px;font-weight:600;cursor:pointer;">Criar projeto</button>
+          <button onclick="closeNovoProjTer()" style="background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:20px;padding:9px 18px;font-size:12px;cursor:pointer;">Cancelar</button>
+          <span id="npt-msg" style="font-size:11px;color:var(--accent);"></span>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -3443,6 +3697,16 @@ function setFieldPrev(el) {
 }
 
 function renderBase() {
+  // Despacho por coordenação: TER tem sua própria view/tabela, totalmente separada da SABER.
+  if (currentCoord === 'ter') {
+    const sv = document.getElementById('base-saber-view'); if (sv) sv.style.display = 'none';
+    const tv = document.getElementById('base-ter-view');   if (tv) tv.style.display = '';
+    renderBaseTer();
+    return;
+  } else {
+    const sv = document.getElementById('base-saber-view'); if (sv) sv.style.display = '';
+    const tv = document.getElementById('base-ter-view');   if (tv) tv.style.display = 'none';
+  }
   if (currentPerfil?.consultor) applyPerfilFilters();
   // auto-calc prevFim
   projects.forEach(p => {
@@ -3534,6 +3798,162 @@ function renderBase() {
 
   refreshAll();
   upd();
+}
+
+// ═══════════════════════════════════
+//  BASE DE PROJETOS — TER (schema próprio, independente da SABER)
+// ═══════════════════════════════════
+const TER_MODELOS = ['CRM Kommo basic','CRM Kommo PRO','Manutenção de CRM','Profissional de CRM','Sales Enablement','Diagnóstico 360','Treinamentos (avulsos)'];
+const TER_STATUS  = ['Em andamento','Finalizado','Início em breve','Pausado','Cancelado'];
+
+// Prazo simples: compara prevFim x realFim (se concluído) ou prevFim x hoje (se em aberto).
+// Não usa a janela de 45 dias da SABER — cada modelo da TER tem prazo próprio, definido manualmente.
+function prazoStatusTer(p) {
+  if (!p.prevFim) return { txt: '—', cor: 'var(--text-hint)' };
+  const dPrev = parseDate(p.prevFim);
+  if (!dPrev) return { txt: '—', cor: 'var(--text-hint)' };
+  if (p.realFim) {
+    const dias = diffDays(p.prevFim, p.realFim);
+    if (dias === null) return { txt: '—', cor: 'var(--text-hint)' };
+    if (dias <= 0) return { txt: 'No prazo', cor: 'var(--green)' };
+    return { txt: 'Atrasado ' + dias + 'd', cor: 'var(--accent)' };
+  }
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const diasRest = Math.round((dPrev - hoje) / 864e5);
+  if (diasRest < 0)  return { txt: 'Atrasado ' + Math.abs(diasRest) + 'd', cor: 'var(--accent)' };
+  if (diasRest <= 5) return { txt: diasRest + 'd restantes', cor: 'var(--amber)' };
+  return { txt: diasRest + 'd restantes', cor: 'var(--blue)' };
+}
+
+function getBaseTerFiltered() {
+  const fConsultor = document.getElementById('ft-consultor')?.value || '';
+  const fModelo = document.getElementById('ft-modelo')?.value || '';
+  const fRec    = document.getElementById('ft-recorrencia')?.value || '';
+  const fStatus = document.getElementById('ft-status')?.value || '';
+  const fFlag   = document.getElementById('ft-flag')?.value || '';
+  return projects.filter(p => {
+    if (fConsultor && p.consultor !== fConsultor) return false;
+    if (fModelo && p.modelo !== fModelo) return false;
+    if (fRec && p.recorrencia !== fRec) return false;
+    if (fStatus && p.status2 !== fStatus) return false;
+    if (fFlag && p.flag !== fFlag) return false;
+    return true;
+  });
+}
+function clearBaseTerFilters() {
+  ['ft-consultor','ft-modelo','ft-recorrencia','ft-status','ft-flag'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  renderBaseTer();
+}
+function updateBaseTerConsultorOptions() {
+  const sel = document.getElementById('ft-consultor');
+  if (!sel) return;
+  const atual = sel.value;
+  const nomes = [...new Set(projects.map(p => p.consultor).filter(Boolean))].sort((a,b) => a.localeCompare(b));
+  sel.innerHTML = '<option value="">Todos</option>' + nomes.map(n => '<option ' + (n===atual?'selected':'') + '>' + n + '</option>').join('');
+}
+
+function renderBaseTer() {
+  updateBaseTerConsultorOptions();
+  const filtered = getBaseTerFiltered();
+  const parseMoney = v => { const n = parseFloat((v || '').toString().replace(/\./g,'').replace(',','.')); return isNaN(n) ? 0 : n; };
+  const total   = filtered.length;
+  const rec     = filtered.filter(p => p.recorrencia === 'Recorrente').length;
+  const ot      = filtered.filter(p => p.recorrencia === 'One time').length;
+  const emand   = filtered.filter(p => p.status2 === 'Em andamento').length;
+  const feeTotal = filtered.reduce((a, p) => a + parseMoney(p.fee), 0);
+
+  const sumEl = document.getElementById('base-ter-summary');
+  if (sumEl) sumEl.innerHTML =
+      '<div class="mcard c-blue"><div class="mlabel">Total</div><div class="mval">' + total + '</div><div class="mmeta">projetos</div></div>'
+    + '<div class="mcard c-green"><div class="mlabel">Recorrentes</div><div class="mval">' + rec + '</div></div>'
+    + '<div class="mcard c-gray"><div class="mlabel">One time</div><div class="mval">' + ot + '</div></div>'
+    + '<div class="mcard c-amber"><div class="mlabel">Em andamento</div><div class="mval">' + emand + '</div></div>'
+    + '<div class="mcard c-gray"><div class="mlabel">Fee total</div><div class="mval" style="font-size:18px;">' + BRL(feeTotal) + '</div></div>';
+
+  const countEl = document.getElementById('base-ter-count');
+  if (countEl) countEl.textContent = filtered.length < projects.length ? (filtered.length + ' de ' + projects.length + ' projetos') : (projects.length + ' projetos');
+
+  const tbody = document.getElementById('base-ter-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  filtered.forEach((p, i) => {
+    const tr = document.createElement('tr');
+    const prazo = prazoStatusTer(p);
+    const modeloOpts = TER_MODELOS.map(m => '<option ' + (p.modelo === m ? 'selected' : '') + '>' + m + '</option>').join('');
+    const statusOpts = TER_STATUS.map(s => '<option ' + (p.status2 === s ? 'selected' : '') + '>' + s + '</option>').join('');
+    tr.innerHTML =
+        '<td style="color:var(--text-hint);font-size:10px;">' + String(i+1).padStart(2,'0') + '</td>'
+      + '<td contenteditable="true" data-f="nome" data-id="' + p.id + '" onblur="setFieldTer(this)">' + (p.nome||'') + '</td>'
+      + '<td style="padding:4px 8px;"><select class="sel" style="font-size:11px;padding:2px 4px;" data-f="modelo" data-id="' + p.id + '" onchange="setFieldTer(this)">' + modeloOpts + '</select></td>'
+      + '<td contenteditable="true" data-f="consultor" data-id="' + p.id + '" onblur="setFieldTer(this)" style="min-width:100px;">' + (p.consultor||'—') + '</td>'
+      + '<td style="padding:4px 8px;"><select class="sel" style="font-size:11px;padding:2px 4px;" data-f="recorrencia" data-id="' + p.id + '" onchange="setFieldTer(this)">'
+        + '<option ' + (p.recorrencia==='One time'?'selected':'') + '>One time</option>'
+        + '<option ' + (p.recorrencia==='Recorrente'?'selected':'') + '>Recorrente</option></select></td>'
+      + '<td contenteditable="true" data-f="gmv" data-id="' + p.id + '" onblur="setFieldTer(this)" style="min-width:90px;">' + (p.gmv||'—') + '</td>'
+      + '<td style="padding:6px 10px;text-align:center;">' + tierBadge(p.gmv) + '</td>'
+      + '<td contenteditable="true" data-f="fee" data-id="' + p.id + '" onblur="setFieldTer(this)" style="min-width:90px;">' + (p.fee||'—') + '</td>'
+      + '<td><input type="date" class="sel" value="' + dv(p.inicio) + '" data-f="inicio" data-id="' + p.id + '" onchange="setFieldTer(this)"></td>'
+      + '<td><input type="date" class="sel" value="' + dv(p.prevFim) + '" data-f="prevFim" data-id="' + p.id + '" onchange="setFieldTer(this)"></td>'
+      + '<td><input type="date" class="sel" value="' + dv(p.realFim) + '" data-f="realFim" data-id="' + p.id + '" onchange="setFieldTer(this)"></td>'
+      + '<td><span style="font-size:10px;font-weight:700;color:' + prazo.cor + ';">' + prazo.txt + '</span></td>'
+      + '<td style="padding:4px 8px;"><select class="sel" style="font-size:11px;padding:2px 4px;" data-f="flag" data-id="' + p.id + '" onchange="setFieldTer(this)">'
+        + '<option value="" ' + (!p.flag?'selected':'') + '>—</option>'
+        + '<option ' + (p.flag==='Verde'?'selected':'') + '>Verde</option>'
+        + '<option ' + (p.flag==='Amarelo'?'selected':'') + '>Amarelo</option>'
+        + '<option ' + (p.flag==='Vermelho'?'selected':'') + '>Vermelho</option></select></td>'
+      + '<td style="padding:4px 8px;"><select class="sel" style="font-size:11px;padding:2px 4px;" data-f="status2" data-id="' + p.id + '" onchange="setFieldTer(this)">' + statusOpts + '</select></td>'
+      + '<td contenteditable="true" data-f="outrosEscopos" data-id="' + p.id + '" onblur="setFieldTer(this)" style="min-width:140px;">' + (p.outrosEscopos||'') + '</td>'
+      + '<td style="text-align:right;"><button onclick="removerProjTer(\'' + p.id + '\')" title="Excluir" style="background:none;border:none;cursor:pointer;color:var(--text-hint);font-size:13px;">✕</button></td>';
+    tbody.appendChild(tr);
+  });
+}
+
+function setFieldTer(el) {
+  const id = el.dataset.id;
+  const f  = el.dataset.f;
+  const p  = projects.find(x => String(x.id) === String(id));
+  if (!p) return;
+  p[f] = el.tagName === 'TD' ? el.textContent.trim() : el.value;
+  renderBaseTer();
+  upd();
+}
+
+function removerProjTer(id) {
+  if (!confirm('Excluir este projeto da TER?')) return;
+  projects = projects.filter(x => String(x.id) !== String(id));
+  renderBaseTer(); upd();
+}
+
+function openNovoProjTer() {
+  ['npt-nome','npt-consultor','npt-gmv','npt-fee','npt-inicio','npt-prevfim'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  const msg = document.getElementById('npt-msg'); if (msg) msg.textContent = '';
+  document.getElementById('modal-novo-projeto-ter').style.display = 'flex';
+}
+function closeNovoProjTer() {
+  document.getElementById('modal-novo-projeto-ter').style.display = 'none';
+}
+function salvarNovoProjTer() {
+  const nome = (document.getElementById('npt-nome')?.value || '').trim();
+  const msg = document.getElementById('npt-msg');
+  if (!nome) { if (msg) msg.textContent = 'Informe o nome do projeto.'; return; }
+  const p = {
+    id: Date.now(),
+    nome,
+    consultor: (document.getElementById('npt-consultor')?.value || '').trim(),
+    modelo: document.getElementById('npt-modelo')?.value || '',
+    recorrencia: document.getElementById('npt-recorrencia')?.value || '',
+    gmv: document.getElementById('npt-gmv')?.value || '',
+    fee: document.getElementById('npt-fee')?.value || '',
+    inicio: document.getElementById('npt-inicio')?.value || '',
+    prevFim: document.getElementById('npt-prevfim')?.value || '',
+    realFim: '',
+    flag: '',
+    status2: 'Em andamento',
+    outrosEscopos: '',
+  };
+  projects.push(p);
+  closeNovoProjTer();
+  renderBaseTer(); upd();
 }
 
 // ═══════════════════════════════════
@@ -5923,6 +6343,16 @@ function refreshLtCards() {
 }
 
 function buildLeadTime() {
+  // Despacho por coordenação: TER tem sua própria view/tabela de Lead Time.
+  if (currentCoord === 'ter') {
+    const sv = document.getElementById('lt-saber-view'); if (sv) sv.style.display = 'none';
+    const tv = document.getElementById('lt-ter-view');   if (tv) tv.style.display = '';
+    buildLeadTimeTer();
+    return;
+  } else {
+    const sv = document.getElementById('lt-saber-view'); if (sv) sv.style.display = '';
+    const tv = document.getElementById('lt-ter-view');   if (tv) tv.style.display = 'none';
+  }
   if (currentPerfil?.consultor) applyPerfilFilters();
   // atualiza selects de filtro
   const selCons = document.getElementById('lt-f-cons');
@@ -6138,6 +6568,197 @@ function buildLeadTime() {
   buildLtAnalise(list);
 }
 
+// ═══════════════════════════════════
+//  LEAD TIME — TER (5 entregas, nomenclatura provisória por semana; sem score; sem valores previstos; com observação)
+// ═══════════════════════════════════
+const SEM_NOMES_TER = ['Semana 1','Semana 2','Semana 3','Semana 4','Semana 5']; // nomenclatura provisória — será personalizada depois
+const SEM_SHORT_TER  = ['Sem.1','Sem.2','Sem.3','Sem.4','Sem.5'];
+
+function semDataPlanejadaTer(p, si) {
+  // Referência simples: início + 7 dias por etapa (janela igual para as 5, até a nomenclatura final ser definida)
+  if (!p.inicio) return null;
+  return addDays(p.inicio, 7 * (si + 1));
+}
+
+function getLtTerFiltered() {
+  const fCons = document.getElementById('ltt-f-cons')?.value || '';
+  const fConv = document.getElementById('ltt-f-conv')?.value || '';
+  const fOport= document.getElementById('ltt-f-oport')?.value || '';
+  return projects.filter(p => {
+    if (fCons && p.consultor !== fCons) return false;
+    if (fConv && p.conv !== fConv) return false;
+    if (fOport && p.oport !== fOport) return false;
+    return true;
+  });
+}
+function clearLtTerFilters() {
+  ['ltt-f-cons','ltt-f-conv','ltt-f-oport'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  buildLeadTimeTer();
+}
+
+function ltSetFieldTer(id, f, val) {
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!p) return;
+  p[f] = val;
+  buildLeadTimeTer();
+  upd();
+}
+
+function ltTerEntregas(p) {
+  if (!p.entregasTer || !Array.isArray(p.entregasTer) || p.entregasTer.length < 5) {
+    p.entregasTer = [0,1,2,3,4].map(i => (p.entregasTer && p.entregasTer[i]) || { real: '', obs: '' });
+  }
+  return p.entregasTer;
+}
+
+function ltTerShowDateInput(id) {
+  const sel = document.getElementById('lt-sel-ter-' + id);
+  const row = document.getElementById('lt-date-row-ter-' + id);
+  if (!sel || !row) return;
+  const si = sel.value;
+  if (si === '') { row.style.display = 'none'; return; }
+  const p = projects.find(x => String(x.id) === String(id));
+  const ent = ltTerEntregas(p)[parseInt(si)] || {};
+  const dateInp = document.getElementById('lt-date-ter-' + id);
+  const obsInp  = document.getElementById('lt-obs-ter-' + id);
+  if (dateInp) dateInp.value = ent.real || '';
+  if (obsInp)  obsInp.value  = ent.obs  || '';
+  row.style.display = 'flex';
+}
+function ltTerSaveDate(id) {
+  const sel = document.getElementById('lt-sel-ter-' + id);
+  const si  = parseInt(sel?.value);
+  if (isNaN(si)) return;
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!p) return;
+  const ent = ltTerEntregas(p);
+  const dateInp = document.getElementById('lt-date-ter-' + id);
+  ent[si].real = dateInp?.value || '';
+  buildLeadTimeTer();
+  upd();
+}
+function ltTerSaveObs(id) {
+  const sel = document.getElementById('lt-sel-ter-' + id);
+  const si  = parseInt(sel?.value);
+  if (isNaN(si)) return;
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!p) return;
+  const ent = ltTerEntregas(p);
+  const obsInp = document.getElementById('lt-obs-ter-' + id);
+  ent[si].obs = obsInp?.value || '';
+  upd();
+}
+
+function buildLeadTimeTer() {
+  const selCons = document.getElementById('ltt-f-cons');
+  if (selCons) {
+    const cons = [...new Set(projects.map(p => p.consultor).filter(Boolean))].sort();
+    const curC = selCons.value;
+    selCons.innerHTML = '<option value="">Todos</option>' + cons.map(c => '<option' + (c===curC?' selected':'') + '>' + c + '</option>').join('');
+  }
+
+  const list = getLtTerFiltered();
+  const countEl = document.getElementById('ltt-count');
+  if (countEl) countEl.textContent = list.length + ' projeto' + (list.length!==1?'s':'');
+  const totalEl = document.getElementById('ltt-total'); if (totalEl) totalEl.textContent = list.length;
+
+  let okCount = 0, atrasoCount = 0, atrasos = [];
+  const tbody = document.getElementById('ltt-tbody');
+  if (!tbody) return;
+
+  tbody.innerHTML = list.length === 0
+    ? '<tr><td colspan="14" style="text-align:center;padding:24px;color:var(--text-hint);font-size:12px;">Nenhum projeto encontrado</td></tr>'
+    : list.map(p => {
+        const entregas = ltTerEntregas(p);
+
+        const semOpts = [0,1,2,3,4].map(si => {
+          const ent    = entregas[si] || {};
+          const real   = ent.real || '';
+          const plan   = semDataPlanejadaTer(p, si);
+          const atraso = plan && real ? diffDays(plan, real) : null;
+          const icon   = atraso === null ? '○' : atraso <= 0 ? '✓' : '⚠';
+          const dataTxt= real ? ' · ' + fmtD(real) : '';
+          return '<option value="' + si + '">' + icon + ' ' + SEM_SHORT_TER[si] + dataTxt + '</option>';
+        }).join('');
+
+        const barBlocks = [0,1,2,3,4].map(si => {
+          const ent  = entregas[si] || {};
+          const real = ent.real || '';
+          const realFmt = real ? fmtD(real) : '';
+          const refDate = si === 0 ? (p.inicio || null) : (entregas[si-1]?.real || null);
+          const prazo7 = refDate ? addDays(refDate, 7) : null;
+          const atrasoBarra = prazo7 && real ? diffDays(prazo7, real) : null;
+
+          if (atrasoBarra !== null) { if (atrasoBarra <= 0) okCount++; else { atrasoCount++; atrasos.push(atrasoBarra); } }
+
+          let bg, label, tooltip;
+          if (atrasoBarra === null) {
+            bg = 'var(--surface3)';
+            label = '<span style="color:var(--text-hint);font-size:8px;">' + SEM_SHORT_TER[si] + '</span>';
+            tooltip = SEM_NOMES_TER[si] + (prazo7 ? ' · prazo: ' + fmtD(prazo7) : ' · aguardando etapa anterior');
+          } else if (atrasoBarra <= 0) {
+            bg = 'var(--green)';
+            const txt = atrasoBarra === 0 ? 'no prazo' : Math.abs(atrasoBarra) + 'd antes';
+            label = '<span style="color:#fff;font-size:8px;font-weight:700;">✓</span>';
+            tooltip = SEM_NOMES_TER[si] + ' ✓ ' + txt + ' · realizado: ' + realFmt;
+          } else {
+            bg = 'var(--red)';
+            label = '<span style="color:#fff;font-size:8px;font-weight:700;">+' + atrasoBarra + 'd</span>';
+            tooltip = SEM_NOMES_TER[si] + ' ⚠ +' + atrasoBarra + 'd · realizado: ' + realFmt;
+          }
+          return '<div title="' + tooltip + '" style="flex:1;height:30px;background:' + bg + ';border-radius:3px;display:flex;align-items:center;justify-content:center;transition:background .25s;cursor:default;">' + label + '</div>';
+        }).join('');
+
+        return '<tr>'
+          + '<td class="lt-proj-cell">'
+          + '<div style="font-size:10px;color:var(--text-hint);">' + (p.consultor||'—') + '</div>'
+          + '<div class="lt-proj-name" title="' + (p.nome||'') + '">' + (p.nome||'—') + '</div>'
+          + '</td>'
+          + '<td style="padding:6px 8px;font-size:11px;color:var(--text-muted);white-space:nowrap;">' + (p.gmv || '—') + '</td>'
+          + '<td style="padding:6px 8px;">' + tierBadge(p.gmv) + '</td>'
+          + '<td class="lt-date-cell">' + fmtD(p.inicio) + '</td>'
+          + '<td class="lt-date-cell">' + fmtD(p.prevFim) + '</td>'
+          + '<td style="padding:8px 10px;">'
+          + '<select class="sel" style="width:100%;font-size:11px;" id="lt-sel-ter-' + p.id + '" onchange="ltTerShowDateInput(' + p.id + ')">'
+          + '<option value="">— Selecione a etapa —</option>' + semOpts
+          + '</select>'
+          + '<div id="lt-date-row-ter-' + p.id + '" style="display:none;gap:6px;align-items:center;margin-top:5px;">'
+          + '<input type="date" id="lt-date-ter-' + p.id + '" class="sel" style="font-size:11px;flex:1;" onchange="ltTerSaveDate(' + p.id + ')">'
+          + '</div>'
+          + '</td>'
+          + '<td style="padding:8px 10px;">'
+          + '<textarea id="lt-obs-ter-' + p.id + '" class="sel" rows="2" style="width:100%;font-size:11px;resize:vertical;" placeholder="Observação da etapa selecionada…" onblur="ltTerSaveObs(' + p.id + ')"></textarea>'
+          + '</td>'
+          + '<td style="padding:6px 10px;"><div style="display:flex;gap:3px;">' + barBlocks + '</div></td>'
+          + '<td style="padding:6px 8px;text-align:center;">'
+          + '<select class="sel" style="font-size:11px;width:70px;" onchange="ltSetFieldTer(' + p.id + ',\'flag\',this.value)">'
+          + ['—','Verde','Amarelo','Vermelho'].map(f => '<option' + ((p.flag||'—')===f?' selected':'') + '>' + f + '</option>').join('')
+          + '</select></td>'
+          + '<td style="padding:6px 8px;">'
+          + '<select class="sel" style="font-size:11px;width:120px;" onchange="ltSetFieldTer(' + p.id + ',\'oport\',this.value)">'
+          + ['—','Mapeado (AQL)','Apresentar proposta (SQL)','Follow (COMMIT)','Sem oportunidade'].map(o => '<option' + ((p.oport||'—')===o?' selected':'') + '>' + o + '</option>').join('')
+          + '</select></td>'
+          + '<td style="padding:6px 8px;">'
+          + '<div contenteditable="true" style="font-size:11px;min-height:28px;padding:4px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);outline:none;min-width:150px;" onblur="ltSetFieldTer(' + p.id + ',\'escopos\',this.textContent.trim())">' + (p.escopos||'').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div></td>'
+          + '<td style="padding:6px 8px;">'
+          + '<div contenteditable="true" style="font-size:11px;min-height:28px;padding:4px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);outline:none;min-width:150px;" onblur="ltSetFieldTer(' + p.id + ',\'escoposRec\',this.textContent.trim())">' + (p.escoposRec||'').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div></td>'
+          + '<td style="padding:6px 8px;">'
+          + '<select class="sel" style="font-size:11px;width:100%;" onchange="ltSetFieldTer(' + p.id + ',\'conv\',this.value)">'
+          + '<option value="">—</option>' + ['Monetizado','Não monetizado'].map(o => '<option' + ((p.conv||'')===o?' selected':'') + '>' + o + '</option>').join('')
+          + '</select></td>'
+          + '<td style="padding:6px 8px;">'
+          + '<input type="text" class="sel" style="font-size:11px;width:100%;" placeholder="Motivo" value="' + (p.motivo||'') + '" onchange="ltSetFieldTer(' + p.id + ',\'motivo\',this.value)"></td>'
+          + '<td style="padding:6px 8px;">'
+          + '<input type="date" class="sel" style="font-size:11px;width:100%;" value="' + (p.proximoContato||'') + '" onchange="ltSetFieldTer(' + p.id + ',\'proximoContato\',this.value)"></td>'
+          + '</tr>';
+      }).join('');
+
+  const okEl = document.getElementById('ltt-ok'); if (okEl) okEl.textContent = okCount;
+  const atrEl = document.getElementById('ltt-atraso'); if (atrEl) atrEl.textContent = atrasoCount;
+  const avgEl = document.getElementById('ltt-avg');
+  if (avgEl) avgEl.textContent = atrasos.length ? Math.round(atrasos.reduce((a,b)=>a+b,0)/atrasos.length) : '—';
+}
+
 function buildLtAnalise(list) {
   const el = document.getElementById('lt-analise');
   if (!el) return;
@@ -6259,9 +6880,192 @@ function buildCapHistTable() {
 }
 
 function buildCapacity() {
+  if (currentCoord === 'ter') {
+    const sv = document.getElementById('cap-saber-view'); if (sv) sv.style.display = 'none';
+    const tv = document.getElementById('cap-ter-view');   if (tv) tv.style.display = '';
+    buildGanttTer();
+    return;
+  } else {
+    const sv = document.getElementById('cap-saber-view'); if (sv) sv.style.display = '';
+    const tv = document.getElementById('cap-ter-view');   if (tv) tv.style.display = 'none';
+  }
   buildGantt();
 }
 
+
+// ═══════════════════════════════════
+//  CAPACITY / GANTT — TER (mesmo conceito da SABER: barras semanais + pontos de entrega,
+//  adaptado pras 5 entregas da TER e sem a seção DRO/Designer/Copy, que não existem lá)
+// ═══════════════════════════════════
+function buildGanttTer() {
+  const consFilter   = document.getElementById('gantt-ter-cons-filter')?.value || '';
+  const statusFilter = document.getElementById('gantt-ter-status-filter')?.value || '';
+  const mesFilter    = document.getElementById('gantt-ter-mes-filter')?.value || '';
+  const months = parseInt(document.getElementById('gantt-ter-period')?.value || '6');
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+
+  const startRef = new Date(hoje);
+  const dow = startRef.getDay() || 7;
+  startRef.setDate(startRef.getDate() - dow + 1 - 7);
+  const endRef = new Date(startRef);
+  endRef.setMonth(endRef.getMonth() + months);
+
+  const semanas = [];
+  let cur = new Date(startRef);
+  while (cur <= endRef) { semanas.push(new Date(cur)); cur.setDate(cur.getDate() + 7); }
+
+  const selCons = document.getElementById('gantt-ter-cons-filter');
+  if (selCons) {
+    const cons = [...new Set(projects.map(p => p.consultor).filter(Boolean))].sort();
+    const curV = selCons.value;
+    selCons.innerHTML = '<option value="">Todos</option>' + cons.map(c => '<option' + (c===curV?' selected':'') + '>' + c + '</option>').join('');
+  }
+  const selMes = document.getElementById('gantt-ter-mes-filter');
+  if (selMes) {
+    const meses = [...new Set(projects.filter(p => p.inicio).map(p => {
+      const d = parseDate(p.inicio);
+      const m = ALL_MESES.find(x => x.idx === d?.getMonth() && x.ano === d?.getFullYear());
+      return m ? m.label + '/' + m.ano : null;
+    }).filter(Boolean))];
+    meses.sort((a,b) => {
+      const [la,ya] = a.split('/'); const [lb,yb] = b.split('/');
+      const ma = ALL_MESES.find(x=>x.label===la&&x.ano===parseInt(ya));
+      const mb = ALL_MESES.find(x=>x.label===lb&&x.ano===parseInt(yb));
+      if(!ma||!mb) return 0;
+      return (mb.ano*12+mb.idx)-(ma.ano*12+ma.idx);
+    });
+    const curM = selMes.value;
+    selMes.innerHTML = '<option value="">Todos</option>' + meses.map(m => '<option' + (m===curM?' selected':'') + '>' + m + '</option>').join('');
+  }
+
+  // filtra projetos com início dentro da janela (usa realFim||prevFim||início+30d como fim de referência)
+  let prjs = projects.filter(p => {
+    if (!p.inicio) return false;
+    const dI = parseDate(p.inicio);
+    const dFRaw = p.realFim || p.prevFim;
+    const dF = dFRaw ? parseDate(dFRaw) : new Date(dI.getTime() + 30 * 864e5);
+    return dF >= startRef && dI <= endRef;
+  });
+  if (consFilter)   prjs = prjs.filter(p => p.consultor === consFilter);
+  if (statusFilter) prjs = prjs.filter(p => p.status2 === statusFilter);
+  if (mesFilter)    prjs = prjs.filter(p => {
+    const d = parseDate(p.inicio);
+    const m = ALL_MESES.find(x => x.idx === d?.getMonth() && x.ano === d?.getFullYear());
+    return m ? (m.label + '/' + m.ano) === mesFilter : false;
+  });
+  prjs.sort((a,b) => (a.inicio||'') < (b.inicio||'') ? -1 : 1);
+
+  buildCargaSemanal(prjs, semanas);
+  const cargaDiv = document.getElementById('carga-semanal-ter');
+  if (cargaDiv) {
+    function ativoNaSemana(p, sDate) {
+      const dIp = parseDate(p.inicio); if (!dIp) return false;
+      const sEnd = new Date(sDate.getTime() + 6*864e5);
+      const dFRaw = p.realFim || p.prevFim;
+      const dFp = dFRaw ? parseDate(dFRaw) : new Date(dIp.getTime() + 30*864e5);
+      return dIp <= sEnd && dFp >= sDate;
+    }
+    const maxCarga = Math.max(...semanas.map(s => prjs.filter(p => ativoNaSemana(p, s)).length), 1);
+    cargaDiv.innerHTML = '<div style="font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);margin-bottom:6px;">Projetos ativos por semana</div>'
+      + '<div style="overflow-x:auto;"><div style="display:flex;gap:3px;min-width:max-content;">'
+      + semanas.map(s => {
+          const sEnd = new Date(s.getTime() + 6*864e5);
+          const isHoje = hoje >= s && hoje <= sEnd;
+          const cnt = prjs.filter(p => ativoNaSemana(p, s)).length;
+          const pctH = Math.round(cnt / maxCarga * 100);
+          const d = s.getDate().toString().padStart(2,'0') + '/' + (s.getMonth()+1).toString().padStart(2,'0');
+          const color = isHoje ? 'var(--accent)' : 'var(--blue)';
+          return '<div style="text-align:center;min-width:38px;">'
+            + '<div style="font-size:9px;color:' + (isHoje?'var(--accent)':'var(--text-hint)') + ';margin-bottom:3px;font-weight:' + (isHoje?600:400) + ';">' + d + '</div>'
+            + '<div style="height:48px;display:flex;align-items:flex-end;">'
+            + '<div style="width:100%;height:' + pctH + '%;min-height:2px;background:' + color + ';border-radius:2px 2px 0 0;opacity:.85;"></div>'
+            + '</div>'
+            + '<div style="font-size:9px;color:' + (isHoje?'var(--accent)':'var(--text-hint)') + ';margin-top:2px;font-weight:' + (isHoje?600:400) + ';">' + cnt + '</div>'
+            + '</div>';
+        }).join('')
+      + '</div></div>';
+  }
+
+  const thead = document.getElementById('gantt-ter-thead');
+  const tbody = document.getElementById('gantt-ter-tbody');
+  if (!thead || !tbody) return;
+
+  const mesGroups = [];
+  semanas.forEach(s => {
+    const mo = s.getMonth(), yr = s.getFullYear();
+    const last = mesGroups[mesGroups.length-1];
+    if (last && last.mo===mo && last.yr===yr) last.count++;
+    else mesGroups.push({mo, yr, count:1, label:['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][mo] + ' ' + yr});
+  });
+  thead.innerHTML = '<tr>'
+    + '<th style="min-width:160px;text-align:left;padding:5px 8px;">Projeto</th>'
+    + '<th style="min-width:80px;text-align:left;padding:5px 8px;">Consultor</th>'
+    + mesGroups.map(g => '<th colspan="' + g.count + '" style="text-align:center;">' + g.label + '</th>').join('')
+    + '</tr>'
+    + '<tr><th></th><th></th>'
+    + semanas.map(s => {
+        const sEnd = new Date(s.getTime() + 6*864e5);
+        const isHoje = hoje >= s && hoje <= sEnd;
+        const d = s.getDate().toString().padStart(2,'0') + '/' + (s.getMonth()+1).toString().padStart(2,'0');
+        return '<th style="min-width:38px;text-align:center;' + (isHoje?'color:var(--accent);background:rgba(196,82,26,.06);':'') + '">' + d + '</th>';
+      }).join('')
+    + '</tr>';
+
+  if (!prjs.length) {
+    tbody.innerHTML = '<tr><td colspan="' + (semanas.length+2) + '" style="text-align:center;color:var(--text-hint);padding:20px;font-size:12px;">Nenhum projeto no período</td></tr>';
+    return;
+  }
+
+  const STATUS_COLOR_TER = p => {
+    const s = p.status2 || '';
+    if (s === 'Pausado')  return 'var(--amber)';
+    if (s === 'Cancelado') return 'var(--red)';
+    if (s === 'Finalizado') return 'var(--text-hint)';
+    return 'var(--blue)'; // Em andamento / Início em breve / default
+  };
+
+  tbody.innerHTML = prjs.map(p => {
+    const dIp = parseDate(p.inicio);
+    const dFRaw = p.realFim || p.prevFim;
+    const dFp = dFRaw ? parseDate(dFRaw) : new Date(dIp.getTime() + 30*864e5);
+    const entregas = ltTerEntregas(p);
+    const cor = STATUS_COLOR_TER(p);
+
+    const cells = semanas.map(s => {
+      const sEnd = new Date(s.getTime() + 6*864e5);
+      const naJanela = dIp <= sEnd && dFp >= s;
+      // entrega cujo real (ou planejado, se ainda pendente) cai nessa semana
+      let dot = '';
+      for (let si = 0; si < 5; si++) {
+        const ent = entregas[si] || {};
+        const plan = semDataPlanejadaTer(p, si);
+        const dataRef = ent.real || plan;
+        if (!dataRef) continue;
+        const dRef = parseDate(dataRef);
+        if (!dRef || dRef < s || dRef > sEnd) continue;
+        let dotColor;
+        if (ent.real) {
+          const atraso = plan ? diffDays(plan, ent.real) : null;
+          dotColor = (atraso === null || atraso <= 0) ? '#4ade80' : '#f87171';
+        } else {
+          dotColor = '#fff';
+        }
+        dot = '<span title="' + SEM_NOMES_TER[si] + (ent.real?(' · '+fmtD(ent.real)):' · previsto') + '" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + dotColor + ';border:1.5px solid rgba(0,0,0,.2);"></span>';
+        break;
+      }
+      return '<td style="text-align:center;padding:4px 2px;">'
+        + (naJanela ? '<div style="height:8px;background:' + cor + ';border-radius:2px;opacity:.85;margin-bottom:2px;"></div>' : '')
+        + dot
+        + '</td>';
+    }).join('');
+
+    return '<tr>'
+      + '<td style="padding:5px 8px;font-size:11px;font-weight:600;color:var(--text);white-space:nowrap;">' + (p.nome||'—') + '</td>'
+      + '<td style="padding:5px 8px;font-size:10px;color:var(--text-hint);white-space:nowrap;">' + (p.consultor||'—') + '</td>'
+      + cells
+      + '</tr>';
+  }).join('');
+}
 
 function buildCargaSemanal(prjsAll, semanasExt) {
   const el = document.getElementById('carga-consultor');
@@ -7736,8 +8540,15 @@ function updateCoordUI() {
   if (bSaber) bSaber.classList.toggle('active', currentCoord === 'saber');
   if (bTer) bTer.classList.toggle('active', currentCoord === 'ter');
   document.querySelectorAll('.nav-group').forEach(g => {
-    const isGeral = !!g.querySelector('.g-geral');
-    g.style.display = (currentCoord === 'ter' && !isGeral) ? 'none' : '';
+    const isGeral  = !!g.querySelector('.g-geral');
+    const isGestao = !!g.querySelector('.g-gestao');
+    // Gestão fica visível na TER (tem Lead Time/Capacity liberados), mas só mostra os tabs marcados .ter-ok
+    g.style.display = (currentCoord === 'ter' && !isGeral && !isGestao) ? 'none' : '';
+    if (isGestao) {
+      g.querySelectorAll('.nav-tab').forEach(btn => {
+        btn.style.display = (currentCoord === 'ter' && !btn.classList.contains('ter-ok')) ? 'none' : '';
+      });
+    }
   });
   document.querySelectorAll('.nav-sep').forEach(s => { s.style.display = (currentCoord === 'ter') ? 'none' : ''; });
 }
