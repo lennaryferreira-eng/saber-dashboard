@@ -17,6 +17,12 @@
   --amber:#B45309; --amber-dim:rgba(180,83,9,.10);
   --blue:#1D5FA8; --blue-dim:rgba(29,95,168,.10);
   --purple:#6D35B8; --purple-dim:rgba(109,53,184,.10);
+  --teal:#0D9488; --teal-dim:rgba(13,148,136,.10);
+  --pink:#BE185D; --pink-dim:rgba(190,24,93,.10);
+  --indigo:#4338CA; --indigo-dim:rgba(67,56,202,.10);
+  --olive:#65A30D; --olive-dim:rgba(101,163,13,.10);
+  --terracotta:#C2410C; --terracotta-dim:rgba(194,65,12,.10);
+  --cyan:#0284C7; --cyan-dim:rgba(2,132,199,.10);
   --r:8px; --r-sm:4px;
   --sans:'Barlow Condensed','Barlow',system-ui,sans-serif;
   --serif:'Barlow Condensed',Georgia,serif;
@@ -4884,8 +4890,8 @@ function _pevMesAtualKey() {
 //  AQL — meta por consultor + gráfico de evolução (dados: p.pipeEventos, aqlMetas)
 // ═══════════════════════════════════
 let aqlChartObj = null;
-const AQL_PALETTE = { 'var(--blue)':'#2f6fed','var(--green)':'#1f9d55','var(--accent)':'#c8102e','var(--purple)':'#8E5BC4','var(--amber)':'#c07a10','var(--text-muted)':'#8a8a8a' };
-const AQL_FALLBACK = ['#2f6fed','#1f9d55','#c8102e','#8E5BC4','#c07a10','#607D8B'];
+const AQL_PALETTE = { 'var(--blue)':'#2f6fed','var(--green)':'#1f9d55','var(--accent)':'#c8102e','var(--purple)':'#8E5BC4','var(--amber)':'#c07a10','var(--teal)':'#0d9488','var(--pink)':'#db2777','var(--indigo)':'#4f46e5','var(--olive)':'#65a30d','var(--terracotta)':'#c2410c','var(--cyan)':'#0891b2','var(--text-muted)':'#8a8a8a' };
+const AQL_FALLBACK = ['#2f6fed','#1f9d55','#c8102e','#8E5BC4','#c07a10','#0d9488','#db2777','#4f46e5','#65a30d','#c2410c','#0891b2','#607D8B'];
 
 function _aqlMesAtual() {
   const selMes = document.getElementById('pev-mes');
@@ -8499,6 +8505,12 @@ const CONS_CORES = [
   {v:'var(--accent)',nome:'Vermelho'},
   {v:'var(--purple)',nome:'Roxo'},
   {v:'var(--amber)', nome:'Âmbar'},
+  {v:'var(--teal)',  nome:'Verde-azulado'},
+  {v:'var(--pink)',  nome:'Rosa'},
+  {v:'var(--indigo)',nome:'Índigo'},
+  {v:'var(--olive)', nome:'Oliva'},
+  {v:'var(--terracotta)', nome:'Terracota'},
+  {v:'var(--cyan)',  nome:'Ciano'},
   {v:'var(--text-muted)', nome:'Cinza'},
 ];
 function consRowHTML(nome, cor){
