@@ -3211,6 +3211,36 @@ function droSetAuditoriaData(projId, idx, val) {
 // ═══════════════════════════════════════════════════════
 //  GANTT DRO — seção no Capacity
 // ═══════════════════════════════════════════════════════
+// Responsável por um projeto DRO: pode estar em consultor, designer, copy OU nos responsáveis
+// das auditorias registradas (outros profissionais que não são o consultor "dono" do projeto).
+// Usado pra filtrar corretamente por Designer/Copy no Capacity (esses campos raramente
+// estão preenchidos direto no projeto DRO — o responsável real geralmente está na auditoria).
+function _droPessoas(p) {
+  const s = new Set();
+  if (p.consultor) s.add(p.consultor);
+  if (p.designer)  s.add(p.designer);
+  if (p.copy)      s.add(p.copy);
+  (p.droData?.auditorias || []).forEach(a => { if (a.responsavel) s.add(a.responsavel); });
+  return s;
+}
+function _droPessoaBate(p, valor) {
+  return valor ? _droPessoas(p).has(valor) : true;
+}
+// Verifica se `pessoa` tem uma auditoria marcada ESPECIFICAMENTE dentro da semana [semanaIni, semanaFim]
+// (usa a data real se já foi feita, senão a data prevista). Usado pra contar capacity semana a semana
+// de forma precisa — "só conta se essa pessoa tiver a auditoria dela naquela semana".
+function _droAuditoriaNaSemana(p, pessoa, semanaIni, semanaFim) {
+  if (!pessoa) return true;
+  const auds = p.droData?.auditorias || [];
+  return auds.some(a => {
+    if (a.responsavel !== pessoa) return false;
+    const dataEfetiva = a.feita ? (a.data || a.dataPrev) : a.dataPrev;
+    if (!dataEfetiva) return false;
+    const d = parseDate(dataEfetiva);
+    return d && d >= semanaIni && d <= semanaFim;
+  });
+}
+
 function buildGanttDRO(semanasExt) {
   const container = document.getElementById('gantt-dro-list');
   if (!container) return;
@@ -3227,8 +3257,10 @@ function buildGanttDRO(semanasExt) {
     });
   }
 
-  // Filtros — consultor vem do filtro principal do Gantt, auditor é próprio da seção DRO
+  // Filtros — consultor vem do filtro principal do Gantt, designer/copy também, auditor é próprio da seção DRO
   const consFilter    = document.getElementById('gantt-cons-filter')?.value || '';
+  const designerFilter= document.getElementById('gantt-designer-filter')?.value || '';
+  const copyFilter    = document.getElementById('gantt-copy-filter')?.value || '';
   const auditorFilter = document.getElementById('dro-cap-auditor')?.value || '';
 
   // Todos os projetos DRO ativos
@@ -3262,6 +3294,8 @@ function buildGanttDRO(semanasExt) {
   // Filtra projetos DRO
   const droPrjs = todosAtivos.filter(p => {
     if (consFilter && p.consultor !== consFilter) return false;
+    if (designerFilter && !_droPessoaBate(p, designerFilter)) return false;
+    if (copyFilter && !_droPessoaBate(p, copyFilter)) return false;
     if (auditorFilter) {
       const auds = (p.droData?.auditorias || []).map(a => a.responsavel).filter(Boolean);
       if (!auds.includes(auditorFilter)) return false;
@@ -7259,6 +7293,8 @@ function buildGantt() {
   // Lê auditorCapFilter APÓS buildGanttDRO para garantir que o select está populado
   const auditorCapFilter = document.getElementById('dro-cap-auditor')?.value || '';
 
+  // Responsável por um projeto DRO: já promovido a função global (ver _droPessoas/_droPessoaBate acima)
+
   // DROs filtrados pelo mesmo consultor do Gantt principal (usado na carga semanal)
   const droParaCarga = projects.filter(p => {
     if (!isDroFam(p) || !p.inicio) return false;
@@ -7267,6 +7303,10 @@ function buildGantt() {
     const hoje2 = new Date(); hoje2.setHours(0,0,0,0);
     if (p.prevFim && parseDate(p.prevFim) < hoje2) return false;
     if (consFilter && p.consultor !== consFilter) return false;
+    // Filtro de Designer/Copy: DRO não tem esses campos preenchidos na maioria dos casos,
+    // então busca o responsável em consultor/designer/copy/auditorias antes de excluir o projeto.
+    if (designerFilter && !_droPessoaBate(p, designerFilter)) return false;
+    if (copyFilter && !_droPessoaBate(p, copyFilter)) return false;
     // Se filtro de auditor ativo, inclui só projetos onde esse auditor está responsável
     if (auditorCapFilter) {
       const auds = (p.droData?.auditorias || []).map(a => a.responsavel).filter(Boolean);
@@ -7295,17 +7335,21 @@ function buildGantt() {
     // DRO/DRX contam 1 slot cheio na carga semanal (igual a um projeto EE)
     // droParaCarga e projsComDRO definidos acima
     function cargaComDRO(lista, s, pesoAuditor) {
+      const sEnd = new Date(s.getTime() + 6 * 864e5);
       // DRO/DRX contam 1 slot (mesma lógica de um projeto EE)
       return lista.reduce((acc, p) => {
         if (!temEntregaNaSemana(p, s) && !isDroFam(p)) return acc;
         if (isDroFam(p)) {
           const ini = parseDate(p.inicio);
           const fim = parseDate(p.realFim || p.prevFim);
-          const sEnd = new Date(s.getTime() + 6 * 864e5);
-          if (ini && ini <= sEnd && (!fim || fim >= s)) {
-            return acc + 1;
-          }
-          return acc;
+          if (!(ini && ini <= sEnd && (!fim || fim >= s))) return acc;
+          // Com filtro de pessoa ativo (Designer/Copy/Auditor), só conta o projeto NESSA
+          // semana se essa pessoa tiver a auditoria dela marcada especificamente nela —
+          // não basta o projeto estar "ativo" no período geral.
+          if (designerFilter  && !_droAuditoriaNaSemana(p, designerFilter,  s, sEnd)) return acc;
+          if (copyFilter      && !_droAuditoriaNaSemana(p, copyFilter,      s, sEnd)) return acc;
+          if (auditorCapFilter && !_droAuditoriaNaSemana(p, auditorCapFilter, s, sEnd)) return acc;
+          return acc + 1;
         }
         return acc + 1;
       }, 0);
