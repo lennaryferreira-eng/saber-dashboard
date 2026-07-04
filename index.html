@@ -8394,7 +8394,16 @@ function audRenderAgg(){
       +'</div>';
   }).join('');
 }
-function audHeatColor(v){ if(v===null) return 'background:var(--surface3);color:var(--text-hint);'; const h=Math.round(v*1.2); return 'background:hsl('+h+',70%,85%);color:#333;'; }
+function audHeatColor(v){
+  if(v===null) return 'background:var(--surface3);color:var(--text-hint);';
+  const t = Math.max(0, Math.min(100, v)) / 100;
+  // Curva não-linear: a maioria das notas reais cai entre 60-95, então "esticamos" essa
+  // faixa (empurrando mais pro vermelho/laranja) pra ficar fácil de ver diferença entre
+  // um 78 e um 88, em vez de ambos caírem no mesmo verde pálido.
+  const tCurva = Math.pow(t, 1.6);
+  const hue = Math.round(tCurva * 120); // 0=vermelho ... 120=verde
+  return 'background:hsl('+hue+',68%,50%);color:#fff;font-weight:700;';
+}
 function audSetHeat(k){ audHeat=k; audRenderHeat(); }
 function audRenderHeat(){
   const tabs=document.getElementById('aud-heat-tabs');
@@ -8414,7 +8423,7 @@ function audRenderHeat(){
     html+='<td style="padding:7px 8px;text-align:center;font-weight:700;color:'+cl.cor+';">'+(row.media!==null?row.media:'—')+'</td></tr>';
   });
   html+='</tbody></table>';
-  html+='<div style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:10px;color:var(--text-hint);flex-wrap:wrap;"><span>0</span><div style="flex:0 0 160px;height:10px;border-radius:5px;background:linear-gradient(90deg,hsl(0,70%,85%),hsl(60,70%,85%),hsl(120,70%,85%));"></div><span>100</span><span style="margin-left:8px;">células mais avermelhadas = dimensões a desenvolver</span></div>';
+  html+='<div style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:10px;color:var(--text-hint);flex-wrap:wrap;"><span>0</span><div style="flex:0 0 160px;height:10px;border-radius:5px;background:linear-gradient(90deg,hsl(0,68%,50%) 0%,hsl(9,68%,50%) 20%,hsl(28,68%,50%) 40%,hsl(53,68%,50%) 60%,hsl(84,68%,50%) 80%,hsl(120,68%,50%) 100%);"></div><span>100</span><span style="margin-left:8px;">células mais avermelhadas = dimensões a desenvolver</span></div>';
   body.innerHTML=html;
 }
 
