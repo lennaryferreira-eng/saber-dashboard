@@ -8160,7 +8160,7 @@ const AUD_D9_SKILLS = {
   ],
 };
 
-let audFiltro = { consultor:'', tipo:'', cliente:'', mes:'' };
+let audFiltro = { consultor:'', tipo:'', cliente:'', mes:'', semana:'' };
 let audAgg = 'consultor';
 let audHeat = 'consultor';
 let audReviewD9 = {};   // d9_itens do parse, guardados para salvar
@@ -8209,14 +8209,31 @@ function audParseObs(txt){
   return obs;
 }
 function audParseRec(txt){ const m=txt.match(/recomenda[çc][aã]o[:\s]*([\s\S]*?)(?:\n\n|$)/i); return m?m[1].replace(/\*+/g,'').trim():''; }
-function audParseD9(txt){
+function audParseD9(txt, entrega){
   txt=txt.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
   const mB=txt.match(/\nd9[:\s]*\d{1,3}[^\n]*\n([\s\S]*?)(?=\nd[1-8][:\s]|\nRecomenda|$)/i);
   if(!mB) return {};
   const itens={};
+  const ordem=[]; // valores na ordem em que apareceram no texto (pra fallback posicional)
   const reItem=/([\dA-Za-z]+\.[\dA-Za-z]+)\s*:\s*(✅|⚠️|❌)/g;
   let m;
-  while((m=reItem.exec(mB[1]))!==null){ const v=m[2]==='✅'?1:m[2]==='⚠️'?0.5:0; itens[m[1]]=v; }
+  while((m=reItem.exec(mB[1]))!==null){ const v=m[2]==='✅'?1:m[2]==='⚠️'?0.5:0; itens[m[1]]=v; ordem.push(v); }
+
+  // Se o texto colado numerou tudo sequencialmente (ex: 1.1..1.10) em vez de seguir os blocos
+  // esperados da entrega (1.x Sizing, 2.x Concorrentes, 3.x..., ...), a maioria dos IDs não bate
+  // com o checklist — nesse caso, remonta pela ORDEM de aparição em vez de exigir o ID literal.
+  const skill = AUD_D9_SKILLS[entrega];
+  if (skill) {
+    const idsEsperados = skill.flatMap(b => b.items.map(it => it.id));
+    const bateram = idsEsperados.filter(id => id in itens).length;
+    // Compara com o que foi REALMENTE colado (ordem.length), não com o total teórico do
+    // checklist (que quase nunca é atingido — só uma trilha B2C/B2B é preenchida por vez).
+    if (idsEsperados.length > 0 && ordem.length >= 3 && bateram < ordem.length / 2) {
+      const remap = {};
+      idsEsperados.forEach((id, i) => { if (ordem[i] !== undefined) remap[id] = ordem[i]; });
+      return remap;
+    }
+  }
   return itens;
 }
 
@@ -8252,7 +8269,7 @@ function audImportar(){
   const msg=document.getElementById('aud-form-msg');
   if(txt.length<30){ if(msg){msg.textContent='Cole o texto da análise do Claude.';msg.style.color='var(--accent)';} return; }
   const scores=audParseScores(txt), obs=audParseObs(txt), rec=audParseRec(txt);
-  audReviewD9=audParseD9(txt);
+  audReviewD9=audParseD9(txt, document.getElementById('aud-f-tipo')?.value || '');
   audRenderReview(scores,obs,rec);
   if(msg){msg.textContent='✓ Importado — revise e salve.';msg.style.color='var(--green)';}
 }
@@ -8344,13 +8361,26 @@ function audSalvar(){
 
 function audRemover(id){ if(!confirm('Excluir esta avaliação?')) return; auditorias=auditorias.filter(a=>a.id!==id); if(typeof upd==='function') upd(); audRenderLista(); }
 function audSetFiltro(k,v){ audFiltro[k]=v; audRenderLista(); }
-function audLimparFiltro(){ audFiltro={consultor:'',tipo:'',cliente:'',mes:''}; audRenderLista(); }
+function audLimparFiltro(){ audFiltro={consultor:'',tipo:'',cliente:'',mes:'',semana:''}; audRenderLista(); }
+// Semana = segunda-feira daquela semana, no formato AAAA-MM-DD (chave única e ordenável)
+function audWeekKey(dataStr){
+  const d=parseDate(dataStr); if(!d) return null;
+  const seg=new Date(d); const dow=seg.getDay()||7; seg.setDate(seg.getDate()-dow+1);
+  return seg.getFullYear()+'-'+String(seg.getMonth()+1).padStart(2,'0')+'-'+String(seg.getDate()).padStart(2,'0');
+}
+function audWeekLabel(key){
+  const seg=parseDate(key); if(!seg) return key;
+  const dom=new Date(seg); dom.setDate(dom.getDate()+6);
+  const fmt=d=>String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');
+  return fmt(seg)+' – '+fmt(dom);
+}
 function audFiltradas(){
   return auditorias.filter(a=>{
     if(audFiltro.consultor && a.consultor!==audFiltro.consultor) return false;
     if(audFiltro.tipo && a.entrega!==audFiltro.tipo) return false;
     if(audFiltro.cliente && a.cliente!==audFiltro.cliente) return false;
     if(audFiltro.mes){ const d=parseDate(a.data); const key=d?(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')):''; if(key!==audFiltro.mes) return false; }
+    if(audFiltro.semana && audWeekKey(a.data)!==audFiltro.semana) return false;
     return true;
   });
 }
@@ -8477,8 +8507,10 @@ function audRenderLista(){
   if(fb){
     const sel=(k,label,items)=>'<select onchange="audSetFiltro(\''+k+'\',this.value)" class="base-sel"><option value="">'+label+'</option>'+items.map(x=>'<option '+(audFiltro[k]===x?'selected':'')+'>'+x+'</option>').join('')+'</select>';
     const meses=[...new Set(auditorias.map(a=>{const d=parseDate(a.data);return d?(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')):null;}).filter(Boolean))].sort().reverse();
+    const semanas=[...new Set(auditorias.map(a=>audWeekKey(a.data)).filter(Boolean))].sort().reverse();
     fb.innerHTML=sel('consultor','Todos consultores',audConsultores())+sel('tipo','Todas entregas',AUD_TIPOS)+sel('cliente','Todos clientes',audClientes())
       + '<select onchange="audSetFiltro(\'mes\',this.value)" class="base-sel"><option value="">Todos meses</option>'+meses.map(m=>'<option '+(audFiltro.mes===m?'selected':'')+'>'+m+'</option>').join('')+'</select>'
+      + '<select onchange="audSetFiltro(\'semana\',this.value)" class="base-sel"><option value="">Todas semanas</option>'+semanas.map(w=>'<option value="'+w+'" '+(audFiltro.semana===w?'selected':'')+'>'+audWeekLabel(w)+'</option>').join('')+'</select>'
       + '<button class="base-clear" onclick="audLimparFiltro()">Limpar</button>';
   }
 
