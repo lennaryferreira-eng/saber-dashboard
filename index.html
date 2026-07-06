@@ -423,6 +423,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
         <select class="base-sel" id="f-modelo" onchange="renderBase()">
           <option value="">Todos</option>
           <option value="Estruturação Estratégica">Estruturação Estratégica</option>
+          <option value="Estruturação Estratégica 3.0">Estruturação Estratégica 3.0</option>
           <option value="DRO">DRO</option>
           <option value="DRX">DRX</option>
         </select>
@@ -3463,6 +3464,11 @@ function getBaseFiltered() {
   if (fCopy)     list = list.filter(p => p.copy === fCopy);
   if (fMotivo)   list = list.filter(p => p.motivo === fMotivo);
   if (fFlag) list = list.filter(p => p.flag === fFlag);
+  if (fModelo) list = list.filter(p => {
+    // "Estruturação Estratégica" também casa com projetos antigos gravados como 'D&P' ou sem modelo definido
+    if (fModelo === 'Estruturação Estratégica') return !p.modelo || p.modelo === 'D&P' || p.modelo === 'Estruturação Estratégica';
+    return p.modelo === fModelo;
+  });
   if (fMes)  list = list.filter(p => {
     if (!p.inicio) return false;
     const d = parseDate(p.inicio);
@@ -3789,7 +3795,8 @@ function renderBase() {
       <td contenteditable="true" data-f="nome" data-id="${p.id}" onblur="setField(this)">${p.nome}</td>
       <td style="padding:4px 8px;">
         <select class="sel" style="font-size:11px;padding:2px 4px;" data-f="modelo" data-id="${p.id}" onchange="setField(this)">
-          <option value="D&P" ${(!p.modelo||p.modelo==='D&P')?'selected':''}>D&P</option>
+          <option value="Estruturação Estratégica" ${(!p.modelo||p.modelo==='D&P'||p.modelo==='Estruturação Estratégica')?'selected':''}>Estruturação Estratégica</option>
+          <option value="Estruturação Estratégica 3.0" ${p.modelo==='Estruturação Estratégica 3.0'?'selected':''}>Estruturação Estratégica 3.0</option>
           <option value="DRO" ${p.modelo==='DRO'?'selected':''}>DRO</option>
           <option value="DRX" ${p.modelo==='DRX'?'selected':''}>DRX</option>
         </select>
