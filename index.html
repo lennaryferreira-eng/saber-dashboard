@@ -8871,12 +8871,28 @@ async function switchCoord(coord) {
 
 let sbSaveTimer = null;
 let sbLastSaved = null;
+let sbServerVersion = null; // updated_at que esta aba viu por último — usado pra travar save se alguém salvou depois
+let sbConflito = false;     // true = detectamos que outra aba/dispositivo salvou depois; save fica pausado até recarregar
 let sbChannel   = null;
 
 // ── indicador de sync na UI ──
-function setSyncStatus(msg, color) {
+function setSyncStatus(msg, color, clickable) {
   const el = document.getElementById('sync-status');
-  if (el) { el.textContent = msg; el.style.color = color || 'var(--text-hint)'; }
+  if (el) {
+    el.textContent = msg;
+    el.style.color = color || 'var(--text-hint)';
+    if (clickable) {
+      el.style.cursor = 'pointer';
+      el.style.textDecoration = 'underline';
+      el.onclick = () => location.reload();
+      el.title = 'Clique para recarregar a página';
+    } else {
+      el.style.cursor = '';
+      el.style.textDecoration = '';
+      el.onclick = null;
+      el.title = '';
+    }
+  }
 }
 
 // ── salva com debounce de 1.5s ──
@@ -8950,11 +8966,39 @@ async function sbSave() {
     setSyncStatus('⚠ Save pausado: nenhum projeto carregado', 'var(--amber)');
     return;
   }
+  // TRAVA DE CONCORRÊNCIA: se já sabemos que outra aba/dispositivo salvou depois da nossa
+  // última sincronização, não sobrescreve — precisa recarregar a página primeiro.
+  if (sbConflito) {
+    console.warn('sbSave ABORTADO: outra aba/dispositivo salvou dados mais recentes. Recarregue a página (Ctrl+Shift+R) antes de continuar editando.');
+    setSyncStatus('⚠ Recarregue a página — outra sessão salvou dados mais recentes', 'var(--accent)', true);
+    return;
+  }
+  // Confere no servidor se alguém salvou depois do que esta aba viu por último
+  if (sbServerVersion) {
+    try {
+      const checkRes = await fetch(SB_URL + '/rest/v1/' + SB_TABLE + '?id=eq.main&select=updated_at', { headers: SB_HEADERS });
+      if (checkRes.ok) {
+        const checkRows = await checkRes.json();
+        if (checkRows.length && checkRows[0].updated_at) {
+          const remoteTime = new Date(checkRows[0].updated_at).getTime();
+          const knownTime = new Date(sbServerVersion).getTime();
+          if (remoteTime > knownTime) {
+            sbConflito = true;
+            console.warn('sbSave ABORTADO: detectado save mais recente no servidor (' + checkRows[0].updated_at + ' > ' + sbServerVersion + '). Recarregue a página antes de continuar editando.');
+            setSyncStatus('⚠ Recarregue a página — outra sessão salvou dados mais recentes', 'var(--accent)', true);
+            return;
+          }
+        }
+      }
+    } catch (e) { /* checagem falhou (offline?) — segue e tenta salvar normalmente */ }
+  }
   sbPendingChanges = true;
   try {
     console.log(`sbSave: salvando ${projects.length} projetos no Supabase…`);
+    const _agoraISO = new Date().toISOString();
     const payload = {
       id: 'main',
+      updated_at: _agoraISO,
       projects:   JSON.stringify(projects),
       nps_data:   JSON.stringify(npsData),
       csp_manual: JSON.stringify(cspManual),
@@ -9005,6 +9049,7 @@ async function sbSave() {
     }
     console.log('Supabase confirmou ' + projects.length + ' projetos salvos ✓');
     sbLastSaved = new Date();
+    sbServerVersion = _agoraISO;
     sbPendingChanges = false;
     sbRetryCount = 0;
     console.log(`sbSave: confirmado ${projects.length} projetos salvos às ${sbLastSaved.toLocaleTimeString()}`);
@@ -9132,6 +9177,8 @@ async function sbLoad() {
       return;
     }
     const row = rows[0];
+    sbServerVersion = row.updated_at || null;
+    sbConflito = false; // recarregou — resolve qualquer conflito anterior
     console.log('sbLoad: row.id=', row.id, '| projects length=', row.projects ? JSON.parse(row.projects).length : 'null');
     console.log('sbLoad: primeiro projeto=', row.projects ? JSON.parse(row.projects)[0]?.nome : 'null');
 
@@ -9259,13 +9306,15 @@ function sbStartPolling() {
       });
       const rows = await res.json();
       if (!rows.length) return;
-      const remoteTime = new Date(rows[0].updated_at);
-      const agora = new Date();
-      const secondsSinceSave = sbLastSaved ? (agora - sbLastSaved) / 1000 : 0;
-      // NUNCA recarrega automaticamente — apenas avisa se outro usuário salvou
-      // O usuário decide se quer recarregar
-      if (sbLastSaved && remoteTime > sbLastSaved && secondsSinceSave > 30) {
-        setSyncStatus('↕ Dados atualizados por outro dispositivo — clique para recarregar', 'var(--blue)', true);
+      const remoteUpdatedAt = rows[0].updated_at;
+      if (!remoteUpdatedAt) return;
+      const remoteTime = new Date(remoteUpdatedAt).getTime();
+      const knownTime = sbServerVersion ? new Date(sbServerVersion).getTime() : 0;
+      // NUNCA recarrega automaticamente — trava o save e avisa; o usuário decide quando recarregar
+      if (knownTime && remoteTime > knownTime && !sbConflito) {
+        sbConflito = true;
+        console.warn('sbStartPolling: detectado save mais recente no servidor (' + remoteUpdatedAt + ' > ' + sbServerVersion + '). Saves pausados até recarregar.');
+        setSyncStatus('⚠ Recarregue a página — outra sessão salvou dados mais recentes', 'var(--accent)', true);
       }
     } catch (e) { /* silencioso */ }
   }, 30000);
