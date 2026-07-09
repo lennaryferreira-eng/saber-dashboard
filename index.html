@@ -1227,6 +1227,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
     <div id="gantt-dro-list"></div>
   </div>
     <div id="carga-consultor" style="margin-top:1.6rem;padding-top:1.2rem;border-top:1px solid var(--border);"></div>
+    <div id="carga-designer" style="margin-top:1.6rem;padding-top:1.2rem;border-top:1px solid var(--border);"></div>
 </div>
 
 <div id="cap-ter-view" style="display:none;">
@@ -7305,8 +7306,12 @@ function buildGanttTer() {
   }).join('');
 }
 
-function buildCargaSemanal(prjsAll, semanasExt) {
-  const el = document.getElementById('carga-consultor');
+function buildCargaSemanal(prjsAll, semanasExt, campo, elId, titulo, rotuloColuna) {
+  campo = campo || 'consultor';
+  elId = elId || 'carga-consultor';
+  titulo = titulo || 'Carga por consultor — semana a semana';
+  rotuloColuna = rotuloColuna || 'Consultor';
+  const el = document.getElementById(elId);
   if (!el) return;
 
   // Últimas 8 semanas + próximas 4
@@ -7324,11 +7329,11 @@ function buildCargaSemanal(prjsAll, semanasExt) {
     semanas = Array.from({length: 12}, (_, i) => { const seg = new Date(seg0); seg.setDate(seg0.getDate() + i*7); return mkSem(seg); });
   }
 
-  // Consultores únicos dos projetos filtrados
-  const cons = [...new Set(prjsAll.map(p => p.consultor).filter(Boolean))].sort();
+  // Valores únicos do campo (consultor/designer) dos projetos filtrados
+  const cons = [...new Set(prjsAll.map(p => p[campo]).filter(Boolean))].sort();
   if (!cons.length) { el.innerHTML = ''; return; }
 
-  // Para cada semana e consultor, conta projetos Em andamento
+  // Para cada semana e pessoa, conta projetos Em andamento
   function ativo(p, seg, dom) {
     const ini = parseDate(p.inicio);
     const fim = parseDate(p.realFim || p.prevFim);
@@ -7341,21 +7346,21 @@ function buildCargaSemanal(prjsAll, semanasExt) {
   const CORES = ['var(--accent)','var(--blue)','var(--green)','var(--amber)','#8E5BC4'];
 
   el.innerHTML = '<div style="margin-bottom:.6rem;">'
-    + '<div style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);margin-bottom:.5rem;">Carga por consultor — semana a semana</div>'
+    + '<div style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);margin-bottom:.5rem;">' + titulo + '</div>'
     + '<div style="overflow-x:auto;">'
     + '<table style="border-collapse:collapse;font-size:10px;min-width:100%;">'
     + '<thead><tr>'
-    + '<th style="padding:4px 8px;text-align:left;background:var(--surface2);border-bottom:1px solid var(--border);position:sticky;left:0;z-index:2;min-width:80px;">Consultor</th>'
+    + '<th style="padding:4px 8px;text-align:left;background:var(--surface2);border-bottom:1px solid var(--border);position:sticky;left:0;z-index:2;min-width:80px;">' + rotuloColuna + '</th>'
     + semanas.map(s => '<th style="padding:4px 6px;text-align:center;background:' + (s.isAtual ? 'rgba(212,0,26,.08)' : 'var(--surface2)') + ';border-bottom:1px solid var(--border);border-left:1px solid var(--border);white-space:nowrap;font-weight:' + (s.isAtual ? '700' : '400') + ';color:' + (s.isAtual ? 'var(--accent)' : 'var(--text-hint)') + ';">' + s.label + '</th>').join('')
     + '</tr></thead>'
     + '<tbody>'
     + cons.map((c, ci) => {
         const cor = CORES[ci % CORES.length];
-        const max = Math.max(...semanas.map(s => prjsAll.filter(p => p.consultor === c && ativo(p, s.seg, s.dom)).length), 1);
+        const max = Math.max(...semanas.map(s => prjsAll.filter(p => p[campo] === c && ativo(p, s.seg, s.dom)).length), 1);
         return '<tr>'
           + '<td style="padding:4px 8px;font-weight:600;color:var(--text);background:var(--surface);position:sticky;left:0;border-bottom:1px solid var(--border);">' + c + '</td>'
           + semanas.map(s => {
-              const n = prjsAll.filter(p => p.consultor === c && ativo(p, s.seg, s.dom)).length;
+              const n = prjsAll.filter(p => p[campo] === c && ativo(p, s.seg, s.dom)).length;
               const pct = Math.round(n / max * 100);
               return '<td style="padding:4px 6px;text-align:center;border-left:1px solid var(--border);border-bottom:1px solid var(--border);background:' + (s.isAtual ? 'rgba(212,0,26,.04)' : 'transparent') + ';">'
                 + '<div style="display:inline-flex;flex-direction:column;align-items:center;gap:2px;">'
@@ -7520,6 +7525,7 @@ function buildGantt() {
   });
   const projsComDRO = [...prjs, ...droParaCarga];
   buildCargaSemanal(projsComDRO, semanas);
+  buildCargaSemanal(projsComDRO, semanas, 'designer', 'carga-designer', 'Carga por designer — semana a semana', 'Designer');
 
   const cargaDiv = document.getElementById('carga-semanal');
   if (cargaDiv) {
