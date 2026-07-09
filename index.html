@@ -1228,6 +1228,18 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
   </div>
     <div id="carga-consultor" style="margin-top:1.6rem;padding-top:1.2rem;border-top:1px solid var(--border);"></div>
     <div id="carga-designer" style="margin-top:1.6rem;padding-top:1.2rem;border-top:1px solid var(--border);"></div>
+
+  <div class="card" style="margin-top:1.2rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:1rem;">
+      <div class="card-title" style="margin-bottom:0;">Andamento dos Designers</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span style="font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Designer</span>
+        <select class="base-sel" id="ad-designer-filter" onchange="buildAndamentoDesigners()"><option value="">Todos</option></select>
+      </div>
+    </div>
+    <p style="font-size:11px;color:var(--text-hint);margin:-0.5rem 0 1rem;">O designer participa de 3 momentos por projeto: Kickoff, Análise de Ambientes (marcada manualmente no Lead Time) e Plano de Decolagem.</p>
+    <div id="ad-tbody-wrap" style="overflow-x:auto;"></div>
+  </div>
 </div>
 
 <div id="cap-ter-view" style="display:none;">
@@ -6331,6 +6343,39 @@ function ltSaveDate(id) {
   buildLtAnalise(getLtFiltered());
 }
 
+// Marca qual das 4 entregas intermediárias é a "Análise de Ambientes" (varia por projeto).
+// Kickoff (etapa 1) e Decolagem (etapa 6) já são fixas e sempre contam como momento do designer.
+function setAnaliseAmbientes(id, val) {
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!p) return;
+  p.analiseAmbientesEtapa = val === '' ? null : parseInt(val);
+  upd();
+}
+
+// Índices das etapas (0-6) que envolvem o designer: Kickoff + Decolagem sempre,
+// mais a Análise de Ambientes se já foi marcada pra esse projeto.
+function designerEtapas(p) {
+  const etapas = [1, 6];
+  if (Number.isInteger(p.analiseAmbientesEtapa) && p.analiseAmbientesEtapa >= 0 && p.analiseAmbientesEtapa <= 6) {
+    etapas.push(p.analiseAmbientesEtapa);
+  }
+  return [...new Set(etapas)];
+}
+// Data registrada (real) de uma etapa específica do projeto — entregas pode ser objeto ou array
+function etapaData(p, idx) {
+  const ent = p.entregas;
+  if (!ent) return '';
+  const stage = Array.isArray(ent) ? ent[idx] : ent[String(idx)];
+  return (stage && stage.real) || '';
+}
+// true se o designer tem alguma etapa registrada (Kickoff/Análise/Decolagem) dentro da semana [seg,dom]
+function designerAtivoNaSemana(p, seg, dom) {
+  return designerEtapas(p).some(i => {
+    const d = parseDate(etapaData(p, i));
+    return d && d >= seg && d <= dom;
+  });
+}
+
 
 // ── SCORE DE ENTREGA ──────────────────────────────────────────
 function ltShowScoreInput(id) {
@@ -6577,6 +6622,13 @@ function buildLeadTime() {
           + '<div id="lt-date-row-' + p.id + '" style="display:none;display:flex;gap:6px;align-items:center;">'
           + '<input type="date" id="lt-date-' + p.id + '" class="sel" style="font-size:11px;flex:1;" onchange="ltSaveDate(' + p.id + ')">'
           + '<span id="lt-date-result-' + p.id + '" style="font-size:10px;font-weight:600;min-width:60px;"></span>'
+          + '</div>'
+          + '<div style="margin-top:6px;padding-top:6px;border-top:1px dashed var(--border);">'
+          + '<div style="font-size:9px;color:var(--text-hint);margin-bottom:2px;">🎨 Análise de Ambientes é:</div>'
+          + '<select class="sel" style="width:100%;font-size:10px;" onchange="setAnaliseAmbientes(' + p.id + ',this.value)">'
+          + '<option value="">— não marcada —</option>'
+          + [2,3,4,5].map(i => '<option value="' + i + '" ' + (p.analiseAmbientesEtapa===i?'selected':'') + '>' + SEM_SHORT[i] + '</option>').join('')
+          + '</select>'
           + '</div>'
           + '</td>'
           + '<td style="padding:6px 10px;">'
@@ -7306,7 +7358,7 @@ function buildGanttTer() {
   }).join('');
 }
 
-function buildCargaSemanal(prjsAll, semanasExt, campo, elId, titulo, rotuloColuna) {
+function buildCargaSemanal(prjsAll, semanasExt, campo, elId, titulo, rotuloColuna, ativoFn) {
   campo = campo || 'consultor';
   elId = elId || 'carga-consultor';
   titulo = titulo || 'Carga por consultor — semana a semana';
@@ -7333,8 +7385,9 @@ function buildCargaSemanal(prjsAll, semanasExt, campo, elId, titulo, rotuloColun
   const cons = [...new Set(prjsAll.map(p => p[campo]).filter(Boolean))].sort();
   if (!cons.length) { el.innerHTML = ''; return; }
 
-  // Para cada semana e pessoa, conta projetos Em andamento
+  // Para cada semana e pessoa, conta projetos ativos (usa ativoFn customizado se fornecido)
   function ativo(p, seg, dom) {
+    if (ativoFn) return ativoFn(p, seg, dom);
     const ini = parseDate(p.inicio);
     const fim = parseDate(p.realFim || p.prevFim);
     if (!ini) return false;
@@ -7371,6 +7424,50 @@ function buildCargaSemanal(prjsAll, semanasExt, campo, elId, titulo, rotuloColun
           + '</tr>';
       }).join('')
     + '</tbody></table></div></div>';
+}
+
+// Tabela de andamento real dos designers: Kickoff, Análise de Ambientes e Decolagem por projeto
+function buildAndamentoDesigners() {
+  const wrap = document.getElementById('ad-tbody-wrap');
+  if (!wrap) return;
+
+  const selDes = document.getElementById('ad-designer-filter');
+  const todosDesigners = [...new Set(projects.map(p => p.designer).filter(Boolean))].sort();
+  if (selDes) {
+    const cur = selDes.value;
+    selDes.innerHTML = '<option value="">Todos</option>' + todosDesigners.map(d => '<option' + (d===cur?' selected':'') + '>' + d + '</option>').join('');
+  }
+  const filtro = selDes?.value || '';
+
+  let lista = projects.filter(p => p.designer && !isDroFam(p));
+  if (filtro) lista = lista.filter(p => p.designer === filtro);
+  lista.sort((a,b) => (a.designer||'').localeCompare(b.designer||'') || (a.nome||'').localeCompare(b.nome||''));
+
+  if (!lista.length) { wrap.innerHTML = '<div style="font-size:12px;color:var(--text-hint);padding:12px 0;">Nenhum projeto com designer atribuído.</div>'; return; }
+
+  function badge(dataStr) {
+    if (dataStr) return '<span style="color:var(--green);font-weight:700;">✓ ' + fmtD(dataStr) + '</span>';
+    return '<span style="color:var(--text-hint);">— pendente</span>';
+  }
+
+  wrap.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px;">'
+    + '<thead><tr>'
+    + ['Designer','Projeto','Kickoff','Análise de Ambientes','Plano de Decolagem'].map(h => '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">' + h + '</th>').join('')
+    + '</tr></thead><tbody>'
+    + lista.map(p => {
+        const kickoff = etapaData(p, 1);
+        const temAA = Number.isInteger(p.analiseAmbientesEtapa);
+        const aa = temAA ? etapaData(p, p.analiseAmbientesEtapa) : '';
+        const decolagem = etapaData(p, 6);
+        return '<tr style="border-bottom:1px solid var(--border);">'
+          + '<td style="padding:6px 8px;color:var(--text);font-weight:600;">' + p.designer + '</td>'
+          + '<td style="padding:6px 8px;color:var(--text-muted);">' + (p.nome||'—') + '</td>'
+          + '<td style="padding:6px 8px;">' + badge(kickoff) + '</td>'
+          + '<td style="padding:6px 8px;">' + (temAA ? badge(aa) : '<span style="color:var(--amber);">⚠ não marcada</span>') + '</td>'
+          + '<td style="padding:6px 8px;">' + badge(decolagem) + '</td>'
+          + '</tr>';
+      }).join('')
+    + '</tbody></table>';
 }
 
 function buildGantt() {
@@ -7525,7 +7622,8 @@ function buildGantt() {
   });
   const projsComDRO = [...prjs, ...droParaCarga];
   buildCargaSemanal(projsComDRO, semanas);
-  buildCargaSemanal(projsComDRO, semanas, 'designer', 'carga-designer', 'Carga por designer — semana a semana', 'Designer');
+  buildCargaSemanal(projsComDRO, semanas, 'designer', 'carga-designer', 'Carga por designer — semana a semana (só Kickoff, Análise de Ambientes e Decolagem)', 'Designer', designerAtivoNaSemana);
+  buildAndamentoDesigners();
 
   const cargaDiv = document.getElementById('carga-semanal');
   if (cargaDiv) {
