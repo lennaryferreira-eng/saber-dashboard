@@ -7602,6 +7602,10 @@ function buildGantt() {
           if (auditorCapFilter && !_droAuditoriaNaSemana(p, auditorCapFilter, s, sEnd)) return acc;
           return acc + 1;
         }
+        // Com filtro de Designer ativo, só conta o projeto nessa semana se ela tiver de fato
+        // um dos 3 momentos obrigatórios dele (Kickoff/Análise de Ambientes/Decolagem) registrado
+        // aqui — não basta o projeto estar "ativo" no período geral do Lead Time.
+        if (designerFilter && !designerAtivoNaSemana(p, s, sEnd)) return acc;
         return acc + 1;
       }, 0);
     }
