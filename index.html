@@ -7576,15 +7576,20 @@ function buildGantt() {
     // Conta projetos com entrega naquela semana:
     // 1. Tem data REAL registrada nessa semana, OU
     // 2. Próxima etapa calculada cai nessa semana E etapa anterior está registrada
+    // OBS: a contagem começa no Kickoff (não no início do projeto), porque o Growthclass
+    // é uma reunião que ninguém do squad participa — a semana que só tem Growth não deve
+    // contar. Se Growth e Kickoff caem na mesma semana, essa semana já conta normalmente
+    // (o início da contagem é o Kickoff, então ela nunca fica de fora nesse caso).
     function temEntregaNaSemana(p, sDate) {
       const dIp = parseDate(p.inicio);
       if (!dIp) return false;
       const sEnd = new Date(sDate.getTime() + 6 * 864e5);
+      const _dKickoffP = (function() { const d = semDataEtapa(p, 1); const dd = d ? parseDate(d) : null; return dd || dIp; })();
       const _dFprevP = p.prevFim ? parseDate(p.prevFim) : new Date(dIp.getTime() + 45 * 864e5);
       const _dFrealP = p.realFim ? parseDate(p.realFim) : null;
       const _dFdecolP = (function() { const d = semDataEtapa(p, 6); return d ? parseDate(d) : null; })();
       const dFp = [_dFprevP, _dFrealP, _dFdecolP].filter(Boolean).reduce((a,b) => a > b ? a : b);
-      return dIp <= sEnd && dFp >= sDate;
+      return _dKickoffP <= sEnd && dFp >= sDate;
     }
     // DRO/DRX contam 1 slot cheio na carga semanal (igual a um projeto EE)
     // droParaCarga e projsComDRO definidos acima
