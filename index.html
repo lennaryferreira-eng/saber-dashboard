@@ -6341,11 +6341,14 @@ function setAnaliseAmbientes(id, val) {
 }
 
 // Índices das etapas (0-6) que envolvem o designer: Kickoff + Decolagem sempre,
-// mais a Análise de Ambientes se já foi marcada pra esse projeto.
+// mais a Análise de Ambientes — se já foi marcada pra esse projeto, usa ela; senão,
+// assume a 2ª Entrega (índice 3), que é onde ela geralmente acontece por padrão.
 function designerEtapas(p) {
   const etapas = [1, 6];
   if (Number.isInteger(p.analiseAmbientesEtapa) && p.analiseAmbientesEtapa >= 0 && p.analiseAmbientesEtapa <= 6) {
     etapas.push(p.analiseAmbientesEtapa);
+  } else {
+    etapas.push(3); // suposição padrão: 2ª Entrega
   }
   return [...new Set(etapas)];
 }
