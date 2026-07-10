@@ -7585,10 +7585,17 @@ function buildGantt() {
       if (!dIp) return false;
       const sEnd = new Date(sDate.getTime() + 6 * 864e5);
       const _dKickoffP = (function() { const d = semDataEtapa(p, 1); const dd = d ? parseDate(d) : null; return dd || dIp; })();
-      const _dFprevP = p.prevFim ? parseDate(p.prevFim) : new Date(dIp.getTime() + 45 * 864e5);
       const _dFrealP = p.realFim ? parseDate(p.realFim) : null;
-      const _dFdecolP = (function() { const d = semDataEtapa(p, 6); return d ? parseDate(d) : null; })();
-      const dFp = [_dFprevP, _dFrealP, _dFdecolP].filter(Boolean).reduce((a,b) => a > b ? a : b);
+      // Se o projeto já concluiu de verdade (realFim preenchido), essa é a data que manda —
+      // não estica até a previsão (prevFim), senão um projeto já finalizado continua contando.
+      let dFp;
+      if (_dFrealP) {
+        dFp = _dFrealP;
+      } else {
+        const _dFprevP = p.prevFim ? parseDate(p.prevFim) : new Date(dIp.getTime() + 45 * 864e5);
+        const _dFdecolP = (function() { const d = semDataEtapa(p, 6); return d ? parseDate(d) : null; })();
+        dFp = [_dFprevP, _dFdecolP].filter(Boolean).reduce((a,b) => a > b ? a : b);
+      }
       return _dKickoffP <= sEnd && dFp >= sDate;
     }
     // DRO/DRX contam 1 slot cheio na carga semanal (igual a um projeto EE)
@@ -7694,10 +7701,16 @@ function buildGantt() {
   prjs.forEach(p => {
     const dIp = parseDate(p.inicio);
     if (!dIp) return;
-    const _dFprevP = p.prevFim ? parseDate(p.prevFim) : new Date(dIp.getTime() + 45 * 864e5);
     const _dFrealP = p.realFim ? parseDate(p.realFim) : null;
-    const _dFdecolP = (function() { const d = semDataEtapa(p, 6); return d ? parseDate(d) : null; })();
-    const dFp = [_dFprevP, _dFrealP, _dFdecolP].filter(Boolean).reduce((a,b) => a > b ? a : b);
+    // Mesma regra: se já concluiu de verdade, a data real manda — não estica até a previsão.
+    let dFp;
+    if (_dFrealP) {
+      dFp = _dFrealP;
+    } else {
+      const _dFprevP = p.prevFim ? parseDate(p.prevFim) : new Date(dIp.getTime() + 45 * 864e5);
+      const _dFdecolP = (function() { const d = semDataEtapa(p, 6); return d ? parseDate(d) : null; })();
+      dFp = [_dFprevP, _dFdecolP].filter(Boolean).reduce((a,b) => a > b ? a : b);
+    }
     const entp = p.entregas || {};
     const reaisp = {};
     for (let si = 0; si <= 6; si++) {
@@ -7742,11 +7755,18 @@ function buildGantt() {
   // Gantt D&P sempre mostra seus projetos (filtro de auditor só afeta seção DRO abaixo)
   tbody.innerHTML = prjs.map(p => {
     const dI    = parseDate(p.inicio);
-    // dF: max(prevFim, realFim, decolagem calculada) para garantir que barra chega até Decolagem
-    const _dFprev = p.prevFim ? parseDate(p.prevFim) : new Date(dI.getTime() + 45 * 864e5);
+    // dF: se já concluiu de verdade (realFim), essa é a data que manda — não estica até a
+    // previsão (prevFim). Senão, usa max(prevFim, decolagem calculada) pra garantir que a
+    // barra chega até a Decolagem estimada.
     const _dFreal = p.realFim ? parseDate(p.realFim) : null;
-    const _dFdecol = (function() { const d = semDataEtapa(p, 6); return d ? parseDate(d) : null; })();
-    const dF = [_dFprev, _dFreal, _dFdecol].filter(Boolean).reduce((a,b) => a > b ? a : b);
+    let dF;
+    if (_dFreal) {
+      dF = _dFreal;
+    } else {
+      const _dFprev = p.prevFim ? parseDate(p.prevFim) : new Date(dI.getTime() + 45 * 864e5);
+      const _dFdecol = (function() { const d = semDataEtapa(p, 6); return d ? parseDate(d) : null; })();
+      dF = [_dFprev, _dFdecol].filter(Boolean).reduce((a,b) => a > b ? a : b);
+    }
     const total = Math.round((dF - dI) / 864e5) || 45;
     const color = MON_COLOR_FN(p);
     const nome  = p.nome.length > 26 ? p.nome.slice(0, 24) + '…' : p.nome;
