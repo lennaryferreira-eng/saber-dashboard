@@ -7424,6 +7424,9 @@ function buildGantt() {
   const designerFilter = document.getElementById('gantt-designer-filter')?.value || '';
   const copyFilter     = document.getElementById('gantt-copy-filter')?.value || '';
   const etapaFilter    = document.getElementById('gantt-etapa-filter')?.value ?? '';
+  // true se qualquer filtro estiver ativo — a regra de ignorar semana só-com-Growth só vale aqui;
+  // sem nenhum filtro aplicado, a contagem geral considera todas as etapas normalmente.
+  const algumFiltroAtivo = !!(consFilter || statusFilter || mesFilter || designerFilter || copyFilter || etapaFilter);
   const months       = parseInt(document.getElementById('gantt-period')?.value || '6');
   const hoje         = new Date(); hoje.setHours(0,0,0,0);
 
@@ -7584,7 +7587,9 @@ function buildGantt() {
       const dIp = parseDate(p.inicio);
       if (!dIp) return false;
       const sEnd = new Date(sDate.getTime() + 6 * 864e5);
-      const _dKickoffP = (function() { const d = semDataEtapa(p, 1); const dd = d ? parseDate(d) : null; return dd || dIp; })();
+      const _dKickoffP = algumFiltroAtivo
+        ? (function() { const d = semDataEtapa(p, 1); const dd = d ? parseDate(d) : null; return dd || dIp; })()
+        : dIp;
       const _dFrealP = p.realFim ? parseDate(p.realFim) : null;
       // Se o projeto já concluiu de verdade (realFim preenchido), essa é a data que manda —
       // não estica até a previsão (prevFim), senão um projeto já finalizado continua contando.
