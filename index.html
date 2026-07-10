@@ -1228,18 +1228,6 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
   </div>
     <div id="carga-consultor" style="margin-top:1.6rem;padding-top:1.2rem;border-top:1px solid var(--border);"></div>
     <div id="carga-designer" style="margin-top:1.6rem;padding-top:1.2rem;border-top:1px solid var(--border);"></div>
-
-  <div class="card" style="margin-top:1.2rem;">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:1rem;">
-      <div class="card-title" style="margin-bottom:0;">Andamento dos Designers</div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <span style="font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Designer</span>
-        <select class="base-sel" id="ad-designer-filter" onchange="buildAndamentoDesigners()"><option value="">Todos</option></select>
-      </div>
-    </div>
-    <p style="font-size:11px;color:var(--text-hint);margin:-0.5rem 0 1rem;">O designer participa de 3 momentos por projeto: Kickoff, Análise de Ambientes (marcada manualmente no Lead Time) e Plano de Decolagem.</p>
-    <div id="ad-tbody-wrap" style="overflow-x:auto;"></div>
-  </div>
 </div>
 
 <div id="cap-ter-view" style="display:none;">
@@ -7426,50 +7414,6 @@ function buildCargaSemanal(prjsAll, semanasExt, campo, elId, titulo, rotuloColun
     + '</tbody></table></div></div>';
 }
 
-// Tabela de andamento real dos designers: Kickoff, Análise de Ambientes e Decolagem por projeto
-function buildAndamentoDesigners() {
-  const wrap = document.getElementById('ad-tbody-wrap');
-  if (!wrap) return;
-
-  const selDes = document.getElementById('ad-designer-filter');
-  const todosDesigners = [...new Set(projects.map(p => p.designer).filter(Boolean))].sort();
-  if (selDes) {
-    const cur = selDes.value;
-    selDes.innerHTML = '<option value="">Todos</option>' + todosDesigners.map(d => '<option' + (d===cur?' selected':'') + '>' + d + '</option>').join('');
-  }
-  const filtro = selDes?.value || '';
-
-  let lista = projects.filter(p => p.designer && !isDroFam(p));
-  if (filtro) lista = lista.filter(p => p.designer === filtro);
-  lista.sort((a,b) => (a.designer||'').localeCompare(b.designer||'') || (a.nome||'').localeCompare(b.nome||''));
-
-  if (!lista.length) { wrap.innerHTML = '<div style="font-size:12px;color:var(--text-hint);padding:12px 0;">Nenhum projeto com designer atribuído.</div>'; return; }
-
-  function badge(dataStr) {
-    if (dataStr) return '<span style="color:var(--green);font-weight:700;">✓ ' + fmtD(dataStr) + '</span>';
-    return '<span style="color:var(--text-hint);">— pendente</span>';
-  }
-
-  wrap.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px;">'
-    + '<thead><tr>'
-    + ['Designer','Projeto','Kickoff','Análise de Ambientes','Plano de Decolagem'].map(h => '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">' + h + '</th>').join('')
-    + '</tr></thead><tbody>'
-    + lista.map(p => {
-        const kickoff = etapaData(p, 1);
-        const temAA = Number.isInteger(p.analiseAmbientesEtapa);
-        const aa = temAA ? etapaData(p, p.analiseAmbientesEtapa) : '';
-        const decolagem = etapaData(p, 6);
-        return '<tr style="border-bottom:1px solid var(--border);">'
-          + '<td style="padding:6px 8px;color:var(--text);font-weight:600;">' + p.designer + '</td>'
-          + '<td style="padding:6px 8px;color:var(--text-muted);">' + (p.nome||'—') + '</td>'
-          + '<td style="padding:6px 8px;">' + badge(kickoff) + '</td>'
-          + '<td style="padding:6px 8px;">' + (temAA ? badge(aa) : '<span style="color:var(--amber);">⚠ não marcada</span>') + '</td>'
-          + '<td style="padding:6px 8px;">' + badge(decolagem) + '</td>'
-          + '</tr>';
-      }).join('')
-    + '</tbody></table>';
-}
-
 function buildGantt() {
   const consFilter     = document.getElementById('gantt-cons-filter')?.value || '';
   const statusFilter   = document.getElementById('gantt-status-filter')?.value || '';
@@ -7623,7 +7567,6 @@ function buildGantt() {
   const projsComDRO = [...prjs, ...droParaCarga];
   buildCargaSemanal(projsComDRO, semanas);
   buildCargaSemanal(projsComDRO, semanas, 'designer', 'carga-designer', 'Carga por designer — semana a semana (só Kickoff, Análise de Ambientes e Decolagem)', 'Designer', designerAtivoNaSemana);
-  buildAndamentoDesigners();
 
   const cargaDiv = document.getElementById('carga-semanal');
   if (cargaDiv) {
@@ -7842,7 +7785,10 @@ function buildGantt() {
         }
 
         // marcadores de entrega nas posições das datas planejadas
-        const markers = [0,1,2,3,4,5,6].map(si => {
+        // Com filtro de Designer ativo, mostra só as etapas que ele obrigatoriamente participa
+        // (Kickoff, Análise de Ambientes marcada pro projeto, e Decolagem) — não as 7 genéricas.
+        const etapasParaMarcadores = designerFilter ? designerEtapas(p) : [0,1,2,3,4,5,6];
+        const markers = etapasParaMarcadores.map(si => {
           const ent   = p.entregas && (p.entregas[si] || p.entregas[String(si)]);
           const hasReal = ent && ent.real;
           // Usa data real se disponível, senão planejada para posicionar no Gantt
