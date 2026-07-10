@@ -7699,13 +7699,13 @@ function buildGantt() {
       if (!(dIp <= sEnd && dFp >= s)) return;
       const toISOf = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
       const sISO = toISOf(s), eISO = toISOf(sEnd);
-      const reaisHere = [0,1,2,3,4,5,6].filter(si => reaisp[si] && reaisp[si] >= sISO && reaisp[si] <= eISO);
+      const reaisHere = (designerFilter ? designerEtapas(p) : [0,1,2,3,4,5,6]).filter(si => reaisp[si] && reaisp[si] >= sISO && reaisp[si] <= eISO);
       if (reaisHere.length > 0) {
         reaisHere.forEach(si => shown.add(si));
         labelMap[sISO] = reaisHere.map(si => SEM_LABEL[si]).join('<br>');
       } else {
         const cands = [];
-        for (let si = 0; si <= 6; si++) {
+        for (const si of (designerFilter ? designerEtapas(p) : [0,1,2,3,4,5,6])) {
           if (si in reaisp) continue;
           if (shown.has(si)) continue;
           const d = semDataEtapa(p, si);
@@ -7772,7 +7772,7 @@ function buildGantt() {
         const _sISO = s.getFullYear()+'-'+String(s.getMonth()+1).padStart(2,'0')+'-'+String(s.getDate()).padStart(2,'0');
         const _eISO = sEnd.getFullYear()+'-'+String(sEnd.getMonth()+1).padStart(2,'0')+'-'+String(sEnd.getDate()).padStart(2,'0');
         // Etapas com data REAL nesta semana
-        const etapasReaisNaSemana = [0,1,2,3,4,5,6].filter(si => {
+        const etapasReaisNaSemana = (designerFilter ? designerEtapas(p) : [0,1,2,3,4,5,6]).filter(si => {
           const ent2 = p.entregas && (p.entregas[si] || p.entregas[String(si)]);
           return ent2 && ent2.real && ent2.real >= _sISO && ent2.real <= _eISO;
         });
