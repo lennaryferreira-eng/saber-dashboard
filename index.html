@@ -23,6 +23,10 @@
   0%{transform:translateY(-20px) rotate(0deg);opacity:1;}
   100%{transform:translateY(420px) rotate(720deg);opacity:0;}
 }
+@keyframes perfPhotoPulse {
+  0%,100%{filter:brightness(1);transform:scale(1);}
+  50%{filter:brightness(1.12);transform:scale(1.04);}
+}
 :root {
   --bg:#F5F2EB; --surface:#FFFFFF; --surface2:#F0EDE6; --surface3:#E8E4DC;
   --border:rgba(0,0,0,.09); --border-md:rgba(0,0,0,.16);
@@ -4113,36 +4117,64 @@ function setFilter(filterKey, mesKey, fnName) {
   // específico é escolhido (não no "Ano completo").
   if (filterKey === 'performance' && mesKey) {
     const top = window.__perfTop;
-    if (top && top.nome) showPerfCelebration(top.nome, top.dot);
+    if (top && top.nome) showPerfCelebration(top);
   }
 }
 
-// Animação de celebração: mostra o Top Performer do mês com coroa + confete, some sozinha em 3s.
-function showPerfCelebration(nome, dot) {
-  if (!nome) return;
+// Animação de celebração: mostra o Top Performer do mês com foto, coroa, placar de KPIs
+// e confete bem vibrante — some sozinha em 3s.
+function showPerfCelebration(top) {
+  if (!top || !top.nome) return;
+  const { nome, dot, foto, atingidos, totalKpis } = top;
+  const cor = dot || '#D4001A';
   const old = document.getElementById('perf-celebration-overlay');
   if (old) old.remove();
 
   const overlay = document.createElement('div');
   overlay.id = 'perf-celebration-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:5000;display:flex;align-items:center;justify-content:center;background:rgba(26,23,20,.55);backdrop-filter:blur(2px);animation:perfCelebFadeIn .3s ease;overflow:hidden;pointer-events:none;';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:5000;display:flex;align-items:center;justify-content:center;'
+    + 'background:radial-gradient(circle at 50% 45%, rgba(212,0,26,.35), rgba(10,6,6,.82) 65%);'
+    + 'backdrop-filter:blur(3px);animation:perfCelebFadeIn .25s ease;overflow:hidden;pointer-events:none;';
 
-  const emojis = ['🎉','🎊','✨','🥳','🎈','⭐'];
+  // Confete bem mais denso e variado (emojis + tarjas coloridas retangulares)
+  const emojis = ['🎉','🎊','✨','🥳','🎈','⭐','💥','🌟'];
+  const coresTarja = ['#D4001A','#F59E0B','#16A34A','#1D5FA8','#8E5BC4','#FFD24D'];
   let confettiHTML = '';
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 55; i++) {
     const left  = Math.round(Math.random() * 100);
-    const delay = (Math.random() * 0.6).toFixed(2);
-    const dur   = (1.8 + Math.random() * 1.2).toFixed(2);
-    const size  = 16 + Math.round(Math.random() * 16);
-    const emoji = emojis[i % emojis.length];
-    confettiHTML += '<span style="position:absolute;top:-30px;left:' + left + '%;font-size:' + size + 'px;animation:perfConfettiFall ' + dur + 's ease-in ' + delay + 's forwards;">' + emoji + '</span>';
+    const delay = (Math.random() * 0.7).toFixed(2);
+    const dur   = (1.4 + Math.random() * 1.3).toFixed(2);
+    if (i % 3 === 0) {
+      // tarja de confete retangular colorida, girando
+      const w = 8 + Math.round(Math.random()*6), hh = 14 + Math.round(Math.random()*10);
+      const c = coresTarja[i % coresTarja.length];
+      confettiHTML += '<span style="position:absolute;top:-30px;left:' + left + '%;width:' + w + 'px;height:' + hh + 'px;background:' + c + ';border-radius:2px;animation:perfConfettiFall ' + dur + 's ease-in ' + delay + 's forwards;"></span>';
+    } else {
+      const size  = 16 + Math.round(Math.random() * 18);
+      const emoji = emojis[i % emojis.length];
+      confettiHTML += '<span style="position:absolute;top:-30px;left:' + left + '%;font-size:' + size + 'px;animation:perfConfettiFall ' + dur + 's ease-in ' + delay + 's forwards;">' + emoji + '</span>';
+    }
   }
+
+  const kpiHTML = (atingidos !== undefined && totalKpis)
+    ? '<div style="display:inline-flex;align-items:center;gap:8px;margin-top:14px;padding:8px 20px;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.35);border-radius:30px;animation:perfNamePop .5s ease .35s both;">'
+      + '<span style="font-size:22px;">🎯</span>'
+      + '<span style="font-family:var(--cond);font-size:1.4rem;font-weight:800;color:#fff;">' + atingidos + '/' + totalKpis + '</span>'
+      + '<span style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.8);">KPIs batidos</span>'
+      + '</div>'
+    : '';
+
+  const fotoHTML = foto
+    ? '<div style="width:110px;height:110px;border-radius:50%;margin:0 auto;overflow:hidden;border:4px solid ' + cor + ';box-shadow:0 0 0 6px rgba(255,255,255,.25), 0 0 40px ' + cor + ';animation:perfPhotoPulse 1.4s ease-in-out infinite;background-image:url(\'' + foto + '\');background-size:cover;background-position:center;"></div>'
+    : '<div style="width:110px;height:110px;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:800;color:#fff;background:' + cor + ';border:4px solid #fff;box-shadow:0 0 0 6px rgba(255,255,255,.25), 0 0 40px ' + cor + ';animation:perfPhotoPulse 1.4s ease-in-out infinite;">' + (nome[0]||'?') + '</div>';
 
   overlay.innerHTML = confettiHTML
     + '<div style="text-align:center;position:relative;">'
-    + '<div style="font-size:64px;animation:perfCrownBounce .7s cubic-bezier(.34,1.56,.64,1);">👑</div>'
-    + '<div style="font-family:var(--cond);font-size:2.6rem;font-weight:800;color:#fff;margin-top:4px;text-shadow:0 4px 20px rgba(0,0,0,.4);animation:perfNamePop .5s ease .15s both;">' + nome + '</div>'
-    + '<div style="font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:' + (dot || '#D4001A') + ';margin-top:6px;animation:perfNamePop .5s ease .25s both;">🏆 Top Performer do mês</div>'
+    + '<div style="font-size:56px;animation:perfCrownBounce .7s cubic-bezier(.34,1.56,.64,1);margin-bottom:-10px;">👑</div>'
+    + fotoHTML
+    + '<div style="font-family:var(--cond);font-size:3rem;font-weight:900;color:#fff;margin-top:10px;text-shadow:0 4px 24px rgba(0,0,0,.5), 0 0 30px ' + cor + ';animation:perfNamePop .5s ease .18s both;letter-spacing:.02em;">' + nome + '</div>'
+    + '<div style="font-size:13px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:' + cor + ';margin-top:4px;text-shadow:0 2px 8px rgba(0,0,0,.5);animation:perfNamePop .5s ease .26s both;">🏆 Top Performer do mês</div>'
+    + kpiHTML
     + '</div>';
 
   document.body.appendChild(overlay);
@@ -8067,7 +8099,15 @@ function buildPerformance() {
 
   // ── Renderiza cards ────────────────────────────────────────
   const primeiroNome = cards.length > 0 ? cards[0].nome : null;
-  window.__perfTop = { nome: primeiroNome, dot: primeiroNome ? ((window.dotColors || {})[primeiroNome] || null) : null };
+  const primeiroCard = cards.length > 0 ? cards[0] : null;
+  const primeiraFoto = primeiroNome ? (perfFotos[primeiroNome] || localStorage.getItem('perf-foto-' + primeiroNome) || '') : '';
+  window.__perfTop = primeiroNome ? {
+    nome: primeiroNome,
+    dot: (window.dotColors || {})[primeiroNome] || null,
+    foto: primeiraFoto,
+    atingidos: primeiroCard.atingidos,
+    totalKpis: primeiroCard.totalComDado,
+  } : null;
   el.innerHTML = cards.map((c, idx) => {
     const rank   = rankMap[idx];
     const isGold = rank === 1;
