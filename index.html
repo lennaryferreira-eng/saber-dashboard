@@ -4182,9 +4182,6 @@ function showPerfCelebration(top) {
       + '</div>';
   }).join('');
 
-  // Tempo total: espera a lista inteira terminar de aparecer + um respiro antes de sumir
-  const tempoAteFadeOut = Math.round((KPI_BASE_DELAY + listaKpis.length * KPI_STEP) * 1000) + 1100;
-
   overlay.innerHTML = confettiHTML
     + '<div style="text-align:center;position:relative;background:rgba(8,5,5,.78);border:1px solid rgba(255,255,255,.14);border-radius:26px;padding:30px 44px 34px;box-shadow:0 24px 70px rgba(0,0,0,.55);">'
     + '<div style="font-size:52px;animation:perfCrownBounce .7s cubic-bezier(.34,1.56,.64,1);margin-bottom:-8px;">👑</div>'
@@ -4195,12 +4192,9 @@ function showPerfCelebration(top) {
     + '<button onclick="closePerfCelebration()" title="Fechar" style="position:absolute;top:-14px;right:-14px;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.35);color:#fff;font-size:15px;line-height:1;cursor:pointer;pointer-events:auto;display:flex;align-items:center;justify-content:center;transition:background .15s;" onmouseover="this.style.background=\'rgba(255,255,255,.32)\'" onmouseout="this.style.background=\'rgba(255,255,255,.15)\'">✕</button>'
     + '</div>';
 
+  // Sem fechamento automático — fica na tela até o usuário clicar no ✕ (closePerfCelebration).
   document.body.appendChild(overlay);
   overlay._timers = [];
-  overlay._timers.push(setTimeout(() => {
-    overlay.style.animation = 'perfCelebFadeOut .4s ease forwards';
-    overlay._timers.push(setTimeout(() => overlay.remove(), 400));
-  }, tempoAteFadeOut));
 }
 
 // Fecha a animação de celebração manualmente (botão ✕), cancelando os timers automáticos
