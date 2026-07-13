@@ -6,6 +6,23 @@
 <title>Coordenação SABER — Painel 2026</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;0,900;1,400&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
+@keyframes perfCelebFadeIn { from{opacity:0;} to{opacity:1;} }
+@keyframes perfCelebFadeOut { from{opacity:1;} to{opacity:0;} }
+@keyframes perfCrownBounce {
+  0%{transform:translateY(-40px) scale(.5) rotate(-15deg);opacity:0;}
+  50%{transform:translateY(10px) scale(1.15) rotate(5deg);opacity:1;}
+  70%{transform:translateY(-5px) scale(1) rotate(-3deg);}
+  100%{transform:translateY(0) scale(1) rotate(0deg);}
+}
+@keyframes perfNamePop {
+  0%{transform:scale(.3);opacity:0;}
+  60%{transform:scale(1.08);opacity:1;}
+  100%{transform:scale(1);}
+}
+@keyframes perfConfettiFall {
+  0%{transform:translateY(-20px) rotate(0deg);opacity:1;}
+  100%{transform:translateY(420px) rotate(720deg);opacity:0;}
+}
 :root {
   --bg:#F5F2EB; --surface:#FFFFFF; --surface2:#F0EDE6; --surface3:#E8E4DC;
   --border:rgba(0,0,0,.09); --border-md:rgba(0,0,0,.16);
@@ -4092,6 +4109,47 @@ function buildFilterBar(containerId, filterKey, onChangeFn) {
 function setFilter(filterKey, mesKey, fnName) {
   filters[filterKey] = mesKey;
   window[fnName]();
+  // Animação de "Top Performer do mês" — só na aba Performance, e só quando um mês
+  // específico é escolhido (não no "Ano completo").
+  if (filterKey === 'performance' && mesKey) {
+    const top = window.__perfTop;
+    if (top && top.nome) showPerfCelebration(top.nome, top.dot);
+  }
+}
+
+// Animação de celebração: mostra o Top Performer do mês com coroa + confete, some sozinha em 3s.
+function showPerfCelebration(nome, dot) {
+  if (!nome) return;
+  const old = document.getElementById('perf-celebration-overlay');
+  if (old) old.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'perf-celebration-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:5000;display:flex;align-items:center;justify-content:center;background:rgba(26,23,20,.55);backdrop-filter:blur(2px);animation:perfCelebFadeIn .3s ease;overflow:hidden;pointer-events:none;';
+
+  const emojis = ['🎉','🎊','✨','🥳','🎈','⭐'];
+  let confettiHTML = '';
+  for (let i = 0; i < 30; i++) {
+    const left  = Math.round(Math.random() * 100);
+    const delay = (Math.random() * 0.6).toFixed(2);
+    const dur   = (1.8 + Math.random() * 1.2).toFixed(2);
+    const size  = 16 + Math.round(Math.random() * 16);
+    const emoji = emojis[i % emojis.length];
+    confettiHTML += '<span style="position:absolute;top:-30px;left:' + left + '%;font-size:' + size + 'px;animation:perfConfettiFall ' + dur + 's ease-in ' + delay + 's forwards;">' + emoji + '</span>';
+  }
+
+  overlay.innerHTML = confettiHTML
+    + '<div style="text-align:center;position:relative;">'
+    + '<div style="font-size:64px;animation:perfCrownBounce .7s cubic-bezier(.34,1.56,.64,1);">👑</div>'
+    + '<div style="font-family:var(--cond);font-size:2.6rem;font-weight:800;color:#fff;margin-top:4px;text-shadow:0 4px 20px rgba(0,0,0,.4);animation:perfNamePop .5s ease .15s both;">' + nome + '</div>'
+    + '<div style="font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:' + (dot || '#D4001A') + ';margin-top:6px;animation:perfNamePop .5s ease .25s both;">🏆 Top Performer do mês</div>'
+    + '</div>';
+
+  document.body.appendChild(overlay);
+  setTimeout(() => {
+    overlay.style.animation = 'perfCelebFadeOut .4s ease forwards';
+    setTimeout(() => overlay.remove(), 400);
+  }, 2600);
 }
 
 // buildQuarterBody com suporte a filtro
@@ -8009,6 +8067,7 @@ function buildPerformance() {
 
   // ── Renderiza cards ────────────────────────────────────────
   const primeiroNome = cards.length > 0 ? cards[0].nome : null;
+  window.__perfTop = { nome: primeiroNome, dot: primeiroNome ? ((window.dotColors || {})[primeiroNome] || null) : null };
   el.innerHTML = cards.map((c, idx) => {
     const rank   = rankMap[idx];
     const isGold = rank === 1;
