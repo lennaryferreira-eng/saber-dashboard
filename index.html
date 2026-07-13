@@ -2438,7 +2438,7 @@ const PERFIS = {
   'suzana2026':    { nome: 'Suzana',   consultor: 'Suzana' },
 };
 // Abas que ficam visíveis pra quem loga como consultor (não-ADM) — as demais somem do menu.
-const CONSULTOR_TABS_PERMITIDAS = ['base', 'aql', 'leadtime', 'performance', 'auditoria'];
+const CONSULTOR_TABS_PERMITIDAS = ['base', 'aql', 'leadtime', 'performance', 'auditoria', 'monetizacao'];
 
 let currentPerfil = null;
 
@@ -5777,15 +5777,21 @@ function calcMon() {
   const cur  = filters['mon'];
   const curM = cur ? ALL_MESES.find(x => x.key === cur) : null;
 
+  // Se logado como consultor (acesso travado), mostra só a monetização DELE — não do squad
+  // inteiro. Como tudo abaixo deriva de projsMon/realPorMes, filtrar aqui já propaga pra
+  // tabela, totais e chips por consultor automaticamente.
+  const consLock = (currentPerfil && currentPerfil.consultor) || '';
+
   let projsMon = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && p.conv === 'Monetizado' && (p.monetizacoes||[]).length);
+  if (consLock) projsMon = projsMon.filter(p => p.consultor === consLock);
 
   let total = 0, count = 0, totalOT = 0, totalRec = 0;
   const consMap = {};
   const projetosNoFiltro = new Set();
 
-  // realizado por mês/tipo (tabela de metas) — itera TODA monetização
+  // realizado por mês/tipo (tabela de metas) — itera TODA monetização (só do consultor, se travado)
   const realPorMes = {}, realOTPorMes = {}, realRecPorMes = {};
-  projects.forEach(p => {
+  (consLock ? projects.filter(p => p.consultor === consLock) : projects).forEach(p => {
     if (isDroFam(p)) return;
     (p.monetizacoes||[]).forEach(m => {
       const mesKey = ALL_MESES.find(x => x.label + '/' + x.ano === m.mesMon)?.key;
