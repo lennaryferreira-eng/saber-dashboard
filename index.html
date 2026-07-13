@@ -5856,9 +5856,9 @@ function calcMon() {
   set('mon-ticket', count > 0 ? BRL((totalOT + totalRec) / count) : '—');
   set('ov-mon',  BRL(total)); set('ov2-mon', BRL(total));
 
-  // chips por consultor
+  // chips por consultor — se travado, só o próprio; senão, o squad inteiro
   window.CONS_MON = window.CONS_MON || ['Caio','Leonam','Loma','Camila','Cleiton'];
-  const CONS_MON = window.CONS_MON;
+  const CONS_MON = consLock ? [consLock] : window.CONS_MON;
   CONS_MON.forEach(c => { if (!consMap[c]) consMap[c] = {t:0,n:0}; });
   window.dotColors = window.dotColors || {'Caio':'var(--blue)','Leonam':'var(--green)','Loma':'var(--accent)','Camila':'var(--purple)','Cleiton':'var(--amber)'};
   const dotColors = window.dotColors;
