@@ -807,6 +807,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
           <option value="rec">Recorrente</option>
         </select>
         <button class="base-clear" onclick="clearPipeFunilFilters()" style="font-size:11px;">Limpar</button>
+        <button id="pipe-lista-toggle-btn" onclick="togglePipeLista()" class="sel" style="font-size:11px;padding:5px 12px;cursor:pointer;white-space:nowrap;">▾ Recolher lista de projetos</button>
       </div>
     </div>
     <div class="collapsible-body"><div id="pipe-funil"></div></div>
@@ -850,8 +851,8 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
   </div>
 
   <div class="card" style="margin-bottom:1.2rem;">
-    <div class="card-title">Funil de conversão — AQL → Proposta → Fechado</div>
-    <p style="font-size:11px;color:var(--text-hint);margin:-0.3rem 0 1rem;">Considera os projetos com registro no mês/consultor filtrados acima. "Fechado" reflete o status atual de conversão do projeto (pode ter fechado depois do mês do registro).</p>
+    <div class="card-title">Funil de conversão — Oportunidade/Proposta → Reunião feita → Fechado</div>
+    <p style="font-size:11px;color:var(--text-hint);margin:-0.3rem 0 1rem;">Considera os projetos com registro no mês/consultor filtrados acima. "Fechado" conta a venda registrada NESSE MESMO MÊS (não o status geral/atual do projeto) — é o fechamento da AQL levantada, não uma foto da conversão do projeto.</p>
     <div id="aql-funil"></div>
   </div>
 
@@ -1886,7 +1887,8 @@ function novoPipeEvento(d){ d=d||{}; return {
   data: d.data || '',                       // 'YYYY-MM-DD'
   valorOT: d.valorOT || '', valorRec: d.valorRec || '',
   escopo: d.escopo || '', obs: d.obs || '',
-  origem: d.origem || ''                     // '' (manual) | 'auto' (gerado pela etapa)
+  origem: d.origem || '',                    // '' (manual) | 'auto' (gerado pela etapa)
+  reuniaoFeita: d.reuniaoFeita || false,      // checkbox marcado na lista de registro
 }; }
 function ensurePipeEventos(p){ if (!Array.isArray(p.pipeEventos)) p.pipeEventos = []; return p; }
 
@@ -2320,6 +2322,15 @@ function toggleSection(btn){
   btn.style.transform = hidden ? '' : 'rotate(180deg)';
 }
 
+// Lista de projetos do Pipeline pode ser recolhida (fica só o funil visível, sem a tabela)
+let _pipeListaRecolhida = false;
+function togglePipeLista() {
+  _pipeListaRecolhida = !_pipeListaRecolhida;
+  const btn = document.getElementById('pipe-lista-toggle-btn');
+  if (btn) btn.textContent = _pipeListaRecolhida ? '▸ Mostrar lista de projetos' : '▾ Recolher lista de projetos';
+  buildPipeline();
+}
+
 function buildPipeline() {
   const selCons = document.getElementById('pipe-f-cons');
   if (selCons) {
@@ -2343,21 +2354,35 @@ function buildPipeline() {
   if (consFilter) ativos = ativos.filter(p => p.consultor === consFilter);
   if (fOport) ativos = ativos.filter(p => p.oport === fOport);
 
-  const oEtapas = ['Mapeado (AQL)','Apresentar proposta (SQL)','Proposta apresentada (SAL)','Follow (COMMIT)'];
+  const oEtapas = ['Mapeado (AQL)','Apresentar proposta (SQL)','Proposta apresentada','Fechamento'];
   function parseVal(v) { const n = parseFloat((v||'').replace(/\./g,'').replace(',','.')); return isNaN(n) ? 0 : n; }
   const stageIdx = o => oEtapas.indexOf(o);
+  // AQL guarda o HISTÓRICO completo de eventos (um projeto pode ter mais de uma proposta ao
+  // longo do tempo); o Lead Time só guarda a etapa ATUAL (um valor só). Por isso as duas
+  // primeiras etapas do funil (que a AQL também rastreia) puxam do histórico de eventos —
+  // mais confiável que o campo único do Lead Time, que pode até "regredir" se um novo AQL
+  // for registrado depois. "Proposta apresentada" agora vem do checkbox "Reunião feita"
+  // marcado numa Proposta na AQL, e "Fechamento" vem da monetização do projeto — nenhuma
+  // das duas depende mais do campo Oportunidade do Lead Time.
+  const temEventoAql = (p, tipo) => (p.pipeEventos || []).some(e => e.tipo === tipo);
+  const jaMapeado          = p => stageIdx(p.oport) >= 0 || temEventoAql(p, 'Oportunidade') || temEventoAql(p, 'Proposta');
+  const jaApresentouProp   = p => stageIdx(p.oport) >= 1 || temEventoAql(p, 'Proposta');
+  const jaTeveReuniao      = p => (p.pipeEventos || []).some(e => e.tipo === 'Proposta' && e.reuniaoFeita);
+  const jaFechou           = p => p.conv === 'Monetizado';
 
-  // Oportunidades = projetos ativos com etapa de oportunidade definida
-  let oports = ativos.filter(p => oEtapas.includes(p.oport));
+  // Oportunidades = projetos ativos com etapa de oportunidade definida (via Lead Time OU via
+  // histórico de eventos na AQL)
+  let oports = ativos.filter(p => oEtapas.includes(p.oport) || jaMapeado(p));
   const hasOT  = p => !!p.escopos    || parseVal(p.valorOport)    > 0;
   const hasRec = p => !!p.escoposRec || parseVal(p.valorOportRec) > 0;
   if (fTipo === 'ot')  oports = oports.filter(hasOT);
   if (fTipo === 'rec') oports = oports.filter(hasRec);
 
-  // Funil reverso / cumulativo: cada etapa conta quem está NELA OU ALÉM
+  // Cada etapa agora tem sua PRÓPRIA fonte de dado (não é mais um único campo ordenado)
   const corEtapa = ['var(--blue)','var(--blue)','var(--amber)','var(--green)'];
+  const etapaCheck = [jaMapeado, jaApresentouProp, jaTeveReuniao, jaFechou];
   const etapas = oEtapas.map((label, i) => {
-    const prjs = oports.filter(p => stageIdx(p.oport) >= i);
+    const prjs = oports.filter(etapaCheck[i]);
     return {
       label, count: prjs.length, cor: corEtapa[i],
       valOT:  prjs.reduce((a,p)=> a + parseVal(p.valorOport), 0),
@@ -2397,7 +2422,10 @@ function buildPipeline() {
 
   const oColors = {'Mapeado (AQL)':'var(--blue)','Apresentar proposta (SQL)':'var(--blue)','Proposta apresentada (SAL)':'var(--amber)','Follow (COMMIT)':'var(--green)'};
   const rows = oports.slice().sort((a,b)=> (stageIdx(b.oport)-stageIdx(a.oport)) || (a.nome||'').localeCompare(b.nome||''));
-  const tabela = '<div style="margin-top:14px;overflow-x:auto;">'
+  const tabelaHeader = '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;">'
+    + '<span style="font-size:11px;font-weight:600;color:var(--text);">Lista de projetos no funil (' + rows.length + ')</span>'
+    + '</div>';
+  const tabela = _pipeListaRecolhida ? '' : '<div style="margin-top:8px;overflow-x:auto;">'
     + '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
     + '<thead><tr>'
     + ['Projeto','Consultor','Etapa','Escopo','Valor'].map(h => '<th style="text-align:left;padding:4px 8px;border-bottom:1px solid var(--border);font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">'+h+'</th>').join('')
@@ -2417,7 +2445,7 @@ function buildPipeline() {
       }).join('') : '<tr><td colspan="5" style="padding:12px 8px;color:var(--text-hint);text-align:center;">Nenhuma oportunidade no funil</td></tr>')
     + '</tbody></table></div>';
 
-  el.innerHTML = barAtivos + funilHTML + totalHTML + tabela;
+  el.innerHTML = barAtivos + funilHTML + totalHTML + tabelaHeader + tabela;
 
   // Atualiza também a Pipe da Semana
   buildPipeSemana();
@@ -2438,7 +2466,7 @@ const PERFIS = {
   'suzana2026':    { nome: 'Suzana',   consultor: 'Suzana' },
 };
 // Abas que ficam visíveis pra quem loga como consultor (não-ADM) — as demais somem do menu.
-const CONSULTOR_TABS_PERMITIDAS = ['base', 'aql', 'leadtime', 'performance', 'auditoria', 'monetizacao'];
+const CONSULTOR_TABS_PERMITIDAS = ['base', 'aql', 'leadtime', 'performance', 'auditoria', 'monetizacao', 'pipeline'];
 
 let currentPerfil = null;
 
@@ -5363,7 +5391,7 @@ function buildAqlMetas() {
   }).join('');
 }
 
-// Funil AQL -> Proposta -> Fechado, para os registros do mes/consultor filtrados
+// Funil Oportunidade/Proposta -> Reunião feita -> Fechado, para os registros do mes/consultor filtrados
 function buildAqlFunil() {
   const box = document.getElementById('aql-funil');
   if (!box) return;
@@ -5374,16 +5402,21 @@ function buildAqlFunil() {
   if (consF) evs = evs.filter(e => e.consultor === consF);
 
   const totalAQL = evs.length;
-  const propostas = evs.filter(e => e.tipo === 'Proposta').length;
+  const reunioesFeitas = evs.filter(e => e.reuniaoFeita).length;
   const projIds = [...new Set(evs.map(e => e.projId))];
+  const mesLabel = mesInfo.label + '/' + mesInfo.ano;
   const fechados = projIds.filter(id => {
     const p = (typeof projects !== 'undefined' ? projects : []).find(pp => pp.id === id);
-    return p && p.conv === 'Monetizado';
+    if (!p) return false;
+    // "Fechado" é o número de vendas registradas NESSE MÊS (mesMon do evento de
+    // monetização) — não o status geral/atual do projeto (que pode ter mudado depois).
+    // É o fechamento da AQL levantada, não uma "foto" da conversão do projeto.
+    return (p.monetizacoes || []).some(m => m.mesMon === mesLabel);
   }).length;
 
   const etapas = [
-    { nome: 'AQL', v: totalAQL, cor: 'var(--blue)' },
-    { nome: 'Proposta', v: propostas, cor: 'var(--amber)' },
+    { nome: 'Oportunidade/Proposta', v: totalAQL, cor: 'var(--blue)' },
+    { nome: 'Reunião feita', v: reunioesFeitas, cor: 'var(--amber)' },
     { nome: 'Fechado', v: fechados, cor: 'var(--green)' },
   ];
   const max = Math.max(1, totalAQL);
@@ -5548,7 +5581,7 @@ function buildPipeEventos() {
   const lista = document.getElementById('pev-lista');
   if (!lista) return;
   if (!evs.length) {
-    lista.innerHTML = '<div class="tbl-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>Projeto</th><th>Consultor</th><th>Valores (OT / Rec)</th><th>Escopo / Obs</th><th></th></tr></thead><tbody>' + emptyRow(7, 'Nenhum evento registrado em ' + (label||'—')) + '</tbody></table></div>';
+    lista.innerHTML = '<div class="tbl-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>Projeto</th><th>Consultor</th><th>Valores (OT / Rec)</th><th>Escopo / Obs</th><th>Reunião</th><th></th></tr></thead><tbody>' + emptyRow(8, 'Nenhum evento registrado em ' + (label||'—')) + '</tbody></table></div>';
     return;
   }
   const tipoSel = (e) => `<select class="sel" style="font-size:10px;width:118px;color:${PEV_COR[e.tipo]||'var(--text)'};font-weight:600;" onchange="updPipeEvento('${e.projId}','${e.id}','tipo',this.value)">`
@@ -5560,9 +5593,10 @@ function buildPipeEventos() {
     <td>${e.consultor||'—'}</td>
     <td style="white-space:nowrap;"><input class="sel" style="font-size:10px;width:78px;" placeholder="OT" value="${dv(e.valorOT)}" onblur="updPipeEvento('${e.projId}','${e.id}','valorOT',this.value)"> <input class="sel" style="font-size:10px;width:78px;" placeholder="Rec" value="${dv(e.valorRec)}" onblur="updPipeEvento('${e.projId}','${e.id}','valorRec',this.value)"></td>
     <td><input class="sel" style="font-size:10px;width:160px;" placeholder="—" value="${(dv(e.escopo)+(e.obs?(' · '+e.obs):'')).replace(/"/g,'&quot;')}" onblur="updPipeEvento('${e.projId}','${e.id}','escopo',this.value)"></td>
+    <td style="text-align:center;"><input type="checkbox" ${e.reuniaoFeita?'checked':''} title="Reunião feita" onchange="updPipeEvento('${e.projId}','${e.id}','reuniaoFeita',this.checked)" style="accent-color:var(--green);width:16px;height:16px;cursor:pointer;"></td>
     <td style="text-align:center;"><button class="sel" style="font-size:12px;line-height:1;padding:3px 8px;cursor:pointer;color:var(--text-hint);" title="Remover" onclick="delPipeEvento('${e.projId}','${e.id}')">✕</button></td>
   </tr>`).join('');
-  lista.innerHTML = '<div class="tbl-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>Projeto</th><th>Consultor</th><th>Valores (OT / Rec)</th><th>Escopo / Obs</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  lista.innerHTML = '<div class="tbl-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>Projeto</th><th>Consultor</th><th>Valores (OT / Rec)</th><th>Escopo / Obs</th><th>Reunião</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>';
 }
 
 // Passo C — quadro de controle semana a semana (semana × consultor × tipo)
@@ -5614,12 +5648,23 @@ function buildPipeEventosMatriz(label, ano, consF) {
     + '<tr style="border-top:2px solid var(--border);">' + totRow + '</tr></tbody></table></div>';
 }
 
+// Sincroniza os campos do Lead Time (Oportunidade, Escopos, Próximo Contato) sempre que
+// um evento de AQL/Proposta é criado — Proposta -> "Apresentar proposta (SQL)",
+// Oportunidade -> "Mapeado (AQL)".
+function syncLeadTimeFromAqlEvento(p, ev) {
+  if (!p || !ev) return;
+  p.oport = ev.tipo === 'Proposta' ? 'Apresentar proposta (SQL)' : 'Mapeado (AQL)';
+  if (ev.escopo) p.escopos = ev.escopo;
+  if (ev.data) p.proximoContato = ev.data;
+}
+
 function addPipeEventoObj(projId, ev) {
   const p = projects.find(x => String(x.id) === String(projId));
   if (!p) return null;
   ensurePipeEventos(p);
   const novo = novoPipeEvento(ev);
   p.pipeEventos.push(novo);
+  syncLeadTimeFromAqlEvento(p, novo);
   return p;
 }
 function delPipeEvento(projId, evId) {
