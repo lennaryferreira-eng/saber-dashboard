@@ -31,6 +31,7 @@
   from{opacity:0;transform:translateY(10px);}
   to{opacity:1;transform:translateY(0);}
 }
+.viewer-locked { background:var(--surface3) !important;color:var(--text-hint) !important;cursor:not-allowed !important;opacity:.75; }
 :root {
   --bg:#F5F2EB; --surface:#FFFFFF; --surface2:#F0EDE6; --surface3:#E8E4DC;
   --border:rgba(0,0,0,.09); --border-md:rgba(0,0,0,.16);
@@ -1394,7 +1395,11 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
 
   <section id="sec-performance" class="section">
     <div class="sec-head"><h2 class="sec-title">Performance</h2><p class="sec-desc">Ranking de consultores por KPIs — 2026.</p></div>
-    <div id="perf-filter-bar" style="margin-bottom:1.2rem;"></div>
+    <div id="perf-filter-bar" style="margin-bottom:.6rem;"></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.2rem;">
+      <span style="font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Consultor</span>
+      <select class="base-sel" id="perf-f-cons" onchange="buildPerformance()"><option value="">Todos</option></select>
+    </div>
     <!-- Ranking superior com scroll horizontal -->
     <div style="overflow-x:auto;padding-bottom:8px;margin-bottom:1.5rem;">
       <div id="perf-cards" style="display:flex;gap:16px;flex-wrap:nowrap;min-width:max-content;padding:4px 2px 8px;"></div>
@@ -1671,7 +1676,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
 var _carregandoInicial = false; // flag de carga inicial (declarada no topo para evitar TDZ)
 
 // ── MODO VISUALIZAÇÃO (link com ?view) — somente leitura, nunca salva ──
-const VIEWER = new URLSearchParams(location.search).has('view');
+let VIEWER = new URLSearchParams(location.search).has('view'); // também vira true pra qualquer perfil não-ADM ao logar
 function _initViewerMode(){
   if(!VIEWER) return;
   document.body.classList.add('viewer');
@@ -2497,9 +2502,15 @@ function restoreBackup() {
 // Aplica um perfil já validado (usado tanto pelo modal opcional quanto pela tela de bloqueio)
 function _aplicarLogin(perfil) {
   currentPerfil = perfil;
+  // Todo mundo que não é ADM entra em modo só-visualização — bloqueia qualquer save no Supabase
+  // (reaproveita a mesma trava do link "?view", que já é respeitada em todos os pontos de save).
+  VIEWER = !!perfil.consultor;
   updatePerfilBtn();
   applyPerfilFilters();
   updatePerfilNavVisibility();
+  applyViewerLockdown();
+  // Consultor não acessa a TER de jeito nenhum — se estava lá, volta pra SABER
+  if (perfil.consultor && currentCoord === 'ter') { switchCoord('saber'); }
   if (perfil.consultor && currentCoord === 'saber') {
     const atual = document.querySelector('.section.active')?.id?.replace('sec-', '');
     if (!CONSULTOR_TABS_PERMITIDAS.includes(atual)) show(CONSULTOR_TABS_PERMITIDAS[0]);
@@ -2522,11 +2533,13 @@ function doLogin() {
 
 function doLogout() {
   currentPerfil = null;
+  VIEWER = new URLSearchParams(location.search).has('view'); // volta ao padrão da URL
   closeLoginModal();
   updatePerfilBtn();
   // remove travas dos selects
   document.querySelectorAll('.filter-locked').forEach(el => el.classList.remove('filter-locked'));
   updatePerfilNavVisibility();
+  applyViewerLockdown();
   // esquece a sessão e volta a bloquear o acesso — precisa logar de novo pra continuar usando
   try { localStorage.removeItem('saber_gate_pwd'); } catch (e) {}
   const gate = document.getElementById('login-gate');
@@ -2572,10 +2585,32 @@ function checkGateSession() {
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', checkGateSession); else checkGateSession();
 
+// Trava visualmente os campos de EDIÇÃO de dado quando VIEWER=true (não mexe em filtros,
+// que usam a classe .base-sel e devem continuar clicáveis pra navegar/filtrar normalmente).
+// Sincroniza nos dois sentidos: se VIEWER virar false de novo (ADM logou, ou "Sair"), destrava.
+function applyViewerLockdown() {
+  document.querySelectorAll('input.sel, select.sel, textarea.sel').forEach(el => {
+    el.disabled = VIEWER;
+    el.classList.toggle('viewer-locked', VIEWER);
+  });
+  document.querySelectorAll('[contenteditable]').forEach(el => {
+    el.setAttribute('contenteditable', VIEWER ? 'false' : 'true');
+    el.classList.toggle('viewer-locked', VIEWER);
+  });
+}
+// Observa qualquer conteúdo novo renderizado (innerHTML trocado, linha de tabela nova, etc.)
+// e aplica a trava automaticamente nele também — sem isso, cada tela nova reabriria destravada.
+const _viewerLockObserver = new MutationObserver(() => applyViewerLockdown());
+_viewerLockObserver.observe(document.body, { childList: true, subtree: true });
+
 // Esconde do menu as abas que o consultor logado não pode acessar (só vale na SABER —
 // a TER ainda não tem esse controle de acesso). ADM ou deslogado vê tudo normalmente.
 function updatePerfilNavVisibility() {
   const restringir = !!(currentPerfil && currentPerfil.consultor) && currentCoord === 'saber';
+  // Esconde o botão de trocar pra Coordenação TER — consultores só acessam a SABER.
+  const ehConsultor = !!(currentPerfil && currentPerfil.consultor);
+  const btnTer = document.getElementById('coord-btn-ter');
+  if (btnTer) btnTer.style.display = ehConsultor ? 'none' : '';
   document.querySelectorAll('nav .nav-tab').forEach(btn => {
     const m = (btn.getAttribute('onclick') || '').match(/show\('([a-z]+)'\)/);
     if (!m) return;
@@ -2608,7 +2643,8 @@ function updatePerfilBtn() {
   const btn = document.getElementById('perfil-btn');
   if (!btn) return;
   if (currentPerfil) {
-    btn.textContent = '👤 ' + currentPerfil.nome.toUpperCase();
+    const sufixo = currentPerfil.consultor ? ' · SOMENTE LEITURA' : ' · ADM';
+    btn.textContent = '👤 ' + currentPerfil.nome.toUpperCase() + sufixo;
     btn.style.background = 'var(--accent)';
     btn.style.color = '#fff';
     btn.style.borderColor = 'var(--accent)';
@@ -5246,8 +5282,17 @@ function buildAqlConsolidado() {
   const mesInfo = _aqlMesAtual();
   if (!mesInfo) { box.innerHTML = ''; return; }
   const meta = aqlMetas[mesInfo.key] || {};
-  const total = meta.total || 0;
-  const evs = pipeEventosDoMes(mesInfo.label, mesInfo.ano); // squad inteiro, sempre
+  // Se logado como consultor (acesso travado), mostra só a meta/realizado DELE — não do squad inteiro.
+  const consLock = (currentPerfil && currentPerfil.consultor) || '';
+  let total, evs;
+  if (consLock) {
+    const pct = parseFloat(meta['cons_' + consLock + '_pct'] || 0);
+    total = pct > 0 ? Math.round((meta.total || 0) * pct / 100) : 0;
+    evs = pipeEventosDoMes(mesInfo.label, mesInfo.ano).filter(e => e.consultor === consLock);
+  } else {
+    total = meta.total || 0;
+    evs = pipeEventosDoMes(mesInfo.label, mesInfo.ano); // squad inteiro
+  }
   const realizado = evs.length;
   const pctMeta = total > 0 ? Math.round(realizado / total * 100) : null;
   const ritmoInfo = _aqlRitmoInfo(mesInfo);
@@ -5289,8 +5334,11 @@ function buildAqlMetas() {
   if (!chips) return;
 
   const ritmoInfo = _aqlRitmoInfo(mesInfo);
+  // Se logado como consultor (acesso travado), mostra só o próprio chip — esconde os dos colegas.
+  const consLock = (currentPerfil && currentPerfil.consultor) || '';
+  const listaConsultores = consLock ? [consLock] : window.CONS_MON;
 
-  chips.innerHTML = window.CONS_MON.map(nome => {
+  chips.innerHTML = listaConsultores.map(nome => {
     const pct = parseFloat(meta['cons_' + nome + '_pct'] || 0);
     const metaCons = pct > 0 ? Math.round(total * pct / 100) : 0;
     const real = porCons[nome] || 0;
@@ -8269,8 +8317,35 @@ function buildPerformance() {
       atingido: (k.atingidoOverride !== undefined && k.atingidoOverride !== null) ? k.atingidoOverride : (k.val >= k.meta),
     })),
   } : null;
-  el.innerHTML = cards.map((c, idx) => {
-    const rank   = rankMap[idx];
+
+  // Filtro de Consultor: se logado como consultor (acesso travado), força o próprio nome —
+  // senão respeita o dropdown manual (ADM/deslogado podem escolher "Todos" ou um específico).
+  const consLock = (currentPerfil && currentPerfil.consultor) || '';
+  const selCons = document.getElementById('perf-f-cons');
+  if (selCons) {
+    if (consLock) {
+      if (![...selCons.options].some(o => o.value === consLock)) {
+        const opt = document.createElement('option'); opt.value = consLock; opt.textContent = consLock;
+        selCons.appendChild(opt);
+      }
+      selCons.value = consLock;
+      selCons.classList.add('filter-locked');
+    } else {
+      const curV = selCons.value;
+      selCons.innerHTML = '<option value="">Todos</option>' + CONS.map(n => '<option' + (n===curV?' selected':'') + '>' + n + '</option>').join('');
+    }
+  }
+  const filtroConsultor = consLock || (selCons ? selCons.value : '');
+
+  let cardsParaExibir = cards, rankMapParaExibir = rankMap;
+  if (filtroConsultor) {
+    const idxF = cards.findIndex(c => c.nome === filtroConsultor);
+    cardsParaExibir = idxF >= 0 ? [cards[idxF]] : [];
+    rankMapParaExibir = idxF >= 0 ? [rankMap[idxF]] : [];
+  }
+
+  el.innerHTML = cardsParaExibir.map((c, idx) => {
+    const rank   = rankMapParaExibir[idx];
     const isGold = rank === 1;
     const isSilv = rank === 2;
     const rankBadge = isGold ? '🥈' : isSilv ? '' : '';
@@ -9213,6 +9288,8 @@ function updateCoordUI() {
 
 async function switchCoord(coord) {
   if (coord === currentCoord) return;
+  // Consultor (não-ADM) não acessa a TER de jeito nenhum, nem por clique manual/console.
+  if (coord === 'ter' && currentPerfil && currentPerfil.consultor) return;
   // CRÍTICO: cancela qualquer save pendente da coordenação anterior — sem isso, um save
   // agendado (debounce de 1.5s) pode disparar já apontando pra tabela nova, gravando
   // os dados errados nela.
