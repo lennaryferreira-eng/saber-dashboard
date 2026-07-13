@@ -4117,11 +4117,16 @@ function buildFilterBar(containerId, filterKey, onChangeFn) {
 function setFilter(filterKey, mesKey, fnName) {
   filters[filterKey] = mesKey;
   window[fnName]();
-  // Animação de "Top Performer do mês" — só na aba Performance, e só quando um mês
-  // específico é escolhido (não no "Ano completo").
+  // Animação de "Top Performer do mês" — só na aba Performance, só quando um mês
+  // específico é escolhido (não no "Ano completo"), e só se esse mês já ENCERROU
+  // (não faz sentido comemorar um mês ainda em andamento, com dados incompletos).
   if (filterKey === 'performance' && mesKey) {
-    const top = window.__perfTop;
-    if (top && top.nome) showPerfCelebration(top);
+    const m = ALL_MESES.find(x => x.key === mesKey);
+    const mesJaEncerrou = m ? (new Date(m.ano, m.idx + 1, 1) <= new Date()) : false;
+    if (mesJaEncerrou) {
+      const top = window.__perfTop;
+      if (top && top.nome) showPerfCelebration(top);
+    }
   }
 }
 
@@ -4187,13 +4192,24 @@ function showPerfCelebration(top) {
     + '<div style="font-family:var(--cond);font-size:2.7rem;font-weight:900;color:#fff;margin-top:10px;text-shadow:0 0 30px ' + cor + ';animation:perfNamePop .5s ease .18s both;letter-spacing:.02em;">' + nome + '</div>'
     + '<div style="font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:' + cor + ';margin-top:2px;margin-bottom:18px;animation:perfNamePop .5s ease .26s both;">🏆 Top Performer do mês</div>'
     + '<div style="display:flex;flex-direction:column;gap:8px;align-items:stretch;">' + kpiRowsHTML + '</div>'
+    + '<button onclick="closePerfCelebration()" title="Fechar" style="position:absolute;top:-14px;right:-14px;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.35);color:#fff;font-size:15px;line-height:1;cursor:pointer;pointer-events:auto;display:flex;align-items:center;justify-content:center;transition:background .15s;" onmouseover="this.style.background=\'rgba(255,255,255,.32)\'" onmouseout="this.style.background=\'rgba(255,255,255,.15)\'">✕</button>'
     + '</div>';
 
   document.body.appendChild(overlay);
-  setTimeout(() => {
+  overlay._timers = [];
+  overlay._timers.push(setTimeout(() => {
     overlay.style.animation = 'perfCelebFadeOut .4s ease forwards';
-    setTimeout(() => overlay.remove(), 400);
-  }, tempoAteFadeOut);
+    overlay._timers.push(setTimeout(() => overlay.remove(), 400));
+  }, tempoAteFadeOut));
+}
+
+// Fecha a animação de celebração manualmente (botão ✕), cancelando os timers automáticos
+function closePerfCelebration() {
+  const overlay = document.getElementById('perf-celebration-overlay');
+  if (!overlay) return;
+  (overlay._timers || []).forEach(id => clearTimeout(id));
+  overlay.style.animation = 'perfCelebFadeOut .3s ease forwards';
+  setTimeout(() => overlay.remove(), 300);
 }
 
 // buildQuarterBody com suporte a filtro
