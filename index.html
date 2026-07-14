@@ -8525,7 +8525,9 @@ function buildPerfMetaMon() {
     });
   });
 
-  // Meta por consultor: soma, mês a mês, o % (ou valor fixo) configurado em Monetização
+  // Meta por consultor: soma, mês a mês, o % (ou valor fixo) configurado em Monetização.
+  // O % configurado só faz sentido mostrar quando um mês ESPECÍFICO está selecionado — no
+  // "ano completo", cada mês pode ter um % diferente, então aí mostra só os valores em R$.
   function metaConsultorPeriodo(nome) {
     let metaOT = 0, metaRec = 0;
     mesesConsiderados.forEach(m => {
@@ -8535,30 +8537,55 @@ function buildPerfMetaMon() {
       metaOT  += pctOT  > 0 ? Math.round((mm.ot  || 0) * pctOT  / 100) : (parseFloat(mm['cons_' + nome + '_ot'])  || 0);
       metaRec += pctRec > 0 ? Math.round((mm.rec || 0) * pctRec / 100) : (parseFloat(mm['cons_' + nome + '_rec']) || 0);
     });
-    return { metaOT, metaRec };
+    let pctOTAtual = null, pctRecAtual = null;
+    if (curM) {
+      const mm = monMetas[curM.key] || {};
+      pctOTAtual  = parseFloat(mm['cons_' + nome + '_pct_ot']  || 0) || null;
+      pctRecAtual = parseFloat(mm['cons_' + nome + '_pct_rec'] || 0) || null;
+    }
+    return { metaOT, metaRec, pctOTAtual, pctRecAtual };
   }
 
   if (!listaConsultores.length) { el.innerHTML = ''; return; }
+
+  const corAtg = pct => pct === null ? 'var(--text-hint)' : pct >= 100 ? 'var(--green)' : pct >= 70 ? 'var(--amber)' : 'var(--red)';
+  const segmento = (label, corLabel, pctConfig, metaVal, realVal) => {
+    const pctAtg = metaVal > 0 ? Math.round(realVal / metaVal * 100) : null;
+    return '<div style="padding:7px 0;border-bottom:1px solid var(--border);">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">'
+      + '<span style="font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:' + corLabel + ';">' + label + '</span>'
+      + (pctConfig !== null ? '<span style="font-size:9px;color:var(--text-hint);">meta: ' + pctConfig + '%</span>' : '')
+      + '</div>'
+      + '<div style="font-size:10px;color:var(--text-hint);">Meta: <b style="color:var(--text);">' + (metaVal > 0 ? BRL(metaVal) : '—') + '</b></div>'
+      + '<div style="font-size:12px;font-weight:700;color:' + corAtg(pctAtg) + ';">Realizado: ' + BRL(realVal) + (pctAtg !== null ? (' · ' + pctAtg + '%') : '') + '</div>'
+      + '</div>';
+  };
 
   el.innerHTML = '<div class="card">'
     + '<div class="card-title">Meta de Monetização por consultor</div>'
     + '<p style="font-size:11px;color:var(--text-hint);margin:-0.3rem 0 1rem;">Meta configurada na aba Monetização · ' + (curM ? (curM.label + '/' + curM.ano) : 'ano completo') + '.</p>'
     + '<div style="display:flex;gap:14px;flex-wrap:wrap;">'
     + listaConsultores.map(nome => {
-        const { metaOT, metaRec } = metaConsultorPeriodo(nome);
+        const { metaOT, metaRec, pctOTAtual, pctRecAtual } = metaConsultorPeriodo(nome);
         const real = realPorCons[nome] || { ot: 0, rec: 0 };
         const metaTot = metaOT + metaRec, realTot = real.ot + real.rec;
         const pct = metaTot > 0 ? Math.round(realTot / metaTot * 100) : null;
         const dot = (window.dotColors || {})[nome] || 'var(--accent)';
-        const cor = pct === null ? 'var(--text-hint)' : pct >= 100 ? 'var(--green)' : pct >= 70 ? 'var(--amber)' : 'var(--red)';
-        return '<div style="flex:1;min-width:200px;padding:12px 16px;border-radius:var(--r-sm);background:var(--surface2);">'
+        const cor = corAtg(pct);
+        return '<div style="flex:1;min-width:220px;padding:12px 16px;border-radius:var(--r-sm);background:var(--surface2);">'
           + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">'
           + '<span style="width:8px;height:8px;border-radius:50%;background:' + dot + ';display:inline-block;"></span>'
           + '<span style="font-size:12px;font-weight:700;color:var(--text);">' + nome + '</span>'
           + '</div>'
-          + '<div style="font-size:10px;color:var(--text-hint);">Meta: <b style="color:var(--text);">' + BRL(metaTot) + '</b></div>'
-          + '<div style="font-size:13px;font-weight:700;color:' + cor + ';margin-top:2px;">Realizado: ' + BRL(realTot) + (pct !== null ? (' · ' + pct + '%') : '') + '</div>'
-          + (metaTot > 0 ? '<div class="prog-bg" style="height:4px;margin-top:6px;"><div class="prog-fill" style="width:' + Math.min(100, pct) + '%;background:' + cor + ';"></div></div>' : '')
+          + segmento('One Time', 'var(--accent)', pctOTAtual, metaOT, real.ot)
+          + segmento('Recorrente', 'var(--blue)', pctRecAtual, metaRec, real.rec)
+          + '<div style="padding-top:8px;">'
+          + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">'
+          + '<span style="font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Total</span>'
+          + '<span style="font-size:12px;font-weight:700;color:' + cor + ';">' + BRL(realTot) + (pct !== null ? (' · ' + pct + '%') : '') + '</span>'
+          + '</div>'
+          + '<div style="font-size:10px;color:var(--text-hint);margin-bottom:4px;">Meta: <b style="color:var(--text);">' + (metaTot > 0 ? BRL(metaTot) : '—') + '</b></div>'
+          + (metaTot > 0 ? '<div class="prog-bg" style="height:4px;"><div class="prog-fill" style="width:' + Math.min(100, pct) + '%;background:' + cor + ';"></div></div>' : '')
           + '</div>';
       }).join('')
     + '</div></div>';
