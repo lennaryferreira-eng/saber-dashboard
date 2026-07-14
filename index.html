@@ -1924,7 +1924,7 @@ function pipeEventosDoMes(label, ano){
       const dt = parseDate(ev.data);
       if (dt && dt.getMonth() === mesIdx && dt.getFullYear() === ano){
         out.push({ id:ev.id, tipo:ev.tipo, data:ev.data, valorOT:ev.valorOT, valorRec:ev.valorRec,
-                   escopo:ev.escopo, obs:ev.obs, projId:p.id, nome:p.nome, consultor:p.consultor||'—' });
+                   escopo:ev.escopo, obs:ev.obs, reuniaoFeita:ev.reuniaoFeita, projId:p.id, nome:p.nome, consultor:p.consultor||'—' });
       }
     });
   });
