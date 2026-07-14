@@ -1406,6 +1406,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
     <div style="overflow-x:auto;padding-bottom:8px;margin-bottom:1.5rem;">
       <div id="perf-cards" style="display:flex;gap:16px;flex-wrap:nowrap;min-width:max-content;padding:4px 2px 8px;"></div>
     </div>
+    <div id="perf-meta-mon" style="margin-bottom:1.5rem;"></div>
     <!-- Painel inferior de detalhes -->
     <div id="perf-detalhe" style="display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
@@ -2464,7 +2465,7 @@ const PERFIS = {
   'suzana2026':    { nome: 'Suzana',   consultor: 'Suzana' },
 };
 // Abas que ficam visíveis pra quem loga como consultor (não-ADM) — as demais somem do menu.
-const CONSULTOR_TABS_PERMITIDAS = ['base', 'aql', 'leadtime', 'performance', 'auditoria', 'monetizacao', 'pipeline'];
+const CONSULTOR_TABS_PERMITIDAS = ['base', 'aql', 'leadtime', 'performance', 'auditoria', 'pipeline'];
 
 let currentPerfil = null;
 
@@ -8485,6 +8486,82 @@ function buildPerformance() {
 
   // Seleciona automaticamente o 1º consultor
   if (primeiroNome) setTimeout(() => perfSelecionaConsultor(primeiroNome), 50);
+
+  buildPerfMetaMon();
+}
+
+// Seção "Meta de Monetização por consultor" — reaproveita EXATAMENTE a mesma lógica de
+// meta (% configurado por mês em Monetização) e realizado (monetizações reais), só que
+// somando os meses conforme o filtro da Performance (um mês específico, ou o ano todo).
+function buildPerfMetaMon() {
+  const el = document.getElementById('perf-meta-mon');
+  if (!el) return;
+  const curKey = filters['performance'];
+  const curM = curKey ? ALL_MESES.find(x => x.key === curKey) : null;
+  const mesesConsiderados = curM ? [curM] : ALL_MESES;
+  const mesKeysConsiderados = new Set(mesesConsiderados.map(m => m.key));
+
+  const consLock = (currentPerfil && currentPerfil.consultor) || '';
+  const filtroManual = document.getElementById('perf-f-cons')?.value || '';
+  const filtroConsultor = consLock || filtroManual;
+
+  window.CONS_MON = window.CONS_MON || [];
+  window.dotColors = window.dotColors || {};
+  const listaConsultores = filtroConsultor ? [filtroConsultor] : window.CONS_MON;
+
+  // Realizado por consultor, só nos meses considerados (mesma leitura de monetizacoes[].mesMon
+  // usada em Monetização)
+  const realPorCons = {};
+  projects.forEach(p => {
+    if (typeof isDroFam === 'function' && isDroFam(p)) return;
+    if (!p.consultor) return;
+    (p.monetizacoes || []).forEach(mm => {
+      const mk = ALL_MESES.find(x => x.label + '/' + x.ano === mm.mesMon)?.key;
+      if (!mk || !mesKeysConsiderados.has(mk)) return;
+      const vOT = monPV(mm.valorOT), vRec = monPV(mm.valorRec);
+      if (!realPorCons[p.consultor]) realPorCons[p.consultor] = { ot: 0, rec: 0 };
+      realPorCons[p.consultor].ot += vOT;
+      realPorCons[p.consultor].rec += vRec;
+    });
+  });
+
+  // Meta por consultor: soma, mês a mês, o % (ou valor fixo) configurado em Monetização
+  function metaConsultorPeriodo(nome) {
+    let metaOT = 0, metaRec = 0;
+    mesesConsiderados.forEach(m => {
+      const mm = monMetas[m.key] || {};
+      const pctOT  = parseFloat(mm['cons_' + nome + '_pct_ot']  || 0);
+      const pctRec = parseFloat(mm['cons_' + nome + '_pct_rec'] || 0);
+      metaOT  += pctOT  > 0 ? Math.round((mm.ot  || 0) * pctOT  / 100) : (parseFloat(mm['cons_' + nome + '_ot'])  || 0);
+      metaRec += pctRec > 0 ? Math.round((mm.rec || 0) * pctRec / 100) : (parseFloat(mm['cons_' + nome + '_rec']) || 0);
+    });
+    return { metaOT, metaRec };
+  }
+
+  if (!listaConsultores.length) { el.innerHTML = ''; return; }
+
+  el.innerHTML = '<div class="card">'
+    + '<div class="card-title">Meta de Monetização por consultor</div>'
+    + '<p style="font-size:11px;color:var(--text-hint);margin:-0.3rem 0 1rem;">Meta configurada na aba Monetização · ' + (curM ? (curM.label + '/' + curM.ano) : 'ano completo') + '.</p>'
+    + '<div style="display:flex;gap:14px;flex-wrap:wrap;">'
+    + listaConsultores.map(nome => {
+        const { metaOT, metaRec } = metaConsultorPeriodo(nome);
+        const real = realPorCons[nome] || { ot: 0, rec: 0 };
+        const metaTot = metaOT + metaRec, realTot = real.ot + real.rec;
+        const pct = metaTot > 0 ? Math.round(realTot / metaTot * 100) : null;
+        const dot = (window.dotColors || {})[nome] || 'var(--accent)';
+        const cor = pct === null ? 'var(--text-hint)' : pct >= 100 ? 'var(--green)' : pct >= 70 ? 'var(--amber)' : 'var(--red)';
+        return '<div style="flex:1;min-width:200px;padding:12px 16px;border-radius:var(--r-sm);background:var(--surface2);">'
+          + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">'
+          + '<span style="width:8px;height:8px;border-radius:50%;background:' + dot + ';display:inline-block;"></span>'
+          + '<span style="font-size:12px;font-weight:700;color:var(--text);">' + nome + '</span>'
+          + '</div>'
+          + '<div style="font-size:10px;color:var(--text-hint);">Meta: <b style="color:var(--text);">' + BRL(metaTot) + '</b></div>'
+          + '<div style="font-size:13px;font-weight:700;color:' + cor + ';margin-top:2px;">Realizado: ' + BRL(realTot) + (pct !== null ? (' · ' + pct + '%') : '') + '</div>'
+          + (metaTot > 0 ? '<div class="prog-bg" style="height:4px;margin-top:6px;"><div class="prog-fill" style="width:' + Math.min(100, pct) + '%;background:' + cor + ';"></div></div>' : '')
+          + '</div>';
+      }).join('')
+    + '</div></div>';
 }
 
 
