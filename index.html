@@ -2354,35 +2354,24 @@ function buildPipeline() {
   if (consFilter) ativos = ativos.filter(p => p.consultor === consFilter);
   if (fOport) ativos = ativos.filter(p => p.oport === fOport);
 
-  const oEtapas = ['Mapeado (AQL)','Apresentar proposta (SQL)','Proposta apresentada','Fechamento'];
+  const oEtapas = ['Mapeado (AQL)','Apresentar proposta (SQL)','Proposta apresentada (SAL)','Follow (COMMIT)'];
   function parseVal(v) { const n = parseFloat((v||'').replace(/\./g,'').replace(',','.')); return isNaN(n) ? 0 : n; }
   const stageIdx = o => oEtapas.indexOf(o);
-  // AQL guarda o HISTÓRICO completo de eventos (um projeto pode ter mais de uma proposta ao
-  // longo do tempo); o Lead Time só guarda a etapa ATUAL (um valor só). Por isso as duas
-  // primeiras etapas do funil (que a AQL também rastreia) puxam do histórico de eventos —
-  // mais confiável que o campo único do Lead Time, que pode até "regredir" se um novo AQL
-  // for registrado depois. "Proposta apresentada" agora vem do checkbox "Reunião feita"
-  // marcado numa Proposta na AQL, e "Fechamento" vem da monetização do projeto — nenhuma
-  // das duas depende mais do campo Oportunidade do Lead Time.
-  const temEventoAql = (p, tipo) => (p.pipeEventos || []).some(e => e.tipo === tipo);
-  const jaMapeado          = p => stageIdx(p.oport) >= 0 || temEventoAql(p, 'Oportunidade') || temEventoAql(p, 'Proposta');
-  const jaApresentouProp   = p => stageIdx(p.oport) >= 1 || temEventoAql(p, 'Proposta');
-  const jaTeveReuniao      = p => (p.pipeEventos || []).some(e => e.tipo === 'Proposta' && e.reuniaoFeita);
-  const jaFechou           = p => p.conv === 'Monetizado';
 
-  // Oportunidades = projetos ativos com etapa de oportunidade definida (via Lead Time OU via
-  // histórico de eventos na AQL)
-  let oports = ativos.filter(p => oEtapas.includes(p.oport) || jaMapeado(p));
+  // Fonte ÚNICA: o campo Oportunidade do Lead Time (p.oport) — é o que é acompanhado no
+  // dia a dia. A AQL não é lida aqui diretamente; em vez disso, registrar um evento na AQL
+  // (ou marcar "Reunião feita") já ATUALIZA esse campo automaticamente (ver
+  // syncLeadTimeFromAqlEvento / updPipeEvento), então não tem trabalho duplicado.
+  let oports = ativos.filter(p => oEtapas.includes(p.oport));
   const hasOT  = p => !!p.escopos    || parseVal(p.valorOport)    > 0;
   const hasRec = p => !!p.escoposRec || parseVal(p.valorOportRec) > 0;
   if (fTipo === 'ot')  oports = oports.filter(hasOT);
   if (fTipo === 'rec') oports = oports.filter(hasRec);
 
-  // Cada etapa agora tem sua PRÓPRIA fonte de dado (não é mais um único campo ordenado)
+  // Funil reverso / cumulativo: cada etapa conta quem está NELA OU ALÉM
   const corEtapa = ['var(--blue)','var(--blue)','var(--amber)','var(--green)'];
-  const etapaCheck = [jaMapeado, jaApresentouProp, jaTeveReuniao, jaFechou];
   const etapas = oEtapas.map((label, i) => {
-    const prjs = oports.filter(etapaCheck[i]);
+    const prjs = oports.filter(p => stageIdx(p.oport) >= i);
     return {
       label, count: prjs.length, cor: corEtapa[i],
       valOT:  prjs.reduce((a,p)=> a + parseVal(p.valorOport), 0),
@@ -2392,6 +2381,7 @@ function buildPipeline() {
   const maxC  = Math.max(...etapas.map(e => e.count), 1);
   const totOT  = oports.reduce((a,p)=> a + parseVal(p.valorOport), 0);
   const totRec = oports.reduce((a,p)=> a + parseVal(p.valorOportRec), 0);
+
 
   const barAtivos = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">'
     + '<span style="font-size:11px;font-weight:600;color:var(--text);">Oportunidades no funil</span>'
@@ -5679,6 +5669,11 @@ function updPipeEvento(projId, evId, field, val) {
   const e = p.pipeEventos.find(x => String(x.id) === String(evId));
   if (!e) return;
   e[field] = val;
+  // Marcar "Reunião feita" numa Proposta avança o Lead Time sozinho pra "Proposta
+  // apresentada (SAL)" — evita ter que atualizar a AQL e o Lead Time separadamente.
+  if (field === 'reuniaoFeita' && val === true && e.tipo === 'Proposta') {
+    p.oport = 'Proposta apresentada (SAL)';
+  }
   buildAql(); upd();
 }
 
