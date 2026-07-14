@@ -810,6 +810,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
         <button id="pipe-lista-toggle-btn" onclick="togglePipeLista()" class="sel" style="font-size:11px;padding:5px 12px;cursor:pointer;white-space:nowrap;">▾ Recolher lista de projetos</button>
       </div>
     </div>
+    <div id="pipe-filter-bar" style="margin-bottom:.8rem;"></div>
     <div class="collapsible-body"><div id="pipe-funil"></div></div>
   </div>
 
@@ -2332,6 +2333,9 @@ function togglePipeLista() {
 }
 
 function buildPipeline() {
+  buildFilterBar('pipe-filter-bar', 'pipeline', buildPipeline);
+  const curMes = filters['pipeline'] ? ALL_MESES.find(x => x.key === filters['pipeline']) : null;
+
   const selCons = document.getElementById('pipe-f-cons');
   if (selCons) {
     const cons = [...new Set(projects.map(p => p.consultor).filter(Boolean))].sort();
@@ -2353,6 +2357,10 @@ function buildPipeline() {
   });
   if (consFilter) ativos = ativos.filter(p => p.consultor === consFilter);
   if (fOport) ativos = ativos.filter(p => p.oport === fOport);
+  if (curMes) ativos = ativos.filter(p => {
+    const d = parseDate(p.proximoContato);
+    return d && d.getMonth() === curMes.idx && d.getFullYear() === curMes.ano;
+  });
 
   const oEtapas = ['Mapeado (AQL)','Apresentar proposta (SQL)','Proposta apresentada (SAL)','Follow (COMMIT)'];
   function parseVal(v) { const n = parseFloat((v||'').replace(/\./g,'').replace(',','.')); return isNaN(n) ? 0 : n; }
@@ -2678,7 +2686,7 @@ function applyPerfilFilters() {
   if (!currentPerfil || !currentPerfil.consultor) return;
   const cons = currentPerfil.consultor;
   const selIds = ['f-consultor','lt-f-cons','conv-f-cons','pipe-f-cons',
-                  'gantt-cons-filter','nps-f-cons','pev-cons'];
+                  'gantt-cons-filter','nps-f-cons','pev-cons','pipe-semana-cons'];
   selIds.forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -4272,7 +4280,7 @@ function salvarNovoProjTer() {
 //  FILTRO DE MÊS
 // ═══════════════════════════════════
 // activeFilter = null → ano inteiro; {key} → mês específico
-const filters = { visao: null, csp: null, conv: null, prazo: null, nps: null, mon: null };
+const filters = { visao: null, csp: null, conv: null, prazo: null, nps: null, mon: null, pipeline: null };
 
 function buildFilterBar(containerId, filterKey, onChangeFn) {
   const el = document.getElementById(containerId);
