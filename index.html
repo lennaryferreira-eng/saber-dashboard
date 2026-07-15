@@ -689,11 +689,11 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
         </select>
       </div>
     </div>
-    <p style="font-size:11px;color:var(--text-hint);margin:-0.5rem 0 .6rem;">Em qual etapa cada projeto está, semana a semana — sem os sinalizadores de status do Capacity. A cor de cada etapa é o prazo daquela entrega específica (igual no Lead Time: real x planejada).</p>
+    <p style="font-size:11px;color:var(--text-hint);margin:-0.5rem 0 .6rem;">Em qual etapa cada projeto está, semana a semana — sem os sinalizadores de status do Capacity. O preenchimento de cada etapa é o prazo daquela entrega específica, igual à barra de progresso do Lead Time (data real x prazo de 7 dias após a entrega anterior).</p>
     <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:10px;color:var(--text-hint);margin-bottom:1rem;">
-      <span style="color:var(--green);font-weight:600;">Texto verde = entrega no prazo</span>
-      <span style="color:var(--accent);font-weight:600;">Texto vermelho = entrega atrasada</span>
-      <span>Texto preto = estimativa, ainda não entregue</span>
+      <span><span style="display:inline-block;padding:2px 6px;border-radius:4px;background:var(--green);color:#fff;font-weight:700;font-size:9px;">✓</span> = entrega no prazo</span>
+      <span><span style="display:inline-block;padding:2px 6px;border-radius:4px;background:var(--accent);color:#fff;font-weight:700;font-size:9px;">✓</span> = entrega atrasada</span>
+      <span>Texto sem preenchimento = estimativa, ainda não entregue</span>
     </div>
     <div id="ov-gantt-carga" style="margin-bottom:1.2rem;"></div>
     <div id="ov-gantt-wrap" style="overflow-x:auto;"></div>
@@ -6354,12 +6354,14 @@ function buildOvGantt() {
       const reaisHere = [0,1,2,3,4,5,6].filter(si => reaisp[si] && reaisp[si] >= sISO && reaisp[si] <= eISO);
       if (reaisHere.length > 0) {
         reaisHere.forEach(si => shown.add(si));
-        // Mesma lógica do Lead Time: compara data planejada x real por etapa —
-        // atraso<=0 é verde (no prazo ou antes), atraso>0 é vermelho.
+        // MESMA fórmula da barra de progresso do Lead Time: prazo = data real da etapa
+        // ANTERIOR + 7 dias (ou início + 7d pra Growth/Kickoff) — não é a divisão
+        // proporcional do prazo total, é sempre em relação ao que realmente aconteceu antes.
         const cores = reaisHere.map(si => {
-          const plan = semDataPlanejada(p, si);
+          const refDate = (si === 0 || si === 1) ? p.inicio : (entp[si-1] || entp[String(si-1)])?.real;
+          const prazo7 = refDate ? addDays(refDate, 7) : null;
           const real = reaisp[si];
-          const atraso = plan && real ? diffDays(plan, real) : null;
+          const atraso = prazo7 && real ? diffDays(prazo7, real) : null;
           return atraso === null ? null : (atraso <= 0 ? 'verde' : 'vermelho');
         });
         const corFinal = cores.includes('vermelho') ? 'vermelho' : (cores.length && cores.every(c => c === 'verde') ? 'verde' : null);
@@ -6408,9 +6410,14 @@ function buildOvGantt() {
           const sISO = toISOf(s);
           const isAtual = sISO === toISOf(new Date(startRef.getTime())) ? false : (hojeISO >= sISO && hojeISO <= toISOf(new Date(s.getTime()+6*864e5)));
           const cel = lm[sISO] || { text: '', cor: null };
-          const corTexto = cel.cor === 'verde' ? 'var(--green)' : cel.cor === 'vermelho' ? 'var(--accent)' : 'var(--text)';
+          const bgCor = cel.cor === 'verde' ? 'var(--green)' : cel.cor === 'vermelho' ? 'var(--accent)' : null;
+          const conteudo = cel.text
+            ? (bgCor
+                ? '<span style="display:inline-block;font-size:9px;font-weight:700;color:#fff;background:' + bgCor + ';padding:3px 7px;border-radius:5px;white-space:nowrap;">' + cel.text + '</span>'
+                : '<span style="font-size:10px;font-weight:600;color:var(--text);white-space:nowrap;">' + cel.text + '</span>')
+            : '';
           return '<td style="padding:6px 8px;text-align:center;background:' + (isAtual?'rgba(212,0,26,.04)':'transparent') + ';">'
-            + (cel.text ? '<span style="font-size:10px;font-weight:600;color:' + corTexto + ';white-space:nowrap;">' + cel.text + '</span>' : '')
+            + conteudo
             + '</td>';
         }).join('')
       + '</tr>';
