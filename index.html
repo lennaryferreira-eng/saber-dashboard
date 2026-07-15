@@ -2670,6 +2670,12 @@ function updatePerfilNavVisibility() {
   // Esconde o botão de trocar pra Coordenação TER — só consultor/designer ficam presos à SABER.
   const btnTer = document.getElementById('coord-btn-ter');
   if (btnTer) btnTer.style.display = perfilRestringeNav(currentPerfil) ? 'none' : '';
+  // Capacity: designer não precisa ver "Carga por consultor", e consultor não precisa ver
+  // "Carga por designer" — cada um só olha pro card que fala da própria função.
+  const cargaConsultorEl = document.getElementById('carga-consultor');
+  const cargaDesignerEl  = document.getElementById('carga-designer');
+  if (cargaConsultorEl) cargaConsultorEl.style.display = (currentPerfil && currentPerfil.designer) ? 'none' : '';
+  if (cargaDesignerEl)  cargaDesignerEl.style.display  = (currentPerfil && currentPerfil.consultor) ? 'none' : '';
   document.querySelectorAll('nav .nav-tab').forEach(btn => {
     const m = (btn.getAttribute('onclick') || '').match(/show\('([a-z]+)'\)/);
     if (!m) return;
@@ -2753,6 +2759,14 @@ function applyPerfilFilters() {
       el.value = des;
       el.classList.add('filter-locked');
     });
+    // Auditoria de Entregas: mesmo esquema do consultor — o select é reconstruído a cada
+    // render, então trava direto no estado do filtro (audRenderLista já desabilita o select
+    // de designer quando currentPerfil.designer está setado).
+    // Auditoria de Entregas: designer só avalia a própria entrega (Análise de Ambientes) —
+    // trava o filtro de "entrega" nesse tipo, e o de "consultor" no nome do designer (a
+    // avaliação usa o mesmo campo "consultor" pra registrar quem entregou, seja consultor
+    // ou designer).
+    if (typeof audFiltro !== 'undefined') { audFiltro.consultor = des; audFiltro.tipo = 'Análise de Ambientes'; }
   }
   // "viewer" (outras lideranças) não trava filtro nenhum — navega e filtra livremente,
   // só não consegue salvar nada (VIEWER=true já cobre isso).
@@ -8967,7 +8981,7 @@ const AUD_GRUPOS = {
   G2:{nome:'Conversão & Negociação', cor:'#2f6fed', ids:['d4','d5','d6','d7']},
   G3:{nome:'Domínio Técnico',        cor:'#8E5BC4', ids:['d8','d9']},
 };
-const AUD_TIPOS = ['Kickoff','Pesquisa de Mercado','Diagnóstico de Vendas','Diagnóstico de Mídia Paga','Apresentação Final','Reunião de Negociação','Outra'];
+const AUD_TIPOS = ['Kickoff','Pesquisa de Mercado','Análise de Ambientes','Diagnóstico de Vendas','Diagnóstico de Mídia Paga','Apresentação Final','Reunião de Negociação','Outra'];
 
 const AUD_D9_SKILLS = {
   'Kickoff': [
@@ -9350,8 +9364,12 @@ function audRenderLista(){
   const fb=document.getElementById('aud-filtros');
   if(fb){
     const cons = (currentPerfil && currentPerfil.consultor) || '';
+    const des  = (currentPerfil && currentPerfil.designer) || '';
     const sel=(k,label,items)=>{
-      const travado = k==='consultor' && cons;
+      // Consultor logado: trava no próprio nome (campo "consultor" da avaliação).
+      // Designer logado: além de travar no próprio nome, também trava o TIPO em
+      // "Análise de Ambientes" — é a única entrega que é dele de verdade.
+      const travado = (k==='consultor' && (cons || des)) || (k==='tipo' && des);
       return '<select '+(travado?'disabled ':'')+'onchange="audSetFiltro(\''+k+'\',this.value)" class="base-sel'+(travado?' filter-locked':'')+'"><option value="">'+label+'</option>'+items.map(x=>'<option '+(audFiltro[k]===x?'selected':'')+'>'+x+'</option>').join('')+'</select>';
     };
     const meses=[...new Set(auditorias.map(a=>{const d=parseDate(a.data);return d?(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')):null;}).filter(Boolean))].sort().reverse();
