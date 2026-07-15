@@ -6773,10 +6773,14 @@ function etapaData(p, idx) {
   const stage = Array.isArray(ent) ? ent[idx] : ent[String(idx)];
   return (stage && stage.real) || '';
 }
-// true se o designer tem alguma etapa registrada (Kickoff/Análise/Decolagem) dentro da semana [seg,dom]
+// true se o designer tem alguma etapa (Kickoff/Análise/Decolagem) dentro da semana [seg,dom] —
+// usa a data REAL se já registrada; senão, a data ESTIMADA (mesma lógica usada pros rótulos
+// do Gantt), pra não discordar do que a tela já mostra visualmente naquela semana.
 function designerAtivoNaSemana(p, seg, dom) {
   return designerEtapas(p).some(i => {
-    const d = parseDate(etapaData(p, i));
+    const real = etapaData(p, i);
+    const dataRef = real || semDataEtapa(p, i);
+    const d = parseDate(dataRef);
     return d && d >= seg && d <= dom;
   });
 }
