@@ -2479,9 +2479,9 @@ const PERFIS = {
   'visualizar2026': { nome: 'Visualização', viewer: true },
 };
 // Abas que ficam visíveis pra quem loga como consultor (não-ADM) — as demais somem do menu.
-const CONSULTOR_TABS_PERMITIDAS = ['base', 'aql', 'leadtime', 'performance', 'auditoria', 'pipeline'];
+const CONSULTOR_TABS_PERMITIDAS = ['base', 'aql', 'leadtime', 'performance', 'auditoria', 'pipeline', 'capacity'];
 // Designers têm um recorte menor — sem AQL nem Performance (não fazem sentido pra eles)
-const DESIGNER_TABS_PERMITIDAS = ['base', 'leadtime', 'auditoria', 'pipeline'];
+const DESIGNER_TABS_PERMITIDAS = ['base', 'leadtime', 'auditoria', 'capacity'];
 // Retorna a lista de abas certa conforme o TIPO de perfil (designer x consultor). "viewer"
 // não usa essa lista — vê tudo, sem restrição de menu (só não pode editar).
 function tabsPermitidasDoPerfil(perfil) {
@@ -2740,8 +2740,8 @@ function applyPerfilFilters() {
   } else if (currentPerfil.designer) {
     const des = currentPerfil.designer;
     // Designer trava nos filtros de Designer (não de Consultor) — em Base de Projetos,
-    // Lead Time e Pipeline, que são as telas com dado ligado a p.designer.
-    const selIds = ['f-designer', 'lt-f-designer', 'pipe-f-designer'];
+    // Lead Time e Capacity, que são as telas com dado ligado a p.designer.
+    const selIds = ['f-designer', 'lt-f-designer', 'gantt-designer-filter'];
     selIds.forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
@@ -7824,6 +7824,7 @@ function buildCargaSemanal(prjsAll, semanasExt, campo, elId, titulo, rotuloColun
 }
 
 function buildGantt() {
+  if (perfilRestringeNav(currentPerfil)) applyPerfilFilters();
   const consFilter     = document.getElementById('gantt-cons-filter')?.value || '';
   const statusFilter   = document.getElementById('gantt-status-filter')?.value || '';
   const mesFilter      = document.getElementById('gantt-mes-filter')?.value || '';
