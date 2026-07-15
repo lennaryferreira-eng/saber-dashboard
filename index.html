@@ -1094,7 +1094,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
           <th style="min-width:200px;">Registrar entrega</th>
           <th style="min-width:260px;">Progresso</th>
           <th style="min-width:80px;">Flag</th>
-          <th style="min-width:160px;">Score entrega</th>
+          <th style="min-width:290px;">Score entrega</th>
           <th style="min-width:130px;">Oportunidade</th>
           <th style="min-width:160px;">Escopos One-time</th>
           <th style="min-width:160px;">Escopos Recorrente</th>
@@ -6863,7 +6863,9 @@ function ltSetEntregaScore(id, semIdx, val) {
 }
 
 // ── SCORE DE ENTREGA (novo) — escala única 0–100, cores 80+/60-79/<60 ──
-const _SCORE_LABELS = ['Gr','Ko','1E','2E','3E','4E','Dc'];
+// Só leitura: o score vem automaticamente da Auditoria de Entregas (campo "Ordem da
+// entrega no Lead Time"), não tem mais entrada manual aqui.
+const _SCORE_LABELS = ['Growth','Kick off','1ª Entr.','2ª Entr.','3ª Entr.','4ª Entr.','Decol.'];
 function _scoreColor(s){ if(s===''||s===null||s===undefined||isNaN(parseFloat(s)))return 'var(--text-hint)'; s=parseFloat(s); if(s>=80)return 'var(--green)'; if(s>=60)return 'var(--amber)'; return 'var(--red)'; }
 function _scoreBg(s){ if(s===''||s===null||s===undefined||isNaN(parseFloat(s)))return 'var(--surface3)'; s=parseFloat(s); if(s>=80)return 'rgba(22,163,74,.15)'; if(s>=60)return 'rgba(180,83,9,.15)'; return 'rgba(212,0,26,.15)'; }
 function _ltScoreBlocksHTML(p){
@@ -6872,36 +6874,12 @@ function _ltScoreBlocksHTML(p){
     const e = ent[i]||ent[String(i)]||{};
     const has = e.score!==undefined && e.score!=='';
     const s = has ? parseFloat(e.score) : null;
-    const txt = has ? s : _SCORE_LABELS[i];
-    return '<div title="'+SEM_NOMES[i]+(has?': '+s:' (sem score)')+'" style="width:26px;height:22px;border-radius:3px;background:'+(has?_scoreBg(s):'var(--surface3)')+';display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:'+(has?_scoreColor(s):'var(--text-hint)')+';">'+txt+'</div>';
+    const cor = has ? _scoreColor(s) : 'var(--text-hint)';
+    return '<div title="'+SEM_NOMES[i]+(has?': '+s:' — sem avaliação da Auditoria ainda')+'" style="flex:1;min-width:38px;height:42px;border-radius:6px;background:'+(has?_scoreBg(s):'var(--surface3)')+';border:1.5px solid '+(has?cor:'var(--border)')+';display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;">'
+      + '<span style="font-size:8px;font-weight:700;letter-spacing:.02em;color:'+cor+';white-space:nowrap;">'+_SCORE_LABELS[i]+'</span>'
+      + '<span style="font-size:13px;font-weight:800;color:'+cor+';">'+(has?s:'—')+'</span>'
+      + '</div>';
   }).join('');
-}
-function ltScoreSel(id){
-  const sel=document.getElementById('lt-score-sel-'+id);
-  const inp=document.getElementById('lt-score-inp-'+id);
-  const p=projects.find(x=>String(x.id)===String(id));
-  if(!sel||!inp||!p)return;
-  const si=parseInt(sel.value);
-  const e=(p.entregas&&(p.entregas[si]||p.entregas[String(si)]))||{};
-  const sc=(e.score!==undefined&&e.score!=='')?e.score:'';
-  inp.value=sc;
-  inp.style.color=_scoreColor(sc); inp.style.background=_scoreBg(sc); inp.style.borderColor=(sc!==''?_scoreColor(sc):'var(--border)');
-}
-function ltScoreSave(id){
-  const sel=document.getElementById('lt-score-sel-'+id);
-  const inp=document.getElementById('lt-score-inp-'+id);
-  const p=projects.find(x=>String(x.id)===String(id));
-  if(!sel||!inp||!p)return;
-  let v=inp.value.trim();
-  if(v!==''){ let n=parseFloat(v); if(isNaN(n)){v='';} else {v=Math.max(0,Math.min(100,n));} inp.value=v; }
-  const si=parseInt(sel.value);
-  if(!p.entregas)p.entregas={};
-  if(!p.entregas[si])p.entregas[si]={real:'',obs:'',score:''};
-  p.entregas[si].score=v;
-  upd();
-  inp.style.color=_scoreColor(v); inp.style.background=_scoreBg(v); inp.style.borderColor=(v!==''?_scoreColor(v):'var(--border)');
-  const blocks=document.getElementById('lt-score-blocks-'+id);
-  if(blocks)blocks.innerHTML=_ltScoreBlocksHTML(p);
 }
 
 function ltSetField(id, field, val) {
@@ -7297,20 +7275,8 @@ function buildLeadTime() {
           + '</td>'
           // Score da entrega (seletor próprio + escala única 0–100)
           + (function() {
-              const ent = p.entregas || {};
-              // entrega selecionada por padrão: primeira sem score
-              let selIdx = 0;
-              for (let i = 0; i <= 6; i++) { const e = ent[i]||ent[String(i)]||{}; if (e.score===undefined||e.score==='') { selIdx=i; break; } selIdx=i; }
-              const cur = (ent[selIdx]||ent[String(selIdx)]||{}).score;
-              const curV = (cur!==undefined&&cur!=='') ? cur : '';
-              let h = '<td style="padding:6px 8px;min-width:200px;">';
-              h += '<div id="lt-score-blocks-'+p.id+'" style="display:flex;gap:2px;margin-bottom:5px;">'+_ltScoreBlocksHTML(p)+'</div>';
-              h += '<select class="sel" id="lt-score-sel-'+p.id+'" style="width:100%;font-size:11px;margin-bottom:4px;" onchange="ltScoreSel('+p.id+')">';
-              h += [0,1,2,3,4,5,6].map(function(i){ return '<option value="'+i+'"'+(i===selIdx?' selected':'')+'>'+SEM_NOMES[i]+'</option>'; }).join('');
-              h += '</select>';
-              h += '<input type="number" min="0" max="100" step="1" id="lt-score-inp-'+p.id+'" class="sel" '
-                + 'style="font-size:13px;font-weight:700;width:100%;text-align:center;background:'+_scoreBg(curV)+';color:'+_scoreColor(curV)+';border:1px solid '+(curV!==''?_scoreColor(curV):'var(--border)')+';" '
-                + 'placeholder="0–100" value="'+curV+'" onchange="ltScoreSave('+p.id+')">';
+              let h = '<td style="padding:6px 8px;min-width:290px;">';
+              h += '<div id="lt-score-blocks-'+p.id+'" style="display:flex;gap:3px;flex-wrap:wrap;">'+_ltScoreBlocksHTML(p)+'</div>';
               h += '</td>';
               return h;
             })()
