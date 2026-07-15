@@ -690,6 +690,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
       </div>
     </div>
     <p style="font-size:11px;color:var(--text-hint);margin:-0.5rem 0 1rem;">Em qual etapa cada projeto está, semana a semana — sem os sinalizadores de status do Capacity (prazo, monetização, etc.).</p>
+    <div id="ov-gantt-carga" style="margin-bottom:1.2rem;"></div>
     <div id="ov-gantt-wrap" style="overflow-x:auto;"></div>
   </div>
 </section>
@@ -6239,12 +6240,11 @@ function buildOvGantt() {
   let cur = new Date(startRef);
   while (cur <= endRef) { semanas.push(new Date(cur)); cur.setDate(cur.getDate() + 7); }
 
-  // Base: projetos não-DRO, com início, fora de Churn/Pausado/Início em breve
+  // Base: projetos não-DRO, com início, e status = Em andamento
   let prjs = projects.filter(p => {
     if (isDroFam(p)) return false;
     if (!p.inicio) return false;
-    const st = calcStatus2(p);
-    return !['Churn', 'Pausado', 'Início em breve'].includes(st);
+    return calcStatus2(p) === 'Em andamento';
   });
   if (consFilter) prjs = prjs.filter(p => p.consultor === consFilter);
   if (etapaFilter !== '') {
@@ -6266,6 +6266,55 @@ function buildOvGantt() {
     });
   }
   prjs.sort((a, b) => (a.inicio || '') < (b.inicio || '') ? -1 : 1);
+
+  // "Projetos ativos por semana" — mesma lógica de contagem do Capacity: começa a contar
+  // no Kickoff (não no início) quando algum filtro está ativo, pra não contar a semana que
+  // só tem Growth (reunião que ninguém do squad participa); usa realFim quando o projeto
+  // já concluiu de verdade, sem esticar até a previsão.
+  const algumFiltroAtivoOv = !!(consFilter || etapaFilter);
+  function temEntregaNaSemanaOv(p, sDate) {
+    const dIp = parseDate(p.inicio);
+    if (!dIp) return false;
+    const sEnd = new Date(sDate.getTime() + 6 * 864e5);
+    const dKickoffP = algumFiltroAtivoOv
+      ? (function() { const d = semDataEtapa(p, 1); const dd = d ? parseDate(d) : null; return dd || dIp; })()
+      : dIp;
+    const dFrealP = p.realFim ? parseDate(p.realFim) : null;
+    let dFp;
+    if (dFrealP) {
+      dFp = dFrealP;
+    } else {
+      const dFprevP = p.prevFim ? parseDate(p.prevFim) : new Date(dIp.getTime() + 45 * 864e5);
+      const dFdecolP = (function() { const d = semDataEtapa(p, 6); return d ? parseDate(d) : null; })();
+      dFp = [dFprevP, dFdecolP].filter(Boolean).reduce((a,b) => a > b ? a : b);
+    }
+    return dKickoffP <= sEnd && dFp >= sDate;
+  }
+  const cargaDiv = document.getElementById('ov-gantt-carga');
+  if (cargaDiv) {
+    const contagens = semanas.map(s => prjs.filter(p => temEntregaNaSemanaOv(p, s)).length);
+    const maxCarga = Math.max(...contagens, 1);
+    const toISOc = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    const hojeISOc = toISOc(hoje);
+    cargaDiv.innerHTML = '<div style="font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);margin-bottom:6px;">Projetos ativos por semana</div>'
+      + '<div style="overflow-x:auto;"><div style="display:flex;gap:3px;min-width:max-content;">'
+      + semanas.map((s, i) => {
+          const sEnd = new Date(s.getTime() + 6 * 864e5);
+          const isHoje = hojeISOc >= toISOc(s) && hojeISOc <= toISOc(sEnd);
+          const cnt = contagens[i];
+          const pctH = Math.round(cnt / maxCarga * 100);
+          const d = s.getDate().toString().padStart(2,'0') + '/' + (s.getMonth()+1).toString().padStart(2,'0');
+          const color = isHoje ? 'var(--accent)' : 'var(--blue)';
+          return '<div style="text-align:center;min-width:38px;">'
+            + '<div style="font-size:9px;color:' + (isHoje ? 'var(--accent)' : 'var(--text-hint)') + ';margin-bottom:3px;font-weight:' + (isHoje ? 600 : 400) + ';">' + d + '</div>'
+            + '<div style="height:48px;display:flex;align-items:flex-end;">'
+            + '<div style="width:100%;height:' + pctH + '%;min-height:2px;background:' + color + ';border-radius:2px 2px 0 0;opacity:.85;"></div>'
+            + '</div>'
+            + '<div style="font-size:9px;color:' + (isHoje ? 'var(--accent)' : 'var(--text-hint)') + ';margin-top:2px;font-weight:' + (isHoje ? 600 : 400) + ';">' + cnt + '</div>'
+            + '</div>';
+        }).join('')
+      + '</div></div>';
+  }
 
   if (!prjs.length) { wrap.innerHTML = '<div style="padding:16px 0;color:var(--text-hint);font-size:12px;">Nenhum projeto encontrado com esse filtro.</div>'; return; }
 
