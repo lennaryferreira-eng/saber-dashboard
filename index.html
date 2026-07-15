@@ -689,11 +689,14 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
         </select>
       </div>
     </div>
-    <p style="font-size:11px;color:var(--text-hint);margin:-0.5rem 0 .6rem;">Em qual etapa cada projeto está, semana a semana — sem os sinalizadores de status do Capacity. O preenchimento de cada etapa é o prazo daquela entrega específica, igual à barra de progresso do Lead Time (data real x prazo de 7 dias após a entrega anterior).</p>
-    <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:10px;color:var(--text-hint);margin-bottom:1rem;">
-      <span><span style="display:inline-block;padding:2px 6px;border-radius:4px;background:var(--green);color:#fff;font-weight:700;font-size:9px;">✓</span> = entrega no prazo</span>
-      <span><span style="display:inline-block;padding:2px 6px;border-radius:4px;background:var(--accent);color:#fff;font-weight:700;font-size:9px;">✓</span> = entrega atrasada</span>
-      <span>Texto sem preenchimento = estimativa, ainda não entregue</span>
+    <p style="font-size:11px;color:var(--text-hint);margin:-0.5rem 0 .6rem;">Em qual etapa cada projeto está, semana a semana — sem os sinalizadores de status do Capacity. Cada etapa entregue mostra dois indicadores lado a lado: prazo (esquerda) e score da avaliação (direita) — nenhum se sobrepõe ao outro.</p>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:10px;color:var(--text-hint);margin-bottom:1rem;">
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:4px;vertical-align:middle;"></span>Flag automática do projeto (verde/amarelo/vermelho)</span>
+      <span style="display:inline-flex;align-items:center;gap:5px;">
+        <span style="display:inline-flex;border-radius:4px;overflow:hidden;"><span style="background:var(--green);color:#fff;font-size:8px;font-weight:700;padding:2px 5px;">Etapa</span><span style="background:var(--amber);color:#fff;font-size:8px;font-weight:700;padding:2px 5px;">75</span></span>
+        = prazo (esq.) + score (dir.)
+      </span>
+      <span>Sem preenchimento = estimativa, ainda não entregue</span>
     </div>
     <div id="ov-gantt-carga" style="margin-bottom:1.2rem;"></div>
     <div id="ov-gantt-wrap" style="overflow-x:auto;"></div>
@@ -2175,6 +2178,25 @@ function fimPrazo(p) {
   return dataFimReal(p) || p.prevFim || null;
 }
 
+// Flag automática do projeto: cruza 2 critérios — score da entrega mais recente e prazo.
+// Bateu os 2 -> Verde. Bateu só 1 -> Amarelo. Não bateu nenhum -> Vermelho.
+function calcFlagAutomatica(p) {
+  if (isDroFam(p)) return p.flag || '—'; // DRO/DRX não entram nesse cálculo, mantém manual
+  // score mais recente registrado (da etapa mais avançada com nota)
+  const ent = p.entregas || {};
+  let scoreRecente = null;
+  for (let i = 6; i >= 0; i--) {
+    const e = ent[i] || ent[String(i)];
+    if (e && e.score !== undefined && e.score !== '' && !isNaN(parseFloat(e.score))) { scoreRecente = parseFloat(e.score); break; }
+  }
+  const scoreOk = scoreRecente !== null && scoreRecente >= 60;
+  const prazoOk = prazoStatus(p).ok === true;
+  const atingidos = (scoreOk ? 1 : 0) + (prazoOk ? 1 : 0);
+  if (atingidos === 2) return 'Verde';
+  if (atingidos === 1) return 'Amarelo';
+  return 'Vermelho';
+}
+
 function prazoStatus(p) {
   if (!p.inicio) return {ok: null, html: '<span style="color:var(--text-hint)">—</span>', dias: null};
   // Reembolso → projeto INTERROMPIDO: não conta como atraso nem como no prazo.
@@ -3008,7 +3030,7 @@ function buildPipeSemana() {
         ${vRec > 0 ? `<span style="color:var(--blue);font-weight:600;">Rec: ${BRL(vRec)}</span>` : ''}
         ${vTotal === 0 ? '<span style="color:var(--text-hint);">—</span>' : ''}
       </td>
-      <td style="padding:8px 10px;">${flagHTML(p.flag)}</td>
+      <td style="padding:8px 10px;">${flagHTML(calcFlagAutomatica(p))}</td>
     </tr>`;
   }).join('');
 
@@ -3291,7 +3313,7 @@ function buildDRO(){
           <div style="font-size:12px;color:var(--text-hint);margin-top:2px;">${p.consultor||'—'} · ${p.inicio||'?'} → ${p.prevFim||'?'} · ${ciclos.length} ciclos${p.gmv? ' · GMV R$ '+Number(p.gmv).toLocaleString('pt-BR'):''}</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;" onclick="event.stopPropagation()">
-          ${flagHTML(p.flag)}
+          ${flagHTML(calcFlagAutomatica(p))}
           <select class="sel" style="font-size:11px;padding:2px 6px;" onchange="const pr=projects.find(x=>String(x.id)===String(${p.id}));pr.oport=this.value;upd();">
             <option value="" ${!p.oport?'selected':''}>Sem oportunidade</option>
             <option value="Mapeado (AQL)" ${p.oport==='Mapeado (AQL)'?'selected':''}>Mapeado (AQL)</option>
@@ -3432,7 +3454,7 @@ function drxCard(p, hoje){
   +   '<div onclick="const pr=projects.find(x=>String(x.id)===String('+p.id+'));pr.droExpanded=!pr.droExpanded;buildDRO();" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;cursor:pointer;'+(exp?'margin-bottom:12px;':'')+'">'
   +     '<div><div style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;"><span style="width:9px;height:9px;border-radius:50%;background:var(--drx,#0d9488);display:inline-block;"></span>'+p.nome+' <span class="badge" style="background:rgba(13,148,136,.14);color:var(--drx,#0d9488);font-size:10px;margin-top:0;">DR-X</span></div>'
   +     '<div style="font-size:12px;color:var(--text-hint);margin-top:2px;">'+(p.consultor||'—')+' · '+(p.inicio||'?')+' → '+(p.prevFim||'?')+' · 6 semanas'+(p.gmv? ' · GMV R$ '+Number(p.gmv).toLocaleString('pt-BR'):'')+'</div></div>'
-  +     '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;" onclick="event.stopPropagation()">'+flagHTML(p.flag)
+  +     '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;" onclick="event.stopPropagation()">'+flagHTML(calcFlagAutomatica(p))
   +       '<select class="sel" style="font-size:11px;padding:2px 6px;" onchange="const pr=projects.find(x=>String(x.id)===String('+p.id+'));pr.oport=this.value;upd();"><option value="" '+(!p.oport?'selected':'')+'>Sem oportunidade</option>'+oportSel('Mapeado (AQL)')+oportSel('Apresentar proposta (SQL)')+oportSel('Proposta apresentada (SAL)')+oportSel('Follow (COMMIT)')+'</select>'
   +       '<span style="font-size:16px;color:var(--text-hint);line-height:1;display:inline-block;transform:rotate('+(exp?'0':'180deg')+');">⌃</span>'
   +     '</div>'
@@ -4179,7 +4201,7 @@ function renderBase() {
       </td>
       <td><input type="date" class="sel" value="${dv(p.realFim)}" data-f="realFim" data-id="${p.id}" onchange="setField(this)"></td>
       <td>${prazoInline(p)}</td>
-      <td style="padding:6px 10px;">${flagHTML(p.flag)}</td>
+      <td style="padding:6px 10px;">${flagHTML(calcFlagAutomatica(p))}</td>
       <td>
         <div style="display:flex;flex-direction:column;gap:4px;">
           <div>${statusBadge2(p)}</div>
@@ -4709,7 +4731,7 @@ function calcConv() {
     totalAno += iniciados.length; monAno += monos.length;
 
     const rows = iniciados.length
-      ? iniciados.map(p => `<tr><td>${p.nome||'—'}</td><td>${p.consultor||'—'}</td><td>${semanaPill(p)}</td><td>${statusBadge2(p)}</td><td>${convBadge(p)}</td><td>${_mesesMonProj(p)||'—'}</td><td>${p.valor||'—'}</td><td>${flagHTML(p.flag)}</td></tr>`).join('')
+      ? iniciados.map(p => `<tr><td>${p.nome||'—'}</td><td>${p.consultor||'—'}</td><td>${semanaPill(p)}</td><td>${statusBadge2(p)}</td><td>${convBadge(p)}</td><td>${_mesesMonProj(p)||'—'}</td><td>${p.valor||'—'}</td><td>${flagHTML(calcFlagAutomatica(p))}</td></tr>`).join('')
       : emptyRow(8, 'Nenhum projeto iniciado em ' + m.label);
 
     return `<div class="month-card">
@@ -4791,7 +4813,7 @@ function calcPrazo() {
         <td style="font-size:11px">${sNome}</td>
         <td style="white-space:nowrap">${diasH}</td>
         <td>${st.html}</td>
-        <td>${flagHTML(p.flag)}</td>
+        <td>${flagHTML(calcFlagAutomatica(p))}</td>
       </tr>`;
     }).join('');
 
@@ -6365,7 +6387,13 @@ function buildOvGantt() {
           return atraso === null ? null : (atraso <= 0 ? 'verde' : 'vermelho');
         });
         const corFinal = cores.includes('vermelho') ? 'vermelho' : (cores.length && cores.every(c => c === 'verde') ? 'verde' : null);
-        labelMap[sISO] = { text: reaisHere.map(si => SEM_LABEL[si]).join('<br>'), cor: corFinal };
+        // Score da(s) etapa(s) dessa semana — pior caso se houver mais de uma
+        const scoresAqui = reaisHere.map(si => {
+          const e = entp[si] || entp[String(si)];
+          return (e && e.score !== undefined && e.score !== '' && !isNaN(parseFloat(e.score))) ? parseFloat(e.score) : null;
+        }).filter(s => s !== null);
+        const scoreFinal = scoresAqui.length ? Math.min(...scoresAqui) : null;
+        labelMap[sISO] = { text: reaisHere.map(si => SEM_LABEL[si]).join('<br>'), cor: corFinal, score: scoreFinal };
       } else {
         const cands = [];
         for (let si = 0; si <= 6; si++) {
@@ -6377,9 +6405,9 @@ function buildOvGantt() {
         cands.sort((a,b) => a[0] < b[0] ? -1 : 1);
         if (cands.length > 0) {
           shown.add(cands[0][1]);
-          labelMap[sISO] = { text: SEM_LABEL[cands[0][1]], cor: null };
+          labelMap[sISO] = { text: SEM_LABEL[cands[0][1]], cor: null, score: null };
         } else {
-          labelMap[sISO] = { text: '', cor: null };
+          labelMap[sISO] = { text: '', cor: null, score: null };
         }
       }
     });
@@ -6402,18 +6430,25 @@ function buildOvGantt() {
 
   const rows = prjs.map(p => {
     const lm = labelsMap[p.id] || {};
+    const flagCor = { Verde: 'var(--green)', Amarelo: 'var(--amber)', Vermelho: 'var(--accent)' }[calcFlagAutomatica(p)] || 'var(--text-hint)';
     return '<tr style="border-bottom:1px solid var(--border);">'
       + '<td style="padding:6px 10px;color:var(--text);font-weight:600;background:var(--surface);position:sticky;left:0;white-space:nowrap;">'
+      + '<span title="Flag automática" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + flagCor + ';margin-right:6px;flex-shrink:0;"></span>'
       + (p.nome||'—') + '</td>'
       + '<td style="padding:6px 10px;color:var(--text-muted);">' + (p.consultor||'—') + '</td>'
       + semanas.map(s => {
           const sISO = toISOf(s);
           const isAtual = sISO === toISOf(new Date(startRef.getTime())) ? false : (hojeISO >= sISO && hojeISO <= toISOf(new Date(s.getTime()+6*864e5)));
-          const cel = lm[sISO] || { text: '', cor: null };
+          const cel = lm[sISO] || { text: '', cor: null, score: null };
           const bgCor = cel.cor === 'verde' ? 'var(--green)' : cel.cor === 'vermelho' ? 'var(--accent)' : null;
+          const scoreCor = cel.score === null ? 'var(--text-hint)' : cel.score >= 80 ? 'var(--green)' : cel.score >= 60 ? 'var(--amber)' : 'var(--accent)';
+          const scoreTxt = cel.score === null ? '—' : cel.score;
           const conteudo = cel.text
             ? (bgCor
-                ? '<span style="display:inline-block;font-size:9px;font-weight:700;color:#fff;background:' + bgCor + ';padding:3px 7px;border-radius:5px;white-space:nowrap;">' + cel.text + '</span>'
+                ? '<div style="display:inline-flex;border-radius:5px;overflow:hidden;vertical-align:middle;">'
+                  + '<span title="Prazo da entrega" style="background:' + bgCor + ';color:#fff;font-size:8px;font-weight:700;padding:3px 5px;white-space:nowrap;">' + cel.text + '</span>'
+                  + '<span title="Score da entrega" style="background:' + scoreCor + ';color:#fff;font-size:8px;font-weight:700;padding:3px 5px;white-space:nowrap;border-left:1px solid rgba(255,255,255,.35);">' + scoreTxt + '</span>'
+                  + '</div>'
                 : '<span style="font-size:10px;font-weight:600;color:var(--text);white-space:nowrap;">' + cel.text + '</span>')
             : '';
           return '<td style="padding:6px 8px;text-align:center;background:' + (isAtual?'rgba(212,0,26,.04)':'transparent') + ';">'
@@ -7267,11 +7302,9 @@ function buildLeadTime() {
           + '<td style="padding:6px 10px;">'
           + '<div style="display:flex;gap:3px;" id="lt-bar-' + p.id + '">' + barBlocks + '</div>'
           + '</td>'
-          // Flag
+          // Flag — calculada automaticamente (score da entrega + prazo), não edita mais na mão
           + '<td style="padding:6px 8px;text-align:center;">'
-          + '<select class="sel" style="font-size:11px;width:70px;" onchange="ltSetField(' + p.id + ',\'flag\',this.value)">'
-          + ['—','Verde','Amarelo','Vermelho'].map(f => '<option' + ((p.flag||'—')===f?' selected':'') + '>' + f + '</option>').join('')
-          + '</select>'
+          + flagHTML(calcFlagAutomatica(p))
           + '</td>'
           // Score da entrega (seletor próprio + escala única 0–100)
           + (function() {
