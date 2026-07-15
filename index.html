@@ -6862,10 +6862,10 @@ function ltSetEntregaScore(id, semIdx, val) {
   buildLeadTime();
 }
 
-// ── SCORE DE ENTREGA (novo) — escala única 0–100, cores 80+/70-80/<70 ──
+// ── SCORE DE ENTREGA (novo) — escala única 0–100, cores 80+/60-79/<60 ──
 const _SCORE_LABELS = ['Gr','Ko','1E','2E','3E','4E','Dc'];
-function _scoreColor(s){ if(s===''||s===null||s===undefined||isNaN(parseFloat(s)))return 'var(--text-hint)'; s=parseFloat(s); if(s>=80)return 'var(--green)'; if(s>=70)return 'var(--amber)'; return 'var(--red)'; }
-function _scoreBg(s){ if(s===''||s===null||s===undefined||isNaN(parseFloat(s)))return 'var(--surface3)'; s=parseFloat(s); if(s>=80)return 'rgba(22,163,74,.15)'; if(s>=70)return 'rgba(180,83,9,.15)'; return 'rgba(212,0,26,.15)'; }
+function _scoreColor(s){ if(s===''||s===null||s===undefined||isNaN(parseFloat(s)))return 'var(--text-hint)'; s=parseFloat(s); if(s>=80)return 'var(--green)'; if(s>=60)return 'var(--amber)'; return 'var(--red)'; }
+function _scoreBg(s){ if(s===''||s===null||s===undefined||isNaN(parseFloat(s)))return 'var(--surface3)'; s=parseFloat(s); if(s>=80)return 'rgba(22,163,74,.15)'; if(s>=60)return 'rgba(180,83,9,.15)'; return 'rgba(212,0,26,.15)'; }
 function _ltScoreBlocksHTML(p){
   const ent = p.entregas || {};
   return [0,1,2,3,4,5,6].map(function(i){
@@ -9345,11 +9345,13 @@ function audParseD9(txt, entrega){
 // ── FORMULÁRIO (identificação + colar análise) ──
 function audFormHTML(){
   const opt = (arr,sel) => arr.map(x=>'<option '+(x===sel?'selected':'')+'>'+x+'</option>').join('');
+  const SEM_SHORT_AUD = ['Growthclass','Kick off','1ª Entrega','2ª Entrega','3ª Entrega','4ª Entrega','Decolagem'];
   return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px;">'
     + '<div><label class="aud-lbl">Consultor</label><select id="aud-f-consultor" class="aud-inp"><option value="">Selecione…</option>'+opt(audConsultores())+'</select></div>'
     + '<div><label class="aud-lbl">Tipo de entrega</label><select id="aud-f-tipo" class="aud-inp"><option value="">Selecione…</option>'+opt(AUD_TIPOS)+'</select></div>'
     + '<div><label class="aud-lbl">Cliente</label><select id="aud-f-cliente" class="aud-inp"><option value="">Selecione…</option>'+opt(audClientes())+'</select></div>'
     + '<div><label class="aud-lbl">Data da reunião</label><input id="aud-f-data" type="date" class="aud-inp"></div>'
+    + '<div><label class="aud-lbl">Ordem da entrega no Lead Time</label><select id="aud-f-ordem" class="aud-inp"><option value="">— não enviar pro Lead Time —</option>'+SEM_SHORT_AUD.map((s,i)=>'<option value="'+i+'">'+s+'</option>').join('')+'</select></div>'
     + '</div>'
     + '<div style="background:var(--surface2);border:1px dashed var(--border);border-radius:var(--r-sm);padding:14px;">'
     + '<label class="aud-lbl">Cole a análise do Claude (dimensões d1–d8 + skill d9)</label>'
@@ -9455,13 +9457,31 @@ function audSalvar(){
     else obs[d.id]={analise:g('aud-analise-'+d.id),plano:g('aud-plano-'+d.id)};
   });
   const nota=Math.round(Object.values(scores).reduce((a,b)=>a+b,0)/9);
-  auditorias.push({ id:'a'+Date.now()+Math.floor(Math.random()*1000), consultor:g('aud-f-consultor'), entrega:g('aud-f-tipo'), cliente:g('aud-f-cliente'), data:g('aud-f-data'), scores, observacoes:obs, recomendacao:g('aud-rec'), nota, d9_itens:audReviewD9 });
+  const ordemEntregaStr = g('aud-f-ordem');
+  const ordemEntrega = ordemEntregaStr !== '' ? parseInt(ordemEntregaStr) : null;
+  const cliente = g('aud-f-cliente');
+  auditorias.push({ id:'a'+Date.now()+Math.floor(Math.random()*1000), consultor:g('aud-f-consultor'), entrega:g('aud-f-tipo'), cliente, data:g('aud-f-data'), scores, observacoes:obs, recomendacao:g('aud-rec'), nota, d9_itens:audReviewD9, ordemEntrega });
+  // Envia a nota pro Lead Time — só se a coordenadora marcou qual entrega (1ª/2ª/3ª/4ª etc.)
+  // essa avaliação representa. O score do Lead Time já é na escala 0-100 (sistema "novo",
+  // o mesmo da Auditoria) — não precisa converter nada, é a nota direto.
+  let msgExtra = '';
+  if (ordemEntrega !== null && cliente) {
+    const p = projects.find(x => x.nome === cliente);
+    if (p) {
+      if (!p.entregas) p.entregas = {};
+      if (!p.entregas[ordemEntrega]) p.entregas[ordemEntrega] = { real: '', obs: '' };
+      p.entregas[ordemEntrega].score = nota;
+      msgExtra = ' Score enviado pro Lead Time (' + nota + ').';
+    } else {
+      msgExtra = ' Não achei o projeto "' + cliente + '" pra enviar o score.';
+    }
+  }
   // reset
-  ['aud-f-consultor','aud-f-tipo','aud-f-cliente','aud-f-data','aud-analise'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['aud-f-consultor','aud-f-tipo','aud-f-cliente','aud-f-data','aud-f-ordem','aud-analise'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   audReviewD9={}; audCancelar();
   if(typeof upd==='function') upd();
   audRenderLista();
-  const m=document.getElementById('aud-form-msg'); if(m){m.textContent='✓ Avaliação salva.';m.style.color='var(--green)';}
+  const m=document.getElementById('aud-form-msg'); if(m){m.textContent='✓ Avaliação salva.'+msgExtra;m.style.color='var(--green)';}
 }
 
 function audRemover(id){ if(!confirm('Excluir esta avaliação?')) return; auditorias=auditorias.filter(a=>a.id!==id); if(typeof upd==='function') upd(); audRenderLista(); }
