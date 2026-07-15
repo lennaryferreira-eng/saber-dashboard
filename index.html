@@ -667,9 +667,30 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
     <div id="ov-motivos"></div>
   </div>
   <!-- Carga por consultor -->
-  <div class="card" style="margin-bottom:0;">
+  <div class="card" style="margin-bottom:1rem;">
     <div class="card-title">Carga por consultor</div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;" id="ov-consultores"></div>
+  </div>
+  <!-- Andamento dos Projetos (versão simplificada, sem status de prazo/monetização) -->
+  <div class="card" style="margin-bottom:0;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:1rem;">
+      <div class="card-title" style="margin:0;">Andamento dos Projetos</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <select class="base-sel" id="ov-gantt-cons" onchange="buildOvGantt()"><option value="">Todos consultores</option></select>
+        <select class="base-sel" id="ov-gantt-etapa" onchange="buildOvGantt()">
+          <option value="">Todas etapas</option>
+          <option value="0">Growthclass</option>
+          <option value="1">Kick off</option>
+          <option value="2">1ª Entrega</option>
+          <option value="3">2ª Entrega</option>
+          <option value="4">3ª Entrega</option>
+          <option value="5">4ª Entrega</option>
+          <option value="6">Decolagem</option>
+        </select>
+      </div>
+    </div>
+    <p style="font-size:11px;color:var(--text-hint);margin:-0.5rem 0 1rem;">Em qual etapa cada projeto está, semana a semana — sem os sinalizadores de status do Capacity (prazo, monetização, etc.).</p>
+    <div id="ov-gantt-wrap" style="overflow-x:auto;"></div>
   </div>
 </section>
 
@@ -6182,12 +6203,159 @@ function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
 
   // atualiza análises com o mês do filtro
   buildOvAnalises(curM);
+  buildOvGantt();
 }
 
 // ═══════════════════════════════════
 //  REFRESH ALL
 // ═══════════════════════════════════
 // ── NOVAS ANÁLISES DA VISÃO GERAL ────────────────────────────
+// "Andamento dos Projetos" simplificado pra Visão Geral — mesma lógica de etapas/semanas
+// do Capacity, mas SEM os sinalizadores de status (prazo, monetização, cor de "Em andamento"
+// etc.) e só com os filtros de Consultor e Etapa Atual.
+function buildOvGantt() {
+  const wrap = document.getElementById('ov-gantt-wrap');
+  if (!wrap) return;
+
+  const SEM_LABEL = ['Growth','Kick off','1ª Entr.','2ª Entr.','3ª Entr.','4ª Entr.','Decol.'];
+
+  const selCons = document.getElementById('ov-gantt-cons');
+  if (selCons) {
+    const cons = [...new Set(projects.map(p => p.consultor).filter(Boolean))].sort();
+    const curC = selCons.value;
+    selCons.innerHTML = '<option value="">Todos consultores</option>' + cons.map(c => '<option' + (c===curC?' selected':'') + '>' + c + '</option>').join('');
+  }
+  const consFilter = selCons?.value || '';
+  const etapaFilter = document.getElementById('ov-gantt-etapa')?.value ?? '';
+
+  // Semanas: 6 meses a partir de 1 semana antes da atual (mesmo padrão do Capacity)
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const startRef = new Date(hoje);
+  const dow = startRef.getDay() || 7;
+  startRef.setDate(startRef.getDate() - dow + 1 - 7);
+  const endRef = new Date(startRef);
+  endRef.setMonth(endRef.getMonth() + 6);
+  const semanas = [];
+  let cur = new Date(startRef);
+  while (cur <= endRef) { semanas.push(new Date(cur)); cur.setDate(cur.getDate() + 7); }
+
+  // Base: projetos não-DRO, com início, fora de Churn/Pausado/Início em breve
+  let prjs = projects.filter(p => {
+    if (isDroFam(p)) return false;
+    if (!p.inicio) return false;
+    const st = calcStatus2(p);
+    return !['Churn', 'Pausado', 'Início em breve'].includes(st);
+  });
+  if (consFilter) prjs = prjs.filter(p => p.consultor === consFilter);
+  if (etapaFilter !== '') {
+    const etapaIdx = parseInt(etapaFilter);
+    const diaSem = hoje.getDay();
+    const segE = new Date(hoje); segE.setDate(hoje.getDate() - (diaSem === 0 ? 6 : diaSem - 1));
+    const domE = new Date(segE); domE.setDate(segE.getDate() + 6); domE.setHours(23,59,59,999);
+    const toISO = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    const segISO = toISO(segE), domISO = toISO(domE);
+    prjs = prjs.filter(p => {
+      const ent = p.entregas || {};
+      if (etapaIdx > 0) {
+        const entAnterior = ent[etapaIdx-1] || ent[String(etapaIdx-1)];
+        if (!entAnterior?.real) return false;
+      }
+      const dataRef = semDataEtapa(p, etapaIdx);
+      if (!dataRef) return false;
+      return dataRef >= segISO && dataRef <= domISO;
+    });
+  }
+  prjs.sort((a, b) => (a.inicio || '') < (b.inicio || '') ? -1 : 1);
+
+  if (!prjs.length) { wrap.innerHTML = '<div style="padding:16px 0;color:var(--text-hint);font-size:12px;">Nenhum projeto encontrado com esse filtro.</div>'; return; }
+
+  // Rótulo de cada semana por projeto — mesma lógica do Capacity (real OU estimado),
+  // só que sem nenhum recorte por designer.
+  const labelsMap = {};
+  prjs.forEach(p => {
+    const dIp = parseDate(p.inicio);
+    if (!dIp) return;
+    const _dFrealP = p.realFim ? parseDate(p.realFim) : null;
+    let dFp;
+    if (_dFrealP) {
+      dFp = _dFrealP;
+    } else {
+      const _dFprevP = p.prevFim ? parseDate(p.prevFim) : new Date(dIp.getTime() + 45 * 864e5);
+      const _dFdecolP = (function() { const d = semDataEtapa(p, 6); return d ? parseDate(d) : null; })();
+      dFp = [_dFprevP, _dFdecolP].filter(Boolean).reduce((a,b) => a > b ? a : b);
+    }
+    const entp = p.entregas || {};
+    const reaisp = {};
+    for (let si = 0; si <= 6; si++) {
+      const ep = entp[si] || entp[String(si)];
+      if (ep && ep.real) reaisp[si] = ep.real;
+    }
+    const labelMap = {};
+    const shown = new Set();
+    semanas.forEach(s => {
+      const sEnd = new Date(s.getTime() + 6 * 864e5);
+      if (!(dIp <= sEnd && dFp >= s)) return;
+      const toISOf = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      const sISO = toISOf(s), eISO = toISOf(sEnd);
+      const reaisHere = [0,1,2,3,4,5,6].filter(si => reaisp[si] && reaisp[si] >= sISO && reaisp[si] <= eISO);
+      if (reaisHere.length > 0) {
+        reaisHere.forEach(si => shown.add(si));
+        labelMap[sISO] = reaisHere.map(si => SEM_LABEL[si]).join('<br>');
+      } else {
+        const cands = [];
+        for (let si = 0; si <= 6; si++) {
+          if (si in reaisp) continue;
+          if (shown.has(si)) continue;
+          const d = semDataEtapa(p, si);
+          if (d && d >= sISO) cands.push([d, si]);
+        }
+        cands.sort((a,b) => a[0] < b[0] ? -1 : 1);
+        if (cands.length > 0) {
+          shown.add(cands[0][1]);
+          labelMap[sISO] = SEM_LABEL[cands[0][1]];
+        } else {
+          labelMap[sISO] = '';
+        }
+      }
+    });
+    labelsMap[p.id] = labelMap;
+  });
+
+  const toISOf = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const hojeISO = toISOf(hoje);
+
+  const header = '<tr>'
+    + '<th style="text-align:left;padding:6px 10px;background:var(--surface2);position:sticky;left:0;z-index:2;min-width:160px;">Projeto</th>'
+    + '<th style="text-align:left;padding:6px 10px;background:var(--surface2);min-width:100px;">Consultor</th>'
+    + semanas.map(s => {
+        const sEnd = new Date(s.getTime()+6*864e5);
+        const isAtual = hojeISO >= toISOf(s) && hojeISO <= toISOf(sEnd);
+        const d = s.getDate().toString().padStart(2,'0') + '/' + (s.getMonth()+1).toString().padStart(2,'0');
+        return '<th style="padding:6px 8px;text-align:center;background:' + (isAtual?'rgba(212,0,26,.08)':'var(--surface2)') + ';white-space:nowrap;font-size:10px;font-weight:' + (isAtual?700:400) + ';color:' + (isAtual?'var(--accent)':'var(--text-hint)') + ';">' + d + '</th>';
+      }).join('')
+    + '</tr>';
+
+  const rows = prjs.map(p => {
+    const lm = labelsMap[p.id] || {};
+    return '<tr style="border-bottom:1px solid var(--border);">'
+      + '<td style="padding:6px 10px;color:var(--text);font-weight:600;background:var(--surface);position:sticky;left:0;">' + (p.nome||'—') + '</td>'
+      + '<td style="padding:6px 10px;color:var(--text-muted);">' + (p.consultor||'—') + '</td>'
+      + semanas.map(s => {
+          const sISO = toISOf(s);
+          const isAtual = sISO === toISOf(new Date(startRef.getTime())) ? false : (hojeISO >= sISO && hojeISO <= toISOf(new Date(s.getTime()+6*864e5)));
+          const lbl = lm[sISO] || '';
+          return '<td style="padding:6px 8px;text-align:center;background:' + (isAtual?'rgba(212,0,26,.04)':'transparent') + ';">'
+            + (lbl ? '<span style="font-size:10px;font-weight:600;color:var(--text);white-space:nowrap;">' + lbl + '</span>' : '')
+            + '</td>';
+        }).join('')
+      + '</tr>';
+  }).join('');
+
+  wrap.innerHTML = '<table style="border-collapse:collapse;font-size:11px;min-width:100%;">'
+    + '<thead>' + header + '</thead><tbody>' + rows + '</tbody></table>';
+}
+
+
 function buildOvAnalises(curM) {
   const hoje = new Date();
   // Se mês filtrado, usa ele; senão usa mês atual
@@ -8575,6 +8743,9 @@ function buildPerformance() {
 function buildPerfMetaMon() {
   const el = document.getElementById('perf-meta-mon');
   if (!el) return;
+  // Só faz sentido mostrar quando um consultor específico está logado — na visão geral
+  // (ADM/Visualização, vendo todo mundo de uma vez) o card ficava poluído, então some.
+  if (!currentPerfil || !currentPerfil.consultor) { el.innerHTML = ''; return; }
   const curKey = filters['performance'];
   const curM = curKey ? ALL_MESES.find(x => x.key === curKey) : null;
   const mesesConsiderados = curM ? [curM] : ALL_MESES;
