@@ -40,7 +40,7 @@
   --ink:#060606;
   --green:#16A34A; --green-dim:rgba(22,163,74,.10);
   --red:#D4001A; --red-dim:rgba(212,0,26,.08);
-  --amber:#B45309; --amber-dim:rgba(180,83,9,.10);
+  --amber:#F2A900; --amber-dim:rgba(242,169,0,.12);
   --blue:#1D5FA8; --blue-dim:rgba(29,95,168,.10);
   --purple:#6D35B8; --purple-dim:rgba(109,53,184,.10);
   --teal:#0D9488; --teal-dim:rgba(13,148,136,.10);
@@ -691,7 +691,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
     </div>
     <p style="font-size:11px;color:var(--text-hint);margin:-0.5rem 0 .6rem;">Em qual etapa cada projeto está, semana a semana — sem os sinalizadores de status do Capacity. Cada etapa entregue mostra dois indicadores lado a lado: prazo (esquerda) e score da avaliação (direita) — nenhum se sobrepõe ao outro.</p>
     <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:10px;color:var(--text-hint);margin-bottom:1rem;">
-      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:4px;vertical-align:middle;"></span>Flag automática do projeto (verde/amarelo/vermelho)</span>
+      <span><span style="color:var(--green);font-size:13px;margin-right:3px;">⚑</span>Flag automática do projeto (verde/amarelo/vermelho)</span>
       <span style="display:inline-flex;align-items:center;gap:5px;">
         <span style="display:inline-flex;border-radius:4px;overflow:hidden;"><span style="background:var(--green);color:#fff;font-size:8px;font-weight:700;padding:2px 5px;">Etapa</span><span style="background:var(--amber);color:#fff;font-size:8px;font-weight:700;padding:2px 5px;">75</span></span>
         = prazo (esq.) + score (dir.)
@@ -6433,7 +6433,7 @@ function buildOvGantt() {
     const flagCor = { Verde: 'var(--green)', Amarelo: 'var(--amber)', Vermelho: 'var(--accent)' }[calcFlagAutomatica(p)] || 'var(--text-hint)';
     return '<tr style="border-bottom:1px solid var(--border);">'
       + '<td style="padding:6px 10px;color:var(--text);font-weight:600;background:var(--surface);position:sticky;left:0;white-space:nowrap;">'
-      + '<span title="Flag automática" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + flagCor + ';margin-right:6px;flex-shrink:0;"></span>'
+      + '<span title="Flag automática" style="color:' + flagCor + ';font-size:13px;margin-right:5px;">⚑</span>'
       + (p.nome||'—') + '</td>'
       + '<td style="padding:6px 10px;color:var(--text-muted);">' + (p.consultor||'—') + '</td>'
       + semanas.map(s => {
@@ -9584,11 +9584,10 @@ function audRenderHeat(){
 
 // ── DRILL-DOWN POR AVALIAÇÃO ──
 function audDetalheHTML(a){
-  const dims = AUD_DIMS.map(d=>{ const v=audScore(a,d.id); const o=(a.observacoes&&a.observacoes[d.id])||{}; return {nome:d.nome,cor:d.cor,v,analise:o.analise||'',plano:o.plano||''}; })
+  // Esquerda (70%): dimensões d1-d8, da menor pra maior nota, com plano de ação
+  const dimsMain = AUD_DIMS.filter(d=>d.id!=='d9').map(d=>{ const v=audScore(a,d.id); const o=(a.observacoes&&a.observacoes[d.id])||{}; return {nome:d.nome,cor:d.cor,v,analise:o.analise||'',plano:o.plano||''}; })
     .filter(x=>x.v!==null).sort((p,q)=>p.v-q.v);
-  let html='<div style="padding:12px 16px;background:var(--surface2);border-radius:var(--r-sm);border:1px solid var(--border);">';
-  html+='<div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:8px;">Dimensões — da menor para a maior nota · plano de ação</div>';
-  html+=dims.map((d,i)=>{
+  const esquerda = dimsMain.map((d,i)=>{
     const cl=audClassif(d.v), prio=i<2;
     return '<div style="display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);">'
       +'<div style="flex:0 0 40px;text-align:center;"><div style="font-size:18px;font-weight:800;color:'+cl.cor+';line-height:1;">'+d.v+'</div></div>'
@@ -9598,6 +9597,54 @@ function audDetalheHTML(a){
         +(d.analise?('<div style="font-size:10px;color:var(--text-muted);margin-top:2px;"><em>'+d.analise+'</em></div>'):'')
       +'</div></div>';
   }).join('');
+
+  // Direita (30%): dimensão 9 (texto) em cima, checklist técnico da entrega embaixo
+  const d9Def = AUD_DIMS.find(d=>d.id==='d9');
+  const d9v = audScore(a,'d9');
+  const d9o = (a.observacoes&&a.observacoes.d9)||{};
+  let direita = '<div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:8px;">Dimensão 9 — checklist técnico</div>';
+  if (d9v !== null) {
+    const cl = audClassif(d9v);
+    direita += '<div style="padding-bottom:10px;border-bottom:1px solid var(--border);margin-bottom:10px;">'
+      + '<div style="display:flex;align-items:baseline;gap:8px;">'
+      + '<div style="font-size:22px;font-weight:800;color:'+cl.cor+';line-height:1;">'+d9v+'</div>'
+      + '<div style="font-size:12px;font-weight:600;color:var(--text);">'+(d9Def?d9Def.nome:'Checklist técnico')+'</div>'
+      + '</div>'
+      + (d9o.analise ? '<div style="font-size:10px;color:var(--text-muted);margin-top:4px;"><em>'+d9o.analise+'</em></div>' : '')
+      + '</div>';
+  }
+  const skill = AUD_D9_SKILLS[a.entrega];
+  const itens = a.d9_itens || {};
+  if (skill) {
+    direita += '<div style="font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:6px;">Checklist da entrega</div>';
+    direita += skill.map(bloco => {
+      return '<div style="margin-bottom:8px;">'
+        + '<div style="font-size:10px;font-weight:700;color:var(--text-muted);margin-bottom:3px;">'+bloco.bloco+'</div>'
+        + bloco.items.map(it => {
+            const v = itens[it.id];
+            const icon = v===1?'✅':v===0.5?'⚠️':v===0?'❌':'—';
+            const cor = v===1?'var(--green)':v===0.5?'var(--amber)':v===0?'var(--accent)':'var(--text-hint)';
+            return '<div style="display:flex;gap:6px;padding:2px 0;font-size:10px;color:var(--text);align-items:flex-start;">'
+              + '<span style="color:'+cor+';flex-shrink:0;">'+icon+'</span>'
+              + '<span>'+it.label+'</span>'
+              + '</div>';
+          }).join('')
+        + '</div>';
+    }).join('');
+  } else {
+    direita += '<div style="font-size:11px;color:var(--text-hint);">Sem checklist técnico cadastrado pra esse tipo de entrega ("'+(a.entrega||'—')+'").</div>';
+  }
+
+  let html='<div style="padding:12px 16px;background:var(--surface2);border-radius:var(--r-sm);border:1px solid var(--border);">';
+  html+='<div style="display:flex;gap:20px;align-items:flex-start;">';
+  html+='<div style="flex:0 0 68%;min-width:0;">';
+  html+='<div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:8px;">Dimensões — da menor para a maior nota · plano de ação</div>';
+  html+=esquerda;
+  html+='</div>';
+  html+='<div style="flex:0 0 30%;min-width:0;border-left:1px solid var(--border);padding-left:16px;">';
+  html+=direita;
+  html+='</div>';
+  html+='</div>';
   if(a.recomendacao) html+='<div style="margin-top:10px;font-size:11px;color:var(--text);"><strong style="color:var(--accent);">Recomendação:</strong> '+a.recomendacao+'</div>';
   html+='</div>';
   return html;
