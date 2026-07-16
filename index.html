@@ -2189,7 +2189,7 @@ function calcFlagAutomatica(p) {
     const e = ent[i] || ent[String(i)];
     if (e && e.score !== undefined && e.score !== '' && !isNaN(parseFloat(e.score))) { scoreRecente = parseFloat(e.score); break; }
   }
-  const scoreOk = scoreRecente !== null && scoreRecente >= 60;
+  const scoreOk = scoreRecente !== null && scoreRecente > 70;
   const prazoOk = prazoStatus(p).ok === true;
   const atingidos = (scoreOk ? 1 : 0) + (prazoOk ? 1 : 0);
   if (atingidos === 2) return 'Verde';
