@@ -674,7 +674,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
   <!-- Andamento dos Projetos (versão simplificada, sem status de prazo/monetização) -->
   <div class="card" style="margin-bottom:0;">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:1rem;">
-      <div class="card-title" style="margin:0;">Andamento dos Projetos</div>
+      <div class="card-title" style="margin:0;">Healthscore</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <select class="base-sel" id="ov-gantt-cons" onchange="buildOvGantt()"><option value="">Todos consultores</option></select>
         <select class="base-sel" id="ov-gantt-etapa" onchange="buildOvGantt()">
@@ -6238,7 +6238,7 @@ function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
 //  REFRESH ALL
 // ═══════════════════════════════════
 // ── NOVAS ANÁLISES DA VISÃO GERAL ────────────────────────────
-// "Andamento dos Projetos" simplificado pra Visão Geral — mesma lógica de etapas/semanas
+// "Healthscore" simplificado pra Visão Geral — mesma lógica de etapas/semanas
 // do Capacity, mas SEM os sinalizadores de status (prazo, monetização, cor de "Em andamento"
 // etc.) e só com os filtros de Consultor e Etapa Atual.
 function buildOvGantt() {
@@ -6267,11 +6267,20 @@ function buildOvGantt() {
   let cur = new Date(startRef);
   while (cur <= endRef) { semanas.push(new Date(cur)); cur.setDate(cur.getDate() + 7); }
 
-  // Base: projetos não-DRO, com início, e status = Em andamento
+  // Base: projetos não-DRO, com início, e (em andamento OU com alguma etapa datada dentro
+  // do período visível) — assim um projeto que finalizou nessa janela continua aparecendo,
+  // em vez de sumir assim que muda de status.
+  const toISOf6 = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const janelaIni = toISOf6(startRef), janelaFim = toISOf6(endRef);
   let prjs = projects.filter(p => {
     if (isDroFam(p)) return false;
     if (!p.inicio) return false;
-    return calcStatus2(p) === 'Em andamento';
+    if (calcStatus2(p) === 'Em andamento') return true;
+    const ent = p.entregas || {};
+    return [0,1,2,3,4,5,6].some(i => {
+      const e = ent[i] || ent[String(i)];
+      return e && e.real && e.real >= janelaIni && e.real <= janelaFim;
+    });
   });
   if (consFilter) prjs = prjs.filter(p => p.consultor === consFilter);
   if (etapaFilter !== '') {
