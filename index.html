@@ -2189,7 +2189,7 @@ function calcFlagAutomatica(p) {
     const e = ent[i] || ent[String(i)];
     if (e && e.score !== undefined && e.score !== '' && !isNaN(parseFloat(e.score))) { scoreRecente = parseFloat(e.score); break; }
   }
-  const scoreOk = scoreRecente !== null && scoreRecente > 70;
+  const scoreOk = scoreRecente !== null && scoreRecente >= 70;
   const prazoOk = prazoStatus(p).ok === true;
   const atingidos = (scoreOk ? 1 : 0) + (prazoOk ? 1 : 0);
   if (atingidos === 2) return 'Verde';
@@ -6456,8 +6456,8 @@ function buildOvGantt() {
           const conteudo = cel.text
             ? (bgCor
                 ? '<div style="display:inline-flex;border-radius:5px;overflow:hidden;vertical-align:middle;' + (scoreDourado?'box-shadow:0 0 0 1.5px #D4AF37;':'') + '">'
-                  + '<span title="Prazo da entrega" style="background:' + bgCor + ';color:#fff;font-size:8px;font-weight:700;padding:3px 5px;white-space:nowrap;">' + cel.text + '</span>'
-                  + '<span title="Score da entrega' + (scoreDourado?' — acima do padrão da squad':'') + '" style="background:' + scoreCor + ';color:#fff;font-size:8px;font-weight:700;padding:3px 5px;white-space:nowrap;border-left:1px solid rgba(255,255,255,.35);">' + scoreTxt + '</span>'
+                  + '<span title="Prazo da entrega" style="background:' + bgCor + ';color:#fff;font-size:8px;font-weight:700;padding:3px 6px;white-space:nowrap;">' + cel.text + '</span>'
+                  + '<span title="Score da entrega' + (scoreDourado?' — acima do padrão da squad':'') + '" style="background:' + scoreCor + ';color:#fff;font-size:8px;font-weight:700;padding:3px 6px;white-space:nowrap;border-left:2px solid #fff;">' + scoreTxt + '</span>'
                   + '</div>'
                 : '<span style="font-size:10px;font-weight:600;color:var(--text);white-space:nowrap;">' + cel.text + '</span>')
             : '';
