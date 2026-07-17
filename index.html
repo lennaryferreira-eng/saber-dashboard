@@ -9224,16 +9224,20 @@ function perfRemoveFoto(nome) {
 //  AUDITORIA DE ENTREGAS — 9 DIMENSÕES (port do Monitor de Consultores)
 // ═══════════════════════════════════
 const AUD_DIMS = [
-  {id:'d1',nome:'Controle narrativo',desc:'Tese central, progressão lógica, reencadramento do negativo',g:'G1',cor:'#1f9d55'},
-  {id:'d2',nome:'Escuta ativa e equilíbrio',desc:'Checkpoints, incorporação do cliente, didática preventiva',g:'G1',cor:'#1f9d55'},
-  {id:'d3',nome:'Gestão de objeções',desc:'Validar antes de redirecionar, resolução ao vivo, autoridade sob pressão',g:'G1',cor:'#1f9d55'},
-  {id:'d4',nome:'Tradução técnica → negócio',desc:'Personalização dos dados, consequência financeira, continuidade',g:'G2',cor:'#2f6fed'},
-  {id:'d5',nome:'Arquitetura de urgência',desc:'Custo da inação, momentum, roadmap como âncora temporal',g:'G2',cor:'#2f6fed'},
-  {id:'d6',nome:'Arquitetura de conversão',desc:'Solução como consequência, timing da proposta, posicionamento do preço',g:'G2',cor:'#2f6fed'},
-  {id:'d7',nome:'Construção de confiança',desc:'Fonte da autoridade, consistência entre entregas, presença em tensão',g:'G2',cor:'#2f6fed'},
-  {id:'d8',nome:'Domínio do negócio do cliente',desc:'Leitura do modelo, calibração ao setor, linguagem do cliente',g:'G3',cor:'#8E5BC4'},
-  {id:'d9',nome:'Qualidade técnica da entrega',desc:'Critérios da skill específica da entrega avaliada',g:'G3',cor:'#8E5BC4'},
+  {id:'d1',nome:'Controle narrativo',desc:'Tese central, progressão lógica, reencadramento do negativo',g:'G1',cor:'#1f9d55',peso:7},
+  {id:'d2',nome:'Escuta ativa e equilíbrio',desc:'Checkpoints, incorporação do cliente, didática preventiva',g:'G1',cor:'#1f9d55',peso:7},
+  {id:'d3',nome:'Gestão de objeções',desc:'Validar antes de redirecionar, resolução ao vivo, autoridade sob pressão',g:'G1',cor:'#1f9d55',peso:7},
+  {id:'d4',nome:'Tradução técnica → negócio',desc:'Personalização dos dados, consequência financeira, continuidade',g:'G2',cor:'#2f6fed',peso:14},
+  {id:'d5',nome:'Arquitetura de urgência',desc:'Custo da inação, momentum, roadmap como âncora temporal',g:'G2',cor:'#2f6fed',peso:14},
+  {id:'d6',nome:'Arquitetura de conversão',desc:'Solução como consequência, timing da proposta, posicionamento do preço',g:'G2',cor:'#2f6fed',peso:7},
+  {id:'d7',nome:'Construção de confiança',desc:'Fonte da autoridade, consistência entre entregas, presença em tensão',g:'G2',cor:'#2f6fed',peso:7},
+  {id:'d8',nome:'Domínio do negócio do cliente',desc:'Leitura do modelo, calibração ao setor, linguagem do cliente',g:'G3',cor:'#8E5BC4',peso:7},
+  {id:'d9',nome:'Qualidade técnica da entrega',desc:'Critérios da skill específica da entrega avaliada',g:'G3',cor:'#8E5BC4',peso:30},
 ];
+// Soma dos pesos = 100, então a nota final é só a soma ponderada (sem precisar dividir de novo)
+function audNotaPonderada(scores){
+  return Math.round(AUD_DIMS.reduce((soma, d) => soma + (scores[d.id]||0) * d.peso, 0) / 100);
+}
 const AUD_GRUPOS = {
   G1:{nome:'Condução & Comunicação', cor:'#1f9d55', ids:['d1','d2','d3']},
   G2:{nome:'Conversão & Negociação', cor:'#2f6fed', ids:['d4','d5','d6','d7']},
@@ -9295,7 +9299,15 @@ function audConsultores(){ return (typeof squadList==='function') ? squadList() 
 function audClientes(){ return [...new Set(projects.map(p=>p.nome).filter(Boolean))].sort((a,b)=>a.localeCompare(b)); }
 
 function audScore(a,id){ const v=a&&a.scores&&a.scores[id]; const x=parseFloat(v); return isNaN(x)?null:x; }
-function audNotaGeral(a){ if(a&&typeof a.nota==='number') return a.nota; const arr=AUD_DIMS.map(d=>audScore(a,d.id)).filter(x=>x!==null); if(!arr.length) return null; return Math.round(arr.reduce((s,x)=>s+x,0)/arr.length); }
+function audNotaGeral(a){
+  if(a&&typeof a.nota==='number') return a.nota;
+  // Fallback pra avaliações antigas sem nota salva — pondera só as dimensões disponíveis,
+  // redistribuindo o peso das que faltam.
+  let somaPeso=0, somaPonderada=0;
+  AUD_DIMS.forEach(d=>{ const v=audScore(a,d.id); if(v!==null){ somaPonderada+=v*d.peso; somaPeso+=d.peso; } });
+  if(!somaPeso) return null;
+  return Math.round(somaPonderada/somaPeso);
+}
 function audGrupoMedia(a,g){ const arr=AUD_GRUPOS[g].ids.map(id=>audScore(a,id)).filter(x=>x!==null); if(!arr.length) return null; return Math.round(arr.reduce((s,x)=>s+x,0)/arr.length); }
 function audGaps(a){ const xs=AUD_DIMS.map(d=>({nome:d.nome,v:audScore(a,d.id)})).filter(o=>o.v!==null); xs.sort((p,q)=>p.v-q.v); return xs.slice(0,2); }
 function audClassif(n){ if(n===null) return {txt:'—',cor:'var(--text-hint)',dourado:false}; if(n>=85) return {txt:'Acima do padrão da squad',cor:'var(--green)',dourado:true}; if(n>=70) return {txt:'Sólido',cor:'var(--green)',dourado:false}; if(n>=55) return {txt:'Fez o básico',cor:'var(--amber)',dourado:false}; return {txt:'Ruim',cor:'var(--accent)',dourado:false}; }
@@ -9479,7 +9491,7 @@ function audSyncDim(id,from){
   audAtualizarMedia();
 }
 function audGetScores(){ const s={}; AUD_DIMS.forEach(d=>{ const el=document.getElementById('aud-num-'+d.id); s[d.id]=el?Math.min(100,Math.max(0,parseInt(el.value)||0)):70; }); return s; }
-function audAtualizarMedia(){ const s=audGetScores(); const m=Math.round(Object.values(s).reduce((a,b)=>a+b,0)/9); const el=document.getElementById('aud-media'); if(el){ el.textContent=m; el.style.color=audClassif(m).cor; } }
+function audAtualizarMedia(){ const s=audGetScores(); const m=audNotaPonderada(s); const el=document.getElementById('aud-media'); if(el){ el.textContent=m; el.style.color=audClassif(m).cor; } }
 function audCancelar(){ const rv=document.getElementById('aud-review'); if(rv){rv.style.display='none';rv.innerHTML='';} }
 
 function audSalvar(){
@@ -9490,7 +9502,7 @@ function audSalvar(){
     if(d.id==='d9') obs.d9={analise:g('aud-analise-d9'),plano:''};
     else obs[d.id]={analise:g('aud-analise-'+d.id),plano:g('aud-plano-'+d.id)};
   });
-  const nota=Math.round(Object.values(scores).reduce((a,b)=>a+b,0)/9);
+  const nota=audNotaPonderada(scores);
   const ordemEntregaStr = g('aud-f-ordem');
   const ordemEntrega = ordemEntregaStr !== '' ? parseInt(ordemEntregaStr) : null;
   const cliente = g('aud-f-cliente');
