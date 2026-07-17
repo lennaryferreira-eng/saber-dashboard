@@ -6450,13 +6450,14 @@ function buildOvGantt() {
           const isAtual = sISO === toISOf(new Date(startRef.getTime())) ? false : (hojeISO >= sISO && hojeISO <= toISOf(new Date(s.getTime()+6*864e5)));
           const cel = lm[sISO] || { text: '', cor: null, score: null };
           const bgCor = cel.cor === 'verde' ? 'var(--green)' : cel.cor === 'vermelho' ? 'var(--accent)' : null;
-          const scoreCor = cel.score === null ? 'var(--text-hint)' : cel.score >= 80 ? 'var(--green)' : cel.score >= 60 ? 'var(--amber)' : 'var(--accent)';
+          const scoreCor = cel.score === null ? 'var(--text-hint)' : cel.score >= 70 ? 'var(--green)' : cel.score >= 55 ? 'var(--amber)' : 'var(--accent)';
+          const scoreDourado = cel.score !== null && cel.score >= 85;
           const scoreTxt = cel.score === null ? '—' : cel.score;
           const conteudo = cel.text
             ? (bgCor
-                ? '<div style="display:inline-flex;border-radius:5px;overflow:hidden;vertical-align:middle;">'
+                ? '<div style="display:inline-flex;border-radius:5px;overflow:hidden;vertical-align:middle;' + (scoreDourado?'box-shadow:0 0 0 1.5px #D4AF37;':'') + '">'
                   + '<span title="Prazo da entrega" style="background:' + bgCor + ';color:#fff;font-size:8px;font-weight:700;padding:3px 5px;white-space:nowrap;">' + cel.text + '</span>'
-                  + '<span title="Score da entrega" style="background:' + scoreCor + ';color:#fff;font-size:8px;font-weight:700;padding:3px 5px;white-space:nowrap;border-left:1px solid rgba(255,255,255,.35);">' + scoreTxt + '</span>'
+                  + '<span title="Score da entrega' + (scoreDourado?' — acima do padrão da squad':'') + '" style="background:' + scoreCor + ';color:#fff;font-size:8px;font-weight:700;padding:3px 5px;white-space:nowrap;border-left:1px solid rgba(255,255,255,.35);">' + scoreTxt + '</span>'
                   + '</div>'
                 : '<span style="font-size:10px;font-weight:600;color:var(--text);white-space:nowrap;">' + cel.text + '</span>')
             : '';
@@ -6906,12 +6907,13 @@ function ltSetEntregaScore(id, semIdx, val) {
   buildLeadTime();
 }
 
-// ── SCORE DE ENTREGA (novo) — escala única 0–100, cores 80+/60-79/<60 ──
-// Só leitura: o score vem automaticamente da Auditoria de Entregas (campo "Ordem da
-// entrega no Lead Time"), não tem mais entrada manual aqui.
+// ── SCORE DE ENTREGA (novo) — escala única 0–100, faixas: <55 ruim/vermelho ·
+// 55-69 fez o básico/amarelo · 70-84 sólido/verde · 85-100 acima do padrão/verde+dourado ──
 const _SCORE_LABELS = ['Growth','Kick off','1ª Entr.','2ª Entr.','3ª Entr.','4ª Entr.','Decol.'];
-function _scoreColor(s){ if(s===''||s===null||s===undefined||isNaN(parseFloat(s)))return 'var(--text-hint)'; s=parseFloat(s); if(s>=80)return 'var(--green)'; if(s>=60)return 'var(--amber)'; return 'var(--red)'; }
-function _scoreBg(s){ if(s===''||s===null||s===undefined||isNaN(parseFloat(s)))return 'var(--surface3)'; s=parseFloat(s); if(s>=80)return 'rgba(22,163,74,.15)'; if(s>=60)return 'rgba(180,83,9,.15)'; return 'rgba(212,0,26,.15)'; }
+function _scoreColor(s){ if(s===''||s===null||s===undefined||isNaN(parseFloat(s)))return 'var(--text-hint)'; s=parseFloat(s); if(s>=70)return 'var(--green)'; if(s>=55)return 'var(--amber)'; return 'var(--red)'; }
+function _scoreBg(s){ if(s===''||s===null||s===undefined||isNaN(parseFloat(s)))return 'var(--surface3)'; s=parseFloat(s); if(s>=70)return 'rgba(22,163,74,.15)'; if(s>=55)return 'rgba(242,169,0,.15)'; return 'rgba(212,0,26,.15)'; }
+// true se merece a bordinha dourada (85+) — é só um a mais visual, não muda classificação/flag
+function _scoreDourado(s){ if(s===''||s===null||s===undefined||isNaN(parseFloat(s)))return false; return parseFloat(s)>=85; }
 function _ltScoreBlocksHTML(p){
   const ent = p.entregas || {};
   return [0,1,2,3,4,5,6].map(function(i){
@@ -6919,7 +6921,8 @@ function _ltScoreBlocksHTML(p){
     const has = e.score!==undefined && e.score!=='';
     const s = has ? parseFloat(e.score) : null;
     const cor = has ? _scoreColor(s) : 'var(--text-hint)';
-    return '<div title="'+SEM_NOMES[i]+(has?': '+s:' — sem avaliação da Auditoria ainda')+'" style="flex:1;min-width:38px;height:42px;border-radius:6px;background:'+(has?_scoreBg(s):'var(--surface3)')+';border:1.5px solid '+(has?cor:'var(--border)')+';display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;">'
+    const dourado = has && _scoreDourado(s);
+    return '<div title="'+SEM_NOMES[i]+(has?': '+s+(dourado?' (acima do padrão da squad)':''):' — sem avaliação da Auditoria ainda')+'" style="flex:1;min-width:38px;height:42px;border-radius:6px;background:'+(has?_scoreBg(s):'var(--surface3)')+';border:1.5px solid '+(has?cor:'var(--border)')+';'+(dourado?'box-shadow:0 0 0 2px #D4AF37;':'')+'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;">'
       + '<span style="font-size:8px;font-weight:700;letter-spacing:.02em;color:'+cor+';white-space:nowrap;">'+_SCORE_LABELS[i]+'</span>'
       + '<span style="font-size:13px;font-weight:800;color:'+cor+';">'+(has?s:'—')+'</span>'
       + '</div>';
@@ -9283,7 +9286,7 @@ const AUD_D9_SKILLS = {
   ],
 };
 
-let audFiltro = { consultor:'', tipo:'', cliente:'', mes:'', semana:'' };
+let audFiltro = { consultor:'', tipo:'', cliente:'', mes:'', semana: (function(){ const d=new Date(); const iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); return audWeekKey(iso); })() };
 let audAgg = 'consultor';
 let audHeat = 'consultor';
 let audReviewD9 = {};   // d9_itens do parse, guardados para salvar
@@ -9295,7 +9298,7 @@ function audScore(a,id){ const v=a&&a.scores&&a.scores[id]; const x=parseFloat(v
 function audNotaGeral(a){ if(a&&typeof a.nota==='number') return a.nota; const arr=AUD_DIMS.map(d=>audScore(a,d.id)).filter(x=>x!==null); if(!arr.length) return null; return Math.round(arr.reduce((s,x)=>s+x,0)/arr.length); }
 function audGrupoMedia(a,g){ const arr=AUD_GRUPOS[g].ids.map(id=>audScore(a,id)).filter(x=>x!==null); if(!arr.length) return null; return Math.round(arr.reduce((s,x)=>s+x,0)/arr.length); }
 function audGaps(a){ const xs=AUD_DIMS.map(d=>({nome:d.nome,v:audScore(a,d.id)})).filter(o=>o.v!==null); xs.sort((p,q)=>p.v-q.v); return xs.slice(0,2); }
-function audClassif(n){ if(n===null) return {txt:'—',cor:'var(--text-hint)'}; if(n>=90) return {txt:'Excelente',cor:'var(--green)'}; if(n>=75) return {txt:'Bom',cor:'var(--blue)'}; if(n>=55) return {txt:'Regular',cor:'var(--amber)'}; return {txt:'Insuficiente',cor:'var(--accent)'}; }
+function audClassif(n){ if(n===null) return {txt:'—',cor:'var(--text-hint)',dourado:false}; if(n>=85) return {txt:'Acima do padrão da squad',cor:'var(--green)',dourado:true}; if(n>=70) return {txt:'Sólido',cor:'var(--green)',dourado:false}; if(n>=55) return {txt:'Fez o básico',cor:'var(--amber)',dourado:false}; return {txt:'Ruim',cor:'var(--accent)',dourado:false}; }
 function audMediaDimensao(list){ let best=null; AUD_DIMS.forEach(d=>{ const xs=list.map(a=>audScore(a,d.id)).filter(x=>x!==null); if(!xs.length) return; const m=xs.reduce((s,x)=>s+x,0)/xs.length; if(best===null||m<best.media) best={id:d.id,nome:d.nome,media:m}; }); return best; }
 
 // ── PARSER (idêntico ao Monitor) ──
@@ -9639,7 +9642,7 @@ function audDetalheHTML(a){
     const cl = audClassif(d9v);
     direita += '<div style="padding-bottom:10px;border-bottom:1px solid var(--border);margin-bottom:10px;">'
       + '<div style="display:flex;align-items:baseline;gap:8px;">'
-      + '<div style="font-size:22px;font-weight:800;color:'+cl.cor+';line-height:1;">'+d9v+'</div>'
+      + '<div style="font-size:22px;font-weight:800;color:'+cl.cor+';line-height:1;'+(cl.dourado?'text-shadow:0 0 0 #D4AF37;border-bottom:2px solid #D4AF37;padding-bottom:2px;':'')+'">'+d9v+'</div>'
       + '<div style="font-size:12px;font-weight:600;color:var(--text);">'+(d9Def?d9Def.nome:'Checklist técnico')+'</div>'
       + '</div>'
       + (d9o.analise ? '<div style="font-size:10px;color:var(--text-muted);margin-top:4px;"><em>'+d9o.analise+'</em></div>' : '')
@@ -9738,7 +9741,7 @@ function audRenderLista(){
           + '<td style="padding:6px 8px;color:var(--text-muted);">'+(a.entrega||'—')+'</td>'
           + '<td style="padding:6px 8px;color:var(--text-muted);">'+(a.cliente||'—')+'</td>'
           + '<td style="padding:6px 8px;color:var(--text-muted);">'+dataFmt+'</td>'
-          + '<td style="padding:6px 8px;"><span style="font-weight:700;color:'+cl.cor+';">'+(ng!==null?ng:'—')+'</span> <span style="font-size:10px;color:var(--text-hint);">'+cl.txt+'</span></td>'
+          + '<td style="padding:6px 8px;"><span style="font-weight:700;color:'+cl.cor+';'+(cl.dourado?'padding:1px 6px;border-radius:4px;box-shadow:0 0 0 1.5px #D4AF37;':'')+'">'+(ng!==null?ng:'—')+'</span> <span style="font-size:10px;color:var(--text-hint);">'+cl.txt+'</span></td>'
           + '<td style="padding:6px 8px;color:var(--text-muted);font-size:10px;">'+(gaps.length?gaps.map(g=>g.nome).join(' · '):'—')+'</td>'
           + '<td style="padding:6px 8px;text-align:right;"><button onclick="event.stopPropagation();audRemover(\''+a.id+'\')" title="Excluir" style="background:none;border:none;cursor:pointer;color:var(--text-hint);font-size:13px;">✕</button></td>'
           + '</tr>'
