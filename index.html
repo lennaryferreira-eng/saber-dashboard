@@ -317,6 +317,12 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
 </head>
 <body>
 
+<div id="conflito-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9998;background:var(--accent);color:#fff;padding:12px 20px;text-align:center;font-size:14px;font-weight:700;box-shadow:0 2px 12px rgba(0,0,0,.3);">
+  ⚠ Outra sessão salvou dados mais recentes que os seus — recarregue a página antes de continuar editando, ou você pode perder o que salvar agora.
+  <button onclick="location.reload()" style="margin-left:14px;background:#fff;color:var(--accent);border:none;border-radius:20px;padding:6px 18px;font-size:13px;font-weight:700;cursor:pointer;">Recarregar agora</button>
+  <button onclick="document.getElementById('conflito-banner').style.display='none';" title="A trava continua ativa — isso só esconde o aviso" style="margin-left:8px;background:none;color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:20px;padding:6px 12px;font-size:13px;cursor:pointer;">✕</button>
+</div>
+
 <div id="login-gate" style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:#0A0606;">
   <div style="width:100%;max-width:380px;padding:0 24px;text-align:center;">
     <div style="font-family:var(--cond);font-size:1.1rem;font-weight:700;letter-spacing:.08em;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:6px;">Growthunters</div>
@@ -9224,19 +9230,33 @@ function perfRemoveFoto(nome) {
 //  AUDITORIA DE ENTREGAS — 9 DIMENSÕES (port do Monitor de Consultores)
 // ═══════════════════════════════════
 const AUD_DIMS = [
-  {id:'d1',nome:'Controle narrativo',desc:'Tese central, progressão lógica, reencadramento do negativo',g:'G1',cor:'#1f9d55',peso:7},
-  {id:'d2',nome:'Escuta ativa e equilíbrio',desc:'Checkpoints, incorporação do cliente, didática preventiva',g:'G1',cor:'#1f9d55',peso:7},
-  {id:'d3',nome:'Gestão de objeções',desc:'Validar antes de redirecionar, resolução ao vivo, autoridade sob pressão',g:'G1',cor:'#1f9d55',peso:7},
-  {id:'d4',nome:'Tradução técnica → negócio',desc:'Personalização dos dados, consequência financeira, continuidade',g:'G2',cor:'#2f6fed',peso:14},
-  {id:'d5',nome:'Arquitetura de urgência',desc:'Custo da inação, momentum, roadmap como âncora temporal',g:'G2',cor:'#2f6fed',peso:14},
-  {id:'d6',nome:'Arquitetura de conversão',desc:'Solução como consequência, timing da proposta, posicionamento do preço',g:'G2',cor:'#2f6fed',peso:7},
-  {id:'d7',nome:'Construção de confiança',desc:'Fonte da autoridade, consistência entre entregas, presença em tensão',g:'G2',cor:'#2f6fed',peso:7},
-  {id:'d8',nome:'Domínio do negócio do cliente',desc:'Leitura do modelo, calibração ao setor, linguagem do cliente',g:'G3',cor:'#8E5BC4',peso:7},
-  {id:'d9',nome:'Qualidade técnica da entrega',desc:'Critérios da skill específica da entrega avaliada',g:'G3',cor:'#8E5BC4',peso:30},
+  {id:'d1',nome:'Controle narrativo',desc:'Tese central, progressão lógica, reencadramento do negativo',g:'G1',cor:'#1f9d55'},
+  {id:'d2',nome:'Escuta ativa e equilíbrio',desc:'Checkpoints, incorporação do cliente, didática preventiva',g:'G1',cor:'#1f9d55'},
+  {id:'d3',nome:'Gestão de objeções',desc:'Validar antes de redirecionar, resolução ao vivo, autoridade sob pressão',g:'G1',cor:'#1f9d55'},
+  {id:'d4',nome:'Tradução técnica → negócio',desc:'Personalização dos dados, consequência financeira, continuidade',g:'G2',cor:'#2f6fed'},
+  {id:'d5',nome:'Arquitetura de urgência',desc:'Custo da inação, momentum, roadmap como âncora temporal',g:'G2',cor:'#2f6fed'},
+  {id:'d6',nome:'Arquitetura de conversão',desc:'Solução como consequência, timing da proposta, posicionamento do preço',g:'G2',cor:'#2f6fed'},
+  {id:'d7',nome:'Construção de confiança',desc:'Fonte da autoridade, consistência entre entregas, presença em tensão',g:'G2',cor:'#2f6fed'},
+  {id:'d8',nome:'Domínio do negócio do cliente',desc:'Leitura do modelo, calibração ao setor, linguagem do cliente',g:'G3',cor:'#8E5BC4'},
+  {id:'d9',nome:'Qualidade técnica da entrega',desc:'Critérios da skill específica da entrega avaliada',g:'G3',cor:'#8E5BC4'},
 ];
-// Soma dos pesos = 100, então a nota final é só a soma ponderada (sem precisar dividir de novo)
-function audNotaPonderada(scores){
-  return Math.round(AUD_DIMS.reduce((soma, d) => soma + (scores[d.id]||0) * d.peso, 0) / 100);
+// Pesos por dimensão — variam por TIPO de entrega, conforme a tabela oficial da skill
+// avaliacao-reunioes-v4. D9 é sempre 30%; o resto muda conforme o que cada entrega prioriza.
+const AUD_PESOS_POR_TIPO = {
+  'Kickoff':                  {d1:6, d2:13, d3:3, d4:13, d5:13, d6:3, d7:6, d8:13, d9:30},
+  'Pesquisa de Mercado':      {d1:7, d2:7,  d3:7, d4:14, d5:14, d6:3, d7:7, d8:11, d9:30},
+  'Diagnóstico de Vendas':    {d1:7, d2:7,  d3:7, d4:14, d5:14, d6:7, d7:7, d8:7,  d9:30},
+  'Diagnóstico de Mídia Paga':{d1:7, d2:7,  d3:7, d4:14, d5:14, d6:7, d7:7, d8:7,  d9:30},
+  'Análise de Ambientes':     {d1:7, d2:7,  d3:7, d4:14, d5:14, d6:7, d7:7, d8:7,  d9:30},
+  'Apresentação Final':       {d1:5, d2:5,  d3:5, d4:12, d5:12, d6:12,d7:9, d8:10, d9:30},
+};
+// Fallback pra tipos sem coluna própria na tabela (Reunião de Negociação, Outra) — usa o
+// perfil "Diagnósticos", que é o meio-termo entre as colunas documentadas.
+const AUD_PESOS_PADRAO = AUD_PESOS_POR_TIPO['Diagnóstico de Vendas'];
+function audPesosDoTipo(entrega){ return AUD_PESOS_POR_TIPO[entrega] || AUD_PESOS_PADRAO; }
+function audNotaPonderada(scores, entrega){
+  const pesos = audPesosDoTipo(entrega);
+  return Math.round(AUD_DIMS.reduce((soma, d) => soma + (scores[d.id]||0) * (pesos[d.id]||0), 0) / 100);
 }
 const AUD_GRUPOS = {
   G1:{nome:'Condução & Comunicação', cor:'#1f9d55', ids:['d1','d2','d3']},
@@ -9302,9 +9322,10 @@ function audScore(a,id){ const v=a&&a.scores&&a.scores[id]; const x=parseFloat(v
 function audNotaGeral(a){
   if(a&&typeof a.nota==='number') return a.nota;
   // Fallback pra avaliações antigas sem nota salva — pondera só as dimensões disponíveis,
-  // redistribuindo o peso das que faltam.
+  // redistribuindo o peso das que faltam, usando a tabela de pesos do tipo de entrega.
+  const pesos = audPesosDoTipo(a && a.entrega);
   let somaPeso=0, somaPonderada=0;
-  AUD_DIMS.forEach(d=>{ const v=audScore(a,d.id); if(v!==null){ somaPonderada+=v*d.peso; somaPeso+=d.peso; } });
+  AUD_DIMS.forEach(d=>{ const v=audScore(a,d.id); if(v!==null){ const p=pesos[d.id]||0; somaPonderada+=v*p; somaPeso+=p; } });
   if(!somaPeso) return null;
   return Math.round(somaPonderada/somaPeso);
 }
@@ -9491,7 +9512,7 @@ function audSyncDim(id,from){
   audAtualizarMedia();
 }
 function audGetScores(){ const s={}; AUD_DIMS.forEach(d=>{ const el=document.getElementById('aud-num-'+d.id); s[d.id]=el?Math.min(100,Math.max(0,parseInt(el.value)||0)):70; }); return s; }
-function audAtualizarMedia(){ const s=audGetScores(); const m=audNotaPonderada(s); const el=document.getElementById('aud-media'); if(el){ el.textContent=m; el.style.color=audClassif(m).cor; } }
+function audAtualizarMedia(){ const s=audGetScores(); const entrega=document.getElementById('aud-f-tipo')?.value||''; const m=audNotaPonderada(s, entrega); const el=document.getElementById('aud-media'); if(el){ el.textContent=m; el.style.color=audClassif(m).cor; } }
 function audCancelar(){ const rv=document.getElementById('aud-review'); if(rv){rv.style.display='none';rv.innerHTML='';} }
 
 function audSalvar(){
@@ -9502,7 +9523,7 @@ function audSalvar(){
     if(d.id==='d9') obs.d9={analise:g('aud-analise-d9'),plano:''};
     else obs[d.id]={analise:g('aud-analise-'+d.id),plano:g('aud-plano-'+d.id)};
   });
-  const nota=audNotaPonderada(scores);
+  const nota=audNotaPonderada(scores, g('aud-f-tipo'));
   const ordemEntregaStr = g('aud-f-ordem');
   const ordemEntrega = ordemEntregaStr !== '' ? parseInt(ordemEntregaStr) : null;
   const cliente = g('aud-f-cliente');
@@ -9926,6 +9947,12 @@ function setSyncStatus(msg, color, clickable) {
     }
   }
 }
+// Banner grande e fixo no topo — o aviso pequeno do sync-status é fácil de não notar,
+// então isso reforça visualmente que o save está travado até recarregar.
+function mostrarConflitoBanner() {
+  const el = document.getElementById('conflito-banner');
+  if (el) el.style.display = 'block';
+}
 
 // ── salva com debounce de 1.5s ──
 function sbScheduleSave() {
@@ -10001,6 +10028,7 @@ async function sbSave() {
   // TRAVA DE CONCORRÊNCIA: se já sabemos que outra aba/dispositivo salvou depois da nossa
   // última sincronização, não sobrescreve — precisa recarregar a página primeiro.
   if (sbConflito) {
+    mostrarConflitoBanner();
     console.warn('sbSave ABORTADO: outra aba/dispositivo salvou dados mais recentes. Recarregue a página (Ctrl+Shift+R) antes de continuar editando.');
     setSyncStatus('⚠ Recarregue a página — outra sessão salvou dados mais recentes', 'var(--accent)', true);
     return;
@@ -10016,6 +10044,7 @@ async function sbSave() {
           const knownTime = new Date(sbServerVersion).getTime();
           if (remoteTime > knownTime) {
             sbConflito = true;
+            mostrarConflitoBanner();
             console.warn('sbSave ABORTADO: detectado save mais recente no servidor (' + checkRows[0].updated_at + ' > ' + sbServerVersion + '). Recarregue a página antes de continuar editando.');
             setSyncStatus('⚠ Recarregue a página — outra sessão salvou dados mais recentes', 'var(--accent)', true);
             return;
@@ -10345,6 +10374,7 @@ function sbStartPolling() {
       // NUNCA recarrega automaticamente — trava o save e avisa; o usuário decide quando recarregar
       if (knownTime && remoteTime > knownTime && !sbConflito) {
         sbConflito = true;
+        mostrarConflitoBanner();
         console.warn('sbStartPolling: detectado save mais recente no servidor (' + remoteUpdatedAt + ' > ' + sbServerVersion + '). Saves pausados até recarregar.');
         setSyncStatus('⚠ Recarregue a página — outra sessão salvou dados mais recentes', 'var(--accent)', true);
       }
