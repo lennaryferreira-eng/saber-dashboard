@@ -6334,12 +6334,16 @@ function buildOvInsightsSemana() {
   const scoreAcima   = comScore.filter(x => x.score >= 85).length;
   const totalScore   = comScore.length;
 
-  // Flags dos projetos que tiveram alguma entrega nessa semana — evita listar flag de
-  // projetos sem nenhuma atividade na semana selecionada.
-  const projetosDaSemana = [...new Set(entregasDaSemana.map(x => x.p))];
+  // Flags: TODOS os projetos atualmente ativos (Em andamento, não-DRO, com início) — a flag
+  // é um estado ATUAL do projeto, não histórico por semana, então não muda ao navegar as
+  // semanas (diferente do prazo/score, que são sobre entregas que aconteceram numa semana
+  // específica). Importante: projetos vermelhos por ESTAGNAÇÃO (sem entrega recente) não
+  // podem ficar de fora só porque não tiveram nada registrado nessa semana — são
+  // exatamente os que mais precisam aparecer aqui.
+  const projetosAtivosAgora = projects.filter(p => !isDroFam(p) && p.inicio && calcStatus2(p) === 'Em andamento');
   const flags = { Verde: 0, Amarelo: 0, Vermelho: 0 };
-  projetosDaSemana.forEach(p => { const f = calcFlagAutomatica(p); if (flags[f] !== undefined) flags[f]++; });
-  const totalFlags = projetosDaSemana.length;
+  projetosAtivosAgora.forEach(p => { const f = calcFlagAutomatica(p); if (flags[f] !== undefined) flags[f]++; });
+  const totalFlags = projetosAtivosAgora.length;
   const totalPrazo = adiantadas + noPrazo + atrasadas; // exclui as sem referência do total de %
 
   const pct = (v, total) => total > 0 ? Math.round(v / total * 100) : 0;
@@ -6358,7 +6362,7 @@ function buildOvInsightsSemana() {
 
   // Card principal: a flag da semana — o mais importante, fica sozinho à esquerda
   const cardFlags = '<div style="flex:1;min-width:260px;background:var(--surface2);border-radius:var(--r-sm);padding:14px 16px;">'
-    + '<div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:10px;">Flags dos projetos ativos na semana</div>'
+    + '<div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:10px;">Flags dos projetos ativos agora</div>'
     + '<div style="display:flex;gap:8px;">'
     + quadradoGrande(flags.Verde, pct(flags.Verde, totalFlags), 'var(--green)', 'Verde')
     + quadradoGrande(flags.Amarelo, pct(flags.Amarelo, totalFlags), 'var(--amber)', 'Amarelo')
