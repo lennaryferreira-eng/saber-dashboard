@@ -2913,7 +2913,7 @@ function buildPipeSemanaCal() {
           const isDecol = (i === SEM_NOMES.length - 1);
           if (isDecol && !mostraDecol) continue;
           if (!isDecol && !mostraEntregaComum) continue;
-          addTag(p, SEM_NOMES[i], isDecol ? oColors['Decolagem'] : COR_ENTREGA, isDecol);
+          addTag(p, nomeEtapa(p, i), isDecol ? oColors['Decolagem'] : COR_ENTREGA, isDecol);
         }
       }
     });
@@ -6408,7 +6408,7 @@ function buildOvGantt() {
           return (e && e.score !== undefined && e.score !== '' && !isNaN(parseFloat(e.score))) ? parseFloat(e.score) : null;
         }).filter(s => s !== null);
         const scoreFinal = scoresAqui.length ? Math.min(...scoresAqui) : null;
-        labelMap[sISO] = { text: reaisHere.map(si => SEM_LABEL[si]).join('<br>'), cor: corFinal, score: scoreFinal };
+        labelMap[sISO] = { text: reaisHere.map(si => nomeEtapaCurto(p, si)).join('<br>'), cor: corFinal, score: scoreFinal };
       } else {
         const cands = [];
         for (let si = 0; si <= 6; si++) {
@@ -6425,7 +6425,7 @@ function buildOvGantt() {
           // Pode já ter score mesmo sem data real registrada — acontece quando a reunião já
           // rolou e foi avaliada em Auditoria, mas ninguém preencheu a data no Lead Time ainda.
           const scoreEstimado = (eEscolhido && eEscolhido.score !== undefined && eEscolhido.score !== '' && !isNaN(parseFloat(eEscolhido.score))) ? parseFloat(eEscolhido.score) : null;
-          labelMap[sISO] = { text: SEM_LABEL[siEscolhido], cor: null, score: scoreEstimado };
+          labelMap[sISO] = { text: nomeEtapaCurto(p, siEscolhido), cor: null, score: scoreEstimado };
         } else {
           labelMap[sISO] = { text: '', cor: null, score: null };
         }
@@ -6870,6 +6870,29 @@ function semanaPillDetailed(p) {
 //  LEAD TIME
 // ═══════════════════════════════════
 const SEM_SHORT_LT = ['Growth','Kick off','1ª Entr.','2ª Entr.','3ª Entr.','4ª Entr.','Decol.'];
+// Ordem padrão sugerida pras 4 entregas do meio (índices 2-5) — é só uma SUGESTÃO, a
+// coordenadora/consultor registra o tipo real de cada uma no Lead Time quando ela acontece,
+// e pode fugir dessa ordem ou repetir/pular um tipo.
+const TIPO_ENTREGA_PADRAO = { 2: 'Pesquisa de Mercado', 3: 'Análise de Ambientes', 4: 'Diagnóstico de Vendas', 5: 'Diagnóstico de Mídia Paga' };
+const TIPO_ENTREGA_CURTO = { 'Pesquisa de Mercado':'Pesq. Mercado', 'Diagnóstico de Mídia Paga':'Mídia Paga', 'Diagnóstico de Vendas':'Vendas', 'Análise de Ambientes':'Ambientes', 'Apresentação Final':'Apres. Final', 'Kickoff':'Kick off', 'Kick off':'Kick off', 'Outra':'Outra' };
+// Nome completo da etapa numa posição — usa o tipo REAL registrado no projeto (p.tiposEntrega),
+// e só cai pra ordem padrão/genérica se ainda não tiver sido registrado.
+function nomeEtapa(p, idx) {
+  if (idx === 0) return 'Growthclass';
+  if (idx === 1) return 'Kick off';
+  if (idx === 6) return 'Decolagem';
+  const custom = p && p.tiposEntrega && p.tiposEntrega[idx];
+  if (custom) return custom;
+  return TIPO_ENTREGA_PADRAO[idx] || (idx + '')+'ª Entrega';
+}
+// Versão curta, pra badges pequenos (Gantt/Capacity/Healthscore)
+function nomeEtapaCurto(p, idx) {
+  if (idx === 0) return 'Growth';
+  if (idx === 1) return 'Kick off';
+  if (idx === 6) return 'Decol.';
+  const nome = nomeEtapa(p, idx);
+  return TIPO_ENTREGA_CURTO[nome] || nome;
+}
 const SEM_COLORS   = ['#6B8E6B','#5B8EC4','#E8A838','#C45B5B','#8E5BC4','#D4763B','#2D7A4F'];
 
 function clearLtFilters() {
@@ -6937,8 +6960,8 @@ function _ltScoreBlocksHTML(p){
     const s = has ? parseFloat(e.score) : null;
     const cor = has ? _scoreColor(s) : 'var(--text-hint)';
     const dourado = has && _scoreDourado(s);
-    return '<div title="'+SEM_NOMES[i]+(has?': '+s+(dourado?' (acima do padrão da squad)':''):' — sem avaliação da Auditoria ainda')+'" style="flex:1;min-width:38px;height:42px;border-radius:6px;background:'+(has?_scoreBg(s):'var(--surface3)')+';border:1.5px solid '+(has?cor:'var(--border)')+';'+(dourado?'box-shadow:0 0 0 2px #D4AF37;':'')+'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;">'
-      + '<span style="font-size:8px;font-weight:700;letter-spacing:.02em;color:'+cor+';white-space:nowrap;">'+_SCORE_LABELS[i]+'</span>'
+    return '<div title="'+nomeEtapa(p, i)+(has?': '+s+(dourado?' (acima do padrão da squad)':''):' — sem avaliação da Auditoria ainda')+'" style="flex:1;min-width:38px;height:42px;border-radius:6px;background:'+(has?_scoreBg(s):'var(--surface3)')+';border:1.5px solid '+(has?cor:'var(--border)')+';'+(dourado?'box-shadow:0 0 0 2px #D4AF37;':'')+'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;">'
+      + '<span style="font-size:8px;font-weight:700;letter-spacing:.02em;color:'+cor+';white-space:nowrap;">'+nomeEtapaCurto(p, i)+'</span>'
       + '<span style="font-size:13px;font-weight:800;color:'+cor+';">'+(has?s:'—')+'</span>'
       + '</div>';
   }).join('');
@@ -7015,7 +7038,7 @@ function ltSaveDate(id) {
     if (parseInt(opts[i].value) === si) {
       const icon = atrasoBarra === null ? '○' : atrasoBarra <= 0 ? '✓' : '⚠';
       const dataTxt = inp.value ? ' · ' + fmtD(inp.value) : '';
-      opts[i].text = icon + ' ' + SEM_SHORT_LT[si] + dataTxt;
+      opts[i].text = icon + ' ' + nomeEtapaCurto(p, si) + dataTxt;
       break;
     }
   }
@@ -7027,6 +7050,8 @@ function ltSaveDate(id) {
 
 // Marca qual das 4 entregas intermediárias é a "Análise de Ambientes" (varia por projeto).
 // Kickoff (etapa 1) e Decolagem (etapa 6) já são fixas e sempre contam como momento do designer.
+// MANTIDO por retrocompatibilidade — o registro novo é via setTipoEntrega/p.tiposEntrega,
+// mas projetos antigos que só têm esse campo continuam funcionando.
 function setAnaliseAmbientes(id, val) {
   const p = projects.find(x => String(x.id) === String(id));
   if (!p) return;
@@ -7034,16 +7059,38 @@ function setAnaliseAmbientes(id, val) {
   upd();
 }
 
-// Índices das etapas (0-6) que envolvem o designer: Kickoff + Decolagem sempre,
-// mais a Análise de Ambientes — se já foi marcada pra esse projeto, usa ela; senão,
-// assume a 2ª Entrega (índice 3), que é onde ela geralmente acontece por padrão.
+// Registra qual TIPO de entrega (Pesquisa de Mercado, Diagnóstico de Vendas, etc.) aconteceu
+// numa posição (2-5) — a ordem sugerida é só um padrão, o tipo real é o que fica registrado
+// aqui, semana a semana, conforme o que realmente foi entregue.
+const TIPOS_ENTREGA_OPCOES = ['Pesquisa de Mercado', 'Diagnóstico de Mídia Paga', 'Diagnóstico de Vendas', 'Análise de Ambientes', 'Apresentação Final', 'Outra'];
+function setTipoEntrega(id, idx, val) {
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!p) return;
+  if (!p.tiposEntrega) p.tiposEntrega = {};
+  if (val === '') delete p.tiposEntrega[idx];
+  else p.tiposEntrega[idx] = val;
+  upd();
+  buildLeadTime();
+}
+
+// Índices das etapas (0-6) que envolvem o designer: Kickoff + Decolagem sempre, mais a
+// Análise de Ambientes — prioridade: tipo real registrado (tiposEntrega) > marcação antiga
+// (analiseAmbientesEtapa) > posição padrão (índice 3, 2ª Entrega).
 function designerEtapas(p) {
   const etapas = [1, 6];
-  if (Number.isInteger(p.analiseAmbientesEtapa) && p.analiseAmbientesEtapa >= 0 && p.analiseAmbientesEtapa <= 6) {
-    etapas.push(p.analiseAmbientesEtapa);
-  } else {
-    etapas.push(3); // suposição padrão: 2ª Entrega
+  let idxAmbientes = null;
+  if (p.tiposEntrega) {
+    const achado = [2,3,4,5].find(i => p.tiposEntrega[i] === 'Análise de Ambientes');
+    if (achado !== undefined) idxAmbientes = achado;
   }
+  if (idxAmbientes === null) {
+    if (Number.isInteger(p.analiseAmbientesEtapa) && p.analiseAmbientesEtapa >= 0 && p.analiseAmbientesEtapa <= 6) {
+      idxAmbientes = p.analiseAmbientesEtapa;
+    } else {
+      idxAmbientes = 3; // suposição padrão: 2ª Entrega
+    }
+  }
+  etapas.push(idxAmbientes);
   return [...new Set(etapas)];
 }
 // Data registrada (real) de uma etapa específica do projeto — entregas pode ser objeto ou array
@@ -7139,17 +7186,17 @@ function updateLtBlock(id, si, atrasoIgnored) {
   let bg, labelHtml, tooltip;
   if (atrasoBarra === null) {
     bg = 'var(--surface3)';
-    labelHtml = '<span style="color:var(--text-hint);font-size:8px;">' + SEM_SHORT_LT[si].slice(0,5) + '</span>';
-    tooltip = SEM_SHORT_LT[si] + (prazo7 ? ' · prazo: ' + prazo7Fmt : ' · aguardando etapa anterior');
+    labelHtml = '<span style="color:var(--text-hint);font-size:8px;">' + nomeEtapaCurto(p, si).slice(0,5) + '</span>';
+    tooltip = nomeEtapaCurto(p, si) + (prazo7 ? ' · prazo: ' + prazo7Fmt : ' · aguardando etapa anterior');
   } else if (atrasoBarra <= 0) {
     bg = 'var(--green)';
     const txt = atrasoBarra === 0 ? 'no prazo' : Math.abs(atrasoBarra) + 'd antes';
     labelHtml = '<span style="color:#fff;font-size:8px;font-weight:700;">✓</span>';
-    tooltip = SEM_SHORT_LT[si] + ' ✓ ' + txt + ' · ' + realFmt;
+    tooltip = nomeEtapaCurto(p, si) + ' ✓ ' + txt + ' · ' + realFmt;
   } else {
     bg = 'var(--red)';
     labelHtml = '<span style="color:#fff;font-size:8px;font-weight:700;">+' + atrasoBarra + 'd</span>';
-    tooltip = SEM_SHORT_LT[si] + ' ⚠ +' + atrasoBarra + 'd · ' + realFmt;
+    tooltip = nomeEtapaCurto(p, si) + ' ⚠ +' + atrasoBarra + 'd · ' + realFmt;
   }
   blk.style.background = bg;
   blk.title = tooltip;
@@ -7245,7 +7292,7 @@ function buildLeadTime() {
           const atraso = plan && real ? diffDays(plan, real) : null;
           const icon   = atraso === null ? '○' : atraso <= 0 ? '✓' : '⚠';
           const dataTxt= real ? ' · ' + fmtD(real) : '';
-          return '<option value="' + si + '">' + icon + ' ' + SEM_SHORT_LT[si] + dataTxt + '</option>';
+          return '<option value="' + si + '">' + icon + ' ' + nomeEtapaCurto(p, si) + dataTxt + '</option>';
         }).join('');
 
         // ── barra de progresso: 6 blocos coloridos
@@ -7271,17 +7318,17 @@ function buildLeadTime() {
           let bg, label, tooltip;
           if (atrasoBarra === null) {
             bg = 'var(--surface3)';
-            label = '<span style="color:var(--text-hint);font-size:8px;">' + SEM_SHORT_LT[si].slice(0,5) + '</span>';
-            tooltip = SEM_SHORT_LT[si] + (prazo7 ? ' · prazo: ' + fmtD(prazo7) : ' · aguardando etapa anterior');
+            label = '<span style="color:var(--text-hint);font-size:8px;">' + nomeEtapaCurto(p, si).slice(0,5) + '</span>';
+            tooltip = nomeEtapaCurto(p, si) + (prazo7 ? ' · prazo: ' + fmtD(prazo7) : ' · aguardando etapa anterior');
           } else if (atrasoBarra <= 0) {
             bg = 'var(--green)';
             const txt = atrasoBarra === 0 ? 'no prazo' : Math.abs(atrasoBarra) + 'd antes';
             label = '<span style="color:#fff;font-size:8px;font-weight:700;">✓</span>';
-            tooltip = SEM_SHORT_LT[si] + ' ✓ ' + txt + ' · realizado: ' + realFmt;
+            tooltip = nomeEtapaCurto(p, si) + ' ✓ ' + txt + ' · realizado: ' + realFmt;
           } else {
             bg = 'var(--red)';
             label = '<span style="color:#fff;font-size:8px;font-weight:700;">+' + atrasoBarra + 'd</span>';
-            tooltip = SEM_SHORT_LT[si] + ' ⚠ +' + atrasoBarra + 'd · realizado: ' + realFmt;
+            tooltip = nomeEtapaCurto(p, si) + ' ⚠ +' + atrasoBarra + 'd · realizado: ' + realFmt;
           }
 
           return '<div id="lt-blk-' + p.id + '-' + si + '" title="' + tooltip + '" style="'
@@ -7319,11 +7366,18 @@ function buildLeadTime() {
           + '<span id="lt-date-result-' + p.id + '" style="font-size:10px;font-weight:600;min-width:60px;"></span>'
           + '</div>'
           + '<div style="margin-top:6px;padding-top:6px;border-top:1px dashed var(--border);">'
-          + '<div style="font-size:9px;color:var(--text-hint);margin-bottom:2px;">🎨 Análise de Ambientes é:</div>'
-          + '<select class="sel" style="width:100%;font-size:10px;" onchange="setAnaliseAmbientes(' + p.id + ',this.value)">'
-          + '<option value="">— não marcada —</option>'
-          + [2,3,4,5].map(i => '<option value="' + i + '" ' + (p.analiseAmbientesEtapa===i?'selected':'') + '>' + SEM_SHORT[i] + '</option>').join('')
-          + '</select>'
+          + '<div style="font-size:9px;color:var(--text-hint);margin-bottom:3px;">O que é cada entrega:</div>'
+          + [2,3,4,5].map(i => {
+              const tipoAtual = (p.tiposEntrega && p.tiposEntrega[i]) || '';
+              const placeholder = TIPO_ENTREGA_PADRAO[i]; // sugestão, não obrigatório
+              return '<div style="display:flex;align-items:center;gap:4px;margin-bottom:2px;">'
+                + '<span style="font-size:9px;color:var(--text-hint);min-width:52px;">' + SEM_SHORT[i] + ':</span>'
+                + '<select class="sel" style="flex:1;font-size:10px;" onchange="setTipoEntrega(' + p.id + ',' + i + ',this.value)">'
+                + '<option value="">— ' + placeholder + ' (padrão) —</option>'
+                + TIPOS_ENTREGA_OPCOES.map(t => '<option ' + (tipoAtual===t?'selected':'') + '>' + t + '</option>').join('')
+                + '</select>'
+                + '</div>';
+            }).join('')
           + '</div>'
           + '</td>'
           + '<td style="padding:6px 10px;">'
@@ -8426,7 +8480,7 @@ function buildGantt() {
       if (reaisHere.length > 0) {
         reaisHere.forEach(si => shown.add(si));
         const paraTexto = designerFilter ? reaisHere.filter(si => designerEtapas(p).includes(si)) : reaisHere;
-        labelMap[sISO] = paraTexto.map(si => SEM_LABEL[si]).join('<br>');
+        labelMap[sISO] = paraTexto.map(si => nomeEtapaCurto(p, si)).join('<br>');
       } else {
         const cands = [];
         for (let si = 0; si <= 6; si++) {
@@ -8439,7 +8493,7 @@ function buildGantt() {
         if (cands.length > 0) {
           shown.add(cands[0][1]);
           const idxEscolhido = cands[0][1];
-          labelMap[sISO] = (designerFilter && !designerEtapas(p).includes(idxEscolhido)) ? '' : SEM_LABEL[idxEscolhido];
+          labelMap[sISO] = (designerFilter && !designerEtapas(p).includes(idxEscolhido)) ? '' : nomeEtapaCurto(p, idxEscolhido);
         } else {
           labelMap[sISO] = '';
         }
@@ -8511,7 +8565,7 @@ function buildGantt() {
         const etapasReaisNaSemana = designerFilter ? etapasReaisNaSemanaFull.filter(si => designerEtapas(p).includes(si)) : etapasReaisNaSemanaFull;
         let semLabel;
         if (etapasReaisNaSemanaFull.length > 0) {
-          semLabel = etapasReaisNaSemana.map(si => SEM_LABEL[si]).join('<br>');
+          semLabel = etapasReaisNaSemana.map(si => nomeEtapaCurto(p, si)).join('<br>');
         } else {
           // Usa _ganttLabels[p.id] pré-calculado para evitar duplicatas
           semLabel = (_ganttLabels[p.id] && _ganttLabels[p.id][_sISO]) || '';
@@ -8533,7 +8587,7 @@ function buildGantt() {
           const posWPct = Math.round((dPos - s) / (7*864e5) * 100);
           const atraso = hasReal && planD ? diffDays(planD, ent.real) : null;
           const dotBg = !hasReal ? 'rgba(255,255,255,.7)' : atraso <= 0 ? '#4ade80' : '#f87171';
-          const title = SEM_NOMES[si] + (hasReal ? (atraso > 0 ? ' +'+atraso+'d' : ' ✓') : ' pendente');
+          const title = nomeEtapa(p, si) + (hasReal ? (atraso > 0 ? ' +'+atraso+'d' : ' ✓') : ' pendente');
           return '<div title="'+title+'" style="position:absolute;top:2px;left:calc('+posWPct+'% - 4px);width:8px;height:8px;border-radius:50%;background:'+dotBg+';border:1.5px solid rgba(0,0,0,.2);z-index:3;cursor:default;"></div>';
         }).join('');
 
@@ -9419,15 +9473,29 @@ function audParseD9(txt, entrega){
 }
 
 // ── FORMULÁRIO (identificação + colar análise) ──
+// Monta as opções do "Ordem da entrega" — se souber o projeto, mostra o TIPO REAL de cada
+// posição (registrado no Lead Time); sem projeto (ainda não selecionou cliente), mostra o
+// rótulo genérico posicional.
+function _audOrdemOpcoesHTML(p){
+  return [0,1,2,3,4,5,6].map(i => '<option value="' + i + '">' + nomeEtapa(p, i) + '</option>').join('');
+}
+function audAtualizarOrdemOpcoes(){
+  const cliente = document.getElementById('aud-f-cliente')?.value || '';
+  const sel = document.getElementById('aud-f-ordem');
+  if (!sel) return;
+  const p = (typeof projects !== 'undefined') ? projects.find(x => x.nome === cliente) : null;
+  const valorAtual = sel.value;
+  sel.innerHTML = '<option value="">— não enviar pro Lead Time —</option>' + _audOrdemOpcoesHTML(p);
+  sel.value = valorAtual; // preserva se ainda existir
+}
 function audFormHTML(){
   const opt = (arr,sel) => arr.map(x=>'<option '+(x===sel?'selected':'')+'>'+x+'</option>').join('');
-  const SEM_SHORT_AUD = ['Growthclass','Kick off','1ª Entrega','2ª Entrega','3ª Entrega','4ª Entrega','Decolagem'];
   return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px;">'
     + '<div><label class="aud-lbl">Consultor</label><select id="aud-f-consultor" class="aud-inp"><option value="">Selecione…</option>'+opt(audConsultores())+'</select></div>'
     + '<div><label class="aud-lbl">Tipo de entrega</label><select id="aud-f-tipo" class="aud-inp"><option value="">Selecione…</option>'+opt(AUD_TIPOS)+'</select></div>'
-    + '<div><label class="aud-lbl">Cliente</label><select id="aud-f-cliente" class="aud-inp"><option value="">Selecione…</option>'+opt(audClientes())+'</select></div>'
+    + '<div><label class="aud-lbl">Cliente</label><select id="aud-f-cliente" class="aud-inp" onchange="audAtualizarOrdemOpcoes()"><option value="">Selecione…</option>'+opt(audClientes())+'</select></div>'
     + '<div><label class="aud-lbl">Data da reunião</label><input id="aud-f-data" type="date" class="aud-inp"></div>'
-    + '<div><label class="aud-lbl">Ordem da entrega no Lead Time</label><select id="aud-f-ordem" class="aud-inp"><option value="">— não enviar pro Lead Time —</option>'+SEM_SHORT_AUD.map((s,i)=>'<option value="'+i+'">'+s+'</option>').join('')+'</select></div>'
+    + '<div><label class="aud-lbl">Ordem da entrega no Lead Time</label><select id="aud-f-ordem" class="aud-inp"><option value="">— não enviar pro Lead Time —</option>'+_audOrdemOpcoesHTML(null)+'</select></div>'
     + '</div>'
     + '<div style="background:var(--surface2);border:1px dashed var(--border);border-radius:var(--r-sm);padding:14px;">'
     + '<label class="aud-lbl">Cole a análise do Claude (dimensões d1–d8 + skill d9)</label>'
