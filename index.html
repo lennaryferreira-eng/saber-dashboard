@@ -679,22 +679,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
   </div>
   <!-- Andamento dos Projetos (versão simplificada, sem status de prazo/monetização) -->
   <div class="card" style="margin-bottom:0;">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:1rem;">
-      <div class="card-title" style="margin:0;">Healthscore</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <select class="base-sel" id="ov-gantt-cons" onchange="buildOvGantt()"><option value="">Todos consultores</option></select>
-        <select class="base-sel" id="ov-gantt-etapa" onchange="buildOvGantt()">
-          <option value="">Todas etapas</option>
-          <option value="0">Growthclass</option>
-          <option value="1">Kick off</option>
-          <option value="2">1ª Entrega</option>
-          <option value="3">2ª Entrega</option>
-          <option value="4">3ª Entrega</option>
-          <option value="5">4ª Entrega</option>
-          <option value="6">Decolagem</option>
-        </select>
-      </div>
-    </div>
+    <div class="card-title" style="margin:0 0 1rem;">Healthscore</div>
     <p style="font-size:11px;color:var(--text-hint);margin:-0.5rem 0 .6rem;">Em qual etapa cada projeto está, semana a semana — sem os sinalizadores de status do Capacity. Cada etapa entregue mostra dois indicadores lado a lado: prazo (esquerda) e score da avaliação (direita) — nenhum se sobrepõe ao outro.</p>
     <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:10px;color:var(--text-hint);margin-bottom:1rem;">
       <span><span style="color:var(--green);font-size:13px;margin-right:3px;">⚑</span>Flag automática do projeto (verde/amarelo/vermelho)</span>
@@ -706,9 +691,21 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
     </div>
     <div id="ov-gantt-carga" style="margin-bottom:1.2rem;"></div>
 
-    <!-- Insights da semana: flags e prazo das entregas — navega semana a semana -->
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:.8rem;padding:8px 12px;background:var(--surface2);border-radius:var(--r-sm);">
+    <!-- Insights da semana: flags e prazo das entregas — navega semana a semana; os filtros
+         de Consultor/Etapa Atual do Healthscore moraram aqui pra aproveitar o espaço -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:.8rem;padding:8px 12px;background:var(--surface2);border-radius:var(--r-sm);flex-wrap:wrap;">
       <span style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);">Insights da semana</span>
+      <select class="base-sel" id="ov-gantt-cons" onchange="buildOvGantt()" style="font-size:11px;"><option value="">Todos consultores</option></select>
+      <select class="base-sel" id="ov-gantt-etapa" onchange="buildOvGantt()" style="font-size:11px;">
+        <option value="">Todas etapas</option>
+        <option value="0">Growthclass</option>
+        <option value="1">Kick off</option>
+        <option value="2">1ª Entrega</option>
+        <option value="3">2ª Entrega</option>
+        <option value="4">3ª Entrega</option>
+        <option value="5">4ª Entrega</option>
+        <option value="6">Decolagem</option>
+      </select>
       <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
         <button onclick="navOvInsightsSemana(-1)" style="padding:4px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);cursor:pointer;font-size:13px;">‹</button>
         <span id="ov-insights-semana-label" style="font-size:12px;font-weight:600;color:var(--text);min-width:150px;text-align:center;"></span>
@@ -6310,27 +6307,36 @@ function buildOvInsightsSemana() {
   const projetosDaSemana = [...new Set(entregasDaSemana.map(x => x.p))];
   const flags = { Verde: 0, Amarelo: 0, Vermelho: 0 };
   projetosDaSemana.forEach(p => { const f = calcFlagAutomatica(p); if (flags[f] !== undefined) flags[f]++; });
+  const totalFlags = projetosDaSemana.length;
+  const totalPrazo = adiantadas + noPrazo + atrasadas; // exclui as sem referência do total de %
 
-  const cardFlags = '<div style="flex:1;min-width:220px;background:var(--surface2);border-radius:var(--r-sm);padding:14px 16px;">'
-    + '<div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:10px;">Flags dos projetos ativos na semana</div>'
-    + '<div style="display:flex;gap:18px;">'
-    + ['Verde','Amarelo','Vermelho'].map(f => {
-        const cor = f==='Verde'?'var(--green)':f==='Amarelo'?'var(--amber)':'var(--accent)';
-        return '<div style="text-align:center;"><div style="font-size:24px;font-weight:800;color:'+cor+';">'+flags[f]+'</div><div style="font-size:10px;color:var(--text-hint);">'+f+'</div></div>';
-      }).join('')
-    + '</div>'
-    + (projetosDaSemana.length===0 ? '<div style="font-size:11px;color:var(--text-hint);margin-top:8px;">Nenhum projeto com entrega registrada nessa semana.</div>' : '')
+  const pct = (v, total) => total > 0 ? Math.round(v / total * 100) : 0;
+  // Quadradinho individual: número grande, % embaixo, rótulo por último — borda colorida no topo
+  const quadrado = (valor, pctVal, cor, label) => '<div style="flex:1;min-width:76px;background:var(--surface);border:1px solid var(--border);border-top:3px solid '+cor+';border-radius:6px;padding:10px 6px;text-align:center;">'
+    + '<div style="font-size:22px;font-weight:800;color:'+cor+';line-height:1;">'+valor+'</div>'
+    + '<div style="font-size:10px;font-weight:700;color:'+cor+';margin-top:3px;">'+pctVal+'%</div>'
+    + '<div style="font-size:9px;color:var(--text-hint);margin-top:2px;text-transform:uppercase;letter-spacing:.03em;">'+label+'</div>'
     + '</div>';
 
-  const cardPrazo = '<div style="flex:1;min-width:220px;background:var(--surface2);border-radius:var(--r-sm);padding:14px 16px;">'
+  const cardFlags = '<div style="flex:1;min-width:260px;background:var(--surface2);border-radius:var(--r-sm);padding:14px 16px;">'
+    + '<div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:10px;">Flags dos projetos ativos na semana</div>'
+    + '<div style="display:flex;gap:8px;">'
+    + quadrado(flags.Verde, pct(flags.Verde, totalFlags), 'var(--green)', 'Verde')
+    + quadrado(flags.Amarelo, pct(flags.Amarelo, totalFlags), 'var(--amber)', 'Amarelo')
+    + quadrado(flags.Vermelho, pct(flags.Vermelho, totalFlags), 'var(--accent)', 'Vermelho')
+    + '</div>'
+    + (totalFlags===0 ? '<div style="font-size:11px;color:var(--text-hint);margin-top:8px;">Nenhum projeto com entrega registrada nessa semana.</div>' : '')
+    + '</div>';
+
+  const cardPrazo = '<div style="flex:1;min-width:260px;background:var(--surface2);border-radius:var(--r-sm);padding:14px 16px;">'
     + '<div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:10px;">Entregas da semana — prazo</div>'
-    + '<div style="display:flex;gap:18px;">'
-    + [['Adiantadas',adiantadas,'var(--green)'],['No prazo',noPrazo,'var(--green)'],['Atrasadas',atrasadas,'var(--accent)']].map(([txt,val,cor]) =>
-        '<div style="text-align:center;"><div style="font-size:24px;font-weight:800;color:'+cor+';">'+val+'</div><div style="font-size:10px;color:var(--text-hint);">'+txt+'</div></div>'
-      ).join('')
+    + '<div style="display:flex;gap:8px;">'
+    + quadrado(adiantadas, pct(adiantadas, totalPrazo), 'var(--green)', 'Adiantadas')
+    + quadrado(noPrazo, pct(noPrazo, totalPrazo), 'var(--green)', 'No prazo')
+    + quadrado(atrasadas, pct(atrasadas, totalPrazo), 'var(--accent)', 'Atrasadas')
     + '</div>'
     + (entregasDaSemana.length===0 ? '<div style="font-size:11px;color:var(--text-hint);margin-top:8px;">Nenhuma entrega registrada nessa semana.</div>'
-        : (semRef>0 ? '<div style="font-size:10px;color:var(--text-hint);margin-top:8px;">'+semRef+' sem etapa anterior pra comparar prazo.</div>' : ''))
+        : (semRef>0 ? '<div style="font-size:10px;color:var(--text-hint);margin-top:8px;">'+semRef+' sem etapa anterior pra comparar prazo (não entra no %).</div>' : ''))
     + '</div>';
 
   el.innerHTML = '<div style="display:flex;gap:14px;flex-wrap:wrap;">' + cardFlags + cardPrazo + '</div>';
