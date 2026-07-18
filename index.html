@@ -9385,7 +9385,7 @@ function audParseD9(txt, entrega){
   const ordem=[]; // valores na ordem em que apareceram no texto (pra fallback posicional)
   // Formato real: "1.1 Rótulo qualquer aqui: ✅" — o ID fica no início da linha, seguido de um
   // rótulo livre (que pode variar de texto) até o ":", só então o emoji.
-  const reItem=/^\s*([\dA-Za-z]+\.[\dA-Za-z]+)\s+[^\n:]*:\s*(✅|⚠️|❌)/gm;
+  const reItem=/^\s*([\dA-Za-z]+\.[\dA-Za-z]+)\s*[^\n:]*:\s*(✅|⚠️|❌)/gm;
   let m;
   while((m=reItem.exec(mB[1]))!==null){ const v=m[2]==='✅'?1:m[2]==='⚠️'?0.5:0; itens[m[1]]=v; ordem.push(v); }
 
