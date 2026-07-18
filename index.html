@@ -2202,22 +2202,26 @@ function fimPrazo(p) {
 function calcFlagAutomatica(p) {
   if (isDroFam(p)) return p.flag || '—'; // DRO/DRX não entram nesse cálculo, mantém manual
   const ent = p.entregas || {};
-  // Projeto estagnado: 8+ dias sem NENHUMA entrega registrada (nem a próxima nem nenhuma
-  // anterior recente) — vira vermelho automático, independente de score/prazo, porque a
-  // estagnação em si já é um sinal crítico. Não entra nessa regra quem já finalizou
-  // (Decolagem com data real) — aí a ausência de atividade recente é esperada, não um problema.
+  // Projeto com entrega pendente: a PRÓXIMA entrega esperada (a primeira, na ordem de
+  // exibição, ainda sem data real) já passou do prazo de 7 dias da etapa anterior — vira
+  // vermelho automático, independente de score/prazo geral. É o cenário de "toda segunda eu
+  // atualizo tudo — se a entrega que deveria ter acontecido ainda não tem data, já é red
+  // flag". Não entra nessa regra quem já finalizou (Decolagem com data real).
   const decolagemFeita = !!((ent[6] || ent[String(6)]) || {}).real;
   if (!decolagemFeita) {
-    let ultimaEntrega = null;
-    [0,1,2,3,4,5,6].forEach(i => {
-      const e = ent[i] || ent[String(i)];
-      if (e && e.real && (ultimaEntrega === null || e.real > ultimaEntrega)) ultimaEntrega = e.real;
-    });
-    const referencia = ultimaEntrega || p.inicio;
-    if (referencia) {
-      const hojeISO = new Date().toISOString().slice(0,10);
-      const diasParado = diffDays(referencia, hojeISO);
-      if (diasParado > 8) return 'Vermelho';
+    const ordem = ordemCompleta(p);
+    const hojeISO = new Date().toISOString().slice(0,10);
+    for (let pos = 0; pos < ordem.length; pos++) {
+      const si = ordem[pos];
+      const e = ent[si] || ent[String(si)];
+      if (e && e.real) continue; // essa já aconteceu, a próxima pendente é a que importa
+      const siAnt = pos > 0 ? ordem[pos - 1] : null;
+      const refDate = (pos === 0 || pos === 1) ? (p.inicio || null) : ((siAnt !== null ? (ent[siAnt] || ent[String(siAnt)]) : null) || {}).real || null;
+      if (refDate) {
+        const prazo7 = addDays(refDate, 7);
+        if (hojeISO > prazo7) return 'Vermelho';
+      }
+      break; // só avalia a PRIMEIRA entrega pendente — as de trás dependem dela pra existir
     }
   }
   // score mais recente registrado (da etapa mais avançada com nota)
@@ -6281,6 +6285,12 @@ function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
 // etc.) e só com os filtros de Consultor e Etapa Atual.
 // ── Insights da semana (Healthscore): flags e prazo das entregas, navegando semana a semana ──
 let ovInsightsSemanaOffset = 0; // 0 = semana atual
+let ovFlagFiltro = ''; // '' = sem filtro; 'Verde'/'Amarelo'/'Vermelho' = filtra a tabela abaixo
+function toggleOvFlagFiltro(cor) {
+  ovFlagFiltro = (ovFlagFiltro === cor) ? '' : cor; // clica de novo na mesma = limpa o filtro
+  buildOvGantt();
+  buildOvInsightsSemana();
+}
 function navOvInsightsSemana(dir) { ovInsightsSemanaOffset += dir; buildOvInsightsSemana(); }
 function navOvInsightsSemanaHoje() { ovInsightsSemanaOffset = 0; buildOvInsightsSemana(); }
 
@@ -6347,8 +6357,9 @@ function buildOvInsightsSemana() {
   const totalPrazo = adiantadas + noPrazo + atrasadas; // exclui as sem referência do total de %
 
   const pct = (v, total) => total > 0 ? Math.round(v / total * 100) : 0;
-  // Quadradinho grande — usado só na flag principal (card da esquerda)
-  const quadradoGrande = (valor, pctVal, cor, label) => '<div style="flex:1;min-width:76px;background:var(--surface);border:1px solid var(--border);border-top:3px solid '+cor+';border-radius:6px;padding:10px 6px;text-align:center;">'
+  // Quadradinho grande — usado só na flag principal (card da esquerda). Clicável: filtra a
+  // tabela do Healthscore abaixo por essa cor de flag. Clicar de novo no mesmo limpa o filtro.
+  const quadradoGrande = (valor, pctVal, cor, label, filtroVal) => '<div onclick="toggleOvFlagFiltro(\''+filtroVal+'\')" title="Clique pra filtrar a tabela abaixo só com projetos '+label+'" style="flex:1;min-width:76px;background:var(--surface);border:1px solid '+(ovFlagFiltro===filtroVal?cor:'var(--border)')+';border-top:3px solid '+cor+';border-radius:6px;padding:10px 6px;text-align:center;cursor:pointer;'+(ovFlagFiltro===filtroVal?'box-shadow:0 0 0 1.5px '+cor+';':'')+'">'
     + '<div style="font-size:22px;font-weight:800;color:'+cor+';line-height:1;">'+valor+'</div>'
     + '<div style="font-size:10px;font-weight:700;color:'+cor+';margin-top:3px;">'+pctVal+'%</div>'
     + '<div style="font-size:9px;color:var(--text-hint);margin-top:2px;text-transform:uppercase;letter-spacing:.03em;">'+label+'</div>'
@@ -6362,11 +6373,14 @@ function buildOvInsightsSemana() {
 
   // Card principal: a flag da semana — o mais importante, fica sozinho à esquerda
   const cardFlags = '<div style="flex:1;min-width:260px;background:var(--surface2);border-radius:var(--r-sm);padding:14px 16px;">'
-    + '<div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:10px;">Flags dos projetos ativos agora</div>'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
+    + '<div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);">Flags dos projetos ativos agora</div>'
+    + (ovFlagFiltro ? '<button onclick="toggleOvFlagFiltro(\''+ovFlagFiltro+'\')" style="font-size:9px;color:var(--accent);background:none;border:none;cursor:pointer;text-decoration:underline;">✕ limpar filtro</button>' : '')
+    + '</div>'
     + '<div style="display:flex;gap:8px;">'
-    + quadradoGrande(flags.Verde, pct(flags.Verde, totalFlags), 'var(--green)', 'Verde')
-    + quadradoGrande(flags.Amarelo, pct(flags.Amarelo, totalFlags), 'var(--amber)', 'Amarelo')
-    + quadradoGrande(flags.Vermelho, pct(flags.Vermelho, totalFlags), 'var(--accent)', 'Vermelho')
+    + quadradoGrande(flags.Verde, pct(flags.Verde, totalFlags), 'var(--green)', 'Verde', 'Verde')
+    + quadradoGrande(flags.Amarelo, pct(flags.Amarelo, totalFlags), 'var(--amber)', 'Amarelo', 'Amarelo')
+    + quadradoGrande(flags.Vermelho, pct(flags.Vermelho, totalFlags), 'var(--accent)', 'Vermelho', 'Vermelho')
     + '</div>'
     + (totalFlags===0 ? '<div style="font-size:11px;color:var(--text-hint);margin-top:8px;">Nenhum projeto com entrega registrada nessa semana.</div>' : '')
     + '</div>';
@@ -6439,6 +6453,7 @@ function buildOvGantt() {
     });
   });
   if (consFilter) prjs = prjs.filter(p => p.consultor === consFilter);
+  if (ovFlagFiltro) prjs = prjs.filter(p => calcFlagAutomatica(p) === ovFlagFiltro);
   if (etapaFilter !== '') {
     const etapaIdx = parseInt(etapaFilter);
     const diaSem = hoje.getDay();
@@ -6565,7 +6580,7 @@ function buildOvGantt() {
           if (si in reaisp) continue;
           if (shown.has(si)) continue;
           const d = semDataEtapa(p, si);
-          if (d && d >= sISO) cands.push([d, si]);
+          if (d && d >= sISO && d <= eISO) cands.push([d, si]);
         }
         cands.sort((a,b) => a[0] < b[0] ? -1 : 1);
         if (cands.length > 0) {
@@ -8695,7 +8710,7 @@ function buildGantt() {
           if (si in reaisp) continue;
           if (shown.has(si)) continue;
           const d = semDataEtapa(p, si);
-          if (d && d >= sISO) cands.push([d, si]);
+          if (d && d >= sISO && d <= eISO) cands.push([d, si]);
         }
         cands.sort((a,b) => a[0] < b[0] ? -1 : 1);
         if (cands.length > 0) {
