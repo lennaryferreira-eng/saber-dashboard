@@ -705,6 +705,19 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
       <span>Sem preenchimento = estimativa, ainda não entregue</span>
     </div>
     <div id="ov-gantt-carga" style="margin-bottom:1.2rem;"></div>
+
+    <!-- Insights da semana: flags e prazo das entregas — navega semana a semana -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:.8rem;padding:8px 12px;background:var(--surface2);border-radius:var(--r-sm);">
+      <span style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);">Insights da semana</span>
+      <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
+        <button onclick="navOvInsightsSemana(-1)" style="padding:4px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);cursor:pointer;font-size:13px;">‹</button>
+        <span id="ov-insights-semana-label" style="font-size:12px;font-weight:600;color:var(--text);min-width:150px;text-align:center;"></span>
+        <button onclick="navOvInsightsSemana(1)" style="padding:4px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);cursor:pointer;font-size:13px;">›</button>
+        <button onclick="navOvInsightsSemanaHoje()" style="padding:4px 10px;border:1px solid var(--accent);border-radius:var(--r-sm);background:var(--accent);color:#fff;cursor:pointer;font-size:11px;font-weight:700;">Hoje</button>
+      </div>
+    </div>
+    <div id="ov-insights-semana" style="margin-bottom:1.2rem;"></div>
+
     <div id="ov-gantt-wrap" style="overflow-x:auto;"></div>
   </div>
 </section>
@@ -6238,6 +6251,7 @@ function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
   // atualiza análises com o mês do filtro
   buildOvAnalises(curM);
   buildOvGantt();
+  buildOvInsightsSemana();
 }
 
 // ═══════════════════════════════════
@@ -6247,6 +6261,81 @@ function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
 // "Healthscore" simplificado pra Visão Geral — mesma lógica de etapas/semanas
 // do Capacity, mas SEM os sinalizadores de status (prazo, monetização, cor de "Em andamento"
 // etc.) e só com os filtros de Consultor e Etapa Atual.
+// ── Insights da semana (Healthscore): flags e prazo das entregas, navegando semana a semana ──
+let ovInsightsSemanaOffset = 0; // 0 = semana atual
+function navOvInsightsSemana(dir) { ovInsightsSemanaOffset += dir; buildOvInsightsSemana(); }
+function navOvInsightsSemanaHoje() { ovInsightsSemanaOffset = 0; buildOvInsightsSemana(); }
+
+function buildOvInsightsSemana() {
+  const el = document.getElementById('ov-insights-semana');
+  const label = document.getElementById('ov-insights-semana-label');
+  if (!el) return;
+  const { inicio, fim } = getWeekBounds(ovInsightsSemanaOffset);
+  const toISOi = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const iniISO = toISOi(inicio), fimISO = toISOi(fim);
+  if (label) {
+    const fmt = d => String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');
+    label.textContent = fmt(inicio) + ' – ' + fmt(fim) + (ovInsightsSemanaOffset===0 ? ' (atual)' : '');
+  }
+
+  // Toda entrega (qualquer projeto, qualquer posição) com data REAL dentro dessa semana —
+  // classificada em adiantada/no prazo/atrasada com o mesmo critério da barra de progresso
+  // do Lead Time (prazo = 7 dias após a etapa anterior NA ORDEM DE EXIBIÇÃO daquele projeto).
+  const entregasDaSemana = [];
+  projects.forEach(p => {
+    if (isDroFam(p)) return;
+    const ent = p.entregas || {};
+    const ordem = ordemCompleta(p);
+    [0,1,2,3,4,5,6].forEach(si => {
+      const e = ent[si] || ent[String(si)];
+      if (!e || !e.real) return;
+      if (e.real < iniISO || e.real > fimISO) return;
+      const pos = ordem.indexOf(si);
+      let refDate = null;
+      if (pos === 0 || pos === 1) refDate = p.inicio || null;
+      else { const siAnt = ordem[pos - 1]; refDate = (p.entregas?.[siAnt] || p.entregas?.[String(siAnt)])?.real || null; }
+      const prazo7 = refDate ? addDays(refDate, 7) : null;
+      const atraso = prazo7 ? diffDays(prazo7, e.real) : null;
+      entregasDaSemana.push({ p, si, atraso });
+    });
+  });
+
+  const adiantadas = entregasDaSemana.filter(x => x.atraso !== null && x.atraso < 0).length;
+  const noPrazo    = entregasDaSemana.filter(x => x.atraso === 0).length;
+  const atrasadas  = entregasDaSemana.filter(x => x.atraso !== null && x.atraso > 0).length;
+  const semRef     = entregasDaSemana.length - adiantadas - noPrazo - atrasadas; // sem etapa anterior pra comparar
+
+  // Flags dos projetos que tiveram alguma entrega nessa semana — evita listar flag de
+  // projetos sem nenhuma atividade na semana selecionada.
+  const projetosDaSemana = [...new Set(entregasDaSemana.map(x => x.p))];
+  const flags = { Verde: 0, Amarelo: 0, Vermelho: 0 };
+  projetosDaSemana.forEach(p => { const f = calcFlagAutomatica(p); if (flags[f] !== undefined) flags[f]++; });
+
+  const cardFlags = '<div style="flex:1;min-width:220px;background:var(--surface2);border-radius:var(--r-sm);padding:14px 16px;">'
+    + '<div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:10px;">Flags dos projetos ativos na semana</div>'
+    + '<div style="display:flex;gap:18px;">'
+    + ['Verde','Amarelo','Vermelho'].map(f => {
+        const cor = f==='Verde'?'var(--green)':f==='Amarelo'?'var(--amber)':'var(--accent)';
+        return '<div style="text-align:center;"><div style="font-size:24px;font-weight:800;color:'+cor+';">'+flags[f]+'</div><div style="font-size:10px;color:var(--text-hint);">'+f+'</div></div>';
+      }).join('')
+    + '</div>'
+    + (projetosDaSemana.length===0 ? '<div style="font-size:11px;color:var(--text-hint);margin-top:8px;">Nenhum projeto com entrega registrada nessa semana.</div>' : '')
+    + '</div>';
+
+  const cardPrazo = '<div style="flex:1;min-width:220px;background:var(--surface2);border-radius:var(--r-sm);padding:14px 16px;">'
+    + '<div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:10px;">Entregas da semana — prazo</div>'
+    + '<div style="display:flex;gap:18px;">'
+    + [['Adiantadas',adiantadas,'var(--green)'],['No prazo',noPrazo,'var(--green)'],['Atrasadas',atrasadas,'var(--accent)']].map(([txt,val,cor]) =>
+        '<div style="text-align:center;"><div style="font-size:24px;font-weight:800;color:'+cor+';">'+val+'</div><div style="font-size:10px;color:var(--text-hint);">'+txt+'</div></div>'
+      ).join('')
+    + '</div>'
+    + (entregasDaSemana.length===0 ? '<div style="font-size:11px;color:var(--text-hint);margin-top:8px;">Nenhuma entrega registrada nessa semana.</div>'
+        : (semRef>0 ? '<div style="font-size:10px;color:var(--text-hint);margin-top:8px;">'+semRef+' sem etapa anterior pra comparar prazo.</div>' : ''))
+    + '</div>';
+
+  el.innerHTML = '<div style="display:flex;gap:14px;flex-wrap:wrap;">' + cardFlags + cardPrazo + '</div>';
+}
+
 function buildOvGantt() {
   const wrap = document.getElementById('ov-gantt-wrap');
   if (!wrap) return;
