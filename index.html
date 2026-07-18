@@ -637,7 +637,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
     </div>
   </div>
   <!-- Pipeline e Flags -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+  <div id="ov-pipeline-flags-row" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
     <div class="card" style="margin:0;">
       <div class="card-title">Pipeline ativo</div>
       <div style="font-size:28px;font-weight:700;color:var(--blue);" id="ov-pipe-pct">—</div>
@@ -651,7 +651,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
     </div>
   </div>
   <!-- Ticket e Tier -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+  <div id="ov-ticket-tier-row" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
     <div class="card" style="margin:0;">
       <div class="card-title">Ticket médio (monetizados)</div>
       <div style="display:flex;gap:16px;flex-wrap:wrap;">
@@ -663,6 +663,11 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
       <div class="card-title">Projetos por tier</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;" id="ov-tiers"></div>
     </div>
+  </div>
+  <!-- Volume de projetos por modelo — só aparece na TER -->
+  <div id="ov-volume-modelo-card" class="card" style="margin-bottom:1rem;display:none;">
+    <div class="card-title">Volume de projetos por modelo</div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;" id="ov-volume-modelo"></div>
   </div>
   <!-- Motivos de Perda -->
   <div class="card" style="margin-bottom:1rem;">
@@ -678,7 +683,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
     <div style="display:flex;flex-wrap:wrap;gap:8px;" id="ov-consultores"></div>
   </div>
   <!-- Andamento dos Projetos (versão simplificada, sem status de prazo/monetização) -->
-  <div class="card" style="margin-bottom:0;">
+  <div id="ov-healthscore-card" class="card" style="margin-bottom:0;">
     <div class="card-title" style="margin:0 0 1rem;">Healthscore</div>
     <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:10px;color:var(--text-hint);background:var(--surface2);border-radius:var(--r-sm);padding:8px 12px;margin-bottom:.8rem;">
       <span style="font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Como a flag é calculada:</span>
@@ -6272,8 +6277,61 @@ function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
 
   // atualiza análises com o mês do filtro
   buildOvAnalises(curM);
-  buildOvGantt();
-  buildOvInsightsSemana();
+
+  // Healthscore, Pipeline/Flags, Ticket/Tier, Conversão e Monetização são conceitos da
+  // SABER (estágios de entrega, AQL, monetização por tipo) — não existem na TER, que usa
+  // outro modelo de contrato. Na TER, a Visão Geral mostra só CSP/Prazo/PDI/NPS como
+  // métricas principais, mais o volume de projetos por modelo de contrato.
+  const ehTer = currentCoord === 'ter';
+  const pipelineFlagsRow = document.getElementById('ov-pipeline-flags-row');
+  const ticketTierRow    = document.getElementById('ov-ticket-tier-row');
+  const healthscoreCard  = document.getElementById('ov-healthscore-card');
+  const volumeModeloCard = document.getElementById('ov-volume-modelo-card');
+  const convCard = document.getElementById('ov-conv-card');
+  const monCard  = document.getElementById('ov-mon-card');
+  if (pipelineFlagsRow) pipelineFlagsRow.style.display = ehTer ? 'none' : '';
+  if (ticketTierRow)    ticketTierRow.style.display    = ehTer ? 'none' : '';
+  if (healthscoreCard)  healthscoreCard.style.display  = ehTer ? 'none' : '';
+  if (volumeModeloCard) volumeModeloCard.style.display = ehTer ? '' : 'none';
+  if (convCard) convCard.style.display = ehTer ? 'none' : '';
+  if (monCard)  monCard.style.display  = ehTer ? 'none' : '';
+
+  if (ehTer) {
+    buildOvVolumePorModelo();
+  } else {
+    buildOvGantt();
+    buildOvInsightsSemana();
+  }
+}
+
+// Volume de projetos por modelo — só faz sentido na TER, que se organiza pelos 7 modelos
+// de contrato (CRM Kommo basic/PRO, Manutenção, Profissional de CRM, Sales Enablement,
+// Diagnóstico 360, Treinamentos avulsos), diferente da SABER (que não tem "modelo" nesse sentido).
+function buildOvVolumePorModelo() {
+  const el = document.getElementById('ov-volume-modelo');
+  if (!el) return;
+  const contagens = {};
+  TER_MODELOS.forEach(m => contagens[m] = 0);
+  let semModelo = 0;
+  projects.forEach(p => {
+    if (p.modelo && contagens[p.modelo] !== undefined) contagens[p.modelo]++;
+    else semModelo++;
+  });
+  const total = projects.length;
+  const cores = ['var(--accent)','var(--blue)','var(--green)','var(--amber)','var(--purple)','#D4763B','#2D7A4F'];
+  el.innerHTML = TER_MODELOS.map((m, i) => {
+    const qtd = contagens[m];
+    const pctV = total > 0 ? Math.round(qtd / total * 100) : 0;
+    return '<div style="flex:1;min-width:130px;background:var(--surface2);border-radius:var(--r-sm);border-top:3px solid ' + cores[i % cores.length] + ';padding:10px 12px;">'
+      + '<div style="font-size:22px;font-weight:800;color:' + cores[i % cores.length] + ';line-height:1;">' + qtd + '</div>'
+      + '<div style="font-size:10px;font-weight:700;color:var(--text-hint);margin-top:3px;">' + pctV + '%</div>'
+      + '<div style="font-size:10px;color:var(--text-hint);margin-top:2px;">' + m + '</div>'
+      + '</div>';
+  }).join('')
+  + (semModelo > 0 ? '<div style="flex:1;min-width:130px;background:var(--surface2);border-radius:var(--r-sm);border-top:3px solid var(--text-hint);padding:10px 12px;">'
+      + '<div style="font-size:22px;font-weight:800;color:var(--text-hint);line-height:1;">' + semModelo + '</div>'
+      + '<div style="font-size:10px;color:var(--text-hint);margin-top:5px;">Sem modelo definido</div>'
+      + '</div>' : '');
 }
 
 // ═══════════════════════════════════
@@ -7681,7 +7739,7 @@ function buildLeadTime() {
 // ═══════════════════════════════════
 //  LEAD TIME — TER (5 entregas, nomenclatura provisória por semana; sem score; sem valores previstos; com observação)
 // ═══════════════════════════════════
-const SEM_NOMES_TER = ['Semana 1','Semana 2','Semana 3','Semana 4','Semana 5']; // nomenclatura provisória — será personalizada depois
+const SEM_NOMES_TER = ['Configurações iniciais','Reunião inicial','Automações I e Treinamento','Automações II e Relatórios','Entrega final'];
 const SEM_SHORT_TER  = ['Sem.1','Sem.2','Sem.3','Sem.4','Sem.5'];
 
 // CRM Kommo basic tem ciclo mais curto: 3 semanas. Os demais modelos usam as 5 padrão.
