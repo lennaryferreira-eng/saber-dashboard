@@ -6986,9 +6986,11 @@ function ltShowDateInput(id) {
   const row  = document.getElementById('lt-date-row-' + id);
   const inp  = document.getElementById('lt-date-' + id);
   const res  = document.getElementById('lt-date-result-' + id);
+  const tipoRow = document.getElementById('lt-tipo-row-' + id);
+  const tipoSel = document.getElementById('lt-tipo-' + id);
   if (!sel || !row || !inp) return;
   const si = parseInt(sel.value);
-  if (isNaN(si)) { row.style.display = 'none'; return; }
+  if (isNaN(si)) { row.style.display = 'none'; if (tipoRow) tipoRow.style.display = 'none'; return; }
   // preenche com data já salva (se houver)
   const p    = projects.find(x => String(x.id) === String(id));
   const real = p?.entregas?.[si]?.real || '';
@@ -6998,6 +7000,19 @@ function ltShowDateInput(id) {
   const plan   = semDataPlanejada(p, si);
   const atraso = plan && real ? diffDays(plan, real) : null;
   updateDateResult(res, atraso);
+  // seletor de tipo só faz sentido pras 4 entregas do meio (posições 2-5) — Growthclass,
+  // Kickoff e Decolagem são fixas, não têm "tipo" pra escolher.
+  if (tipoRow && tipoSel) {
+    if (si >= 2 && si <= 5) {
+      const tipoAtual = (p.tiposEntrega && p.tiposEntrega[si]) || '';
+      const placeholder = TIPO_ENTREGA_PADRAO[si];
+      tipoSel.innerHTML = '<option value="">— ' + placeholder + ' (padrão) —</option>'
+        + TIPOS_ENTREGA_OPCOES.map(t => '<option ' + (tipoAtual===t?'selected':'') + '>' + t + '</option>').join('');
+      tipoRow.style.display = 'block';
+    } else {
+      tipoRow.style.display = 'none';
+    }
+  }
 }
 
 function ltSaveDate(id) {
@@ -7065,12 +7080,31 @@ function setAnaliseAmbientes(id, val) {
 const TIPOS_ENTREGA_OPCOES = ['Pesquisa de Mercado', 'Diagnóstico de Mídia Paga', 'Diagnóstico de Vendas', 'Análise de Ambientes', 'Apresentação Final', 'Outra'];
 function setTipoEntrega(id, idx, val) {
   const p = projects.find(x => String(x.id) === String(id));
-  if (!p) return;
+  if (!p || isNaN(idx)) return;
   if (!p.tiposEntrega) p.tiposEntrega = {};
   if (val === '') delete p.tiposEntrega[idx];
   else p.tiposEntrega[idx] = val;
   upd();
-  buildLeadTime();
+  // atualiza só o texto da opção correspondente no select de etapas, sem recarregar a
+  // tabela inteira (senão a linha que a pessoa acabou de abrir fecharia sozinha)
+  const sel = document.getElementById('lt-sel-' + id);
+  if (sel) {
+    const opts = sel.options;
+    for (let i = 0; i < opts.length; i++) {
+      if (parseInt(opts[i].value) === idx) {
+        const ent = p.entregas?.[idx];
+        const real = ent?.real || '';
+        const plan = semDataPlanejada(p, idx);
+        const atraso = plan && real ? diffDays(plan, real) : null;
+        const icon = atraso === null ? '○' : atraso <= 0 ? '✓' : '⚠';
+        const dataTxt = real ? ' · ' + fmtD(real) : '';
+        opts[i].text = icon + ' ' + nomeEtapaCurto(p, idx) + dataTxt;
+        break;
+      }
+    }
+  }
+  refreshLtCards();
+  buildLtAnalise(getLtFiltered());
 }
 
 // Índices das etapas (0-6) que envolvem o designer: Kickoff + Decolagem sempre, mais a
@@ -7365,19 +7399,9 @@ function buildLeadTime() {
           + '<input type="date" id="lt-date-' + p.id + '" class="sel" style="font-size:11px;flex:1;" onchange="ltSaveDate(' + p.id + ')">'
           + '<span id="lt-date-result-' + p.id + '" style="font-size:10px;font-weight:600;min-width:60px;"></span>'
           + '</div>'
-          + '<div style="margin-top:6px;padding-top:6px;border-top:1px dashed var(--border);">'
-          + '<div style="font-size:9px;color:var(--text-hint);margin-bottom:3px;">O que é cada entrega:</div>'
-          + [2,3,4,5].map(i => {
-              const tipoAtual = (p.tiposEntrega && p.tiposEntrega[i]) || '';
-              const placeholder = TIPO_ENTREGA_PADRAO[i]; // sugestão, não obrigatório
-              return '<div style="display:flex;align-items:center;gap:4px;margin-bottom:2px;">'
-                + '<span style="font-size:9px;color:var(--text-hint);min-width:52px;">' + SEM_SHORT[i] + ':</span>'
-                + '<select class="sel" style="flex:1;font-size:10px;" onchange="setTipoEntrega(' + p.id + ',' + i + ',this.value)">'
-                + '<option value="">— ' + placeholder + ' (padrão) —</option>'
-                + TIPOS_ENTREGA_OPCOES.map(t => '<option ' + (tipoAtual===t?'selected':'') + '>' + t + '</option>').join('')
-                + '</select>'
-                + '</div>';
-            }).join('')
+          + '<div id="lt-tipo-row-' + p.id + '" style="display:none;margin-top:5px;">'
+          + '<select class="sel" style="width:100%;font-size:10px;" id="lt-tipo-' + p.id + '" onchange="setTipoEntrega(' + p.id + ',parseInt(document.getElementById(\'lt-sel-' + p.id + '\').value),this.value)">'
+          + '</select>'
           + '</div>'
           + '</td>'
           + '<td style="padding:6px 10px;">'
