@@ -6293,7 +6293,8 @@ function buildOvInsightsSemana() {
       else { const siAnt = ordem[pos - 1]; refDate = (p.entregas?.[siAnt] || p.entregas?.[String(siAnt)])?.real || null; }
       const prazo7 = refDate ? addDays(refDate, 7) : null;
       const atraso = prazo7 ? diffDays(prazo7, e.real) : null;
-      entregasDaSemana.push({ p, si, atraso });
+      const score = (e.score !== undefined && e.score !== '' && !isNaN(parseFloat(e.score))) ? parseFloat(e.score) : null;
+      entregasDaSemana.push({ p, si, atraso, score });
     });
   });
 
@@ -6301,6 +6302,16 @@ function buildOvInsightsSemana() {
   const noPrazo    = entregasDaSemana.filter(x => x.atraso === 0).length;
   const atrasadas  = entregasDaSemana.filter(x => x.atraso !== null && x.atraso > 0).length;
   const semRef     = entregasDaSemana.length - adiantadas - noPrazo - atrasadas; // sem etapa anterior pra comparar
+
+  // Score das entregas da semana — mesma faixa usada em todo o painel: <55 ruim, 55-69 fez
+  // o básico, 70-84 sólido, 85-100 acima do padrão (85+ é "sólido" pra fins de contagem,
+  // só ganha destaque visual à parte, sem virar uma 5ª categoria).
+  const comScore  = entregasDaSemana.filter(x => x.score !== null);
+  const scoreRuim    = comScore.filter(x => x.score < 55).length;
+  const scoreBasico  = comScore.filter(x => x.score >= 55 && x.score < 70).length;
+  const scoreSolido  = comScore.filter(x => x.score >= 70 && x.score < 85).length;
+  const scoreAcima   = comScore.filter(x => x.score >= 85).length;
+  const totalScore   = comScore.length;
 
   // Flags dos projetos que tiveram alguma entrega nessa semana — evita listar flag de
   // projetos sem nenhuma atividade na semana selecionada.
@@ -6311,35 +6322,54 @@ function buildOvInsightsSemana() {
   const totalPrazo = adiantadas + noPrazo + atrasadas; // exclui as sem referência do total de %
 
   const pct = (v, total) => total > 0 ? Math.round(v / total * 100) : 0;
-  // Quadradinho individual: número grande, % embaixo, rótulo por último — borda colorida no topo
-  const quadrado = (valor, pctVal, cor, label) => '<div style="flex:1;min-width:76px;background:var(--surface);border:1px solid var(--border);border-top:3px solid '+cor+';border-radius:6px;padding:10px 6px;text-align:center;">'
+  // Quadradinho grande — usado só na flag principal (card da esquerda)
+  const quadradoGrande = (valor, pctVal, cor, label) => '<div style="flex:1;min-width:76px;background:var(--surface);border:1px solid var(--border);border-top:3px solid '+cor+';border-radius:6px;padding:10px 6px;text-align:center;">'
     + '<div style="font-size:22px;font-weight:800;color:'+cor+';line-height:1;">'+valor+'</div>'
     + '<div style="font-size:10px;font-weight:700;color:'+cor+';margin-top:3px;">'+pctVal+'%</div>'
     + '<div style="font-size:9px;color:var(--text-hint);margin-top:2px;text-transform:uppercase;letter-spacing:.03em;">'+label+'</div>'
     + '</div>';
+  // Quadradinho pequeno — usado nos destrinchamentos (card da direita), pra caber mais lado a lado
+  const quadradoPeq = (valor, pctVal, cor, label) => '<div style="flex:1;min-width:58px;background:var(--surface);border:1px solid var(--border);border-top:2px solid '+cor+';border-radius:5px;padding:6px 4px;text-align:center;">'
+    + '<div style="font-size:15px;font-weight:800;color:'+cor+';line-height:1;">'+valor+'</div>'
+    + '<div style="font-size:9px;font-weight:700;color:'+cor+';margin-top:2px;">'+pctVal+'%</div>'
+    + '<div style="font-size:8px;color:var(--text-hint);margin-top:1px;text-transform:uppercase;letter-spacing:.02em;">'+label+'</div>'
+    + '</div>';
 
+  // Card principal: a flag da semana — o mais importante, fica sozinho à esquerda
   const cardFlags = '<div style="flex:1;min-width:260px;background:var(--surface2);border-radius:var(--r-sm);padding:14px 16px;">'
     + '<div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:10px;">Flags dos projetos ativos na semana</div>'
     + '<div style="display:flex;gap:8px;">'
-    + quadrado(flags.Verde, pct(flags.Verde, totalFlags), 'var(--green)', 'Verde')
-    + quadrado(flags.Amarelo, pct(flags.Amarelo, totalFlags), 'var(--amber)', 'Amarelo')
-    + quadrado(flags.Vermelho, pct(flags.Vermelho, totalFlags), 'var(--accent)', 'Vermelho')
+    + quadradoGrande(flags.Verde, pct(flags.Verde, totalFlags), 'var(--green)', 'Verde')
+    + quadradoGrande(flags.Amarelo, pct(flags.Amarelo, totalFlags), 'var(--amber)', 'Amarelo')
+    + quadradoGrande(flags.Vermelho, pct(flags.Vermelho, totalFlags), 'var(--accent)', 'Vermelho')
     + '</div>'
     + (totalFlags===0 ? '<div style="font-size:11px;color:var(--text-hint);margin-top:8px;">Nenhum projeto com entrega registrada nessa semana.</div>' : '')
     + '</div>';
 
-  const cardPrazo = '<div style="flex:1;min-width:260px;background:var(--surface2);border-radius:var(--r-sm);padding:14px 16px;">'
-    + '<div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:10px;">Entregas da semana — prazo</div>'
-    + '<div style="display:flex;gap:8px;">'
-    + quadrado(adiantadas, pct(adiantadas, totalPrazo), 'var(--green)', 'Adiantadas')
-    + quadrado(noPrazo, pct(noPrazo, totalPrazo), 'var(--green)', 'No prazo')
-    + quadrado(atrasadas, pct(atrasadas, totalPrazo), 'var(--accent)', 'Atrasadas')
+  // Card de destrinchamento: os dois critérios que COMPÕEM a flag — prazo e score —
+  // lado a lado, na mesma largura total do card de flags.
+  const cardDestrinche = '<div style="flex:1;min-width:260px;background:var(--surface2);border-radius:var(--r-sm);padding:14px 16px;">'
+    + '<div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:8px;">Composição da flag — prazo</div>'
+    + '<div style="display:flex;gap:6px;margin-bottom:12px;">'
+    + quadradoPeq(adiantadas, pct(adiantadas, totalPrazo), 'var(--green)', 'Adiant.')
+    + quadradoPeq(noPrazo, pct(noPrazo, totalPrazo), 'var(--green)', 'No prazo')
+    + quadradoPeq(atrasadas, pct(atrasadas, totalPrazo), 'var(--accent)', 'Atrasadas')
     + '</div>'
-    + (entregasDaSemana.length===0 ? '<div style="font-size:11px;color:var(--text-hint);margin-top:8px;">Nenhuma entrega registrada nessa semana.</div>'
-        : (semRef>0 ? '<div style="font-size:10px;color:var(--text-hint);margin-top:8px;">'+semRef+' sem etapa anterior pra comparar prazo (não entra no %).</div>' : ''))
+    + '<div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:8px;">Composição da flag — score</div>'
+    + '<div style="display:flex;gap:6px;">'
+    + quadradoPeq(scoreRuim, pct(scoreRuim, totalScore), 'var(--accent)', 'Ruim')
+    + quadradoPeq(scoreBasico, pct(scoreBasico, totalScore), 'var(--amber)', 'Básico')
+    + quadradoPeq(scoreSolido, pct(scoreSolido, totalScore), 'var(--green)', 'Sólido')
+    + quadradoPeq(scoreAcima, pct(scoreAcima, totalScore), 'var(--green)', 'Acima padrão')
+    + '</div>'
+    + (entregasDaSemana.length===0 ? '<div style="font-size:11px;color:var(--text-hint);margin-top:10px;">Nenhuma entrega registrada nessa semana.</div>'
+        : '<div style="font-size:9px;color:var(--text-hint);margin-top:10px;">'
+          + (semRef>0 ? semRef+' sem etapa anterior pra comparar prazo. ' : '')
+          + ((entregasDaSemana.length - totalScore)>0 ? (entregasDaSemana.length - totalScore)+' ainda sem avaliação de score.' : '')
+          + '</div>')
     + '</div>';
 
-  el.innerHTML = '<div style="display:flex;gap:14px;flex-wrap:wrap;">' + cardFlags + cardPrazo + '</div>';
+  el.innerHTML = '<div style="display:flex;gap:14px;flex-wrap:wrap;">' + cardFlags + cardDestrinche + '</div>';
 }
 
 function buildOvGantt() {
