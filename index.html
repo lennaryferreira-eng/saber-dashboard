@@ -2228,26 +2228,27 @@ function fimPrazo(p) {
 function calcFlagAutomatica(p) {
   if (isDroFam(p)) return p.flag || '—'; // DRO/DRX não entram nesse cálculo, mantém manual
   const ent = p.entregas || {};
-  // Projeto com entrega pendente: a PRÓXIMA entrega esperada (a primeira, na ordem de
-  // exibição, ainda sem data real) já passou do prazo de 7 dias da etapa anterior — vira
-  // vermelho automático, independente de score/prazo geral. É o cenário de "toda segunda eu
-  // atualizo tudo — se a entrega que deveria ter acontecido ainda não tem data, já é red
-  // flag". Não entra nessa regra quem já finalizou (Decolagem com data real).
+  // Projeto estagnado: já se passou mais de uma semana desde a ÚLTIMA entrega REGISTRADA
+  // (não importa a posição/ordem dela) sem nenhuma nova acontecer — vira vermelho automático,
+  // independente de score/prazo geral. Não entra nessa regra quem já finalizou (Decolagem
+  // com data real).
+  // Importante: olha pra "quando foi a última entrega", não "qual etapa deveria vir depois
+  // por posição" — assim uma etapa inicial nunca preenchida (ex: Growthclass sem data,
+  // mas Kickoff e as seguintes já aconteceram) não gera falso atraso, e uma entrega "lá da
+  // frente" feita fora de ordem também não conta como atraso — só significa que a ordem
+  // mudou, não que o projeto está parado.
   const decolagemFeita = !!((ent[6] || ent[String(6)]) || {}).real;
   if (!decolagemFeita) {
-    const ordem = ordemCompleta(p);
-    const hojeISO = new Date().toISOString().slice(0,10);
-    for (let pos = 0; pos < ordem.length; pos++) {
-      const si = ordem[pos];
-      const e = ent[si] || ent[String(si)];
-      if (e && e.real) continue; // essa já aconteceu, a próxima pendente é a que importa
-      const siAnt = pos > 0 ? ordem[pos - 1] : null;
-      const refDate = (pos === 0 || pos === 1) ? (p.inicio || null) : ((siAnt !== null ? (ent[siAnt] || ent[String(siAnt)]) : null) || {}).real || null;
-      if (refDate) {
-        const prazo7 = addDays(refDate, 7);
-        if (hojeISO > prazo7) return 'Vermelho';
-      }
-      break; // só avalia a PRIMEIRA entrega pendente — as de trás dependem dela pra existir
+    let ultimaData = null;
+    [0,1,2,3,4,5,6].forEach(i => {
+      const e = ent[i] || ent[String(i)];
+      if (e && e.real && (ultimaData === null || e.real > ultimaData)) ultimaData = e.real;
+    });
+    const referencia = ultimaData || p.inicio; // nenhuma entrega ainda -> conta a partir do início
+    if (referencia) {
+      const hojeISO = new Date().toISOString().slice(0,10);
+      const diasParado = diffDays(referencia, hojeISO);
+      if (diasParado > 8) return 'Vermelho';
     }
   }
   // score mais recente registrado (da etapa mais avançada com nota)
