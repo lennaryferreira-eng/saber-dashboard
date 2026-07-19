@@ -10640,6 +10640,18 @@ function sbImport(input) {
   input.value = '';
 }
 
+// O painel sempre salvou os campos jsonb "dobrados" (uma STRING contendo o texto do JSON,
+// não o JSON nativo), e o carregamento sempre esperou isso, chamando JSON.parse() em cima.
+// Se algum dia um campo for gravado do jeito "correto" (JSON nativo direto na coluna, ex:
+// por uma edição manual via SQL) essa mesma leitura quebraria — foi exatamente isso que
+// impediu a base de teste da TER de carregar. Essa função tolera os dois formatos.
+function _parseMaybe(val, fallback) {
+  if (val === null || val === undefined) return fallback;
+  if (typeof val === 'string') {
+    try { return JSON.parse(val); } catch (e) { return fallback; }
+  }
+  return val; // já veio como objeto/array — não precisa (e não pode) rodar JSON.parse de novo
+}
 async function sbLoad() {
   try {
     setSyncStatus('Carregando…', 'var(--text-hint)');
@@ -10656,14 +10668,14 @@ async function sbLoad() {
     const row = rows[0];
     sbServerVersion = row.updated_at || null;
     sbConflito = false; // recarregou — resolve qualquer conflito anterior
-    console.log('sbLoad: row.id=', row.id, '| projects length=', row.projects ? JSON.parse(row.projects).length : 'null');
-    console.log('sbLoad: primeiro projeto=', row.projects ? JSON.parse(row.projects)[0]?.nome : 'null');
+    console.log('sbLoad: row.id=', row.id, '| projects length=', row.projects ? _parseMaybe(row.projects, []).length : 'null');
+    console.log('sbLoad: primeiro projeto=', row.projects ? _parseMaybe(row.projects, [])[0]?.nome : 'null');
 
     // carrega projetos — sempre usa Supabase como fonte de verdade
     const sbMaisRecente = true; // HTML não tem dados — Supabase é sempre autoritativo
 
     if (row.projects && sbMaisRecente) {
-      const prjs = JSON.parse(row.projects);
+      const prjs = _parseMaybe(row.projects, []);
       if (Array.isArray(prjs) && prjs.length > 0) {
         // recalcula campos legados
         prjs.forEach(p => {
@@ -10706,7 +10718,7 @@ async function sbLoad() {
     // carrega outros dados — só se Supabase for mais recente
     if (sbMaisRecente) {
       if (row.nps_data) {
-        const nd = JSON.parse(row.nps_data);
+        const nd = _parseMaybe(row.nps_data, {});
         if (nd && typeof nd === 'object') {
           Object.entries(nd).forEach(([k, v]) => {
             // limpa null/'null' nos campos do NPS
@@ -10718,43 +10730,43 @@ async function sbLoad() {
         }
       }
       if (row.csp_manual) {
-        const cm = JSON.parse(row.csp_manual);
+        const cm = _parseMaybe(row.csp_manual, {});
         if (cm && typeof cm === 'object') Object.assign(cspManual, cm);
       }
       if (row.cap_data) {
-        const cd = JSON.parse(row.cap_data);
+        const cd = _parseMaybe(row.cap_data, {});
         if (cd && typeof cd === 'object') Object.assign(capData, cd);
       }
       if (row.mon_metas) {
         try {
-          const mm = JSON.parse(row.mon_metas);
+          const mm = _parseMaybe(row.mon_metas, {});
           if (mm && typeof mm === 'object') Object.assign(monMetas, mm);
         } catch(e){}
       }
       if (row.aql_metas) {
         try {
-          const am = JSON.parse(row.aql_metas);
+          const am = _parseMaybe(row.aql_metas, {});
           if (am && typeof am === 'object') Object.assign(aqlMetas, am);
         } catch(e){}
       }
       if (row.cap_manual) {
-        const cman = JSON.parse(row.cap_manual);
+        const cman = _parseMaybe(row.cap_manual, {});
         if (cman && typeof cman === 'object') Object.assign(capManual, cman);
       }
       if (row.pdi_data) {
-        try { pdiData = normalizePdi(JSON.parse(row.pdi_data)); } catch(e){}
+        try { pdiData = normalizePdi(_parseMaybe(row.pdi_data, {rows:[]})); } catch(e){}
       }
       if (row.conv_base) {
-        try { const cb = JSON.parse(row.conv_base); if (cb && typeof cb === 'object') Object.assign(convBaseManual, cb); } catch(e){}
+        try { const cb = _parseMaybe(row.conv_base, {}); if (cb && typeof cb === 'object') Object.assign(convBaseManual, cb); } catch(e){}
       }
       if (row.fotos) {
-        try { const ft = JSON.parse(row.fotos); if (ft && typeof ft === 'object') Object.assign(perfFotos, ft); } catch(e){}
+        try { const ft = _parseMaybe(row.fotos, {}); if (ft && typeof ft === 'object') Object.assign(perfFotos, ft); } catch(e){}
       }
       if (row.auditorias) {
-        try { const av = JSON.parse(row.auditorias); if (Array.isArray(av)) auditorias = av; } catch(e){}
+        try { const av = _parseMaybe(row.auditorias, []); if (Array.isArray(av)) auditorias = av; } catch(e){}
       }
       if (row.consultores) {
-        try { const cm = JSON.parse(row.consultores); if (cm && Array.isArray(cm.list) && cm.list.length) window.CONS_MON = cm.list; if (cm && cm.colors) window.dotColors = Object.assign({}, window.dotColors||{}, cm.colors); } catch(e){}
+        try { const cm = _parseMaybe(row.consultores, {}); if (cm && Array.isArray(cm.list) && cm.list.length) window.CONS_MON = cm.list; if (cm && cm.colors) window.dotColors = Object.assign({}, window.dotColors||{}, cm.colors); } catch(e){}
       }
     }
 
