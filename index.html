@@ -7772,14 +7772,66 @@ const SEM_NOMES_TER_CURTO = ['Config.','Reunião','Auto. I','Auto. II','Entrega'
 const SEM_SHORT_TER  = SEM_NOMES_TER_CURTO;
 
 // CRM Kommo basic tem ciclo mais curto: 3 semanas. Os demais modelos usam as 5 padrão.
+// "Treinamentos (avulsos)" (chamado de "Pontual") não segue o template fixo de 5 etapas —
+// as entregas são criadas uma a uma, com nome livre, conforme o escopo pontual acontece.
+function _ehPontual(p) { return p.modelo === 'Treinamentos (avulsos)'; }
+function entregasPontuais(p) {
+  if (!Array.isArray(p.entregasPontuais)) p.entregasPontuais = [];
+  return p.entregasPontuais;
+}
+function ltAddEntregaPontual(id) {
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!p) return;
+  const nomeInput = document.getElementById('lt-pontual-nome-' + id);
+  const dataInput = document.getElementById('lt-pontual-data-' + id);
+  const nome = (nomeInput?.value || '').trim();
+  const data = dataInput?.value || '';
+  if (!nome) { alert('Digite o nome da entrega antes de adicionar.'); return; }
+  entregasPontuais(p).push({ nome, real: data, obs: '' });
+  upd();
+  buildLeadTimeTer();
+}
+function ltRemoveEntregaPontual(id, idx) {
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!p) return;
+  entregasPontuais(p).splice(idx, 1);
+  upd();
+  buildLeadTimeTer();
+}
+function ltSetDataEntregaPontual(id, idx, val) {
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!p) return;
+  const ents = entregasPontuais(p);
+  if (!ents[idx]) return;
+  ents[idx].real = val;
+  upd();
+  buildLeadTimeTer();
+}
+
 function _ltNumSemanas(p) {
+  if (_ehPontual(p)) return entregasPontuais(p).length;
   return (p.modelo === 'CRM Kommo basic') ? 3 : 5;
 }
 
+// Exceções por modelo — a maioria segue o padrão (nomes de SEM_NOMES_TER, 7 dias por
+// etapa), mas alguns modelos têm nomenclatura e prazo próprios.
+// Diagnóstico 360: nomeado "Semana 1" a "Semana 5", com 45 dias no total pra finalização
+// (45 / 5 = 9 dias por etapa, em vez dos 7 padrão).
+const TER_NOMES_POR_MODELO = {
+  'Diagnóstico 360': ['Semana 1','Semana 2','Semana 3','Semana 4','Semana 5'],
+};
+const TER_DIAS_POR_ETAPA_POR_MODELO = {
+  'Diagnóstico 360': 9, // 45 dias / 5 etapas
+};
+function diasPorEtapaTer(p) { return TER_DIAS_POR_ETAPA_POR_MODELO[p.modelo] || 7; }
+function nomeEtapaTer(p, si) { return (TER_NOMES_POR_MODELO[p.modelo] || SEM_NOMES_TER)[si]; }
+function nomeEtapaTerCurto(p, si) { return (TER_NOMES_POR_MODELO[p.modelo] || SEM_SHORT_TER)[si]; }
+
 function semDataPlanejadaTer(p, si) {
-  // Referência simples: início + 7 dias por etapa (janela igual para as 5, até a nomenclatura final ser definida)
+  // Referência: início + N dias por etapa — N é 7 por padrão, mas alguns modelos têm um
+  // prazo total diferente (ver TER_DIAS_POR_ETAPA_POR_MODELO acima).
   if (!p.inicio) return null;
-  return addDays(p.inicio, 7 * (si + 1));
+  return addDays(p.inicio, diasPorEtapaTer(p) * (si + 1));
 }
 
 function getLtTerFiltered() {
@@ -7874,18 +7926,23 @@ function buildLeadTimeTer() {
   tbody.innerHTML = list.length === 0
     ? '<tr><td colspan="14" style="text-align:center;padding:24px;color:var(--text-hint);font-size:12px;">Nenhum projeto encontrado</td></tr>'
     : list.map(p => {
-        const entregas = ltTerEntregas(p);
+        const ehPontual = _ehPontual(p);
+        const entregas = ehPontual ? entregasPontuais(p) : ltTerEntregas(p);
         const nSem = _ltNumSemanas(p);
         const semIdxs = Array.from({length: nSem}, (_, i) => i);
+        // Nome de cada etapa: template fixo pros modelos normais, ou o nome que a própria
+        // pessoa deu quando criou a entrega (só existe pra "Treinamentos (avulsos)").
+        const nomeCompleto = si => ehPontual ? (entregas[si]?.nome || 'Entrega ' + (si+1)) : nomeEtapaTer(p, si);
+        const nomeCurto    = si => ehPontual ? (entregas[si]?.nome || 'Entrega ' + (si+1)) : nomeEtapaTerCurto(p, si);
 
-        const semOpts = semIdxs.map(si => {
+        const semOpts = ehPontual ? '' : semIdxs.map(si => {
           const ent    = entregas[si] || {};
           const real   = ent.real || '';
           const plan   = semDataPlanejadaTer(p, si);
           const atraso = plan && real ? diffDays(plan, real) : null;
           const icon   = atraso === null ? '○' : atraso <= 0 ? '✓' : '⚠';
           const dataTxt= real ? ' · ' + fmtD(real) : '';
-          return '<option value="' + si + '">' + icon + ' ' + SEM_SHORT_TER[si] + dataTxt + '</option>';
+          return '<option value="' + si + '">' + icon + ' ' + nomeCurto(si) + dataTxt + '</option>';
         }).join('');
 
         const barBlocks = semIdxs.map(si => {
@@ -7893,7 +7950,8 @@ function buildLeadTimeTer() {
           const real = ent.real || '';
           const realFmt = real ? fmtD(real) : '';
           const refDate = si === 0 ? (p.inicio || null) : (entregas[si-1]?.real || null);
-          const prazo7 = refDate ? addDays(refDate, 7) : null;
+          const diasEtapa = diasPorEtapaTer(p);
+          const prazo7 = refDate ? addDays(refDate, diasEtapa) : null;
           const atrasoBarra = prazo7 && real ? diffDays(prazo7, real) : null;
 
           if (atrasoBarra !== null) { if (atrasoBarra <= 0) okCount++; else { atrasoCount++; atrasos.push(atrasoBarra); } }
@@ -7904,20 +7962,37 @@ function buildLeadTimeTer() {
           let bg, borderCor, nomeCor, selo, tooltip;
           if (atrasoBarra === null) {
             bg = 'var(--surface3)'; borderCor = 'var(--border)'; nomeCor = 'var(--text-hint)'; selo = '';
-            tooltip = SEM_NOMES_TER[si] + (prazo7 ? ' · prazo: ' + fmtD(prazo7) : ' · aguardando etapa anterior');
+            tooltip = nomeCompleto(si) + (prazo7 ? ' · prazo: ' + fmtD(prazo7) : ' · aguardando etapa anterior');
           } else if (atrasoBarra <= 0) {
             bg = 'var(--green)'; borderCor = 'var(--green)'; nomeCor = '#fff';
             const txt = atrasoBarra === 0 ? 'no prazo' : Math.abs(atrasoBarra) + 'd antes';
             selo = '<div style="font-size:8px;color:rgba(255,255,255,.85);font-weight:700;">✓ ' + txt + '</div>';
-            tooltip = SEM_NOMES_TER[si] + ' ✓ ' + txt + ' · realizado: ' + realFmt;
+            tooltip = nomeCompleto(si) + ' ✓ ' + txt + ' · realizado: ' + realFmt;
           } else {
             bg = 'var(--red)'; borderCor = 'var(--red)'; nomeCor = '#fff';
             selo = '<div style="font-size:8px;color:rgba(255,255,255,.85);font-weight:700;">+' + atrasoBarra + 'd</div>';
-            tooltip = SEM_NOMES_TER[si] + ' ⚠ +' + atrasoBarra + 'd · realizado: ' + realFmt;
+            tooltip = nomeCompleto(si) + ' ⚠ +' + atrasoBarra + 'd · realizado: ' + realFmt;
           }
-          const label = '<div style="font-size:9px;font-weight:700;color:' + nomeCor + ';line-height:1.15;padding:0 3px;">' + SEM_SHORT_TER[si] + '</div>' + selo;
-          return '<div title="' + tooltip + '" style="flex:1;min-height:30px;background:' + bg + ';border:1px solid ' + borderCor + ';border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;transition:background .25s;cursor:default;padding:3px 0;">' + label + '</div>';
+          const nomeExib = nomeCurto(si);
+          const labelHTML = '<div style="font-size:9px;font-weight:700;color:' + nomeCor + ';line-height:1.15;padding:0 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;" title="' + nomeExib.replace(/"/g,'&quot;') + '">' + nomeExib + '</div>' + selo
+            + (ehPontual ? '<div onclick="ltRemoveEntregaPontual(' + p.id + ',' + si + ')" title="Remover essa entrega" style="font-size:8px;color:' + nomeCor + ';opacity:.7;cursor:pointer;margin-top:1px;">✕</div>' : '');
+          return '<div title="' + tooltip + '" style="flex:1;min-height:30px;background:' + bg + ';border:1px solid ' + borderCor + ';border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;transition:background .25s;cursor:default;padding:3px 0;">' + labelHTML + '</div>';
         }).join('');
+
+        // "Registrar entrega": dropdown normal pros modelos com template fixo, ou um
+        // formulário de nome+data pra criar entregas livremente (só "Treinamentos avulsos").
+        const registrarHTML = ehPontual
+          ? '<div style="display:flex;gap:4px;">'
+            + '<input type="text" id="lt-pontual-nome-' + p.id + '" class="sel" style="font-size:11px;flex:1;min-width:0;" placeholder="Nome da entrega">'
+            + '<input type="date" id="lt-pontual-data-' + p.id + '" class="sel" style="font-size:11px;width:120px;">'
+            + '<button onclick="ltAddEntregaPontual(' + p.id + ')" style="padding:0 10px;border:none;border-radius:var(--r-sm);background:var(--accent);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">+</button>'
+            + '</div>'
+          : '<select class="sel" style="width:100%;font-size:11px;" id="lt-sel-ter-' + p.id + '" onchange="ltTerShowDateInput(' + p.id + ')">'
+            + '<option value="">— Selecione a etapa —</option>' + semOpts
+            + '</select>'
+            + '<div id="lt-date-row-ter-' + p.id + '" style="display:none;gap:6px;align-items:center;margin-top:5px;">'
+            + '<input type="date" id="lt-date-ter-' + p.id + '" class="sel" style="font-size:11px;flex:1;" onchange="ltTerSaveDate(' + p.id + ')">'
+            + '</div>';
 
         return '<tr>'
           + '<td class="lt-proj-cell">'
@@ -7929,12 +8004,7 @@ function buildLeadTimeTer() {
           + '<td class="lt-date-cell">' + fmtD(p.inicio) + '</td>'
           + '<td class="lt-date-cell">' + fmtD(p.prevFim) + '</td>'
           + '<td style="padding:8px 10px;">'
-          + '<select class="sel" style="width:100%;font-size:11px;" id="lt-sel-ter-' + p.id + '" onchange="ltTerShowDateInput(' + p.id + ')">'
-          + '<option value="">— Selecione a etapa —</option>' + semOpts
-          + '</select>'
-          + '<div id="lt-date-row-ter-' + p.id + '" style="display:none;gap:6px;align-items:center;margin-top:5px;">'
-          + '<input type="date" id="lt-date-ter-' + p.id + '" class="sel" style="font-size:11px;flex:1;" onchange="ltTerSaveDate(' + p.id + ')">'
-          + '</div>'
+          + registrarHTML
           + '</td>'
           + '<td style="padding:8px 10px;">'
           + '<textarea id="lt-obs-ter-' + p.id + '" class="sel" rows="2" style="width:100%;font-size:11px;resize:vertical;" placeholder="Observação da etapa selecionada…" onblur="ltTerSaveObs(' + p.id + ')"></textarea>'
@@ -8367,37 +8437,42 @@ function buildGanttTer() {
     const dIp = parseDate(p.inicio);
     const dFRaw = p.realFim || p.prevFim;
     const dFp = dFRaw ? parseDate(dFRaw) : new Date(dIp.getTime() + 30*864e5);
-    const entregas = ltTerEntregas(p);
+    const ehPontual = _ehPontual(p);
+    const entregas = ehPontual ? entregasPontuais(p) : ltTerEntregas(p);
     const cor = STATUS_COLOR_TER(p);
 
     const cells = semanas.map(s => {
       const sEnd = new Date(s.getTime() + 6*864e5);
       const naJanela = dIp <= sEnd && dFp >= s;
-      // entrega cujo real (ou planejado, se ainda pendente) cai nessa semana
-      let dot = '';
-      let label = '';
+      // entrega cujo real (ou planejado, se ainda pendente) cai nessa semana — vira um
+      // badge colorido com o nome dentro, igual o padrão da SABER (não um pontinho com
+      // legenda embaixo). Pontual não tem data "planejada" (não segue template fixo) —
+      // só aparece quando a entrega realmente foi registrada com uma data.
+      let badge = '';
       for (let si = 0; si < _ltNumSemanas(p); si++) {
         const ent = entregas[si] || {};
-        const plan = semDataPlanejadaTer(p, si);
+        const nome = ehPontual ? (ent.nome || 'Entrega ' + (si+1)) : nomeEtapaTerCurto(p, si);
+        const nomeCompl = ehPontual ? (ent.nome || 'Entrega ' + (si+1)) : nomeEtapaTer(p, si);
+        const plan = ehPontual ? null : semDataPlanejadaTer(p, si);
         const dataRef = ent.real || plan;
         if (!dataRef) continue;
         const dRef = parseDate(dataRef);
         if (!dRef || dRef < s || dRef > sEnd) continue;
-        let dotColor;
+        let badgeCor, tooltip;
         if (ent.real) {
           const atraso = plan ? diffDays(plan, ent.real) : null;
-          dotColor = (atraso === null || atraso <= 0) ? '#4ade80' : '#f87171';
+          badgeCor = (atraso === null || atraso <= 0) ? 'var(--green)' : 'var(--accent)';
+          tooltip = nomeCompl + (atraso !== null && atraso > 0 ? ' ⚠ +' + atraso + 'd' : ' ✓ no prazo') + ' · realizado: ' + fmtD(ent.real);
         } else {
-          dotColor = '#fff';
+          badgeCor = 'var(--blue)'; // ainda não aconteceu — planejada
+          tooltip = nomeCompl + ' · previsto: ' + fmtD(plan);
         }
-        dot = '<span title="' + SEM_NOMES_TER[si] + (ent.real?(' · '+fmtD(ent.real)):' · previsto') + '" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + dotColor + ';border:1.5px solid rgba(0,0,0,.2);"></span>';
-        label = '<div style="font-size:8px;color:' + (ent.real ? 'var(--text)' : 'var(--text-hint)') + ';white-space:nowrap;line-height:1.2;margin-top:1px;">' + SEM_NOMES_TER_CURTO[si] + '</div>';
+        badge = '<div title="' + tooltip + '" style="background:' + badgeCor + ';color:#fff;font-size:8px;font-weight:700;padding:3px 3px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + nome + '</div>';
         break;
       }
       return '<td style="text-align:center;padding:4px 2px;">'
-        + (naJanela ? '<div style="height:8px;background:' + cor + ';border-radius:2px;opacity:.85;margin-bottom:2px;"></div>' : '')
-        + dot
-        + label
+        + (naJanela && !badge ? '<div style="height:8px;background:' + cor + ';border-radius:2px;opacity:.85;"></div>' : '')
+        + badge
         + '</td>';
     }).join('');
 
