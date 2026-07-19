@@ -2055,11 +2055,19 @@ function calcStatus2(p) {
     if (dr && dr < hoje) return 'Finalizado';
     if (dr && dr >= hoje) return 'Em andamento';
   }
-  // Verifica entregas: se tem decolagem registrada, está finalizado
+  // Verifica entregas: se tem decolagem/entrega final registrada, está finalizado —
+  // SABER usa p.entregas, TER usa p.entregasTer (checa os dois, senão todo projeto da TER
+  // seria tratado como "sem nenhuma entrega" e correria o risco de ser marcado Finalizado
+  // sozinho só por causa do prevFim, mesmo estando em andamento de verdade).
+  // Importante: a última entrega da TER só conta como "conclusão" pra projetos One time —
+  // um Recorrente não termina só porque as etapas iniciais foram feitas, é serviço contínuo.
   const ent = p.entregas || {};
-  const temDecolagem = ent[6] && ent[6].real;
+  const entTer = Array.isArray(p.entregasTer) ? p.entregasTer : [];
+  const ultimaEntregaTer = (p.recorrencia !== 'Recorrente' && entTer.length) ? entTer[entTer.length - 1] : null;
+  const temDecolagem = (ent[6] && ent[6].real) || (ultimaEntregaTer && ultimaEntregaTer.real);
   if (temDecolagem) {
-    const dd = parseDate(ent[6].real);
+    const dataDecolagem = (ent[6] && ent[6].real) || ultimaEntregaTer.real;
+    const dd = parseDate(dataDecolagem);
     if (dd && dd < hoje) return 'Finalizado';
   }
   // Tem alguma entrega registrada mas sem decolagem → Em andamento
@@ -2067,6 +2075,7 @@ function calcStatus2(p) {
   for (let i = 0; i < 7; i++) {
     if (ent[i] && ent[i].real) { temAlgumaEntrega = true; break; }
   }
+  if (!temAlgumaEntrega) temAlgumaEntrega = entTer.some(e => e && e.real);
   if (temAlgumaEntrega && !temDecolagem) return 'Em andamento';
   // Sem entregas: usa prevFim
   if (p.prevFim) {
@@ -4294,6 +4303,9 @@ const TER_STATUS  = ['Em andamento','Finalizado','Início em breve','Pausado','C
 // Prazo simples: compara prevFim x realFim (se concluído) ou prevFim x hoje (se em aberto).
 // Não usa a janela de 45 dias da SABER — cada modelo da TER tem prazo próprio, definido manualmente.
 function prazoStatusTer(p) {
+  // Projetos Recorrentes não têm "prazo final" no mesmo sentido — são serviço contínuo, não
+  // um contrato com data de entrega. Só One time entra nessa contagem.
+  if (p.recorrencia === 'Recorrente') return { txt: '—', cor: 'var(--text-hint)' };
   if (!p.prevFim) return { txt: '—', cor: 'var(--text-hint)' };
   const dPrev = parseDate(p.prevFim);
   if (!dPrev) return { txt: '—', cor: 'var(--text-hint)' };
@@ -6188,10 +6200,14 @@ function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
   const convV = convIniciados > 0 ? Math.round(convMon / convIniciados * 100) : null;
 
   // ── PRAZO ────────────────────────────────────────────────────
+  // Na TER, projetos Recorrentes não entram nessa conta — são serviço contínuo, sem prazo
+  // final no mesmo sentido que os projetos One time (a lógica de "52 dias desde o início"
+  // é pensada pro modelo da SABER e não se aplica a eles).
   const mesesPrazo = curM ? [curM] : ALL_MESES;
   let pTotal = 0, pOk = 0;
   mesesPrazo.forEach(m => {
-    const doMes = projects.filter(p => prazoNoMesCard(p, m.idx, m.ano));
+    let doMes = projects.filter(p => prazoNoMesCard(p, m.idx, m.ano));
+    if (currentCoord === 'ter') doMes = doMes.filter(p => p.recorrencia !== 'Recorrente');
     doMes.forEach(p => { const st = prazoStatusNoMes(p, m.idx, m.ano); if (st.ok === true) { pTotal++; pOk++; } else if (st.ok === false) pTotal++; });
   });
   const prazoV = pTotal > 0 ? Math.round(pOk / pTotal * 100) : null;
@@ -7746,6 +7762,7 @@ function buildLeadTime() {
 //  LEAD TIME — TER (5 entregas, nomenclatura provisória por semana; sem score; sem valores previstos; com observação)
 // ═══════════════════════════════════
 const SEM_NOMES_TER = ['Configurações iniciais','Reunião inicial','Automações I e Treinamento','Automações II e Relatórios','Entrega final'];
+const SEM_NOMES_TER_CURTO = ['Config.','Reunião','Auto. I','Auto. II','Entrega'];
 const SEM_SHORT_TER  = ['Sem.1','Sem.2','Sem.3','Sem.4','Sem.5'];
 
 // CRM Kommo basic tem ciclo mais curto: 3 semanas. Os demais modelos usam as 5 padrão.
@@ -8349,6 +8366,7 @@ function buildGanttTer() {
       const naJanela = dIp <= sEnd && dFp >= s;
       // entrega cujo real (ou planejado, se ainda pendente) cai nessa semana
       let dot = '';
+      let label = '';
       for (let si = 0; si < _ltNumSemanas(p); si++) {
         const ent = entregas[si] || {};
         const plan = semDataPlanejadaTer(p, si);
@@ -8364,11 +8382,13 @@ function buildGanttTer() {
           dotColor = '#fff';
         }
         dot = '<span title="' + SEM_NOMES_TER[si] + (ent.real?(' · '+fmtD(ent.real)):' · previsto') + '" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + dotColor + ';border:1.5px solid rgba(0,0,0,.2);"></span>';
+        label = '<div style="font-size:8px;color:' + (ent.real ? 'var(--text)' : 'var(--text-hint)') + ';white-space:nowrap;line-height:1.2;margin-top:1px;">' + SEM_NOMES_TER_CURTO[si] + '</div>';
         break;
       }
       return '<td style="text-align:center;padding:4px 2px;">'
         + (naJanela ? '<div style="height:8px;background:' + cor + ';border-radius:2px;opacity:.85;margin-bottom:2px;"></div>' : '')
         + dot
+        + label
         + '</td>';
     }).join('');
 
