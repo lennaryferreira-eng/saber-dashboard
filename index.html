@@ -1145,6 +1145,12 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
 
 <div id="lt-ter-view" style="display:none;">
   <div class="sec-head"><h2 class="sec-title">Escopos One-time</h2><p class="sec-desc">Só projetos marcados como <b>One time</b> na Base de Projetos. CRM Kommo basic usa 3 semanas de acompanhamento; os demais modelos usam 5.</p></div>
+  <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:10px;color:var(--text-hint);background:var(--surface2);border-radius:var(--r-sm);padding:8px 12px;margin-bottom:.8rem;">
+    <span style="font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Como ler o progresso:</span>
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--surface3);border:1px solid var(--border);vertical-align:middle;margin-right:4px;"></span>Ainda não chegou a etapa</span>
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--green);vertical-align:middle;margin-right:4px;"></span>Entregue no prazo (até 7 dias da etapa anterior)</span>
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--red);vertical-align:middle;margin-right:4px;"></span>Entregue com atraso</span>
+  </div>
 
   <div class="mgrid mg4" style="margin-bottom:.8rem;">
     <div class="mcard c-blue"><div class="mlabel">Projetos</div><div class="mval" id="ltt-total">0</div></div>
@@ -7763,7 +7769,7 @@ function buildLeadTime() {
 // ═══════════════════════════════════
 const SEM_NOMES_TER = ['Configurações iniciais','Reunião inicial','Automações I e Treinamento','Automações II e Relatórios','Entrega final'];
 const SEM_NOMES_TER_CURTO = ['Config.','Reunião','Auto. I','Auto. II','Entrega'];
-const SEM_SHORT_TER  = ['Sem.1','Sem.2','Sem.3','Sem.4','Sem.5'];
+const SEM_SHORT_TER  = SEM_NOMES_TER_CURTO;
 
 // CRM Kommo basic tem ciclo mais curto: 3 semanas. Os demais modelos usam as 5 padrão.
 function _ltNumSemanas(p) {
@@ -7892,22 +7898,25 @@ function buildLeadTimeTer() {
 
           if (atrasoBarra !== null) { if (atrasoBarra <= 0) okCount++; else { atrasoCount++; atrasos.push(atrasoBarra); } }
 
-          let bg, label, tooltip;
+          // O nome da etapa fica sempre visível dentro do card (igual o padrão da SABER) —
+          // muda só a cor de fundo/borda conforme o prazo: cinza = ainda não chegou a vez,
+          // verde = entregue no prazo, vermelho = atrasada.
+          let bg, borderCor, nomeCor, selo, tooltip;
           if (atrasoBarra === null) {
-            bg = 'var(--surface3)';
-            label = '<span style="color:var(--text-hint);font-size:8px;">' + SEM_SHORT_TER[si] + '</span>';
+            bg = 'var(--surface3)'; borderCor = 'var(--border)'; nomeCor = 'var(--text-hint)'; selo = '';
             tooltip = SEM_NOMES_TER[si] + (prazo7 ? ' · prazo: ' + fmtD(prazo7) : ' · aguardando etapa anterior');
           } else if (atrasoBarra <= 0) {
-            bg = 'var(--green)';
+            bg = 'var(--green)'; borderCor = 'var(--green)'; nomeCor = '#fff';
             const txt = atrasoBarra === 0 ? 'no prazo' : Math.abs(atrasoBarra) + 'd antes';
-            label = '<span style="color:#fff;font-size:8px;font-weight:700;">✓</span>';
+            selo = '<div style="font-size:8px;color:rgba(255,255,255,.85);font-weight:700;">✓ ' + txt + '</div>';
             tooltip = SEM_NOMES_TER[si] + ' ✓ ' + txt + ' · realizado: ' + realFmt;
           } else {
-            bg = 'var(--red)';
-            label = '<span style="color:#fff;font-size:8px;font-weight:700;">+' + atrasoBarra + 'd</span>';
+            bg = 'var(--red)'; borderCor = 'var(--red)'; nomeCor = '#fff';
+            selo = '<div style="font-size:8px;color:rgba(255,255,255,.85);font-weight:700;">+' + atrasoBarra + 'd</div>';
             tooltip = SEM_NOMES_TER[si] + ' ⚠ +' + atrasoBarra + 'd · realizado: ' + realFmt;
           }
-          return '<div title="' + tooltip + '" style="flex:1;height:30px;background:' + bg + ';border-radius:3px;display:flex;align-items:center;justify-content:center;transition:background .25s;cursor:default;">' + label + '</div>';
+          const label = '<div style="font-size:9px;font-weight:700;color:' + nomeCor + ';line-height:1.15;padding:0 3px;">' + SEM_SHORT_TER[si] + '</div>' + selo;
+          return '<div title="' + tooltip + '" style="flex:1;min-height:30px;background:' + bg + ';border:1px solid ' + borderCor + ';border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;transition:background .25s;cursor:default;padding:3px 0;">' + label + '</div>';
         }).join('');
 
         return '<tr>'
