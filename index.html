@@ -323,6 +323,12 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
   <button onclick="document.getElementById('conflito-banner').style.display='none';" title="A trava continua ativa — isso só esconde o aviso" style="margin-left:8px;background:none;color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:20px;padding:6px 12px;font-size:13px;cursor:pointer;">✕</button>
 </div>
 
+<div id="queda-brusca-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9998;background:var(--accent);color:#fff;padding:12px 20px;text-align:center;font-size:14px;font-weight:700;box-shadow:0 2px 12px rgba(0,0,0,.3);">
+  <span id="queda-brusca-msg">⚠ Queda brusca no número de projetos detectada.</span>
+  <button onclick="location.reload()" style="margin-left:14px;background:#fff;color:var(--accent);border:none;border-radius:20px;padding:6px 18px;font-size:13px;font-weight:700;cursor:pointer;">Recarregar (recomendado)</button>
+  <button onclick="sbForcarSaveApesarQueda=true;document.getElementById('queda-brusca-banner').style.display='none';sbSave();" title="Só use se essa queda for MESMO intencional (ex: você apagou vários projetos de propósito)" style="margin-left:8px;background:none;color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:20px;padding:6px 12px;font-size:13px;cursor:pointer;">Confirmar e salvar mesmo assim</button>
+</div>
+
 <div id="login-gate" style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:#0A0606;">
   <div style="width:100%;max-width:380px;padding:0 24px;text-align:center;">
     <div style="font-family:var(--cond);font-size:1.1rem;font-weight:700;letter-spacing:.08em;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:6px;">Growthunters</div>
@@ -10255,18 +10261,26 @@ async function switchCoord(coord) {
   // agendado (debounce de 1.5s) pode disparar já apontando pra tabela nova, gravando
   // os dados errados nela.
   clearTimeout(sbSaveTimer);
+  // CRÍTICO (camada 2): bloqueia QUALQUER novo save ser agendado durante toda a troca —
+  // do reset até o carregamento da nova coordenação terminar. Reaproveita a mesma trava da
+  // carga inicial da página. Sem isso, qualquer código disparado durante a troca (ex: um
+  // re-render que chama upd()) poderia agendar um save com o estado pela metade.
+  _carregandoInicial = true;
   currentCoord = coord;
   SB_TABLE = (coord === 'ter') ? 'ter_data' : 'saber_data';
   _resetCoordState();
   updateCoordUI();
   updatePerfilNavVisibility();
   await sbLoad();
+  _carregandoInicial = false;
   const restrito = perfilRestringeNav(currentPerfil) && coord === 'saber';
   show(restrito ? tabsPermitidasDoPerfil(currentPerfil)[0] : 'visao');
 }
 
 let sbSaveTimer = null;
 let sbLastSaved = null;
+let sbLastSavedCount = null; // nº de projetos do último save bem-sucedido — usado pra detectar queda brusca
+let sbForcarSaveApesarQueda = false; // setado pelo botão "confirmar" do banner de queda brusca
 let sbServerVersion = null; // updated_at que esta aba viu por último — usado pra travar save se alguém salvou depois
 let sbConflito = false;     // true = detectamos que outra aba/dispositivo salvou depois; save fica pausado até recarregar
 let sbChannel   = null;
@@ -10294,6 +10308,12 @@ function setSyncStatus(msg, color, clickable) {
 // então isso reforça visualmente que o save está travado até recarregar.
 function mostrarConflitoBanner() {
   const el = document.getElementById('conflito-banner');
+  if (el) el.style.display = 'block';
+}
+function mostrarQuedaBruscaBanner(antes, depois) {
+  const el = document.getElementById('queda-brusca-banner');
+  const msg = document.getElementById('queda-brusca-msg');
+  if (msg) msg.textContent = '⚠ Queda brusca detectada: ' + antes + ' → ' + depois + ' projetos. Se isso não foi intencional, recarregue a página em vez de continuar.';
   if (el) el.style.display = 'block';
 }
 
@@ -10362,12 +10382,46 @@ async function syncSheets() {
 
 async function sbSave() {
   if (VIEWER) return; // modo visualização: nunca grava no Supabase
+  // CRÍTICO: tira uma "foto" de tudo AGORA, antes de qualquer espera de rede — se não fizer
+  // isso, e alguém trocar de Coordenação (SABER<->TER) enquanto ESTE save ainda está no meio
+  // do caminho (esperando a checagem de concorrência responder), as variáveis globais
+  // `projects`/`SB_TABLE`/etc já teriam mudado pra outra coordenação, e esse save terminaria
+  // gravando os dados (já esvaziados pela troca) na tabela ERRADA. Foi exatamente isso que
+  // causou a perda dos 39 projetos da TER em 18/07/2026 — o código lia `projects` e `SB_TABLE`
+  // de novo, mais tarde na função, em vez de travar os dois logo no início.
+  const _snap = {
+    table: SB_TABLE,
+    projects: projects,
+    npsData: npsData,
+    cspManual: cspManual,
+    capData: capData,
+    capManual: capManual,
+    monMetas: monMetas,
+    aqlMetas: aqlMetas,
+    pdiData: pdiData,
+    convBaseManual: convBaseManual,
+    perfFotos: perfFotos,
+    auditorias: auditorias,
+    consList: window.CONS_MON || [],
+    consColors: window.dotColors || {},
+  };
   // TRAVA DE SEGURANÇA: nunca sobrescreve o banco com dados vazios (evita perda)
-  if (!Array.isArray(projects) || projects.length === 0) {
+  if (!Array.isArray(_snap.projects) || _snap.projects.length === 0) {
     console.warn('sbSave ABORTADO: projects vazio — não vou sobrescrever o Supabase. Restaure um backup antes de editar.');
     setSyncStatus('⚠ Save pausado: nenhum projeto carregado', 'var(--amber)');
     return;
   }
+  // TRAVA DE QUEDA BRUSCA: mesmo sem estar totalmente vazio, uma queda muito grande no
+  // número de projetos de um save pro outro (ex: 200 -> 12) é o padrão clássico de um bug
+  // de carregamento parcial, não de alguém apagando projeto por projeto de propósito.
+  // Pede confirmação explícita antes de gravar, em vez de aceitar direto.
+  if (sbLastSavedCount !== null && sbLastSavedCount >= 5 && _snap.projects.length < sbLastSavedCount * 0.5 && !sbForcarSaveApesarQueda) {
+    console.warn('sbSave ABORTADO: queda brusca detectada (' + sbLastSavedCount + ' -> ' + _snap.projects.length + ' projetos). Pedindo confirmação.');
+    mostrarQuedaBruscaBanner(sbLastSavedCount, _snap.projects.length);
+    setSyncStatus('⚠ Save pausado: queda de ' + sbLastSavedCount + ' pra ' + _snap.projects.length + ' projetos — confirme antes de continuar', 'var(--accent)');
+    return;
+  }
+  sbForcarSaveApesarQueda = false; // usa só uma vez, depois volta a exigir confirmação de novo
   // TRAVA DE CONCORRÊNCIA: se já sabemos que outra aba/dispositivo salvou depois da nossa
   // última sincronização, não sobrescreve — precisa recarregar a página primeiro.
   if (sbConflito) {
@@ -10376,10 +10430,22 @@ async function sbSave() {
     setSyncStatus('⚠ Recarregue a página — outra sessão salvou dados mais recentes', 'var(--accent)', true);
     return;
   }
+  // Se, entre tirar a foto e agora, a coordenação mudou (ex: usuário trocou SABER<->TER
+  // enquanto esse save já estava agendado), aborta — esse save não é mais válido pra tabela
+  // atual, e o novo sbLoad() da coordenação nova já vai carregar o estado certo.
+  if (_snap.table !== SB_TABLE) {
+    console.warn('sbSave ABORTADO: a coordenação mudou depois que esse save foi agendado (era ' + _snap.table + ', agora é ' + SB_TABLE + '). Descartando.');
+    return;
+  }
   // Confere no servidor se alguém salvou depois do que esta aba viu por último
   if (sbServerVersion) {
     try {
-      const checkRes = await fetch(SB_URL + '/rest/v1/' + SB_TABLE + '?id=eq.main&select=updated_at', { headers: SB_HEADERS });
+      const checkRes = await fetch(SB_URL + '/rest/v1/' + _snap.table + '?id=eq.main&select=updated_at', { headers: SB_HEADERS });
+      // Depois desse await, confere DE NOVO se a coordenação não mudou no meio do caminho
+      if (_snap.table !== SB_TABLE) {
+        console.warn('sbSave ABORTADO: coordenação mudou durante a checagem de concorrência. Descartando.');
+        return;
+      }
       if (checkRes.ok) {
         const checkRows = await checkRes.json();
         if (checkRows.length && checkRows[0].updated_at) {
@@ -10396,35 +10462,41 @@ async function sbSave() {
       }
     } catch (e) { /* checagem falhou (offline?) — segue e tenta salvar normalmente */ }
   }
+  // Última checagem, logo antes de montar o payload — garante que nada mudou a coordenação
+  // durante toda a checagem de concorrência acima.
+  if (_snap.table !== SB_TABLE) {
+    console.warn('sbSave ABORTADO: coordenação mudou antes de montar o payload. Descartando.');
+    return;
+  }
   sbPendingChanges = true;
   try {
-    console.log(`sbSave: salvando ${projects.length} projetos no Supabase…`);
+    console.log(`sbSave: salvando ${_snap.projects.length} projetos em ${_snap.table}…`);
     const _agoraISO = new Date().toISOString();
     const payload = {
       id: 'main',
       updated_at: _agoraISO,
-      projects:   JSON.stringify(projects),
-      nps_data:   JSON.stringify(npsData),
-      csp_manual: JSON.stringify(cspManual),
-      cap_data:   JSON.stringify(capData),
-      cap_manual: JSON.stringify(capManual),
-      mon_metas:  JSON.stringify(monMetas),
-      aql_metas:  JSON.stringify(aqlMetas),
-      pdi_data:   JSON.stringify(pdiData),
-      conv_base:  JSON.stringify(convBaseManual),
-      fotos:      JSON.stringify(perfFotos),
-      auditorias: JSON.stringify(auditorias),
-      consultores: JSON.stringify({list:window.CONS_MON||[], colors:window.dotColors||{}}),
+      projects:   JSON.stringify(_snap.projects),
+      nps_data:   JSON.stringify(_snap.npsData),
+      csp_manual: JSON.stringify(_snap.cspManual),
+      cap_data:   JSON.stringify(_snap.capData),
+      cap_manual: JSON.stringify(_snap.capManual),
+      mon_metas:  JSON.stringify(_snap.monMetas),
+      aql_metas:  JSON.stringify(_snap.aqlMetas),
+      pdi_data:   JSON.stringify(_snap.pdiData),
+      conv_base:  JSON.stringify(_snap.convBaseManual),
+      fotos:      JSON.stringify(_snap.perfFotos),
+      auditorias: JSON.stringify(_snap.auditorias),
+      consultores: JSON.stringify({list:_snap.consList, colors:_snap.consColors}),
     };
     const sendPayload = async (pl) => {
-      let r = await fetch(SB_URL + '/rest/v1/' + SB_TABLE + '?id=eq.main', {
+      let r = await fetch(SB_URL + '/rest/v1/' + _snap.table + '?id=eq.main', {
         method: 'PATCH',
         headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
         body: JSON.stringify(pl)
       });
       // Se não existir ainda, cria com POST
       if (r.status === 404 || r.status === 406) {
-        r = await fetch(SB_URL + '/rest/v1/' + SB_TABLE, {
+        r = await fetch(SB_URL + '/rest/v1/' + _snap.table, {
           method: 'POST',
           headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
           body: JSON.stringify(pl)
@@ -10451,23 +10523,24 @@ async function sbSave() {
       const errText = await res.text();
       throw new Error('HTTP ' + res.status + ': ' + errText);
     }
-    console.log('Supabase confirmou ' + projects.length + ' projetos salvos ✓');
+    console.log('Supabase confirmou ' + _snap.projects.length + ' projetos salvos em ' + _snap.table + ' ✓');
     sbLastSaved = new Date();
+    sbLastSavedCount = _snap.projects.length;
     sbServerVersion = _agoraISO;
     sbPendingChanges = false;
     sbRetryCount = 0;
-    console.log(`sbSave: confirmado ${projects.length} projetos salvos às ${sbLastSaved.toLocaleTimeString()}`);
-    setSyncStatus('✓ Salvo às ' + sbLastSaved.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) + ' (' + projects.length + ' proj.)', 'var(--green)');
+    console.log(`sbSave: confirmado ${_snap.projects.length} projetos salvos às ${sbLastSaved.toLocaleTimeString()}`);
+    setSyncStatus('✓ Salvo às ' + sbLastSaved.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) + ' (' + _snap.projects.length + ' proj.)', 'var(--green)');
     syncSheets(); // sync automático com planilha após salvar no Supabase
     // Mantém 3 backups locais rotativos
     try {
       const backup = {
-        projects, nps_data: npsData, csp_manual: cspManual,
-        mon_metas: monMetas, aql_metas: aqlMetas, cap_data: capData, cap_manual: capManual,
-        pdi_data: pdiData, conv_base: convBaseManual, fotos: perfFotos,
-        auditorias,
-        consultores: {list:window.CONS_MON||[], colors:window.dotColors||{}},
-        saved_at: sbLastSaved.toISOString(), total: projects.length
+        projects: _snap.projects, nps_data: _snap.npsData, csp_manual: _snap.cspManual,
+        mon_metas: _snap.monMetas, aql_metas: _snap.aqlMetas, cap_data: _snap.capData, cap_manual: _snap.capManual,
+        pdi_data: _snap.pdiData, conv_base: _snap.convBaseManual, fotos: _snap.perfFotos,
+        auditorias: _snap.auditorias,
+        consultores: {list:_snap.consList, colors:_snap.consColors},
+        saved_at: sbLastSaved.toISOString(), total: _snap.projects.length, table: _snap.table
       };
       const backupStr = JSON.stringify(backup);
       const b2 = localStorage.getItem('saber_backup_1') || null;
@@ -10627,6 +10700,7 @@ async function sbLoad() {
           catch(mErr) { console.warn('migrarMon falhou no projeto', p.id, mErr); if (!Array.isArray(p.monetizacoes)) p.monetizacoes = []; }
         });
         projects = prjs;
+        sbLastSavedCount = prjs.length; // baseline pra detectar queda brusca no próximo save
       }
     }
     // carrega outros dados — só se Supabase for mais recente
