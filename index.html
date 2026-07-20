@@ -9958,6 +9958,8 @@ function audIdentOk(){
   if(!g('aud-f-consultor')||!g('aud-f-tipo')||!g('aud-f-cliente')){ if(msg){msg.textContent='Selecione consultor, tipo de entrega e cliente antes.';msg.style.color='var(--accent)';} return false; }
   return true;
 }
+let audEditandoId = null; // null = criando avaliação nova; com valor = editando uma já salva
+
 function audImportar(){
   if(!audIdentOk()) return;
   const txt=(document.getElementById('aud-analise')?.value||'').trim();
@@ -10004,7 +10006,8 @@ function audRenderReview(scores,obs,rec){
   html+='<div style="margin-top:14px;"><label class="aud-lbl">Recomendação geral</label><textarea id="aud-rec" class="aud-inp" rows="2" placeholder="Principal recomendação…">'+(rec||'')+'</textarea></div>';
   html+='<div style="margin-top:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">'
     + '<div style="font-size:13px;">Nota geral: <strong id="aud-media" style="font-size:22px;color:var(--accent);">—</strong><span style="font-size:12px;color:var(--text-hint);">/100</span></div>'
-    + '<button onclick="audSalvar()" style="background:var(--accent);color:#fff;border:none;border-radius:20px;padding:9px 24px;font-size:13px;font-weight:600;cursor:pointer;">Salvar avaliação</button>'
+    + (audEditandoId ? '<span style="font-size:11px;color:var(--amber);font-weight:600;">✎ editando avaliação existente</span>' : '')
+    + '<button id="aud-btn-salvar" onclick="audSalvar()" style="background:var(--accent);color:#fff;border:none;border-radius:20px;padding:9px 24px;font-size:13px;font-weight:600;cursor:pointer;">'+(audEditandoId?'Salvar alterações':'Salvar avaliação')+'</button>'
     + '<button onclick="audCancelar()" style="background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:20px;padding:9px 18px;font-size:12px;cursor:pointer;">Cancelar</button>'
     + '</div>';
   const rv=document.getElementById('aud-review'); rv.innerHTML=html; rv.style.display='block';
@@ -10034,7 +10037,23 @@ function audSyncDim(id,from){
 }
 function audGetScores(){ const s={}; AUD_DIMS.forEach(d=>{ const el=document.getElementById('aud-num-'+d.id); s[d.id]=el?Math.min(100,Math.max(0,parseInt(el.value)||0)):70; }); return s; }
 function audAtualizarMedia(){ const s=audGetScores(); const entrega=document.getElementById('aud-f-tipo')?.value||''; const m=audNotaPonderada(s, entrega); const el=document.getElementById('aud-media'); if(el){ el.textContent=m; el.style.color=audClassif(m).cor; } }
-function audCancelar(){ const rv=document.getElementById('aud-review'); if(rv){rv.style.display='none';rv.innerHTML='';} }
+function audCancelar(){ const rv=document.getElementById('aud-review'); if(rv){rv.style.display='none';rv.innerHTML='';} audEditandoId=null; }
+
+// Reabre uma avaliação já salva pra edição — reaproveita a mesma tela de revisão usada
+// pra avaliações novas, só pré-preenchida com os dados que já existem.
+function audEditar(id) {
+  const a = auditorias.find(x => x.id === id);
+  if (!a) return;
+  audEditandoId = id;
+  const setVal = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val || ''; };
+  setVal('aud-f-consultor', a.consultor);
+  setVal('aud-f-tipo', a.entrega);
+  setVal('aud-f-cliente', a.cliente);
+  setVal('aud-f-data', a.data);
+  audReviewD9 = a.d9_itens || {};
+  audRenderReview(a.scores || {}, a.observacoes || {}, a.recomendacao || '');
+  document.getElementById('aud-review')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 
 function audSalvar(){
   const g=id=>(document.getElementById(id)?.value||'').trim();
@@ -10048,7 +10067,15 @@ function audSalvar(){
   const entregaTipo = g('aud-f-tipo');
   const ordemEntrega = ordemDaEntregaPeloTipo(entregaTipo); // deriva do tipo, sem campo extra
   const cliente = g('aud-f-cliente');
-  auditorias.push({ id:'a'+Date.now()+Math.floor(Math.random()*1000), consultor:g('aud-f-consultor'), entrega:entregaTipo, cliente, data:g('aud-f-data'), scores, observacoes:obs, recomendacao:g('aud-rec'), nota, d9_itens:audReviewD9, ordemEntrega });
+  const dadosAtualizados = { consultor:g('aud-f-consultor'), entrega:entregaTipo, cliente, data:g('aud-f-data'), scores, observacoes:obs, recomendacao:g('aud-rec'), nota, d9_itens:audReviewD9, ordemEntrega };
+  const estavaEditando = !!audEditandoId;
+  if (estavaEditando) {
+    const idx = auditorias.findIndex(x => x.id === audEditandoId);
+    if (idx !== -1) auditorias[idx] = { ...auditorias[idx], ...dadosAtualizados }; // mantém o id original
+  } else {
+    auditorias.push({ id:'a'+Date.now()+Math.floor(Math.random()*1000), ...dadosAtualizados });
+  }
+  audEditandoId = null;
   // Envia a nota pro Lead Time — automaticamente, pra qualquer tipo de entrega que
   // corresponda a uma posição do Lead Time (Kickoff, Pesquisa de Mercado, Análise de
   // Ambientes, Diagnóstico de Vendas, Diagnóstico de Mídia Paga, Apresentação Final).
@@ -10070,7 +10097,7 @@ function audSalvar(){
   audReviewD9={}; audCancelar();
   if(typeof upd==='function') upd();
   audRenderLista();
-  const m=document.getElementById('aud-form-msg'); if(m){m.textContent='✓ Avaliação salva.'+msgExtra;m.style.color='var(--green)';}
+  const m=document.getElementById('aud-form-msg'); if(m){m.textContent=(estavaEditando?'✓ Alterações salvas.':'✓ Avaliação salva.')+msgExtra;m.style.color='var(--green)';}
 }
 
 function audRemover(id){ if(!confirm('Excluir esta avaliação?')) return; auditorias=auditorias.filter(a=>a.id!==id); if(typeof upd==='function') upd(); audRenderLista(); }
@@ -10304,7 +10331,7 @@ function audRenderLista(){
           + '<td style="padding:6px 8px;color:var(--text-muted);">'+dataFmt+'</td>'
           + '<td style="padding:6px 8px;"><span style="font-weight:700;color:'+cl.cor+';'+(cl.dourado?'padding:1px 6px;border-radius:4px;box-shadow:0 0 0 1.5px #D4AF37;':'')+'">'+(ng!==null?ng:'—')+'</span> <span style="font-size:10px;color:var(--text-hint);">'+cl.txt+'</span></td>'
           + '<td style="padding:6px 8px;color:var(--text-muted);font-size:10px;">'+(gaps.length?gaps.map(g=>g.nome).join(' · '):'—')+'</td>'
-          + '<td style="padding:6px 8px;text-align:right;"><button onclick="event.stopPropagation();audRemover(\''+a.id+'\')" title="Excluir" style="background:none;border:none;cursor:pointer;color:var(--text-hint);font-size:13px;">✕</button></td>'
+          + '<td style="padding:6px 8px;text-align:right;white-space:nowrap;"><button onclick="event.stopPropagation();audEditar(\''+a.id+'\')" title="Editar" style="background:none;border:none;cursor:pointer;color:var(--text-hint);font-size:13px;margin-right:6px;">✎</button><button onclick="event.stopPropagation();audRemover(\''+a.id+'\')" title="Excluir" style="background:none;border:none;cursor:pointer;color:var(--text-hint);font-size:13px;">✕</button></td>'
           + '</tr>'
           + '<tr id="auddet-'+a.id+'" style="display:none;"><td colspan="7" style="padding:2px 8px 12px;">'+audDetalheHTML(a)+'</td></tr>';
       }).join('')
