@@ -10546,6 +10546,10 @@ function mostrarQuedaBruscaBanner(antes, depois) {
 function sbScheduleSave() {
   if (VIEWER) return; // modo visualização: nunca salva
   if (typeof _carregandoInicial !== 'undefined' && _carregandoInicial) return; // não salva durante carga inicial
+  // Marca "há alteração pendente" JÁ AGORA, não só quando o save efetivamente começa a
+  // tentar — sem isso, fechar a aba nos 1,5s de espera do debounce passava batido pelo
+  // aviso de "há alterações não salvas", perdendo a edição silenciosamente.
+  sbPendingChanges = true;
   clearTimeout(sbSaveTimer);
   setSyncStatus('Salvando…', 'var(--amber)');
   sbSaveTimer = setTimeout(sbSave, 1500);
