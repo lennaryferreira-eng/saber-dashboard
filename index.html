@@ -9348,8 +9348,11 @@ function buildPerformance() {
     </div>`;
   }).join('');
 
-  // Seleciona automaticamente o 1º consultor
-  if (primeiroNome) setTimeout(() => perfSelecionaConsultor(primeiroNome), 50);
+  // Seleciona automaticamente o 1º consultor — mas se o acesso estiver travado num
+  // consultor específico, seleciona ELE MESMO, nunca o líder do squad todo.
+  const _consLockAutoSel = (currentPerfil && currentPerfil.consultor) || '';
+  const _nomeParaAutoSelecionar = _consLockAutoSel || primeiroNome;
+  if (_nomeParaAutoSelecionar) setTimeout(() => perfSelecionaConsultor(_nomeParaAutoSelecionar), 50);
 
   buildPerfMetaMon();
 }
