@@ -9216,7 +9216,12 @@ function buildPerformance() {
   const primeiroNome = cards.length > 0 ? cards[0].nome : null;
   const primeiroCard = cards.length > 0 ? cards[0] : null;
   const primeiraFoto = primeiroNome ? (perfFotos[primeiroNome] || localStorage.getItem('perf-foto-' + primeiroNome) || '') : '';
-  window.__perfTop = primeiroNome ? {
+  // Acesso travado (consultor logado): só populamos __perfTop (usado na celebração de "Top
+  // Performer do mês") se a própria pessoa logada for a líder — nunca mostra o desempenho de
+  // outro consultor pra quem está com acesso restrito.
+  const _consLockCheck = (currentPerfil && currentPerfil.consultor) || '';
+  const _podeVerTop = !_consLockCheck || _consLockCheck === primeiroNome;
+  window.__perfTop = (primeiroNome && _podeVerTop) ? {
     nome: primeiroNome,
     dot: (window.dotColors || {})[primeiroNome] || null,
     foto: primeiraFoto,
@@ -10102,7 +10107,14 @@ function audSalvar(){
 
 function audRemover(id){ if(!confirm('Excluir esta avaliação?')) return; auditorias=auditorias.filter(a=>a.id!==id); if(typeof upd==='function') upd(); audRenderLista(); }
 function audSetFiltro(k,v){ audFiltro[k]=v; audRenderLista(); }
-function audLimparFiltro(){ audFiltro={consultor:'',tipo:'',cliente:'',mes:'',semana:''}; audRenderLista(); }
+function audLimparFiltro(){
+  // Mantém a trava de acesso (consultor/designer logado) mesmo ao "limpar" — só reseta os
+  // filtros que a própria pessoa escolheu manualmente.
+  const cons = (currentPerfil && currentPerfil.consultor) || '';
+  const des  = (currentPerfil && currentPerfil.designer) || '';
+  audFiltro = { consultor: (cons || des) ? (cons || des) : '', tipo: des ? 'Análise de Ambientes' : '', cliente:'', mes:'', semana:'' };
+  audRenderLista();
+}
 // Semana = segunda-feira daquela semana, no formato AAAA-MM-DD (chave única e ordenável)
 function audWeekKey(dataStr){
   const d=parseDate(dataStr); if(!d) return null;
@@ -10116,7 +10128,11 @@ function audWeekLabel(key){
   return fmt(seg)+' – '+fmt(dom);
 }
 function audFiltradas(){
+  // Acesso travado (consultor logado): trava fixa, nunca removível pelo filtro manual —
+  // "limpar filtro" não pode expor avaliações de outros consultores.
+  const consLock = (currentPerfil && currentPerfil.consultor) || '';
   return auditorias.filter(a=>{
+    if(consLock && a.consultor!==consLock) return false;
     if(audFiltro.consultor && a.consultor!==audFiltro.consultor) return false;
     if(audFiltro.tipo && a.entrega!==audFiltro.tipo) return false;
     if(audFiltro.cliente && a.cliente!==audFiltro.cliente) return false;
