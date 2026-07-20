@@ -4208,9 +4208,14 @@ function renderBase() {
     const tv = document.getElementById('base-ter-view');   if (tv) tv.style.display = 'none';
   }
   if (perfilRestringeNav(currentPerfil)) applyPerfilFilters();
-  // auto-calc prevFim
+  // auto-calc prevFim — só marca como alterado (pra salvar) quando o valor recalculado é
+  // DIFERENTE do que já estava; recalcular pro MESMO valor não é uma edição de verdade.
+  let _prevFimMudou = false;
   projects.forEach(p => {
-    if (p.inicio && !p.prevManual && p.modelo !== 'DRO') p.prevFim = addDays(p.inicio, 45);
+    if (p.inicio && !p.prevManual && p.modelo !== 'DRO') {
+      const novoPrevFim = addDays(p.inicio, 45);
+      if (p.prevFim !== novoPrevFim) { p.prevFim = novoPrevFim; _prevFimMudou = true; }
+    }
   });
 
   // lista filtrada — cards E tabela respeitam os filtros
@@ -4298,7 +4303,7 @@ function renderBase() {
   });
 
   refreshAll();
-  upd();
+  if (_prevFimMudou) upd();
 }
 
 // ═══════════════════════════════════
@@ -5069,7 +5074,6 @@ function calcPdi() {
   setStyle('ov-pdi-bar',  'width', avg !== null ? pct(avg, 100) + '%' : '0%');
   setStyle('ov2-pdi-bar', 'width', avg !== null ? pct(avg, 100) + '%' : '0%');
   if (avg !== null) { const [bc,bt] = badgeFor(avg, 80, false); setBadge('ov2-pdi-badge', bc, bt); }
-  upd();
   return avg;
 }
 
@@ -6181,8 +6185,6 @@ function calcMon() {
   // tabela de metas mensais — exibe só o mês selecionado
   buildMonMetasTable(realPorMes, realOTPorMes, realRecPorMes, curM);
 
-  // visão geral atualizada via buildOv()
-  upd();
   return total;
 }
 
@@ -10234,7 +10236,13 @@ function audRenderLista(){
   }
 
   const box=document.getElementById('aud-lista'); if(!box) return;
-  if(!list.length){ box.innerHTML='<div style="font-size:12px;color:var(--text-hint);padding:18px 0;text-align:center;">Nenhuma avaliação ainda. Use o formulário acima para lançar a primeira.</div>'; return; }
+  if(!list.length){
+    const temFiltroAtivo = audFiltro.consultor || audFiltro.tipo || audFiltro.cliente || audFiltro.mes || audFiltro.semana;
+    box.innerHTML = temFiltroAtivo
+      ? '<div style="font-size:12px;color:var(--text-hint);padding:18px 0;text-align:center;">Nenhuma avaliação com esse filtro (existem ' + auditorias.length + ' no total) — <button onclick="audLimparFiltro()" style="background:none;border:none;color:var(--accent);text-decoration:underline;cursor:pointer;font-size:12px;">limpar filtro</button></div>'
+      : '<div style="font-size:12px;color:var(--text-hint);padding:18px 0;text-align:center;">Nenhuma avaliação ainda. Use o formulário acima para lançar a primeira.</div>';
+    return;
+  }
   const rows=list.slice().sort((a,b)=>(b.data||'').localeCompare(a.data||''));
   box.innerHTML='<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">'
     + '<thead><tr>'+['Consultor','Entrega','Cliente','Data','Nota','Gaps',''].map(h=>'<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">'+h+'</th>').join('')+'</tr></thead><tbody>'
