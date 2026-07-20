@@ -613,7 +613,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
     <div id="ov-prazo-card" class="mcard c-blue"><div id="ov-prazo-border" class="ov-border-bar" style="background:var(--blue);"></div><div class="mlabel">Projetos no Prazo</div><div class="mval" id="ov-prazo-val" style="transition:color .3s;">—</div><div class="mmeta">Meta: 80%</div><div class="prog-bg"><div class="prog-fill" id="ov-prazo-bar" style="width:0%;background:var(--blue)"></div></div></div>
     <div id="ov-pdi-card" class="mcard c-purple"><div id="ov-pdi-border" class="ov-border-bar" style="background:var(--purple);"></div><div class="mlabel">PDI do Time</div><div class="mval" id="ov-pdi-val" style="transition:color .3s;">—</div><div class="mmeta">Meta: 80%</div><div class="prog-bg"><div class="prog-fill" id="ov-pdi-bar" style="width:0%;background:var(--purple)"></div></div></div>
     <div id="ov-nps-card" class="mcard c-amber"><div id="ov-nps-border" class="ov-border-bar" style="background:var(--amber);"></div><div class="mlabel">NPS</div><div class="mval" id="ov-nps-val" style="transition:color .3s;">—</div><div class="mmeta">Meta: 50</div><div class="prog-bg"><div class="prog-fill" id="ov-nps-bar" style="width:0%;background:var(--amber)"></div></div></div>
-    <div style="position:relative;">
+    <div id="ov-kpi-swipe-wrap" style="position:relative;">
       <div id="ov-mon-card" class="mcard c-gray" style="margin:0;display:none;"><div id="ov-mon-border" class="ov-border-bar" style="background:var(--text-hint);"></div><div class="mlabel">Monetização</div><div class="mval" id="ov-mon" style="font-size:18px;">R$ 0</div><div id="ov-mon-sub" style="font-size:10px;color:var(--text-hint);margin-top:2px;"></div><div class="mmeta">Meta: <span id="ov-mon-meta-lbl">a definir</span></div><div class="prog-bg"><div class="prog-fill" id="ov-mon-bar" style="width:0%;background:var(--text-hint)"></div></div></div>
       <div id="ov-aql-card" class="mcard c-blue" style="margin:0;"><div id="ov-aql-border" class="ov-border-bar" style="background:var(--blue);"></div><div class="mlabel">AQL</div><div class="mval" id="ov-aql-val" style="font-size:18px;">—</div><div id="ov-aql-sub" style="font-size:10px;color:var(--text-hint);margin-top:2px;"></div><div class="mmeta">Meta: <span id="ov-aql-meta-lbl">a definir</span></div><div class="prog-bg"><div class="prog-fill" id="ov-aql-bar" style="width:0%;background:var(--blue)"></div></div></div>
       <div style="position:absolute;top:8px;right:10px;display:flex;gap:5px;z-index:2;">
@@ -6382,13 +6382,15 @@ function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
   const healthscoreCard  = document.getElementById('ov-healthscore-card');
   const volumeModeloCard = document.getElementById('ov-volume-modelo-card');
   const convCard = document.getElementById('ov-conv-card');
-  const monCard  = document.getElementById('ov-mon-card');
+  const kpiSwipeWrap = document.getElementById('ov-kpi-swipe-wrap');
   if (pipelineFlagsRow) pipelineFlagsRow.style.display = ehTer ? 'none' : '';
   if (ticketTierRow)    ticketTierRow.style.display    = ehTer ? 'none' : '';
   if (healthscoreCard)  healthscoreCard.style.display  = ehTer ? 'none' : '';
   if (volumeModeloCard) volumeModeloCard.style.display = ehTer ? '' : 'none';
   if (convCard) convCard.style.display = ehTer ? 'none' : '';
-  if (monCard)  monCard.style.display  = ehTer ? 'none' : '';
+  // O par Monetização/AQL troca de exibição sozinho via ovShowKpiSwipe() — aqui só
+  // esconde o par inteiro na TER, sem mexer em qual dos dois está visível.
+  if (kpiSwipeWrap) kpiSwipeWrap.style.display = ehTer ? 'none' : '';
 
   if (ehTer) {
     buildOvVolumePorModelo();
