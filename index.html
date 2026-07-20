@@ -613,7 +613,14 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
     <div id="ov-prazo-card" class="mcard c-blue"><div id="ov-prazo-border" class="ov-border-bar" style="background:var(--blue);"></div><div class="mlabel">Projetos no Prazo</div><div class="mval" id="ov-prazo-val" style="transition:color .3s;">—</div><div class="mmeta">Meta: 80%</div><div class="prog-bg"><div class="prog-fill" id="ov-prazo-bar" style="width:0%;background:var(--blue)"></div></div></div>
     <div id="ov-pdi-card" class="mcard c-purple"><div id="ov-pdi-border" class="ov-border-bar" style="background:var(--purple);"></div><div class="mlabel">PDI do Time</div><div class="mval" id="ov-pdi-val" style="transition:color .3s;">—</div><div class="mmeta">Meta: 80%</div><div class="prog-bg"><div class="prog-fill" id="ov-pdi-bar" style="width:0%;background:var(--purple)"></div></div></div>
     <div id="ov-nps-card" class="mcard c-amber"><div id="ov-nps-border" class="ov-border-bar" style="background:var(--amber);"></div><div class="mlabel">NPS</div><div class="mval" id="ov-nps-val" style="transition:color .3s;">—</div><div class="mmeta">Meta: 50</div><div class="prog-bg"><div class="prog-fill" id="ov-nps-bar" style="width:0%;background:var(--amber)"></div></div></div>
-    <div id="ov-mon-card" class="mcard c-gray"><div id="ov-mon-border" class="ov-border-bar" style="background:var(--text-hint);"></div><div class="mlabel">Monetização</div><div class="mval" id="ov-mon" style="font-size:18px;">R$ 0</div><div id="ov-mon-sub" style="font-size:10px;color:var(--text-hint);margin-top:2px;"></div><div class="mmeta">Meta: <span id="ov-mon-meta-lbl">a definir</span></div><div class="prog-bg"><div class="prog-fill" id="ov-mon-bar" style="width:0%;background:var(--text-hint)"></div></div></div>
+    <div style="position:relative;">
+      <div id="ov-mon-card" class="mcard c-gray" style="margin:0;"><div id="ov-mon-border" class="ov-border-bar" style="background:var(--text-hint);"></div><div class="mlabel">Monetização</div><div class="mval" id="ov-mon" style="font-size:18px;">R$ 0</div><div id="ov-mon-sub" style="font-size:10px;color:var(--text-hint);margin-top:2px;"></div><div class="mmeta">Meta: <span id="ov-mon-meta-lbl">a definir</span></div><div class="prog-bg"><div class="prog-fill" id="ov-mon-bar" style="width:0%;background:var(--text-hint)"></div></div></div>
+      <div id="ov-aql-card" class="mcard c-blue" style="margin:0;display:none;"><div id="ov-aql-border" class="ov-border-bar" style="background:var(--blue);"></div><div class="mlabel">AQL</div><div class="mval" id="ov-aql-val" style="font-size:18px;">—</div><div id="ov-aql-sub" style="font-size:10px;color:var(--text-hint);margin-top:2px;"></div><div class="mmeta">Meta: <span id="ov-aql-meta-lbl">a definir</span></div><div class="prog-bg"><div class="prog-fill" id="ov-aql-bar" style="width:0%;background:var(--blue)"></div></div></div>
+      <div style="position:absolute;top:8px;right:10px;display:flex;gap:5px;z-index:2;">
+        <button onclick="ovShowKpiSwipe('mon')" id="ov-kpi-dot-mon" title="Monetização" style="width:7px;height:7px;border-radius:50%;border:none;padding:0;cursor:pointer;background:var(--text-hint);"></button>
+        <button onclick="ovShowKpiSwipe('aql')" id="ov-kpi-dot-aql" title="AQL" style="width:7px;height:7px;border-radius:50%;border:none;padding:0;cursor:pointer;background:var(--border);"></button>
+      </div>
+    </div>
   </div>
   <!-- Mês atual -->
   <div style="margin-bottom:1rem;">
@@ -5511,6 +5518,40 @@ function buildAql() {
 }
 
 // Card "Consolidado do squad": total realizado vs meta geral do mes + ritmo
+// Card compacto de AQL na Visão Geral (mesmo padrão dos outros KPIs) — alterna com o de
+// Monetização no mesmo espaço, via as bolinhas de navegação.
+function buildOvAqlCard() {
+  const valEl  = document.getElementById('ov-aql-val');
+  if (!valEl) return;
+  const mesInfo = _aqlMesAtual();
+  const subEl  = document.getElementById('ov-aql-sub');
+  const metaEl = document.getElementById('ov-aql-meta-lbl');
+  const barEl  = document.getElementById('ov-aql-bar');
+  if (!mesInfo) { valEl.textContent = '—'; if (subEl) subEl.textContent = ''; if (metaEl) metaEl.textContent = 'a definir'; if (barEl) barEl.style.width = '0%'; return; }
+  const meta = aqlMetas[mesInfo.key] || {};
+  const total = meta.total || 0;
+  const evs = pipeEventosDoMes(mesInfo.label, mesInfo.ano);
+  const realizado = evs.length;
+  const pctMeta = total > 0 ? Math.round(realizado / total * 100) : null;
+  valEl.textContent = realizado;
+  if (subEl)  subEl.textContent  = mesInfo.label + '/' + mesInfo.ano + (pctMeta !== null ? ' · ' + pctMeta + '% da meta' : '');
+  if (metaEl) metaEl.textContent = total > 0 ? total + ' AQLs' : 'a definir';
+  if (barEl)  barEl.style.width  = (pctMeta !== null ? Math.min(100, pctMeta) : 0) + '%';
+}
+
+// Alterna qual dos dois cards (Monetização/AQL) aparece no mesmo espaço na Visão Geral
+function ovShowKpiSwipe(which) {
+  const monCard = document.getElementById('ov-mon-card');
+  const aqlCard = document.getElementById('ov-aql-card');
+  const dotMon  = document.getElementById('ov-kpi-dot-mon');
+  const dotAql  = document.getElementById('ov-kpi-dot-aql');
+  if (monCard) monCard.style.display = (which === 'mon') ? '' : 'none';
+  if (aqlCard) aqlCard.style.display = (which === 'aql') ? '' : 'none';
+  if (dotMon) dotMon.style.background = (which === 'mon') ? 'var(--text-hint)' : 'var(--border)';
+  if (dotAql) dotAql.style.background = (which === 'aql') ? 'var(--blue)' : 'var(--border)';
+  if (which === 'aql') buildOvAqlCard();
+}
+
 function buildAqlConsolidado() {
   const box = document.getElementById('aql-consolidado');
   if (!box) return;
@@ -6977,6 +7018,7 @@ function refreshAll() {
   buildNpsTable();
   const npsV   = calcNps();
   try { calcMon(); } catch(e){ console.error('calcMon erro:', e); }
+  try { buildOvAqlCard(); } catch(e){ console.error('buildOvAqlCard erro:', e); }
   const pdiV   = calcPdi();
   buildOv(cspV, convV, prazoV, npsV, pdiV);
   const _curVisao = filters['visao'] || null;
