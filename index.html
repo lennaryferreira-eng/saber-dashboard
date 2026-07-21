@@ -5520,10 +5520,18 @@ function buildAql() {
 // Card "Consolidado do squad": total realizado vs meta geral do mes + ritmo
 // Card compacto de AQL na Visão Geral (mesmo padrão dos outros KPIs) — alterna com o de
 // Monetização no mesmo espaço, via as bolinhas de navegação.
+// Mês atual calculado sozinho (sem depender do dropdown de mês da aba AQL, que só existe
+// depois que essa aba é aberta pelo menos uma vez) — o card da Visão Geral usa sempre isso.
+function _mesAtualIndependente() {
+  const hoje = new Date();
+  const m = ALL_MESES.find(x => x.idx === hoje.getMonth() && x.ano === hoje.getFullYear());
+  return m ? { label: m.label, ano: m.ano, key: m.key } : null;
+}
+
 function buildOvAqlCard() {
   const valEl  = document.getElementById('ov-aql-val');
   if (!valEl) return;
-  const mesInfo = _aqlMesAtual();
+  const mesInfo = _mesAtualIndependente();
   const subEl    = document.getElementById('ov-aql-sub');
   const metaEl   = document.getElementById('ov-aql-meta-lbl');
   const barEl    = document.getElementById('ov-aql-bar');
@@ -9176,14 +9184,20 @@ function buildPerformance() {
     }
 
     // Score: quantos KPIs atingiu + % médio atingimento
-    // NPS: atingido só se score ≥ 50 E taxa de resposta ≥ 60%
-    const npsAtingido = npsV !== null && npsRespV !== null ? (npsV >= METAS.nps && npsRespV >= METAS.npsResp) : null;
+    // NPS: atingido só se score ≥ 50 E taxa de resposta ≥ 60%.
+    // Se existe projeto APTO a resposta (finalizado no período) mas ninguém respondeu ainda,
+    // o KPI já entra na conta — trata como NPS 0% e resposta 0%, o que reprova as duas metas
+    // naturalmente, em vez de ficar de fora do cálculo como se não houvesse dado nenhum.
+    const npsTemProjetosAptos = npsBase.length > 0;
+    const npsValExibicao = npsTemProjetosAptos ? (npsV !== null ? npsV : 0) : null;
+    const npsRespExibicao = npsTemProjetosAptos ? (npsRespV !== null ? npsRespV : 0) : null;
+    const npsAtingido = npsTemProjetosAptos ? (npsValExibicao >= METAS.nps && npsRespExibicao >= METAS.npsResp) : null;
     const kpis = [
       { key: 'conv',  label: 'Tx. Conversão', val: convV,  meta: METAS.conv,  lower: false, suffix: '%' },
       { key: 'prazo', label: 'No Prazo',       val: prazoV, meta: METAS.prazo, lower: false, suffix: '%' },
       { key: 'pdi',   label: 'PDI',            val: pdiV,   meta: METAS.pdi,   lower: false, suffix: '%' },
-      { key: 'nps',   label: 'NPS',            val: npsV !== null ? npsV : null, meta: METAS.nps, lower: false, suffix: '', atingidoOverride: npsAtingido,
-        extraLabel: npsRespV !== null ? ' · resp ' + npsRespV + '%' : '' },
+      { key: 'nps',   label: 'NPS',            val: npsValExibicao, meta: METAS.nps, lower: false, suffix: '', atingidoOverride: npsAtingido,
+        extraLabel: npsRespExibicao !== null ? ' · resp ' + npsRespExibicao + '%' : '' },
     ];
     const kpisComDado = kpis.filter(k => k.val !== null);
     const atingidos   = kpisComDado.filter(k => k.atingidoOverride !== undefined && k.atingidoOverride !== null ? k.atingidoOverride : k.val >= k.meta).length;
