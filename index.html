@@ -6759,13 +6759,13 @@ function buildOvGantt() {
           return atraso === null ? null : (atraso <= 0 ? 'verde' : 'vermelho');
         });
         const corFinal = cores.includes('vermelho') ? 'vermelho' : (cores.length && cores.every(c => c === 'verde') ? 'verde' : null);
-        // Score da(s) etapa(s) dessa semana — pior caso se houver mais de uma
+        // Score da(s) etapa(s) dessa semana — mostra TODAS, uma por linha, alinhadas com
+        // o nome de cada uma (antes só mostrava a pior nota e descartava as outras).
         const scoresAqui = reaisHere.map(si => {
           const e = entp[si] || entp[String(si)];
           return (e && e.score !== undefined && e.score !== '' && !isNaN(parseFloat(e.score))) ? parseFloat(e.score) : null;
-        }).filter(s => s !== null);
-        const scoreFinal = scoresAqui.length ? Math.min(...scoresAqui) : null;
-        labelMap[sISO] = { text: reaisHere.map(si => nomeEtapaCurto(p, si)).join('<br>'), cor: corFinal, score: scoreFinal };
+        });
+        labelMap[sISO] = { text: reaisHere.map(si => nomeEtapaCurto(p, si)).join('<br>'), cor: corFinal, score: scoresAqui };
       } else {
         const cands = [];
         for (let si = 0; si <= 6; si++) {
@@ -6782,9 +6782,9 @@ function buildOvGantt() {
           // Pode já ter score mesmo sem data real registrada — acontece quando a reunião já
           // rolou e foi avaliada em Auditoria, mas ninguém preencheu a data no Lead Time ainda.
           const scoreEstimado = (eEscolhido && eEscolhido.score !== undefined && eEscolhido.score !== '' && !isNaN(parseFloat(eEscolhido.score))) ? parseFloat(eEscolhido.score) : null;
-          labelMap[sISO] = { text: nomeEtapaCurto(p, siEscolhido), cor: null, score: scoreEstimado };
+          labelMap[sISO] = { text: nomeEtapaCurto(p, siEscolhido), cor: null, score: [scoreEstimado] };
         } else {
-          labelMap[sISO] = { text: '', cor: null, score: null };
+          labelMap[sISO] = { text: '', cor: null, score: [] };
         }
       }
     });
@@ -6816,20 +6816,26 @@ function buildOvGantt() {
       + semanas.map(s => {
           const sISO = toISOf(s);
           const isAtual = sISO === toISOf(new Date(startRef.getTime())) ? false : (hojeISO >= sISO && hojeISO <= toISOf(new Date(s.getTime()+6*864e5)));
-          const cel = lm[sISO] || { text: '', cor: null, score: null };
+          const cel = lm[sISO] || { text: '', cor: null, score: [] };
           const bgCor = cel.cor === 'verde' ? 'var(--green)' : cel.cor === 'vermelho' ? 'var(--accent)' : null;
-          const scoreCor = cel.score === null ? 'var(--text-hint)' : cel.score >= 70 ? 'var(--green)' : cel.score >= 55 ? 'var(--amber)' : 'var(--accent)';
-          const scoreDourado = cel.score !== null && cel.score >= 85;
-          const scoreTxt = cel.score === null ? '—' : cel.score;
+          const scoresArr = Array.isArray(cel.score) ? cel.score : (cel.score !== null && cel.score !== undefined ? [cel.score] : []);
+          const temAlgumScore = scoresArr.some(s => s !== null);
+          const scoreDourado = scoresArr.some(s => s !== null && s >= 85);
+          const scoreHTML = scoresArr.length
+            ? scoresArr.map(s => {
+                const cor = s === null ? 'var(--text-hint)' : s >= 70 ? 'var(--green)' : s >= 55 ? 'var(--amber)' : 'var(--accent)';
+                return '<span style="display:block;background:' + cor + ';color:#fff;font-size:8px;font-weight:700;padding:3px 6px;white-space:nowrap;">' + (s === null ? '—' : s) + '</span>';
+              }).join('')
+            : '<span style="display:block;background:var(--text-hint);color:#fff;font-size:8px;font-weight:700;padding:3px 6px;white-space:nowrap;">—</span>';
           // Mostra o badge sempre que tiver PELO MENOS um dos dois sinais (prazo OU score) —
           // uma reunião pode já ter sido avaliada mesmo sem a data real ter sido registrada
           // no Lead Time ainda, então o score não pode ficar refém da data.
-          const temSinal = bgCor !== null || cel.score !== null;
+          const temSinal = bgCor !== null || temAlgumScore;
           const conteudo = cel.text
             ? (temSinal
                 ? '<div style="display:inline-flex;border-radius:5px;overflow:hidden;vertical-align:middle;' + (scoreDourado?'box-shadow:0 0 0 1.5px #D4AF37;':'') + '">'
                   + '<span title="Prazo da entrega' + (bgCor===null?' — ainda sem data real registrada no Lead Time':'') + '" style="background:' + (bgCor || 'var(--text-hint)') + ';color:#fff;font-size:8px;font-weight:700;padding:3px 6px;white-space:nowrap;">' + cel.text + '</span>'
-                  + '<span title="Score da entrega' + (scoreDourado?' — acima do padrão da squad':'') + '" style="background:' + scoreCor + ';color:#fff;font-size:8px;font-weight:700;padding:3px 6px;white-space:nowrap;border-left:2px solid #fff;">' + scoreTxt + '</span>'
+                  + '<span title="Score da entrega' + (scoreDourado?' — acima do padrão da squad':'') + '" style="border-left:2px solid #fff;">' + scoreHTML + '</span>'
                   + '</div>'
                 : '<span style="font-size:10px;font-weight:600;color:var(--text);white-space:nowrap;">' + cel.text + '</span>')
             : '';
