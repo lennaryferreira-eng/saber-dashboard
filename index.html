@@ -7092,11 +7092,14 @@ function semDataEtapa(p, etapaIdx) {
   // Se tem data real, usa ela
   const eReal = ent[etapaIdx] || ent[String(etapaIdx)];
   if (eReal?.real) return eReal.real;
-  // Acha última registrada
+  // Acha a ÚLTIMA registrada por DATA (não por posição/índice) — como a ordem de exibição
+  // pode ser diferente da ordem das posições (uma entrega "de trás" pode acontecer antes de
+  // uma "da frente"), pegar sempre o maior índice daria a referência errada quando isso
+  // acontece, jogando a estimativa das próximas etapas pro passado.
   let ultimaData = null, ultimaIdx = -1;
   for (let si = 0; si <= 6; si++) {
     const e = ent[si] || ent[String(si)];
-    if (e && e.real) { ultimaData = e.real; ultimaIdx = si; }
+    if (e && e.real && (ultimaData === null || e.real > ultimaData)) { ultimaData = e.real; ultimaIdx = si; }
   }
   if (ultimaIdx >= 0 && ultimaData) {
     const dBase = parseDate(ultimaData);
