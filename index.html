@@ -10125,7 +10125,26 @@ function audSalvar(){
   const m=document.getElementById('aud-form-msg'); if(m){m.textContent=(estavaEditando?'✓ Alterações salvas.':'✓ Avaliação salva.')+msgExtra;m.style.color='var(--green)';}
 }
 
-function audRemover(id){ if(!confirm('Excluir esta avaliação?')) return; auditorias=auditorias.filter(a=>a.id!==id); if(typeof upd==='function') upd(); audRenderLista(); }
+function audRemover(id){
+  if(!confirm('Excluir esta avaliação?')) return;
+  const a = auditorias.find(x => x.id === id);
+  // Limpa o score já sincronizado no projeto também — senão fica um score órfão pra trás,
+  // aparecendo no Lead Time/Healthscore sem avaliação nenhuma por trás dele. Só limpa se o
+  // score que está lá ainda bate com a nota dessa avaliação (evita apagar um score mais
+  // novo que tenha sobrescrito essa posição por outro motivo depois).
+  if (a && a.ordemEntrega !== null && a.ordemEntrega !== undefined && a.cliente) {
+    const p = projects.find(x => x.nome === a.cliente);
+    if (p && p.entregas) {
+      const ent = p.entregas[a.ordemEntrega] || p.entregas[String(a.ordemEntrega)];
+      if (ent && ent.score !== undefined && parseFloat(ent.score) === parseFloat(a.nota)) {
+        delete ent.score;
+      }
+    }
+  }
+  auditorias=auditorias.filter(x=>x.id!==id);
+  if(typeof upd==='function') upd();
+  audRenderLista();
+}
 function audSetFiltro(k,v){ audFiltro[k]=v; audRenderLista(); }
 function audLimparFiltro(){
   // Mantém a trava de acesso (consultor/designer logado) mesmo ao "limpar" — só reseta os
