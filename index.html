@@ -2269,10 +2269,15 @@ function calcFlagAutomatica(p) {
       const scorable = c.si >= 1; // Growthclass (0) não é avaliada
       const temScore = c.score !== undefined && c.score !== '' && !isNaN(parseFloat(c.score));
       if (!scorable || temScore) { referencia = c.real; break; }
-      if (c.esperado) {
-        const diasDesdeEsperado = diffDays(c.esperado, hojeISO);
-        if (diasDesdeEsperado < 8) { referencia = c.real; break; } // ainda dentro da margem pra avaliar
-        // senão: trata como "não aconteceu de verdade" e tenta o candidato anterior
+      // Sem nota — se já nasceu ATRASADA (aconteceu depois do prazo esperado), não ganha
+      // nenhuma margem extra: não conta como genuína, tenta o candidato anterior direto.
+      // Só quem entregou NO PRAZO ganha alguns dias de respiro pra dar tempo de avaliar.
+      if (c.esperado && c.real > c.esperado) {
+        // nasceu atrasada e sem nota -> não conta, continua pro candidato anterior
+      } else if (c.esperado) {
+        const diasDesdeEntrega = diffDays(c.real, hojeISO);
+        if (diasDesdeEntrega < 8) { referencia = c.real; break; } // no prazo, só falta avaliar
+        // no prazo mas demorou demais pra ser avaliada -> também não conta mais, tenta a anterior
       } else {
         referencia = c.real; break;
       }
