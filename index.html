@@ -2235,27 +2235,49 @@ function fimPrazo(p) {
 function calcFlagAutomatica(p) {
   if (isDroFam(p)) return p.flag || '—'; // DRO/DRX não entram nesse cálculo, mantém manual
   const ent = p.entregas || {};
+  const hojeISO = new Date().toISOString().slice(0,10);
   // Projeto estagnado: já se passou mais de uma semana desde a ÚLTIMA entrega que REALMENTE
-  // JÁ ACONTECEU (não importa a posição/ordem dela) sem nenhuma nova — vira vermelho
-  // automático, independente de score/prazo geral. Não entra nessa regra quem já finalizou
-  // (Decolagem com data real).
-  // Importante: olha pra "quando foi a última entrega", não "qual etapa deveria vir depois
-  // por posição" — assim uma etapa inicial nunca preenchida (ex: Growthclass sem data,
-  // mas Kickoff e as seguintes já aconteceram) não gera falso atraso, e uma entrega "lá da
-  // frente" feita fora de ordem também não conta como atraso — só significa que a ordem
-  // mudou, não que o projeto está parado.
-  // Datas FUTURAS marcadas como "real" (agendamento antecipado de uma entrega que ainda vai
-  // acontecer) NÃO contam como atividade recente — só quando a data chegar de verdade é que
-  // ela passa a valer. Sem isso, um agendamento no futuro "escondia" uma semana parada.
-  const decolagemFeita = !!((ent[6] || ent[String(6)]) || {}).real;
+  // conta como "aconteceu de verdade" — vira vermelho automático, independente de
+  // score/prazo geral. Não entra nessa regra quem já finalizou (Decolagem com data real, e
+  // essa data já tem que ter chegado — não vale agendamento futuro).
+  //
+  // O que conta como "aconteceu de verdade":
+  // - Growthclass (posição 0): não é avaliada, uma data real (já passada) já basta.
+  // - Qualquer outra etapa (Kickoff em diante): só conta se JÁ TEM NOTA da Auditoria, OU se
+  //   ainda está dentro de 8 dias do prazo esperado dela (Growthclass/etapa anterior + 7d) —
+  //   um respiro pra dar tempo de avaliar. Passado esse prazo sem nota, trata como se a
+  //   entrega não tivesse acontecido de verdade, e volta pra etapa anterior genuína.
+  // - Datas FUTURAS (ainda não chegaram) nunca contam como atividade recente.
+  const decolagemEnt = ent[6] || ent[String(6)];
+  const decolagemFeita = !!(decolagemEnt && decolagemEnt.real && decolagemEnt.real <= hojeISO);
   if (!decolagemFeita) {
-    const hojeISO = new Date().toISOString().slice(0,10);
-    let ultimaData = null;
-    [0,1,2,3,4,5,6].forEach(i => {
-      const e = ent[i] || ent[String(i)];
-      if (e && e.real && e.real <= hojeISO && (ultimaData === null || e.real > ultimaData)) ultimaData = e.real;
+    const ordem = ordemCompleta(p);
+    const candidatos = [];
+    ordem.forEach((si, pos) => {
+      const e = ent[si] || ent[String(si)];
+      if (!e || !e.real || e.real > hojeISO) return; // sem data, ou data ainda não chegou
+      let refAnterior = null;
+      if (pos === 0 || pos === 1) refAnterior = p.inicio || null;
+      else { const siAnt = ordem[pos - 1]; refAnterior = ((ent[siAnt] || ent[String(siAnt)]) || {}).real || null; }
+      const esperado = refAnterior ? addDays(refAnterior, 7) : null;
+      candidatos.push({ si, real: e.real, score: e.score, esperado });
     });
-    const referencia = ultimaData || p.inicio; // nenhuma entrega concluída ainda -> conta a partir do início
+    candidatos.sort((a, b) => a.real < b.real ? 1 : -1); // mais recente primeiro
+
+    let referencia = null;
+    for (const c of candidatos) {
+      const scorable = c.si >= 1; // Growthclass (0) não é avaliada
+      const temScore = c.score !== undefined && c.score !== '' && !isNaN(parseFloat(c.score));
+      if (!scorable || temScore) { referencia = c.real; break; }
+      if (c.esperado) {
+        const diasDesdeEsperado = diffDays(c.esperado, hojeISO);
+        if (diasDesdeEsperado < 8) { referencia = c.real; break; } // ainda dentro da margem pra avaliar
+        // senão: trata como "não aconteceu de verdade" e tenta o candidato anterior
+      } else {
+        referencia = c.real; break;
+      }
+    }
+    referencia = referencia || p.inicio; // nenhuma entrega genuína ainda -> conta a partir do início
     if (referencia) {
       const diasParado = diffDays(referencia, hojeISO);
       if (diasParado > 8) return 'Vermelho';
