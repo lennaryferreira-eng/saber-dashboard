@@ -5681,7 +5681,7 @@ function buildAqlMetas() {
   }).join('');
 }
 
-// Funil Oportunidade/Proposta -> Reunião feita -> Fechado, para os registros do mes/consultor filtrados
+// Funil Oportunidades -> Proposta -> Reunião feita -> Fechado, para os registros do mes/consultor filtrados
 function buildAqlFunil() {
   const box = document.getElementById('aql-funil');
   if (!box) return;
@@ -5691,7 +5691,8 @@ function buildAqlFunil() {
   let evs = pipeEventosDoMes(mesInfo.label, mesInfo.ano);
   if (consF) evs = evs.filter(e => e.consultor === consF);
 
-  const totalAQL = evs.length;
+  const totalAQL = evs.length; // Oportunidades: todo o volume levantado, do início até o fechamento
+  const totalPropostas = evs.filter(e => e.tipo === 'Proposta').length;
   const reunioesFeitas = evs.filter(e => e.reuniaoFeita).length;
   const projIds = [...new Set(evs.map(e => e.projId))];
   const mesLabel = mesInfo.label + '/' + mesInfo.ano;
@@ -5705,7 +5706,8 @@ function buildAqlFunil() {
   }).length;
 
   const etapas = [
-    { nome: 'Oportunidade/Proposta', v: totalAQL, cor: 'var(--blue)' },
+    { nome: 'Oportunidades', v: totalAQL, cor: 'var(--blue)' },
+    { nome: 'Proposta', v: totalPropostas, cor: 'var(--purple)' },
     { nome: 'Reunião feita', v: reunioesFeitas, cor: 'var(--amber)' },
     { nome: 'Fechado', v: fechados, cor: 'var(--green)' },
   ];
