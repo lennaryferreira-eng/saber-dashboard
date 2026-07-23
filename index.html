@@ -4173,6 +4173,7 @@ function confirmNovoProj() {
   if (m) filters['base'] = m.key;
 
   renderBase();
+  upd();
 }
 
 function addProject() {
@@ -4187,6 +4188,7 @@ function addProject() {
     prevManual: false
   });
   renderBase();
+  upd();
 }
 
 function removeProject(id) {
@@ -4195,7 +4197,8 @@ function removeProject(id) {
   if (!p) return;
   if (!confirm('Excluir o projeto "' + (p.nome || '—') + '"?\nEsta ação não pode ser desfeita.')) return;
   projects = projects.filter(x => String(x.id) !== String(id));  // comparação por string (id pode vir como texto)
-  renderBase();   // re-renderiza e salva (upd → sbScheduleSave)
+  renderBase();
+  upd();
 }
 
 function setField(el) {
@@ -4222,6 +4225,7 @@ function setField(el) {
     p.valorRec = val;
   }
   renderBase();
+  upd();
 }
 
 function setFieldPrev(el) {
@@ -4231,6 +4235,7 @@ function setFieldPrev(el) {
   p.prevFim   = el.value;
   p.prevManual = !!el.value;
   renderBase();
+  upd();
 }
 
 function renderBase() {
@@ -4710,6 +4715,7 @@ function saveCspManual(el) {
   else delete cspManual[key];
   buildCspManual();
   calcCsp();
+  upd();
 }
 
 function calcCsp() {
@@ -8342,6 +8348,7 @@ function saveCapData(key, val) {
   if (!isNaN(n) && n >= 0) capData[key] = n;
   else delete capData[key];
   buildGantt();
+  upd();
 }
 
 const capManual = {
@@ -8377,6 +8384,7 @@ function consColor(c) { return CONS_COLORS[c] || 'var(--text-hint)'; }
 function saveCapManual(key, field, el) {
   if (!capManual[key]) capManual[key] = {leadtime:'', obs:''};
   capManual[key][field] = el.tagName === 'TD' ? el.textContent.trim() : el.value;
+  upd();
 }
 
 function buildCapHistTable() {
