@@ -9264,12 +9264,12 @@ function buildPerformance() {
   // Ordena: 1) mais KPIs atingidos · desempate 1) mais projetos em andamento no mês · desempate 2) maior taxa de conversão
   cards.sort((a,b) => {
     if (b.atingidos !== a.atingidos) return b.atingidos - a.atingidos;
-    if (b.projAndamento !== a.projAndamento) return b.projAndamento - a.projAndamento;
-    return (b.convV||0) - (a.convV||0);
+    if ((b.convV||0) !== (a.convV||0)) return (b.convV||0) - (a.convV||0);
+    return b.projAndamento - a.projAndamento;
   });
   // Define rank considerando empates
   // Se dois têm o mesmo score → ambos são 1º (gold); próximo é 3º (prata)
-  const scores = cards.map(c => c.atingidos * 1000000 + c.projAndamento * 10000 + (c.convV||0));
+  const scores = cards.map(c => c.atingidos * 1000000 + (c.convV||0) * 10000 + c.projAndamento);
   const rankMap = cards.map((c, idx) => {
     if (idx === 0) return 1;
     return scores[idx] === scores[0] ? 1 : scores[idx] === scores[1] ? 2 : idx + 1;
