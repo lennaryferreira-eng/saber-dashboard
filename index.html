@@ -1472,7 +1472,11 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
 
 
   <section id="sec-performance" class="section">
-    <div class="sec-head"><h2 class="sec-title">Performance</h2><p class="sec-desc">Ranking de consultores por KPIs — 2026.</p></div>
+    <div class="sec-head"><h2 class="sec-title">Performance</h2><p class="sec-desc">Ranking de consultores e designers por KPIs — 2026.</p></div>
+    <div style="display:flex;gap:6px;margin-bottom:.8rem;">
+      <button id="perf-modo-consultor" onclick="perfSetModo('consultor')" style="border:none;border-radius:20px;padding:7px 18px;font-size:12px;font-weight:600;cursor:pointer;">Consultores</button>
+      <button id="perf-modo-designer" onclick="perfSetModo('designer')" style="border:none;border-radius:20px;padding:7px 18px;font-size:12px;font-weight:600;cursor:pointer;">Designers</button>
+    </div>
     <div id="perf-filter-bar" style="margin-bottom:.6rem;"></div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.2rem;">
       <span style="font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Consultor</span>
@@ -1501,7 +1505,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
           </div>
         </div>
         <!-- Prazo -->
-        <div class="card" style="padding:0;">
+        <div id="perf-prazo-secao" class="card" style="padding:0;">
           <button onclick="perfToggle('prazo')" style="width:100%;text-align:left;padding:12px 16px;background:none;border:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-family:var(--sans);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);">
             <span>Projetos no Prazo</span><span id="perf-prazo-badge" style="font-size:11px;"></span>
           </button>
@@ -9147,6 +9151,13 @@ function lerpHex(c1, c2, t) {
   return `rgb(${L(r1,r2)},${L(g1,g2)},${L(b1,b2)})`;
 }
 
+let perfModo = 'consultor'; // 'consultor' | 'designer'
+function perfSetModo(modo) {
+  if (perfModo === modo) return;
+  perfModo = modo;
+  buildPerformance();
+}
+
 function buildPerformance() {
   buildFilterBar('perf-filter-bar', 'performance', buildPerformance);
   const cur  = filters['performance'];
@@ -9154,47 +9165,84 @@ function buildPerformance() {
   const el    = document.getElementById('perf-cards');
   if (!el) return;
 
-  const CONS = window.CONS_MON || ['Caio','Leonam','Loma','Camila','Cleiton'];
-  const METAS = { conv: 40, prazo: 80, pdi: 80, nps: 50, npsResp: 60 };
+  // Consultor não tem acesso ao modo designer — se por acaso o modo estava em 'designer' e
+  // a pessoa logada é consultor, força de volta pro modo consultor.
+  if (currentPerfil && currentPerfil.consultor) perfModo = 'consultor';
+  if (currentPerfil && currentPerfil.designer) perfModo = 'designer';
+  const isDesigner = perfModo === 'designer';
+  const campoFiltro = isDesigner ? 'designer' : 'consultor';
+
+  // Botões de alternância (só fazem sentido pra quem não está travado num perfil específico)
+  const btnCons = document.getElementById('perf-modo-consultor');
+  const btnDes  = document.getElementById('perf-modo-designer');
+  const podeAlternar = !(currentPerfil && (currentPerfil.consultor || currentPerfil.designer));
+  [btnCons, btnDes].forEach(b => { if (b) b.style.display = podeAlternar ? '' : 'none'; });
+  if (btnCons) { btnCons.style.background = isDesigner ? 'var(--surface)' : 'var(--accent)'; btnCons.style.color = isDesigner ? 'var(--text)' : '#fff'; }
+  if (btnDes)  { btnDes.style.background  = isDesigner ? 'var(--accent)' : 'var(--surface)'; btnDes.style.color  = isDesigner ? '#fff' : 'var(--text)'; }
+
+  const CONS = isDesigner ? ['Alexandre','Eduardo'] : (window.CONS_MON || ['Caio','Leonam','Loma','Camila','Cleiton']);
+  const METAS = { conv: 40, prazo: 80, pdi: 80, nps: 50, npsResp: 60, scoreEntrega: 70 };
 
   // ── Calcula KPIs por consultor ─────────────────────────────
   const cards = CONS.map(nome => {
     const dotC = window.dotColors || {};
     const dot = dotC[nome] || 'var(--accent)';
 
-    // Conversão — base fixa de 10 projetos por consultor
+    // Conversão — base fixa de 10 projetos
     const mesesConv = curM ? [curM] : ALL_MESES;
     let convMon = 0;
     mesesConv.forEach(m => {
-      convMon += projects.filter(p => p.consultor === nome && (!p.modelo || p.modelo !== 'DRO') && projMonetizouNoMes(p, m.label, m.ano)).length;
+      convMon += projects.filter(p => p[campoFiltro] === nome && (!p.modelo || p.modelo !== 'DRO') && projMonetizouNoMes(p, m.label, m.ano)).length;
     });
     const convBase = getConvBase(nome);
     const convV = Math.round(convMon / convBase * 100);
 
-    // Projetos em andamento no mês (desempate 1)
+    // Projetos em andamento no mês (desempate)
     const mesesAtiv = curM ? [curM] : ALL_MESES;
     const setAtiv = new Set();
     mesesAtiv.forEach(m => {
       projects.forEach(p => {
         if (p.modelo === 'DRO') return;
-        if (p.consultor !== nome) return;
+        if (p[campoFiltro] !== nome) return;
         if (mesesAtivos(p).includes(m.idx)) setAtiv.add(p.id);
       });
     });
     const projAndamento = setAtiv.size;
 
-    // Prazo
-    const mesesPrazo = curM ? [curM] : ALL_MESES;
-    let pTotal = 0, pOk = 0;
-    mesesPrazo.forEach(m => {
-      const doMes = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && p.consultor === nome && mesesAtivos(p).includes(m.idx));
-      doMes.forEach(p => { const st = prazoStatus(p); if (st.ok === true) { pTotal++; pOk++; } else if (st.ok === false) pTotal++; });
-    });
-    const prazoV = pTotal > 0 ? Math.round(pOk / pTotal * 100) : null;
+    // Prazo (só faz sentido pra consultor) / Score da Entrega (só faz sentido pra designer)
+    let prazoV = null, scoreEntregaV = null;
+    if (!isDesigner) {
+      const mesesPrazo = curM ? [curM] : ALL_MESES;
+      let pTotal = 0, pOk = 0;
+      mesesPrazo.forEach(m => {
+        const doMes = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && p.consultor === nome && mesesAtivos(p).includes(m.idx));
+        doMes.forEach(p => { const st = prazoStatus(p); if (st.ok === true) { pTotal++; pOk++; } else if (st.ok === false) pTotal++; });
+      });
+      prazoV = pTotal > 0 ? Math.round(pOk / pTotal * 100) : null;
+    } else {
+      // Score da Entrega: média das notas da entrega de Análise de Ambientes (a etapa do
+      // designer) apresentadas no mês — meta é nota > 70, mesma faixa usada em toda a Auditoria.
+      const notasEntrega = [];
+      projects.forEach(p => {
+        if (isDroFam(p)) return;
+        if (p.designer !== nome) return;
+        const etapasDesigner = designerEtapas(p);
+        const idxAmbientes = etapasDesigner.find(i => i !== 1 && i !== 6);
+        if (idxAmbientes === undefined) return;
+        const ent = (p.entregas && (p.entregas[idxAmbientes] || p.entregas[String(idxAmbientes)])) || null;
+        if (!ent || !ent.real) return;
+        if (curM) {
+          const d = parseDate(ent.real);
+          if (!d || d.getMonth() !== curM.idx || d.getFullYear() !== curM.ano) return;
+        }
+        if (ent.score !== undefined && ent.score !== '' && !isNaN(parseFloat(ent.score))) notasEntrega.push(parseFloat(ent.score));
+      });
+      scoreEntregaV = notasEntrega.length ? Math.round(notasEntrega.reduce((a,b)=>a+b,0) / notasEntrega.length) : null;
+    }
 
-    // NPS — base = finalizados do consultor no período (por realFim/prevFim)
+    // NPS — base = finalizados no período (por realFim/prevFim)
     const npsBase = projects.filter(p => { if (isDroFam(p)) return false;
-      if (p.consultor !== nome || calcStatus2(p) !== 'Finalizado') return false;
+      if (p[campoFiltro] !== nome || calcStatus2(p) !== 'Finalizado') return false;
       if (!curM) return true;
       const dataFim = p.realFim || p.prevFim;
       if (!dataFim) return false;
@@ -9241,7 +9289,13 @@ function buildPerformance() {
     const npsValExibicao = npsTemProjetosAptos ? (npsV !== null ? npsV : 0) : null;
     const npsRespExibicao = npsTemProjetosAptos ? (npsRespV !== null ? npsRespV : 0) : null;
     const npsAtingido = npsTemProjetosAptos ? (npsValExibicao >= METAS.nps && npsRespExibicao >= METAS.npsResp) : null;
-    const kpis = [
+    const kpis = isDesigner ? [
+      { key: 'conv',  label: 'Tx. Conversão', val: convV,  meta: METAS.conv,  lower: false, suffix: '%' },
+      { key: 'scoreEntrega', label: 'Score da Entrega', val: scoreEntregaV, meta: METAS.scoreEntrega, lower: false, suffix: '' },
+      { key: 'pdi',   label: 'PDI',            val: pdiV,   meta: METAS.pdi,   lower: false, suffix: '%' },
+      { key: 'nps',   label: 'NPS',            val: npsValExibicao, meta: METAS.nps, lower: false, suffix: '', atingidoOverride: npsAtingido,
+        extraLabel: npsRespExibicao !== null ? ' · resp ' + npsRespExibicao + '%' : '' },
+    ] : [
       { key: 'conv',  label: 'Tx. Conversão', val: convV,  meta: METAS.conv,  lower: false, suffix: '%' },
       { key: 'prazo', label: 'No Prazo',       val: prazoV, meta: METAS.prazo, lower: false, suffix: '%' },
       { key: 'pdi',   label: 'PDI',            val: pdiV,   meta: METAS.pdi,   lower: false, suffix: '%' },
@@ -9282,7 +9336,7 @@ function buildPerformance() {
   // Acesso travado (consultor logado): só populamos __perfTop (usado na celebração de "Top
   // Performer do mês") se a própria pessoa logada for a líder — nunca mostra o desempenho de
   // outro consultor pra quem está com acesso restrito.
-  const _consLockCheck = (currentPerfil && currentPerfil.consultor) || '';
+  const _consLockCheck = (currentPerfil && (isDesigner ? currentPerfil.designer : currentPerfil.consultor)) || '';
   const _podeVerTop = !_consLockCheck || _consLockCheck === primeiroNome;
   window.__perfTop = (primeiroNome && _podeVerTop) ? {
     nome: primeiroNome,
@@ -9300,9 +9354,9 @@ function buildPerformance() {
     })),
   } : null;
 
-  // Filtro de Consultor: se logado como consultor (acesso travado), força o próprio nome —
+  // Filtro: se logado como consultor/designer (acesso travado), força o próprio nome —
   // senão respeita o dropdown manual (ADM/deslogado podem escolher "Todos" ou um específico).
-  const consLock = (currentPerfil && currentPerfil.consultor) || '';
+  const consLock = (currentPerfil && (isDesigner ? currentPerfil.designer : currentPerfil.consultor)) || '';
   const selCons = document.getElementById('perf-f-cons');
   if (selCons) {
     if (consLock) {
@@ -9413,7 +9467,7 @@ function buildPerformance() {
 
   // Seleciona automaticamente o 1º consultor — mas se o acesso estiver travado num
   // consultor específico, seleciona ELE MESMO, nunca o líder do squad todo.
-  const _consLockAutoSel = (currentPerfil && currentPerfil.consultor) || '';
+  const _consLockAutoSel = (currentPerfil && (isDesigner ? currentPerfil.designer : currentPerfil.consultor)) || '';
   const _nomeParaAutoSelecionar = _consLockAutoSel || primeiroNome;
   if (_nomeParaAutoSelecionar) setTimeout(() => perfSelecionaConsultor(_nomeParaAutoSelecionar), 50);
 
@@ -9540,6 +9594,8 @@ function perfToggle(key) {
 function perfSelecionaConsultor(nome) {
   const cur   = filters['performance'];
   const curM  = cur ? ALL_MESES.find(x => x.key === cur) : null;
+  const isDesigner = perfModo === 'designer';
+  const campoFiltro = isDesigner ? 'designer' : 'consultor';
 
   // Destaca card selecionado
   document.querySelectorAll('.perf-card').forEach(c => {
@@ -9549,6 +9605,10 @@ function perfSelecionaConsultor(nome) {
   const detalhe = document.getElementById('perf-detalhe');
   detalhe.style.display = '';
   document.getElementById('perf-detalhe-nome').textContent = nome;
+  // Prazo é um KPI só de consultor — não existe pra designer (que tem Score da Entrega,
+  // ainda sem detalhamento próprio nessa tela — só no card do ranking por enquanto).
+  const prazoSecao = document.getElementById('perf-prazo-secao');
+  if (prazoSecao) prazoSecao.style.display = isDesigner ? 'none' : '';
   // Garante que todos os bodies estão abertos
   ['conv','prazo','nps','pdi'].forEach(k => {
     const b = document.getElementById('perf-' + k + '-body');
@@ -9557,7 +9617,7 @@ function perfSelecionaConsultor(nome) {
     if (btn) btn.style.opacity = '1';
   });
 
-  const prjsCons = projects.filter(p => p.consultor === nome && !isDroFam(p));
+  const prjsCons = projects.filter(p => p[campoFiltro] === nome && !isDroFam(p));
   const meses = curM ? [curM] : ALL_MESES;
   // DRO/DRX do investidor ativos no período (sinalização — não contam na taxa de prazo)
   const _droDrxAtivo = (p, m) => {
@@ -9566,7 +9626,7 @@ function perfSelecionaConsultor(nome) {
     const mStart = new Date(m.ano, m.idx, 1), mEnd = new Date(m.ano, m.idx+1, 0, 23,59,59);
     return dI <= mEnd && dF >= mStart && calcStatus2(p) !== 'Churn';
   };
-  const prjsDroDrx = projects.filter(p => p.consultor === nome && isDroFam(p) && meses.some(m => _droDrxAtivo(p, m)));
+  const prjsDroDrx = isDesigner ? [] : projects.filter(p => p.consultor === nome && isDroFam(p) && meses.some(m => _droDrxAtivo(p, m)));
 
   // ── CONVERSÃO ─────────────────────────────────────────────
   const monetizados = prjsCons.filter(p => meses.some(m => projMonetizouNoMes(p, m.label, m.ano)));
