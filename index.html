@@ -1513,6 +1513,15 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
             <div id="perf-prazo-content"></div>
           </div>
         </div>
+        <!-- Score da Entrega (só designer) -->
+        <div id="perf-scoreentrega-secao" class="card" style="padding:0;display:none;">
+          <button onclick="perfToggle('scoreentrega')" style="width:100%;text-align:left;padding:12px 16px;background:none;border:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-family:var(--sans);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);">
+            <span>Score da Entrega</span><span id="perf-scoreentrega-badge" style="font-size:11px;"></span>
+          </button>
+          <div id="perf-scoreentrega-body" style="padding:0 16px 16px;border-top:1px solid var(--border);">
+            <div id="perf-scoreentrega-content"></div>
+          </div>
+        </div>
         <!-- NPS -->
         <div class="card" style="padding:0;">
           <button onclick="perfToggle('nps')" style="width:100%;text-align:left;padding:12px 16px;background:none;border:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-family:var(--sans);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);">
@@ -9605,12 +9614,14 @@ function perfSelecionaConsultor(nome) {
   const detalhe = document.getElementById('perf-detalhe');
   detalhe.style.display = '';
   document.getElementById('perf-detalhe-nome').textContent = nome;
-  // Prazo é um KPI só de consultor — não existe pra designer (que tem Score da Entrega,
-  // ainda sem detalhamento próprio nessa tela — só no card do ranking por enquanto).
+  // Prazo é um KPI só de consultor; Score da Entrega é só de designer — cada modo mostra
+  // sua própria seção de detalhamento.
   const prazoSecao = document.getElementById('perf-prazo-secao');
   if (prazoSecao) prazoSecao.style.display = isDesigner ? 'none' : '';
+  const scoreEntregaSecao = document.getElementById('perf-scoreentrega-secao');
+  if (scoreEntregaSecao) scoreEntregaSecao.style.display = isDesigner ? '' : 'none';
   // Garante que todos os bodies estão abertos
-  ['conv','prazo','nps','pdi'].forEach(k => {
+  ['conv','prazo','nps','pdi','scoreentrega'].forEach(k => {
     const b = document.getElementById('perf-' + k + '-body');
     if (b) { b.style.display = ''; }
     const btn = b?.previousElementSibling;
@@ -9627,6 +9638,45 @@ function perfSelecionaConsultor(nome) {
     return dI <= mEnd && dF >= mStart && calcStatus2(p) !== 'Churn';
   };
   const prjsDroDrx = isDesigner ? [] : projects.filter(p => p.consultor === nome && isDroFam(p) && meses.some(m => _droDrxAtivo(p, m)));
+
+  // ── SCORE DA ENTREGA (só designer) ──────────────────────────
+  if (isDesigner) {
+    const entregasDesigner = [];
+    projects.forEach(p => {
+      if (isDroFam(p)) return;
+      if (p.designer !== nome) return;
+      const etapasDesigner = designerEtapas(p);
+      const idxAmbientes = etapasDesigner.find(i => i !== 1 && i !== 6);
+      if (idxAmbientes === undefined) return;
+      const ent = (p.entregas && (p.entregas[idxAmbientes] || p.entregas[String(idxAmbientes)])) || null;
+      if (!ent || !ent.real) return;
+      const d = parseDate(ent.real);
+      if (curM) { if (!d || d.getMonth() !== curM.idx || d.getFullYear() !== curM.ano) return; }
+      else { if (!meses.some(m => d && d.getMonth() === m.idx && d.getFullYear() === m.ano)) return; }
+      entregasDesigner.push({ nome: p.nome, data: ent.real, score: (ent.score !== undefined && ent.score !== '' && !isNaN(parseFloat(ent.score))) ? parseFloat(ent.score) : null });
+    });
+    const comScore = entregasDesigner.filter(e => e.score !== null);
+    const mediaScore = comScore.length ? Math.round(comScore.reduce((a,b)=>a+b.score,0) / comScore.length) : null;
+    const corScore = mediaScore !== null ? (mediaScore >= 70 ? 'var(--green)' : 'var(--red)') : 'var(--text-hint)';
+    const badgeEl = document.getElementById('perf-scoreentrega-badge');
+    if (badgeEl) badgeEl.innerHTML = mediaScore !== null
+      ? `<span style="color:${corScore};font-weight:700;">${mediaScore} ${mediaScore>=70?'✓':'✗'} meta 70 (${comScore.length} entrega${comScore.length===1?'':'s'})</span>`
+      : (entregasDesigner.length ? `<span style="color:var(--text-hint);">${entregasDesigner.length} entrega(s) sem nota ainda</span>` : '—');
+    const rowsScore = entregasDesigner.map(e => `<tr>
+      <td style="padding:6px 8px;font-size:12px;">${e.nome}</td>
+      <td style="padding:6px 8px;font-size:11px;color:var(--text-hint);">${fmtD(e.data)}</td>
+      <td style="padding:6px 8px;font-size:11px;font-weight:700;color:${e.score===null?'var(--text-hint)':e.score>=70?'var(--green)':'var(--red)'};">${e.score===null?'sem nota':e.score}</td>
+    </tr>`).join('');
+    const contentEl = document.getElementById('perf-scoreentrega-content');
+    if (contentEl) contentEl.innerHTML = entregasDesigner.length
+      ? `<table style="width:100%;border-collapse:collapse;margin-top:8px;"><thead><tr>
+          <th style="text-align:left;padding:6px 8px;font-size:10px;color:var(--text-hint);text-transform:uppercase;">Projeto</th>
+          <th style="text-align:left;padding:6px 8px;font-size:10px;color:var(--text-hint);text-transform:uppercase;">Data</th>
+          <th style="text-align:left;padding:6px 8px;font-size:10px;color:var(--text-hint);text-transform:uppercase;">Nota</th>
+        </tr></thead><tbody>${rowsScore}</tbody></table>`
+      : '<div style="font-size:12px;color:var(--text-hint);padding:12px 0;">Nenhuma entrega de Análise de Ambientes no período.</div>';
+  }
+
 
   // ── CONVERSÃO ─────────────────────────────────────────────
   const monetizados = prjsCons.filter(p => meses.some(m => projMonetizouNoMes(p, m.label, m.ano)));
