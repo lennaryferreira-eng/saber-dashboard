@@ -692,7 +692,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
   </div>
   <!-- Carga por consultor -->
   <div class="card" style="margin-bottom:1rem;">
-    <div class="card-title">Carga por consultor</div>
+    <div class="card-title">Carga por consultor <span style="font-weight:400;color:var(--text-hint);text-transform:none;letter-spacing:0;">— semana atual</span></div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;" id="ov-consultores"></div>
   </div>
   <!-- Andamento dos Projetos (versão simplificada, sem status de prazo/monetização) -->
@@ -7015,17 +7015,30 @@ function buildOvAnalises(curM) {
     }).join('');
   }
 
-  // Carga por consultor — projetos Em andamento (independente do filtro de mês)
+  // Carga por consultor — reflete a semana ATUAL especificamente (mesmo critério de
+  // "janela ativa" usado no Capacity: início <= fim da semana E fim (real/prevista) >= início
+  // da semana), não todos os projetos "Em andamento" no geral.
   const consEl = document.getElementById('ov-consultores');
   if (consEl) {
+    const hojeCarga = new Date(); hojeCarga.setHours(0,0,0,0);
+    const dowCarga = hojeCarga.getDay() || 7;
+    const semAtualIni = new Date(hojeCarga); semAtualIni.setDate(hojeCarga.getDate() - dowCarga + 1); // segunda
+    const semAtualFim = new Date(semAtualIni.getTime() + 6 * 864e5); // domingo
+
     const emAndamento = projects.filter(p => calcStatus2(p) === 'Em andamento');
     const consMap = {};
     emAndamento.forEach(p => {
       if (!p.consultor) return;
+      const dIp = parseDate(p.inicio);
+      if (!dIp) return;
+      const dFRaw = p.realFim || p.prevFim;
+      const dFp = dFRaw ? parseDate(dFRaw) : new Date(dIp.getTime() + 30 * 864e5);
+      const naJanelaAtual = dIp <= semAtualFim && dFp >= semAtualIni;
+      if (!naJanelaAtual) return; // só entra quem tem janela ativa NESSA semana
       if (!consMap[p.consultor]) consMap[p.consultor] = {total:0, pipe:0, vermelho:0};
       consMap[p.consultor].total++;
       if (ETAPAS_PIPE.includes(p.oport)) consMap[p.consultor].pipe++;
-      if (p.flag === 'Vermelho') consMap[p.consultor].vermelho++;
+      if (calcFlagAutomatica(p) === 'Vermelho') consMap[p.consultor].vermelho++;
     });
     const maxTotal = Math.max(...Object.values(consMap).map(d=>d.total), 1);
     consEl.innerHTML = Object.entries(consMap).sort((a,b)=>b[1].total-a[1].total).map(([nome,d]) => {
@@ -7037,7 +7050,7 @@ function buildOvAnalises(curM) {
         + (d.vermelho > 0 ? '<span style="margin-left:auto;font-size:10px;color:var(--red);font-weight:700;">⚠ ' + d.vermelho + '</span>' : '')
         + '</div>'
         + '<div style="font-size:22px;font-weight:700;color:var(--text);">' + d.total + '</div>'
-        + '<div style="font-size:10px;color:var(--text-hint);margin-bottom:6px;">projetos · ' + pipePct2 + '% com pipeline</div>'
+        + '<div style="font-size:10px;color:var(--text-hint);margin-bottom:6px;">ativos essa semana · ' + pipePct2 + '% com pipeline</div>'
         + '<div class="prog-bg" style="height:4px;"><div class="prog-fill" style="width:' + pct + '%;background:var(--accent);"></div></div>'
         + '</div>';
     }).join('');
