@@ -2246,6 +2246,9 @@ function fimPrazo(p) {
 // Flag automática do projeto: cruza 2 critérios — score da entrega mais recente e prazo.
 // Bateu os 2 -> Verde. Bateu só 1 -> Amarelo. Não bateu nenhum -> Vermelho.
 function calcFlagAutomatica(p) {
+  // Flag manual (definida no Lead Time) sempre vence — sobrepõe qualquer critério
+  // automático, incluindo a trava de DRO/DRX.
+  if (p.flagManual) return p.flagManual;
   if (isDroFam(p)) return p.flag || '—'; // DRO/DRX não entram nesse cálculo, mantém manual
   const ent = p.entregas || {};
   const hojeISO = new Date().toISOString().slice(0,10);
@@ -6829,9 +6832,12 @@ function buildOvGantt() {
   const rows = prjs.map(p => {
     const lm = labelsMap[p.id] || {};
     const flagCor = { Verde: 'var(--green)', Amarelo: 'var(--amber)', Vermelho: 'var(--accent)' }[calcFlagAutomatica(p)] || 'var(--text-hint)';
+    const flagTitle = p.flagManual
+      ? 'Flag manual — motivo: ' + (p.flagManualMotivo || 'sem motivo informado')
+      : 'Flag automática';
     return '<tr style="border-bottom:1px solid var(--border);">'
       + '<td style="padding:6px 10px;color:var(--text);font-weight:600;background:var(--surface);position:sticky;left:0;white-space:nowrap;">'
-      + '<span title="Flag automática" style="color:' + flagCor + ';font-size:13px;margin-right:5px;">⚑</span>'
+      + '<span title="' + flagTitle.replace(/"/g,'&quot;') + '" style="color:' + flagCor + ';font-size:13px;margin-right:5px;">⚑' + (p.flagManual ? '<sup style="font-size:8px;">✎</sup>' : '') + '</span>'
       + (p.nome||'—') + '</td>'
       + '<td style="padding:6px 10px;color:var(--text-muted);">' + (p.consultor||'—') + '</td>'
       + semanas.map(s => {
@@ -7691,6 +7697,29 @@ function refreshLtCards() {
   set('lt-avg',    atrasoCnt > 0 ? '+' + Math.round(atrasoTot/atrasoCnt) + 'd' : '—');
 }
 
+// Flag manual no Lead Time — sobrescreve o cálculo automático, com motivo obrigatório pra rastreabilidade
+function ltAbrirEdicaoFlag(id) {
+  document.querySelectorAll('[id^="lt-flag-edit-"]').forEach(e => { if (e.id !== 'lt-flag-edit-' + id) e.style.display = 'none'; });
+  const el = document.getElementById('lt-flag-edit-' + id);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+function ltFecharEdicaoFlag(id) {
+  const el = document.getElementById('lt-flag-edit-' + id);
+  if (el) el.style.display = 'none';
+}
+function ltSalvarFlagManual(id) {
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!p) return;
+  const sel = document.getElementById('lt-flag-sel-' + id);
+  const motivo = document.getElementById('lt-flag-motivo-' + id);
+  const novoValor = sel?.value || '';
+  if (novoValor && !(motivo?.value || '').trim()) { alert('Informe o motivo da flag manual.'); return; }
+  p.flagManual = novoValor;
+  p.flagManualMotivo = novoValor ? (motivo?.value || '').trim() : '';
+  upd();
+  buildLeadTime();
+}
+
 function buildLeadTime() {
   // Despacho por coordenação: TER tem sua própria view/tabela de Lead Time.
   if (currentCoord === 'ter') {
@@ -7842,9 +7871,28 @@ function buildLeadTime() {
           + '<td style="padding:6px 10px;">'
           + '<div style="display:flex;gap:3px;" id="lt-bar-' + p.id + '">' + barBlocks + '</div>'
           + '</td>'
-          // Flag — calculada automaticamente (score da entrega + prazo), não edita mais na mão
-          + '<td style="padding:6px 8px;text-align:center;">'
+          // Flag — calculada automaticamente (score da entrega + prazo), mas pode ser
+          // sobrescrita manualmente com um motivo, que passa a valer sobre qualquer critério.
+          + '<td style="padding:6px 8px;text-align:center;position:relative;">'
+          + '<div style="display:flex;align-items:center;justify-content:center;gap:4px;">'
           + flagHTML(calcFlagAutomatica(p))
+          + '<span onclick="ltAbrirEdicaoFlag(' + p.id + ')" title="' + (p.flagManual ? 'Flag manual — motivo: ' + (p.flagManualMotivo || 'sem motivo informado').replace(/"/g,'&quot;') : 'Editar flag manualmente') + '" style="font-size:10px;color:' + (p.flagManual ? 'var(--accent)' : 'var(--text-hint)') + ';cursor:pointer;">✎</span>'
+          + '</div>'
+          + '<div id="lt-flag-edit-' + p.id + '" style="display:none;position:absolute;top:100%;left:50%;transform:translateX(-50%);z-index:20;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;box-shadow:0 4px 16px rgba(0,0,0,.18);width:220px;text-align:left;">'
+          + '<label style="font-size:10px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;">Flag</label>'
+          + '<select id="lt-flag-sel-' + p.id + '" class="sel" style="width:100%;font-size:11px;margin:3px 0 6px;">'
+          + '<option value="">Automático (calculado)</option>'
+          + '<option value="Verde"' + (p.flagManual==='Verde'?' selected':'') + '>Verde</option>'
+          + '<option value="Amarelo"' + (p.flagManual==='Amarelo'?' selected':'') + '>Amarelo</option>'
+          + '<option value="Vermelho"' + (p.flagManual==='Vermelho'?' selected':'') + '>Vermelho</option>'
+          + '</select>'
+          + '<label style="font-size:10px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;">Motivo</label>'
+          + '<textarea id="lt-flag-motivo-' + p.id + '" class="sel" placeholder="Por que essa flag?" style="width:100%;font-size:11px;min-height:50px;margin:3px 0 8px;resize:vertical;">' + (p.flagManualMotivo || '').replace(/</g,'&lt;') + '</textarea>'
+          + '<div style="display:flex;gap:4px;">'
+          + '<button onclick="ltSalvarFlagManual(' + p.id + ')" style="flex:1;padding:6px;border:none;border-radius:5px;background:var(--accent);color:#fff;font-size:11px;font-weight:600;cursor:pointer;">Salvar</button>'
+          + '<button onclick="ltFecharEdicaoFlag(' + p.id + ')" style="padding:6px 10px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;cursor:pointer;">Cancelar</button>'
+          + '</div>'
+          + '</div>'
           + '</td>'
           // Score da entrega (seletor próprio + escala única 0–100)
           + (function() {
