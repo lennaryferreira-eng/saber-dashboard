@@ -313,6 +313,38 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
 .modal-close{background:none;border:none;font-size:20px;color:var(--text-muted);cursor:pointer;padding:2px 6px;border-radius:4px;}
 .modal-close:hover{background:var(--surface2);}
 .modal-body{padding:1.2rem 1.4rem;}
+
+/* ===== Termômetro Cultural (aba Cultura, só ADM) ===== */
+#sec-cultura{
+    --bg:#0B0B0C;
+    --panel:#141416;
+    --elevated:#1C1C1F;
+    --elevated-2:#232326;
+    --border:#2A2A2D;
+    --border-soft:#212124;
+    --text:#F2F1ED;
+    --text-soft:#B8B7B2;
+    --text-mute:#777672;
+    --red:#C81E2C;
+    --red-dim:#7A131C;
+    --red-glow: rgba(200,30,44,0.18);
+    --pos:#3FAE6B;
+    --pos-bg: rgba(63,174,107,0.13);
+    --neg:#FF5A5F;
+    --neg-bg: rgba(255,90,95,0.13);
+    --warn:#FFB020;
+    --purple:#8A6FD1;
+  }#sec-cultura *{box-sizing:border-box;}#sec-cultura, #sec-cultura{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;}#sec-cultura{min-height:100vh;}#sec-cultura ::selection{background:var(--red-dim);color:#fff;}#sec-cultura .display{font-family:'Anton',sans-serif;text-transform:uppercase;letter-spacing:0.01em;font-weight:400;}#sec-cultura .mono{font-family:'IBM Plex Mono',monospace;}#sec-cultura .crop{position:relative;}#sec-cultura .crop::before, #sec-cultura .crop::after{content:"";position:absolute;width:10px;height:10px;pointer-events:none;}#sec-cultura .crop::before{top:0;left:0;border-top:1.5px solid var(--border);border-left:1.5px solid var(--border);}#sec-cultura .crop::after{bottom:0;right:0;border-bottom:1.5px solid var(--border);border-right:1.5px solid var(--border);}#sec-cultura .app{display:grid;grid-template-columns:380px 1fr;min-height:100vh;}
+  @media (max-width: 900px){#sec-cultura .app{grid-template-columns:1fr;} }#sec-cultura /* ===== Sidebar / form ===== */
+  .sidebar{background:var(--panel);border-right:1px solid var(--border);padding:28px 24px 40px;position:relative;}#sec-cultura .brand{margin-bottom:28px;}#sec-cultura .brand-tag{font-size:11px;letter-spacing:0.14em;color:var(--red);font-weight:700;margin-bottom:6px;}#sec-cultura .brand-title{font-size:30px;line-height:0.95;color:var(--text);}#sec-cultura .brand-sub{font-size:12.5px;color:var(--text-mute);margin-top:8px;line-height:1.5;}#sec-cultura .field{margin-bottom:16px;}#sec-cultura .field label{display:block;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-mute);margin-bottom:7px;}#sec-cultura select, #sec-cultura textarea, #sec-cultura input[type=text], #sec-cultura input[type=date]{
+    width:100%;background:var(--elevated);border:1px solid var(--border);color:var(--text);
+    border-radius:6px;padding:10px 11px;font-family:'Inter',sans-serif;font-size:13.5px;
+  }#sec-cultura input[type=date]{color-scheme:dark;}#sec-cultura select:focus, #sec-cultura textarea:focus, #sec-cultura input:focus{outline:2px solid var(--red-dim);outline-offset:1px;border-color:var(--red-dim);}#sec-cultura textarea{resize:vertical;min-height:110px;line-height:1.5;}#sec-cultura .row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}#sec-cultura .btn-primary{width:100%;background:var(--red);color:#fff;border:0;border-radius:7px;padding:13px;font-weight:700;font-size:13.5px;cursor:pointer;letter-spacing:0.02em;margin-top:6px;display:flex;align-items:center;justify-content:center;gap:8px;}#sec-cultura .btn-primary:hover{background:#DE2331;}#sec-cultura .btn-primary:disabled{background:var(--elevated-2);color:var(--text-mute);cursor:not-allowed;}#sec-cultura .spinner{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,0.35);border-top-color:#fff;animation:spin .7s linear infinite;display:none;}#sec-cultura .btn-primary.loading .spinner{display:inline-block;}
+  @keyframes spin{to{transform:rotate(360deg);}}#sec-cultura .hint{font-size:11.5px;color:var(--text-mute);margin-top:8px;line-height:1.5;}#sec-cultura .error-box{background:var(--neg-bg);color:var(--neg);border-radius:7px;padding:10px 12px;font-size:12.5px;margin-top:10px;display:none;line-height:1.5;}#sec-cultura .error-box.show{display:block;}#sec-cultura .result-preview{margin-top:14px;border:1px solid var(--border);border-radius:9px;padding:14px;background:var(--elevated);display:none;}#sec-cultura .result-preview.show{display:block;animation:fadeIn .3s ease;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:translateY(0);}}#sec-cultura .result-top{display:flex;align-items:center;gap:8px;margin-bottom:8px;}#sec-cultura .result-tipo{font-family:'Anton',sans-serif;font-size:13px;padding:3px 10px;border-radius:5px;}#sec-cultura .result-tipo.alinhado{background:var(--pos-bg);color:var(--pos);}#sec-cultura .result-tipo.anti_padrao{background:var(--neg-bg);color:var(--neg);}#sec-cultura .result-dim{font-size:12.5px;font-weight:700;color:var(--text-soft);}#sec-cultura .result-just{font-size:12.5px;color:var(--text-mute);line-height:1.5;font-style:italic;}#sec-cultura .toast{position:fixed;left:24px;bottom:24px;background:var(--elevated-2);border:1px solid var(--pos);color:var(--pos);padding:10px 16px;border-radius:7px;font-size:13px;font-weight:600;opacity:0;transform:translateY(6px);transition:all .25s;pointer-events:none;z-index:50;max-width:340px;}#sec-cultura .toast.show{opacity:1;transform:translateY(0);}#sec-cultura .toast.err{border-color:var(--neg);color:var(--neg);}#sec-cultura .footer-actions{margin-top:22px;padding-top:16px;border-top:1px solid var(--border-soft);display:flex;justify-content:space-between;align-items:center;}#sec-cultura .link-danger{background:none;border:0;color:var(--text-mute);font-size:11.5px;cursor:pointer;text-decoration:underline;padding:0;}#sec-cultura .link-danger:hover{color:var(--neg);}#sec-cultura .pagefoot{font-size:10.5px;letter-spacing:0.1em;color:var(--text-mute);}#sec-cultura /* ===== Main ===== */
+  .main{padding:28px 32px 60px;max-width:1180px;}#sec-cultura .topbar{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:24px;}#sec-cultura .tabs{display:flex;gap:4px;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:4px;}#sec-cultura .tabs button{border:0;background:transparent;color:var(--text-soft);padding:9px 16px;border-radius:5px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;}#sec-cultura .tabs button.active{background:var(--elevated-2);color:var(--text);}#sec-cultura .period-select select{width:auto;padding:8px 10px;font-size:12.5px;}#sec-cultura .view{display:none;}#sec-cultura .view.active{display:block;}#sec-cultura .empty{border:1px dashed var(--border);border-radius:12px;padding:60px 30px;text-align:center;color:var(--text-mute);}#sec-cultura .empty .display{font-size:22px;color:var(--text-soft);margin-bottom:8px;}#sec-cultura .empty p{font-size:13px;max-width:420px;margin:0 auto;line-height:1.6;}#sec-cultura .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}#sec-cultura .filters select{width:auto;padding:8px 10px;font-size:12.5px;}#sec-cultura .signal-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:10px;transition:box-shadow .4s, border-color .4s;}#sec-cultura .signal-card.flash{border-color:var(--red);box-shadow:0 0 0 3px var(--red-glow);}#sec-cultura .signal-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;}#sec-cultura .badge-dim{font-family:'Anton',sans-serif;font-size:12px;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}#sec-cultura .badge-dim.pos{background:var(--pos-bg);color:var(--pos);}#sec-cultura .badge-dim.neg{background:var(--neg-bg);color:var(--neg);}#sec-cultura .signal-consultor{font-weight:700;font-size:13.5px;}#sec-cultura .signal-meta{font-size:11.5px;color:var(--text-mute);margin-left:auto;font-family:'IBM Plex Mono',monospace;}#sec-cultura .signal-dim-label{font-size:11.5px;color:var(--text-mute);}#sec-cultura .pill{font-size:10px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;padding:2px 8px;border-radius:20px;}#sec-cultura .pill.leve{background:rgba(255,176,32,0.1);color:var(--warn);}#sec-cultura .pill.moderada{background:rgba(255,176,32,0.18);color:var(--warn);}#sec-cultura .pill.critica{background:var(--neg-bg);color:var(--neg);}#sec-cultura .signal-desc{font-size:13.5px;color:var(--text-soft);line-height:1.55;margin:6px 0 0;}#sec-cultura .signal-just{font-size:12px;color:var(--text-mute);line-height:1.5;margin-top:8px;padding-top:8px;border-top:1px solid var(--border-soft);font-style:italic;}#sec-cultura .signal-foot{display:flex;justify-content:flex-end;margin-top:8px;}#sec-cultura .link-edit{background:none;border:0;color:var(--text-mute);font-size:11px;cursor:pointer;text-decoration:underline;padding:0;}#sec-cultura .link-edit:hover{color:var(--text);}#sec-cultura .edit-panel{margin-top:10px;padding-top:10px;border-top:1px solid var(--border-soft);display:grid;grid-template-columns:1fr 1fr;gap:8px;}#sec-cultura .edit-panel select{font-size:12px;padding:7px 9px;}#sec-cultura .edit-panel .full{grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end;margin-top:2px;}#sec-cultura .edit-panel .btn-mini{font-size:11.5px;padding:6px 12px;border-radius:5px;border:1px solid var(--border);background:var(--elevated);color:var(--text-soft);cursor:pointer;}#sec-cultura .edit-panel .btn-mini.save{background:var(--red-dim);border-color:var(--red);color:#fff;}#sec-cultura .grid-consultores{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;}#sec-cultura .consultor-card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px;}#sec-cultura .consultor-card-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;}#sec-cultura .consultor-name{font-size:16px;font-weight:800;}#sec-cultura .consultor-count{font-size:11px;color:var(--text-mute);margin-top:2px;}#sec-cultura .score-badge{font-family:'Anton',sans-serif;font-size:22px;padding:2px 10px;border-radius:8px;}#sec-cultura .score-badge.good{color:var(--pos);background:var(--pos-bg);}#sec-cultura .score-badge.mid{color:var(--warn);background:rgba(255,176,32,0.12);}#sec-cultura .score-badge.low{color:var(--neg);background:var(--neg-bg);}#sec-cultura .radar-row{display:flex;gap:18px;align-items:center;justify-content:center;margin:10px 0 14px;}#sec-cultura .radar-label{text-align:center;font-size:9.5px;letter-spacing:0.08em;color:var(--text-mute);text-transform:uppercase;margin-top:2px;}#sec-cultura .attention{display:flex;align-items:center;gap:6px;background:var(--neg-bg);color:var(--neg);border-radius:6px;padding:7px 10px;font-size:11.5px;font-weight:600;margin-top:4px;}#sec-cultura .attention-dot{width:6px;height:6px;border-radius:50%;background:var(--neg);flex-shrink:0;}#sec-cultura .squad-grid{display:grid;grid-template-columns:1.1fr 0.9fr;gap:20px;}
+  @media (max-width:900px){#sec-cultura .squad-grid{grid-template-columns:1fr;}}#sec-cultura .panel-box{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px;}#sec-cultura .panel-title{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-mute);margin-bottom:14px;}#sec-cultura .rank-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border-soft);}#sec-cultura .rank-row:last-child{border-bottom:0;}#sec-cultura .rank-pos{font-family:'IBM Plex Mono',monospace;color:var(--text-mute);font-size:12px;width:18px;}#sec-cultura .rank-name{flex:1;font-size:13px;font-weight:600;}#sec-cultura .rank-bar-wrap{width:90px;height:6px;background:var(--elevated-2);border-radius:3px;overflow:hidden;}#sec-cultura .rank-bar{height:100%;border-radius:3px;}#sec-cultura .rank-score{font-family:'IBM Plex Mono',monospace;font-size:12px;width:38px;text-align:right;}#sec-cultura .antipadrao-row{padding:10px 0;border-bottom:1px solid var(--border-soft);}#sec-cultura .antipadrao-row:last-child{border-bottom:0;}#sec-cultura .antipadrao-top{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px;}#sec-cultura .antipadrao-dim{font-weight:700;color:var(--neg);}#sec-cultura .antipadrao-count{color:var(--text-mute);font-family:'IBM Plex Mono',monospace;}#sec-cultura .antipadrao-bar-wrap{height:5px;background:var(--elevated-2);border-radius:3px;overflow:hidden;}#sec-cultura .antipadrao-bar{height:100%;background:var(--neg);border-radius:3px;}#sec-cultura .section-title{font-size:20px;margin-bottom:4px;}#sec-cultura .section-sub{font-size:12.5px;color:var(--text-mute);margin-bottom:18px;}
+
 </style>
 </head>
 <body>
@@ -400,6 +432,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
       <button class="nav-tab ter-ok" onclick="show('capacity')">Capacity</button>
       <button class="nav-tab" onclick="show('performance')">Performance</button>
       <button class="nav-tab" onclick="show('auditoria')">Auditoria de Entregas</button>
+      <button class="nav-tab" id="nav-tab-cultura" onclick="show('cultura')">Termômetro Cultural</button>
     </div>
   </div>
   </div>
@@ -965,6 +998,139 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
     <div id="aud-heat-body" style="overflow-x:auto;"></div>
   </div>
 </section>
+<section id="sec-cultura" class="section">
+<div class="app">
+  <!-- ============ SIDEBAR: registrar sinal ============ -->
+  <div class="sidebar crop">
+    <div class="brand">
+      <div class="brand-tag">#SIGNALBOOK · SQUAD SABER</div>
+      <div class="brand-title display">TERMÔMETRO<br>CULTURAL</div>
+      <div class="brand-sub">Conte o que aconteceu. A IA lê o Red Book da V4 (PIFE + G.R.O.W.T.H.) e classifica o sinal como alinhado ou anti-padrão.</div>
+    </div>
+
+    <div class="field">
+      <label for="f-data">Data</label>
+      <input type="date" id="f-data">
+    </div>
+
+    <div class="field">
+      <label for="f-consultor">Consultor(a)</label>
+      <select id="f-consultor">
+        <option value="Squad geral">Squad geral</option>
+        <option value="Alexandre">Alexandre</option>
+        <option value="Caio">Caio</option>
+        <option value="Camila Lima">Camila Lima</option>
+        <option value="Cleiton Duarte">Cleiton Duarte</option>
+        <option value="Eduardo Rodrigues">Eduardo Rodrigues</option>
+        <option value="Leonam">Leonam</option>
+        <option value="Loma Oliveira">Loma Oliveira</option>
+        <option value="Raissa Martins">Raissa Martins</option>
+        <option value="Suzana">Suzana</option>
+        <option value="Vinícius Castro">Vinícius Castro</option>
+        <option value="Vinícius (designer)">Vinícius (designer)</option>
+        <option value="Garcês">Garcês</option>
+        <option value="__outro__">Outro...</option>
+      </select>
+      <input type="text" id="f-consultor-outro" placeholder="Nome" style="display:none;margin-top:8px;">
+    </div>
+
+    <div class="field">
+      <label for="f-descricao">Situação</label>
+      <textarea id="f-descricao" placeholder="Descreva o que aconteceu, com o máximo de contexto possível..."></textarea>
+    </div>
+
+    <button class="btn-primary" id="btn-registrar">
+      <span class="spinner"></span>
+      <span class="btn-label">Analisar sinal</span>
+    </button>
+    <div class="error-box" id="error-box"></div>
+
+    <div class="result-preview" id="result-preview">
+      <div class="result-top">
+        <span class="result-tipo" id="result-tipo-badge"></span>
+        <span class="result-dim" id="result-dim-label"></span>
+      </div>
+      <div class="result-just" id="result-just"></div>
+    </div>
+
+    <div class="hint">A classificação é sugerida pela IA a partir dos critérios do Red Book — se achar que ela errou, dá pra corrigir clicando em "editar classificação" no card do feed.</div>
+
+    <div class="footer-actions">
+      <span class="pagefoot">SALVO NO SUPABASE · PAINEL SABER</span>
+      <button class="link-danger" id="btn-reset">limpar tudo</button>
+    </div>
+  </div>
+
+  <!-- ============ MAIN: análise ============ -->
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="section-title display">ANÁLISE DE CULTURA</div>
+        <div class="section-sub">Como as ações do squad se comparam ao esperado no Red Book</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <div class="period-select">
+          <select id="period-filter">
+            <option value="7">Últimos 7 dias</option>
+            <option value="30" selected>Últimos 30 dias</option>
+            <option value="90">Últimos 90 dias</option>
+            <option value="all">Todo o período</option>
+          </select>
+        </div>
+        <div class="tabs">
+          <button data-view="feed" class="active">Feed</button>
+          <button data-view="consultores">Por consultor</button>
+          <button data-view="squad">Squad</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- FEED -->
+    <div class="view active" id="view-feed">
+      <div class="filters">
+        <select id="filter-consultor"><option value="">Todos os consultores</option></select>
+        <select id="filter-framework">
+          <option value="">Todos os frameworks</option>
+          <option value="GROWTH">G.R.O.W.T.H.</option>
+          <option value="PIFE">PIFE</option>
+        </select>
+        <select id="filter-tipo">
+          <option value="">Todos os tipos</option>
+          <option value="alinhado">Alinhado</option>
+          <option value="anti_padrao">Anti-padrão</option>
+        </select>
+      </div>
+      <div id="feed-list"></div>
+    </div>
+
+    <!-- POR CONSULTOR -->
+    <div class="view" id="view-consultores">
+      <div class="grid-consultores" id="consultores-grid"></div>
+    </div>
+
+    <!-- SQUAD -->
+    <div class="view" id="view-squad">
+      <div class="squad-grid">
+        <div class="panel-box">
+          <div class="panel-title">Ranking de alinhamento cultural</div>
+          <div id="squad-ranking"></div>
+        </div>
+        <div class="panel-box">
+          <div class="panel-title">Anti-padrões mais frequentes</div>
+          <div id="squad-antipadroes"></div>
+        </div>
+      </div>
+      <div class="panel-box" style="margin-top:16px;">
+        <div class="panel-title">Radar do squad — G.R.O.W.T.H.</div>
+        <div class="radar-row" id="squad-radar-growth"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">Sinal registrado</div>
+</section>
+
 
 <section id="sec-prazo" class="section">
   <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:1rem;">
@@ -1765,6 +1931,547 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
 </div>
 
 <script>
+
+/* ===== Termômetro Cultural (aba Cultura, só ADM) ===== */
+
+/* ============================================================
+   DEFINIÇÕES DE FRAMEWORK — Red Book V4 (PIFE + G.R.O.W.T.H.)
+   ============================================================ */
+const DIMENSOES = {
+  GROWTH: [
+    {code:'G', label:'GTM to Learn Faster', desc:'Ir ao mercado para aprender rápido: testar, medir, ajustar.'},
+    {code:'R', label:'Radical Candor', desc:'Verdade com respeito, foco no problema — nunca na pessoa.'},
+    {code:'O', label:'Ownership', desc:'Dono do resultado fim-a-fim, não só das tarefas.'},
+    {code:'W', label:'Working Backwards', desc:'Partir do resultado do cliente para a solução.'},
+    {code:'T', label:'Trust in Science', desc:'Decisão por método, dados e evidência — não achismo.'},
+    {code:'H', label:'High Standards, Frugal Execution', desc:'Excelência sem desperdício, sem heroísmo.'},
+  ],
+  PIFE: [
+    {code:'P', label:'Professional', desc:'Ownership de carreira: dono do resultado, não só executor.'},
+    {code:'I', label:'Intelectual', desc:'Busca por referência técnica e aprendizado de ponta.'},
+    {code:'F', label:'Fitness/Físico', desc:'Sustentabilidade física para performance de longo prazo.'},
+    {code:'E', label:'Emocional', desc:'Estabilidade e clareza sob pressão.'},
+  ]
+};
+const FW_COLOR = {GROWTH: '#C81E2C', PIFE: '#8A6FD1'};
+
+/* Rubrica compacta do Red Book, usada como contexto para a IA classificar cada situação */
+const CULTURE_RUBRIC = `Você é um avaliador de cultura organizacional da V4 Company, treinado no "Red Book" da empresa. Sua função é ler uma situação do dia-a-dia de um squad de consultoria e classificá-la segundo os frameworks abaixo.
+
+## G.R.O.W.T.H. — comportamentos esperados de execução
+
+G — GTM to Learn Faster: ir ao mercado para aprender rápido, testar pequeno e iterar.
+Esperado: MVPs rápidos, tracking obrigatório, decisão em até 48h, compartilhar aprendizados, revisar rotina.
+Anti-padrão: lançar sem medir, perfeccionismo que atrasa, debate infinito sem testar, repetir erros, não registrar aprendizados.
+
+R — Radical Candor: verdade com respeito, foco no problema e não na pessoa.
+Esperado: dar feedback direto e cedo (método SBI), disagree & commit, registrar decisões, agradecer quem confronta com respeito.
+Anti-padrão: fofoca/back-channel, dois pesos e duas medidas, confronto pessoal disfarçado de feedback, feedback postergado, sabotagem passiva após decisão.
+
+O — Ownership: ser dono do resultado fim-a-fim, não só da tarefa.
+Esperado: assumir responsabilidade mesmo sem ter todas as competências, monitorar até o resultado, autocrítica rápida, ser DRI.
+Anti-padrão: "não é minha função", terceirizar culpa para fatores externos, abandonar projeto pós-entrega, entregar só "minha parte" e ignorar o resultado geral.
+
+W — Working Backwards: partir do resultado do cliente para a solução.
+Esperado: proximidade com cliente, buscar causa raiz (5 porquês), medir outcome (não output).
+Anti-padrão: "é legal, vamos lançar" sem validar valor, nunca falar com cliente real, roadmap por opinião interna, cobrar por esforço e não por impacto.
+
+T — Trust in Science: decidir com método, dados e ética.
+Esperado: hipótese → teste → análise documentada, questionar "como sabemos que isso é verdade?", usar fonte única de dados (SSOT).
+Anti-padrão: achismo, opinião sem evidência, dogma não questionado, testes enviesados, confundir esforço com resultado, glorificar exaustão.
+
+H — High Standards, Frugal Execution: excelência sem desperdício, sem heroísmo.
+Esperado: cortar supérfluos, questionar gastos ("faria sentido pro padrão que buscamos?"), reuniões objetivas e com pauta (regra M.E.E.T: máximo de tempo em reunião, presença de fato, sem slides desnecessários, só reunião se for decisão irreversível).
+Anti-padrão: mediocridade aceita como "está bom", gasto sem ROI, cultura do herói (depender de esforço insustentável de indivíduos), reuniões em excesso ou sem pauta, retrabalho por falta de padrão.
+
+## PIFE — âncoras pessoais de alta performance sustentável
+
+P — Professional: ownership de carreira, agir como dono/sócio do próprio trabalho e resultado, não apenas como executor.
+I — Intelectual: buscar ser referência técnica, estudar e aplicar conhecimento de ponta, não estagnar.
+F — Fitness/Físico: tratar saúde e energia física como investimento que sustenta performance de longo prazo (sono, treino, recuperação — evitar exaustão crônica).
+E — Emocional: estabilidade e clareza sob pressão, saber pedir ajuda, construir rede de apoio, não explodir nem se isolar diante de conflito.
+
+## Sua tarefa
+
+Dada a descrição de uma situação do dia-a-dia do squad, decida:
+1. Qual framework é mais relevante: GROWTH (comportamento profissional/execução) ou PIFE (postura pessoal/sustentabilidade).
+2. Qual a dimensão específica (uma letra) dentro desse framework.
+3. Se o comportamento está ALINHADO à cultura ou é um ANTI-PADRÃO.
+4. Se for anti-padrão, a gravidade: leve, moderada ou critica.
+5. Uma justificativa curta (1-2 frases, em português) citando o critério do Red Book que embasa a decisão.
+
+Responda APENAS com um objeto JSON válido, sem nenhum texto antes ou depois, sem markdown, no formato exato:
+{"framework":"GROWTH ou PIFE","dimensao":"uma letra dentre G R O W T H P I F E","tipo":"alinhado ou anti_padrao","gravidade":"leve, moderada ou critica, ou null se tipo for alinhado","justificativa":"texto curto"}`;
+
+
+/* ============================================================
+   CLASSIFICAÇÃO VIA IA
+   ============================================================ */
+async function classificarSituacao(descricao){
+  const response = await fetch("/api/classify-signal", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ descricao, rubric: CULTURE_RUBRIC })
+  });
+
+  if(!response.ok){
+    const errBody = await response.json().catch(() => ({}));
+    throw new Error(errBody.error || ("A API retornou um erro (" + response.status + ")"));
+  }
+
+  const data = await response.json();
+  const textBlock = (data.content || []).find(b => b.type === "text");
+  if(!textBlock || !textBlock.text){
+    throw new Error("Resposta da IA veio vazia");
+  }
+
+  const clean = textBlock.text.replace(/```json|```/g, "").trim();
+  let parsed;
+  try{
+    parsed = JSON.parse(clean);
+  }catch(e){
+    throw new Error("Não consegui interpretar a resposta da IA");
+  }
+
+  const validFw = ['GROWTH','PIFE'];
+  const validDims = DIMENSOES.GROWTH.map(d=>d.code).concat(DIMENSOES.PIFE.map(d=>d.code));
+  if(!validFw.includes(parsed.framework) || !validDims.includes(parsed.dimensao) || !['alinhado','anti_padrao'].includes(parsed.tipo)){
+    throw new Error("A IA retornou uma classificação em formato inesperado");
+  }
+  return parsed;
+}
+
+/* ============================================================
+   FORM
+   ============================================================ */
+document.getElementById('f-data').valueAsDate = new Date();
+
+document.getElementById('f-consultor').addEventListener('change', (e) => {
+  const outro = document.getElementById('f-consultor-outro');
+  outro.style.display = e.target.value === '__outro__' ? 'block' : 'none';
+});
+
+document.getElementById('btn-registrar').addEventListener('click', async () => {
+  const descricao = document.getElementById('f-descricao').value.trim();
+  const errorBox = document.getElementById('error-box');
+  const resultBox = document.getElementById('result-preview');
+  errorBox.classList.remove('show');
+  resultBox.classList.remove('show');
+
+  if(!descricao){
+    document.getElementById('f-descricao').focus();
+    return;
+  }
+
+  let consultor = document.getElementById('f-consultor').value;
+  if(consultor === '__outro__'){
+    consultor = document.getElementById('f-consultor-outro').value.trim() || 'Outro';
+  }
+  const dataStr = document.getElementById('f-data').value || new Date().toISOString().slice(0,10);
+
+  const btn = document.getElementById('btn-registrar');
+  btn.disabled = true;
+  btn.classList.add('loading');
+  btn.querySelector('.btn-label').textContent = 'Analisando com o Red Book...';
+
+  try{
+    const classificacao = await classificarSituacao(descricao);
+
+    const signal = {
+      id: 'sig_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
+      created_at: new Date(dataStr + 'T12:00:00').toISOString(),
+      registered_at: new Date().toISOString(),
+      consultor,
+      framework: classificacao.framework,
+      dimensao: classificacao.dimensao,
+      tipo: classificacao.tipo,
+      gravidade: classificacao.tipo === 'anti_padrao' ? (classificacao.gravidade || 'moderada') : null,
+      descricao,
+      justificativa: classificacao.justificativa || null,
+      acao: null,
+    };
+    sinaisCulturais.unshift(signal);
+    upd();
+
+    const meta = dimMeta(signal.framework, signal.dimensao);
+    document.getElementById('result-tipo-badge').textContent = signal.tipo === 'alinhado' ? 'ALINHADO' : 'ANTI-PADRÃO';
+    document.getElementById('result-tipo-badge').className = 'result-tipo ' + signal.tipo;
+    document.getElementById('result-dim-label').textContent = signal.dimensao + ' — ' + meta.label;
+    document.getElementById('result-just').textContent = signal.justificativa || '';
+    resultBox.classList.add('show');
+
+    document.getElementById('f-descricao').value = '';
+    showToast((signal.tipo === 'alinhado' ? '✓ Alinhado' : '✕ Anti-padrão') + ' · ' + signal.dimensao + ' — ' + meta.label, signal.tipo === 'anti_padrao');
+    renderAll();
+    flashSignal(signal.id);
+  }catch(err){
+    errorBox.textContent = 'Não consegui classificar automaticamente: ' + err.message + '. Seu texto não foi perdido — tente novamente.';
+    errorBox.classList.add('show');
+  }finally{
+    btn.disabled = false;
+    btn.classList.remove('loading');
+    btn.querySelector('.btn-label').textContent = 'Analisar sinal';
+  }
+});
+
+document.getElementById('btn-reset').addEventListener('click', async () => {
+  if(!confirm('Isso vai apagar todos os sinais registrados. Confirma?')) return;
+  sinaisCulturais = [];
+  upd();
+  renderAll();
+});
+
+function showToast(msg, isErrTone){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.toggle('err', !!isErrTone);
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+function flashSignal(id){
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+  document.querySelector('.tabs button[data-view="feed"]').classList.add('active');
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-feed').classList.add('active');
+  setTimeout(() => {
+    const el = document.querySelector(`[data-signal-id="${id}"]`);
+    if(el){
+      el.classList.add('flash');
+      el.scrollIntoView({behavior:'smooth', block:'center'});
+      setTimeout(() => el.classList.remove('flash'), 1800);
+    }
+  }, 60);
+}
+
+/* ============================================================
+   TABS
+   ============================================================ */
+document.querySelectorAll('.tabs button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-' + btn.dataset.view).classList.add('active');
+  });
+});
+document.getElementById('period-filter').addEventListener('change', renderAll);
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function periodCutoff(){
+  const val = document.getElementById('period-filter').value;
+  if(val === 'all') return null;
+  const d = new Date();
+  d.setDate(d.getDate() - parseInt(val,10));
+  return d;
+}
+function inPeriod(sig){
+  const cutoff = periodCutoff();
+  if(!cutoff) return true;
+  return new Date(sig.created_at) >= cutoff;
+}
+function dimMeta(framework, code){
+  return DIMENSOES[framework].find(d => d.code === code) || {label: code};
+}
+function fmtDate(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric'});
+}
+function scoreClass(pct){
+  if(pct >= 75) return 'good';
+  if(pct >= 50) return 'mid';
+  return 'low';
+}
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+/* ============================================================
+   RADAR (SVG) — genérico para N eixos
+   ============================================================ */
+function drawRadar(dims, valuesPct, size, colorHex){
+  const n = dims.length;
+  const cx = size/2, cy = size/2, r = size/2 - 18;
+  const angleFor = (i) => (Math.PI * 2 * i / n) - Math.PI/2;
+
+  const gridLevels = [0.33, 0.66, 1];
+  let gridPolys = gridLevels.map(lvl => {
+    const pts = dims.map((_,i) => {
+      const a = angleFor(i);
+      return `${cx + Math.cos(a)*r*lvl},${cy + Math.sin(a)*r*lvl}`;
+    }).join(' ');
+    return `<polygon points="${pts}" fill="none" stroke="#2A2A2D" stroke-width="1"/>`;
+  }).join('');
+
+  let axisLines = dims.map((_,i) => {
+    const a = angleFor(i);
+    return `<line x1="${cx}" y1="${cy}" x2="${cx+Math.cos(a)*r}" y2="${cy+Math.sin(a)*r}" stroke="#2A2A2D" stroke-width="1"/>`;
+  }).join('');
+
+  let dataPts = dims.map((d,i) => {
+    const a = angleFor(i);
+    const v = Math.max(valuesPct[i],4)/100 * r;
+    return `${cx+Math.cos(a)*v},${cy+Math.sin(a)*v}`;
+  }).join(' ');
+
+  let labels = dims.map((d,i) => {
+    const a = angleFor(i);
+    const lx = cx + Math.cos(a)*(r+13);
+    const ly = cy + Math.sin(a)*(r+13);
+    return `<text x="${lx}" y="${ly}" fill="#B8B7B2" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="600" text-anchor="middle" dominant-baseline="middle">${d.code}</text>`;
+  }).join('');
+
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    ${gridPolys}${axisLines}
+    <polygon points="${dataPts}" fill="${colorHex}" fill-opacity="0.22" stroke="${colorHex}" stroke-width="2"/>
+    ${labels}
+  </svg>`;
+}
+
+/* ============================================================
+   COMPUTE STATS
+   ============================================================ */
+function computeConsultorStats(consultor, list){
+  const own = list.filter(s => s.consultor === consultor);
+  const aligned = own.filter(s => s.tipo === 'alinhado').length;
+  const anti = own.filter(s => s.tipo === 'anti_padrao').length;
+  const total = aligned + anti;
+  const scorePct = total ? Math.round((aligned/total)*100) : 0;
+
+  function dimValues(framework){
+    return DIMENSOES[framework].map(d => {
+      const dimSignals = own.filter(s => s.framework === framework && s.dimensao === d.code);
+      const a = dimSignals.filter(s => s.tipo === 'alinhado').length;
+      const t = dimSignals.length;
+      return t ? Math.round((a/t)*100) : 0;
+    });
+  }
+
+  const attention = [];
+  ['GROWTH','PIFE'].forEach(fw => {
+    DIMENSOES[fw].forEach(d => {
+      const count = own.filter(s => s.framework === fw && s.dimensao === d.code && s.tipo === 'anti_padrao').length;
+      if(count >= 2) attention.push(`${d.code} · ${d.label} (${count}x)`);
+    });
+  });
+
+  return {consultor, total, aligned, anti, scorePct, growthValues: dimValues('GROWTH'), pifeValues: dimValues('PIFE'), attention};
+}
+
+/* ============================================================
+   EDIÇÃO MANUAL DA CLASSIFICAÇÃO (caso a IA erre)
+   ============================================================ */
+function toggleEdit(id){
+  const panel = document.querySelector(`[data-edit-id="${id}"]`);
+  if(panel) panel.classList.toggle('open-edit');
+  const wrap = document.querySelector(`[data-edit-wrap="${id}"]`);
+  if(wrap) wrap.style.display = wrap.style.display === 'grid' ? 'none' : 'grid';
+}
+
+async function saveEdit(id){
+  const sig = sinaisCulturais.find(s => s.id === id);
+  if(!sig) return;
+  const fw = document.querySelector(`[data-edit-fw="${id}"]`).value;
+  const dim = document.querySelector(`[data-edit-dim="${id}"]`).value;
+  const tipo = document.querySelector(`[data-edit-tipo="${id}"]`).value;
+  const grav = document.querySelector(`[data-edit-grav="${id}"]`).value;
+  sig.framework = fw;
+  sig.dimensao = dim;
+  sig.tipo = tipo;
+  sig.gravidade = tipo === 'anti_padrao' ? (grav || 'moderada') : null;
+  upd();
+  renderAll();
+}
+window.toggleEdit = toggleEdit;
+window.saveEdit = saveEdit;
+
+function editPanelHtml(sig){
+  const dimOptions = (fw) => DIMENSOES[fw].map(d => `<option value="${d.code}" ${d.code===sig.dimensao?'selected':''}>${d.code} — ${d.label}</option>`).join('');
+  return `<div class="edit-panel" data-edit-wrap="${sig.id}" style="display:none;">
+    <select data-edit-fw="${sig.id}" onchange="this.closest('.edit-panel').querySelector('[data-edit-dim]').innerHTML = window.__dimOptions(this.value, '${sig.id}')">
+      <option value="GROWTH" ${sig.framework==='GROWTH'?'selected':''}>G.R.O.W.T.H.</option>
+      <option value="PIFE" ${sig.framework==='PIFE'?'selected':''}>PIFE</option>
+    </select>
+    <select data-edit-dim="${sig.id}">${dimOptions(sig.framework)}</select>
+    <select data-edit-tipo="${sig.id}">
+      <option value="alinhado" ${sig.tipo==='alinhado'?'selected':''}>Alinhado</option>
+      <option value="anti_padrao" ${sig.tipo==='anti_padrao'?'selected':''}>Anti-padrão</option>
+    </select>
+    <select data-edit-grav="${sig.id}">
+      <option value="leve" ${sig.gravidade==='leve'?'selected':''}>Leve</option>
+      <option value="moderada" ${(sig.gravidade==='moderada'||!sig.gravidade)?'selected':''}>Moderada</option>
+      <option value="critica" ${sig.gravidade==='critica'?'selected':''}>Crítica</option>
+    </select>
+    <div class="full">
+      <button class="btn-mini" onclick="window.toggleEdit('${sig.id}')">cancelar</button>
+      <button class="btn-mini save" onclick="window.saveEdit('${sig.id}')">salvar</button>
+    </div>
+  </div>`;
+}
+window.__dimOptions = (fw, id) => DIMENSOES[fw].map(d => `<option value="${d.code}">${d.code} — ${d.label}</option>`).join('');
+
+/* ============================================================
+   RENDER: FEED
+   ============================================================ */
+function renderFeed(list){
+  const cf = document.getElementById('filter-consultor').value;
+  const ff = document.getElementById('filter-framework').value;
+  const tf = document.getElementById('filter-tipo').value;
+
+  let filtered = list.filter(s =>
+    (!cf || s.consultor === cf) &&
+    (!ff || s.framework === ff) &&
+    (!tf || s.tipo === tf)
+  );
+
+  const container = document.getElementById('feed-list');
+  if(!filtered.length){
+    container.innerHTML = `<div class="empty crop"><div class="display">NENHUM SINAL AINDA</div>
+      <p>Use o formulário à esquerda: data, consultor e o que aconteceu. A IA classifica automaticamente.</p></div>`;
+    return;
+  }
+
+  container.innerHTML = filtered.map(s => {
+    const meta = dimMeta(s.framework, s.dimensao);
+    const isPos = s.tipo === 'alinhado';
+    return `<div class="signal-card crop" data-signal-id="${s.id}">
+      <div class="signal-head">
+        <div class="badge-dim ${isPos?'pos':'neg'}">${s.dimensao}</div>
+        <div>
+          <div class="signal-consultor">${s.consultor}</div>
+          <div class="signal-dim-label">${meta.label} · ${s.framework}</div>
+        </div>
+        ${s.gravidade ? `<span class="pill ${s.gravidade}">${s.gravidade}</span>` : ''}
+        <div class="signal-meta">${fmtDate(s.created_at)}</div>
+      </div>
+      <div class="signal-desc">${escapeHtml(s.descricao)}</div>
+      ${s.justificativa ? `<div class="signal-just">"${escapeHtml(s.justificativa)}"</div>` : ''}
+      <div class="signal-foot">
+        <button class="link-edit" onclick="window.toggleEdit('${s.id}')">editar classificação</button>
+      </div>
+      ${editPanelHtml(s)}
+    </div>`;
+  }).join('');
+}
+
+function populateFilterOptions(){
+  const consultores = [...new Set(sinaisCulturais.map(s => s.consultor))].sort();
+  const sel = document.getElementById('filter-consultor');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Todos os consultores</option>' +
+    consultores.map(c => `<option value="${c}">${c}</option>`).join('');
+  sel.value = current;
+}
+
+/* ============================================================
+   RENDER: POR CONSULTOR
+   ============================================================ */
+function renderConsultores(list){
+  const consultores = [...new Set(list.map(s => s.consultor))].sort();
+  const grid = document.getElementById('consultores-grid');
+
+  if(!consultores.length){
+    grid.innerHTML = `<div class="empty crop" style="grid-column:1/-1;"><div class="display">SEM DADOS NO PERÍODO</div>
+      <p>Ajuste o período no topo ou registre novos sinais para ver o perfil cultural de cada consultor.</p></div>`;
+    return;
+  }
+
+  grid.innerHTML = consultores.map(c => {
+    const st = computeConsultorStats(c, list);
+    const radarG = drawRadar(DIMENSOES.GROWTH, st.growthValues, 150, FW_COLOR.GROWTH);
+    const radarP = drawRadar(DIMENSOES.PIFE, st.pifeValues, 120, FW_COLOR.PIFE);
+    return `<div class="consultor-card crop">
+      <div class="consultor-card-head">
+        <div>
+          <div class="consultor-name">${c}</div>
+          <div class="consultor-count">${st.total} sinal(is) · ${st.aligned} alinhados · ${st.anti} anti-padrão</div>
+        </div>
+        <div class="score-badge ${scoreClass(st.scorePct)}">${st.total ? st.scorePct+'%' : '—'}</div>
+      </div>
+      <div class="radar-row">
+        <div>${radarG}<div class="radar-label">G.R.O.W.T.H.</div></div>
+        <div>${radarP}<div class="radar-label">PIFE</div></div>
+      </div>
+      ${st.attention.map(a => `<div class="attention"><span class="attention-dot"></span>Zona de atenção: ${a}</div>`).join('')}
+    </div>`;
+  }).join('');
+}
+
+/* ============================================================
+   RENDER: SQUAD
+   ============================================================ */
+function renderSquad(list){
+  const consultores = [...new Set(list.map(s => s.consultor))];
+  const stats = consultores.map(c => computeConsultorStats(c, list)).filter(s => s.total > 0);
+  stats.sort((a,b) => b.scorePct - a.scorePct);
+
+  const rankingEl = document.getElementById('squad-ranking');
+  rankingEl.innerHTML = stats.length ? stats.map((s,i) => `
+    <div class="rank-row">
+      <div class="rank-pos">${String(i+1).padStart(2,'0')}</div>
+      <div class="rank-name">${s.consultor}</div>
+      <div class="rank-bar-wrap"><div class="rank-bar" style="width:${s.scorePct}%;background:${s.scorePct>=75?'#3FAE6B':s.scorePct>=50?'#FFB020':'#FF5A5F'}"></div></div>
+      <div class="rank-score">${s.scorePct}%</div>
+    </div>`).join('') : `<div class="hint">Sem sinais suficientes no período.</div>`;
+
+  const antiMap = {};
+  list.filter(s => s.tipo === 'anti_padrao').forEach(s => {
+    const key = s.framework + '::' + s.dimensao;
+    antiMap[key] = (antiMap[key] || 0) + 1;
+  });
+  const antiEntries = Object.entries(antiMap).sort((a,b) => b[1]-a[1]).slice(0,8);
+  const maxAnti = antiEntries.length ? antiEntries[0][1] : 1;
+
+  const antiEl = document.getElementById('squad-antipadroes');
+  antiEl.innerHTML = antiEntries.length ? antiEntries.map(([key,count]) => {
+    const [fw, code] = key.split('::');
+    const meta = dimMeta(fw, code);
+    return `<div class="antipadrao-row">
+      <div class="antipadrao-top"><span class="antipadrao-dim">${code} — ${meta.label}</span><span class="antipadrao-count">${count}x</span></div>
+      <div class="antipadrao-bar-wrap"><div class="antipadrao-bar" style="width:${(count/maxAnti)*100}%"></div></div>
+    </div>`;
+  }).join('') : `<div class="hint">Nenhum anti-padrão registrado no período — bom sinal.</div>`;
+
+  const growthAvg = DIMENSOES.GROWTH.map(d => {
+    const dimSignals = list.filter(s => s.framework === 'GROWTH' && s.dimensao === d.code);
+    const a = dimSignals.filter(s => s.tipo === 'alinhado').length;
+    const t = dimSignals.length;
+    return t ? Math.round((a/t)*100) : 0;
+  });
+  document.getElementById('squad-radar-growth').innerHTML =
+    `<div>${drawRadar(DIMENSOES.GROWTH, growthAvg, 220, FW_COLOR.GROWTH)}</div>`;
+}
+
+/* ============================================================
+   RENDER ALL
+   ============================================================ */
+function renderAll(){
+  const list = sinaisCulturais.filter(inPeriod);
+  populateFilterOptions();
+  renderFeed(list);
+  renderConsultores(list);
+  renderSquad(list);
+}
+
+document.getElementById('filter-consultor').addEventListener('change', renderAll);
+document.getElementById('filter-framework').addEventListener('change', renderAll);
+document.getElementById('filter-tipo').addEventListener('change', renderAll);
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function buildCultura(){
+  if (!document.getElementById('f-data')) return; // seção ainda não renderizada
+  if (!document.getElementById('f-data').value) document.getElementById('f-data').valueAsDate = new Date();
+  renderAll();
+}
+
+/* ===== fim Termômetro Cultural ===== */
+
 var _carregandoInicial = false; // flag de carga inicial (declarada no topo para evitar TDZ)
 
 // ── MODO VISUALIZAÇÃO (link com ?view) — somente leitura, nunca salva ──
@@ -1853,6 +2560,7 @@ let npsData  = {}; // id -> {nota, comentario}
 let pdiData  = { rows: [] }; // { rows:[{nome,cargo,obs,m:{monthIdx:pct}}] }
 let perfFotos = {};          // nome -> dataURL (foto comprimida, sincronizada)
 let auditorias = [];         // [{id, consultor, tipoEntrega, cliente, data, n:{d1..d9}, obs:{d1..d9}, rec}]
+let sinaisCulturais = [];    // Termômetro Cultural — [{id, created_at, consultor, framework, dimensao, tipo, gravidade, descricao, justificativa}]
 let npsChart = null;
 
 
@@ -2846,6 +3554,10 @@ function updatePerfilNavVisibility() {
   const cargaDesignerEl  = document.getElementById('carga-designer');
   if (cargaConsultorEl) cargaConsultorEl.style.display = (currentPerfil && currentPerfil.designer) ? 'none' : '';
   if (cargaDesignerEl)  cargaDesignerEl.style.display  = (currentPerfil && currentPerfil.consultor) ? 'none' : '';
+  // Termômetro Cultural: visível só pro ADM — nem consultor, nem designer, nem viewer (outras
+  // lideranças que veem o resto do painel inteiro, mas não essa aba).
+  const btnCultura = document.getElementById('nav-tab-cultura');
+  if (btnCultura) btnCultura.style.display = (currentPerfil && (currentPerfil.consultor || currentPerfil.designer || currentPerfil.viewer)) ? 'none' : '';
   document.querySelectorAll('nav .nav-tab').forEach(btn => {
     const m = (btn.getAttribute('onclick') || '').match(/show\('([a-z]+)'\)/);
     if (!m) return;
@@ -6838,7 +7550,9 @@ function buildOvGantt() {
     return '<tr style="border-bottom:1px solid var(--border);">'
       + '<td style="padding:6px 10px;color:var(--text);font-weight:600;background:var(--surface);position:sticky;left:0;white-space:nowrap;">'
       + '<span title="' + flagTitle.replace(/"/g,'&quot;') + '" style="color:' + flagCor + ';font-size:13px;margin-right:5px;">⚑' + (p.flagManual ? '<sup style="font-size:8px;">✎</sup>' : '') + '</span>'
-      + (p.nome||'—') + '</td>'
+      + (p.nome||'—')
+      + (p.flagManual ? '<div style="font-size:9px;font-weight:400;color:var(--text-hint);white-space:normal;max-width:190px;line-height:1.3;margin-top:1px;">' + (p.flagManualMotivo || 'sem motivo informado').replace(/</g,'&lt;') + '</div>' : '')
+      + '</td>'
       + '<td style="padding:6px 10px;color:var(--text-muted);">' + (p.consultor||'—') + '</td>'
       + semanas.map(s => {
           const sISO = toISOf(s);
@@ -7095,6 +7809,7 @@ function show(sec) {
     else if (sec === 'performance') buildPerformance();
     else if (sec === 'auditoria')   buildAuditoria();
     else if (sec === 'aql')         buildAql();
+    else if (sec === 'cultura')     buildCultura();
   } catch(e) { console.error('show(' + sec + ') erro:', e); }
 }
 
@@ -10884,6 +11599,7 @@ async function sbSave() {
     convBaseManual: convBaseManual,
     perfFotos: perfFotos,
     auditorias: auditorias,
+    sinaisCulturais: sinaisCulturais,
     consList: window.CONS_MON || [],
     consColors: window.dotColors || {},
   };
@@ -10968,6 +11684,7 @@ async function sbSave() {
       conv_base:  JSON.stringify(_snap.convBaseManual),
       fotos:      JSON.stringify(_snap.perfFotos),
       auditorias: JSON.stringify(_snap.auditorias),
+      sinais_culturais: JSON.stringify(_snap.sinaisCulturais),
       consultores: JSON.stringify({list:_snap.consList, colors:_snap.consColors}),
     };
     const sendPayload = async (pl) => {
@@ -11021,6 +11738,7 @@ async function sbSave() {
         mon_metas: _snap.monMetas, aql_metas: _snap.aqlMetas, cap_data: _snap.capData, cap_manual: _snap.capManual,
         pdi_data: _snap.pdiData, conv_base: _snap.convBaseManual, fotos: _snap.perfFotos,
         auditorias: _snap.auditorias,
+        sinais_culturais: _snap.sinaisCulturais,
         consultores: {list:_snap.consList, colors:_snap.consColors},
         saved_at: sbLastSaved.toISOString(), total: _snap.projects.length, table: _snap.table
       };
@@ -11246,6 +11964,9 @@ async function sbLoad() {
       }
       if (row.auditorias) {
         try { const av = _parseMaybe(row.auditorias, []); if (Array.isArray(av)) auditorias = av; } catch(e){}
+      }
+      if (row.sinais_culturais) {
+        try { const sc = _parseMaybe(row.sinais_culturais, []); if (Array.isArray(sc)) sinaisCulturais = sc; } catch(e){}
       }
       if (row.consultores) {
         try { const cm = _parseMaybe(row.consultores, {}); if (cm && Array.isArray(cm.list) && cm.list.length) window.CONS_MON = cm.list; if (cm && cm.colors) window.dotColors = Object.assign({}, window.dotColors||{}, cm.colors); } catch(e){}
