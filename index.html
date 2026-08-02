@@ -2016,7 +2016,11 @@ async function classificarSituacao(descricao){
 
   if(!response.ok){
     const errBody = await response.json().catch(() => ({}));
-    throw new Error(errBody.error || ("A API retornou um erro (" + response.status + ")"));
+    // A Anthropic devolve o motivo real dentro de details.error.message (ex: chave inválida,
+    // sem crédito, modelo não encontrado) — mostra isso na tela em vez do aviso genérico,
+    // pra não precisar caçar nos logs do Vercel.
+    const motivoReal = errBody?.details?.error?.message;
+    throw new Error(motivoReal || errBody.error || ("A API retornou um erro (" + response.status + ")"));
   }
 
   const data = await response.json();
