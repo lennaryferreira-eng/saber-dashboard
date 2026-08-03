@@ -10855,7 +10855,7 @@ function audParseObs(txt){
   });
   return obs;
 }
-function audParseRec(txt){ const m=txt.match(/recomenda[çc][aã]o[:\s]*([\s\S]*?)(?:\n\n|$)/i); return m?m[1].replace(/\*+/g,'').trim():''; }
+function audParseRec(txt){ const m=txt.match(/(?:^|\n)\s*recomenda[çc][aã]o(?:\s+geral)?\s*:\s*([\s\S]*?)(?:\n\n|$)/i); return m?m[1].replace(/\*+/g,'').trim():''; }
 function audParseD9(txt, entrega){
   txt=txt.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
   const mB=txt.match(/\nd9[:\s]*\d{1,3}[^\n]*\n([\s\S]*?)(?=\nd[1-8][:\s]|\nRecomenda|$)/i);
