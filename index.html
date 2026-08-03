@@ -7557,24 +7557,25 @@ function buildOvGantt() {
       : 'Flag automática';
     return '<tr style="border-bottom:1px solid var(--border);">'
       + '<td style="padding:6px 10px;color:var(--text);font-weight:600;background:var(--surface);position:sticky;left:0;white-space:nowrap;">'
-      + '<span style="position:relative;display:inline-block;">'
       + '<span onclick="hsAbrirEdicaoFlag(' + p.id + ')" title="' + flagTitle.replace(/"/g,'&quot;') + '" style="color:' + flagCor + ';font-size:13px;margin-right:5px;cursor:pointer;">⚑' + (p.flagManual ? '<sup style="font-size:8px;">✎</sup>' : '') + '</span>'
-      + '<div id="hs-flag-edit-' + p.id + '" style="display:none;position:absolute;top:100%;left:0;z-index:30;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;box-shadow:0 4px 16px rgba(0,0,0,.18);width:220px;text-align:left;">'
+      + '<div id="hs-flag-edit-' + p.id + '" onclick="if(event.target===this) hsFecharEdicaoFlag(' + p.id + ')" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.4);align-items:center;justify-content:center;">'
+      + '<div style="background:var(--surface);border-radius:10px;padding:16px;width:280px;box-shadow:0 8px 32px rgba(0,0,0,.3);text-align:left;">'
+      + '<div style="font-size:12px;font-weight:700;margin-bottom:8px;">' + (p.nome||'').replace(/</g,'&lt;') + '</div>'
       + '<label style="font-size:10px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;">Flag</label>'
-      + '<select id="hs-flag-sel-' + p.id + '" class="sel" style="width:100%;font-size:11px;margin:3px 0 6px;">'
+      + '<select id="hs-flag-sel-' + p.id + '" class="sel" style="width:100%;font-size:12px;margin:3px 0 10px;">'
       + '<option value="">Automático (calculado)</option>'
       + '<option value="Verde"' + (p.flagManual==='Verde'?' selected':'') + '>Verde</option>'
       + '<option value="Amarelo"' + (p.flagManual==='Amarelo'?' selected':'') + '>Amarelo</option>'
       + '<option value="Vermelho"' + (p.flagManual==='Vermelho'?' selected':'') + '>Vermelho</option>'
       + '</select>'
       + '<label style="font-size:10px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;">Motivo</label>'
-      + '<textarea id="hs-flag-motivo-' + p.id + '" class="sel" placeholder="Por que essa flag?" style="width:100%;font-size:11px;min-height:50px;margin:3px 0 8px;resize:vertical;">' + (p.flagManualMotivo || '').replace(/</g,'&lt;') + '</textarea>'
-      + '<div style="display:flex;gap:4px;">'
-      + '<button onclick="hsSalvarFlagManual(' + p.id + ')" style="flex:1;padding:6px;border:none;border-radius:5px;background:var(--accent);color:#fff;font-size:11px;font-weight:600;cursor:pointer;">Salvar</button>'
-      + '<button onclick="hsFecharEdicaoFlag(' + p.id + ')" style="padding:6px 10px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;cursor:pointer;">Cancelar</button>'
+      + '<textarea id="hs-flag-motivo-' + p.id + '" class="sel" placeholder="Por que essa flag?" style="width:100%;font-size:12px;min-height:70px;margin:3px 0 10px;resize:vertical;">' + (p.flagManualMotivo || '').replace(/</g,'&lt;') + '</textarea>'
+      + '<div style="display:flex;gap:6px;">'
+      + '<button onclick="hsSalvarFlagManual(' + p.id + ')" style="flex:1;padding:8px;border:none;border-radius:6px;background:var(--accent);color:#fff;font-size:12px;font-weight:600;cursor:pointer;">Salvar</button>'
+      + '<button onclick="hsFecharEdicaoFlag(' + p.id + ')" style="padding:8px 14px;border:1px solid var(--border);border-radius:6px;background:none;color:var(--text-muted);font-size:12px;cursor:pointer;">Cancelar</button>'
       + '</div>'
       + '</div>'
-      + '</span>'
+      + '</div>'
       + (p.nome||'—')
       + (p.flagManual ? '<div style="font-size:9px;font-weight:400;color:var(--text-hint);white-space:normal;max-width:190px;line-height:1.3;margin-top:1px;">' + (p.flagManualMotivo || 'sem motivo informado').replace(/</g,'&lt;') + '</div>' : '')
       + '</td>'
@@ -8441,7 +8442,7 @@ function refreshLtCards() {
 function ltAbrirEdicaoFlag(id) {
   document.querySelectorAll('[id^="lt-flag-edit-"]').forEach(e => { if (e.id !== 'lt-flag-edit-' + id) e.style.display = 'none'; });
   const el = document.getElementById('lt-flag-edit-' + id);
-  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  if (el) el.style.display = el.style.display === 'none' ? 'flex' : 'none';
 }
 function ltFecharEdicaoFlag(id) {
   const el = document.getElementById('lt-flag-edit-' + id);
@@ -8466,7 +8467,7 @@ function ltSalvarFlagManual(id) {
 function hsAbrirEdicaoFlag(id) {
   document.querySelectorAll('[id^="hs-flag-edit-"]').forEach(e => { if (e.id !== 'hs-flag-edit-' + id) e.style.display = 'none'; });
   const el = document.getElementById('hs-flag-edit-' + id);
-  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  if (el) el.style.display = el.style.display === 'none' ? 'flex' : 'none';
 }
 function hsFecharEdicaoFlag(id) {
   const el = document.getElementById('hs-flag-edit-' + id);
@@ -8638,24 +8639,27 @@ function buildLeadTime() {
           + '</td>'
           // Flag — calculada automaticamente (score da entrega + prazo), mas pode ser
           // sobrescrita manualmente com um motivo, que passa a valer sobre qualquer critério.
-          + '<td style="padding:6px 8px;text-align:center;position:relative;">'
+          + '<td style="padding:6px 8px;text-align:center;">'
           + '<div style="display:flex;align-items:center;justify-content:center;gap:4px;">'
           + flagHTML(calcFlagAutomatica(p))
           + '<span onclick="ltAbrirEdicaoFlag(' + p.id + ')" title="' + (p.flagManual ? 'Flag manual — motivo: ' + (p.flagManualMotivo || 'sem motivo informado').replace(/"/g,'&quot;') : 'Editar flag manualmente') + '" style="font-size:10px;color:' + (p.flagManual ? 'var(--accent)' : 'var(--text-hint)') + ';cursor:pointer;">✎</span>'
           + '</div>'
-          + '<div id="lt-flag-edit-' + p.id + '" style="display:none;position:absolute;top:100%;left:50%;transform:translateX(-50%);z-index:20;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;box-shadow:0 4px 16px rgba(0,0,0,.18);width:220px;text-align:left;">'
+          + '<div id="lt-flag-edit-' + p.id + '" onclick="if(event.target===this) ltFecharEdicaoFlag(' + p.id + ')" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.4);align-items:center;justify-content:center;">'
+          + '<div style="background:var(--surface);border-radius:10px;padding:16px;width:280px;box-shadow:0 8px 32px rgba(0,0,0,.3);text-align:left;">'
+          + '<div style="font-size:12px;font-weight:700;margin-bottom:8px;">' + (p.nome||'').replace(/</g,'&lt;') + '</div>'
           + '<label style="font-size:10px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;">Flag</label>'
-          + '<select id="lt-flag-sel-' + p.id + '" class="sel" style="width:100%;font-size:11px;margin:3px 0 6px;">'
+          + '<select id="lt-flag-sel-' + p.id + '" class="sel" style="width:100%;font-size:12px;margin:3px 0 10px;">'
           + '<option value="">Automático (calculado)</option>'
           + '<option value="Verde"' + (p.flagManual==='Verde'?' selected':'') + '>Verde</option>'
           + '<option value="Amarelo"' + (p.flagManual==='Amarelo'?' selected':'') + '>Amarelo</option>'
           + '<option value="Vermelho"' + (p.flagManual==='Vermelho'?' selected':'') + '>Vermelho</option>'
           + '</select>'
           + '<label style="font-size:10px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;">Motivo</label>'
-          + '<textarea id="lt-flag-motivo-' + p.id + '" class="sel" placeholder="Por que essa flag?" style="width:100%;font-size:11px;min-height:50px;margin:3px 0 8px;resize:vertical;">' + (p.flagManualMotivo || '').replace(/</g,'&lt;') + '</textarea>'
-          + '<div style="display:flex;gap:4px;">'
-          + '<button onclick="ltSalvarFlagManual(' + p.id + ')" style="flex:1;padding:6px;border:none;border-radius:5px;background:var(--accent);color:#fff;font-size:11px;font-weight:600;cursor:pointer;">Salvar</button>'
-          + '<button onclick="ltFecharEdicaoFlag(' + p.id + ')" style="padding:6px 10px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text-muted);font-size:11px;cursor:pointer;">Cancelar</button>'
+          + '<textarea id="lt-flag-motivo-' + p.id + '" class="sel" placeholder="Por que essa flag?" style="width:100%;font-size:12px;min-height:70px;margin:3px 0 10px;resize:vertical;">' + (p.flagManualMotivo || '').replace(/</g,'&lt;') + '</textarea>'
+          + '<div style="display:flex;gap:6px;">'
+          + '<button onclick="ltSalvarFlagManual(' + p.id + ')" style="flex:1;padding:8px;border:none;border-radius:6px;background:var(--accent);color:#fff;font-size:12px;font-weight:600;cursor:pointer;">Salvar</button>'
+          + '<button onclick="ltFecharEdicaoFlag(' + p.id + ')" style="padding:8px 14px;border:1px solid var(--border);border-radius:6px;background:none;color:var(--text-muted);font-size:12px;cursor:pointer;">Cancelar</button>'
+          + '</div>'
           + '</div>'
           + '</div>'
           + '</td>'
