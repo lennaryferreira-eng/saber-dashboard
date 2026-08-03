@@ -6299,7 +6299,10 @@ function _mesAtualIndependente() {
 function buildOvAqlCard() {
   const valEl  = document.getElementById('ov-aql-val');
   if (!valEl) return;
-  const mesInfo = _mesAtualIndependente();
+  // Respeita o filtro de mês da Visão Geral (mesmo que os outros KPIs usam) — só cai pro mês
+  // atual "de verdade" quando nada estiver selecionado no filtro.
+  const curSel = filters['visao'];
+  const mesInfo = curSel ? (ALL_MESES.find(x => x.key === curSel) || _mesAtualIndependente()) : _mesAtualIndependente();
   const subEl    = document.getElementById('ov-aql-sub');
   const metaEl   = document.getElementById('ov-aql-meta-lbl');
   const barEl    = document.getElementById('ov-aql-bar');
@@ -7175,6 +7178,7 @@ function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
   } else {
     buildOvGantt();
     buildOvInsightsSemana();
+    buildOvAqlCard(); // atualiza junto quando o filtro de mês da Visão Geral muda
   }
 }
 
