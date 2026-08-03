@@ -10838,10 +10838,10 @@ function audParseObs(txt){
     if(!m) return;
     let bloco=m[1];
     if(d.id==='d9'){ bloco=bloco.split('\n').filter(l=>!l.match(/^[\dA-Za-z]+\.[\dA-Za-z]+\s*:[\s]*(✅|⚠️|❌)/)).join('\n'); }
-    const mA=bloco.match(/[aá]n[aá]lise[:\s]+([\s\S]*?)(?=plano de a[çc][aã]o|$)/i);
+    const mA=bloco.match(/[aá]n[aá]lise[:\s]+([\s\S]*?)(?=(?:^|\n)\s*plano de a[çc][aã]o|$)/i);
     if(mA) obs[d.id].analise=mA[1].replace(/\*+/g,'').trim();
     if(d.id!=='d9'){
-      const mP=bloco.match(/plano de a[çc][aã]o[:\s]+([\s\S]*?)(?=\n\n|$)/i);
+      const mP=bloco.match(/(?:^|\n)\s*plano de a[çc][aã]o[:\s]+([\s\S]*?)(?=\n\n|$)/i);
       if(mP) obs[d.id].plano=mP[1].replace(/\*+/g,'').trim();
     }
     if(d.id!=='d9'&&!obs[d.id].analise&&!obs[d.id].plano){
