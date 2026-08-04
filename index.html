@@ -7575,14 +7575,15 @@ function buildOvGantt() {
   const rows = prjs.map(p => {
     const lm = labelsMap[p.id] || {};
     const flagCor = { Verde: 'var(--green)', Amarelo: 'var(--amber)', Vermelho: 'var(--accent)' }[calcFlagAutomatica(p)] || 'var(--text-hint)';
-    const flagTitle = p.flagManual
-      ? 'Flag manual — motivo: ' + (p.flagManualMotivo || 'sem motivo informado')
+    const temAnotacao = !!(p.flagManual || p.flagManualMotivo); // cor sobrescrita OU só um comentário deixado
+    const flagTitle = temAnotacao
+      ? (p.flagManual ? 'Flag manual — motivo: ' : 'Anotação: ') + (p.flagManualMotivo || 'sem motivo informado')
       : 'Flag automática';
     return '<tr style="border-bottom:1px solid var(--border);">'
       + '<td style="padding:6px 10px;color:var(--text);font-weight:600;background:var(--surface);position:sticky;left:0;white-space:nowrap;">'
-      + '<span onclick="abrirModalFlag(' + p.id + ',\'healthscore\')" title="' + flagTitle.replace(/"/g,'&quot;') + '" style="color:' + flagCor + ';font-size:13px;margin-right:5px;cursor:pointer;">⚑' + (p.flagManual ? '<sup style="font-size:8px;">✎</sup>' : '') + '</span>'
+      + '<span onclick="abrirModalFlag(' + p.id + ',\'healthscore\')" title="' + flagTitle.replace(/"/g,'&quot;') + '" style="color:' + flagCor + ';font-size:13px;margin-right:5px;cursor:pointer;">⚑' + (temAnotacao ? '<sup style="font-size:8px;">✎</sup>' : '') + '</span>'
       + (p.nome||'—')
-      + (p.flagManual ? '<div style="font-size:9px;font-weight:400;color:var(--text-hint);white-space:normal;max-width:190px;line-height:1.3;margin-top:1px;">' + (p.flagManualMotivo || 'sem motivo informado').replace(/</g,'&lt;') + '</div>' : '')
+      + (temAnotacao ? '<div style="font-size:9px;font-weight:400;color:var(--text-hint);white-space:normal;max-width:190px;line-height:1.3;margin-top:1px;">' + (p.flagManualMotivo || 'sem motivo informado').replace(/</g,'&lt;') + '</div>' : '')
       + '</td>'
       + '<td style="padding:6px 10px;color:var(--text-muted);">' + (p.consultor||'—') + '</td>'
       + semanas.map(s => {
@@ -8472,10 +8473,13 @@ function salvarModalFlag() {
   const p = projects.find(x => String(x.id) === String(_flagModalProjId));
   if (!p) return;
   const novoValor = document.getElementById('flag-modal-sel')?.value || '';
-  const motivo = document.getElementById('flag-modal-motivo')?.value || '';
-  if (novoValor && !motivo.trim()) { alert('Informe o motivo da flag manual.'); return; }
+  const motivo = (document.getElementById('flag-modal-motivo')?.value || '').trim();
+  if (novoValor && !motivo) { alert('Informe o motivo da flag manual.'); return; }
   p.flagManual = novoValor;
-  p.flagManualMotivo = novoValor ? motivo.trim() : '';
+  // O motivo é salvo mesmo que a flag continue "Automático" — é uma anotação válida por si
+  // só (ex: "sabemos que está vermelho, mas é temporário"), não depende de ter sobrescrito
+  // a cor calculada.
+  p.flagManualMotivo = motivo;
   upd();
   const origem = _flagModalOrigem;
   fecharModalFlag();
@@ -8639,7 +8643,7 @@ function buildLeadTime() {
           + '<td style="padding:6px 8px;text-align:center;">'
           + '<div style="display:flex;align-items:center;justify-content:center;gap:4px;">'
           + flagHTML(calcFlagAutomatica(p))
-          + '<span onclick="abrirModalFlag(' + p.id + ',\'leadtime\')" title="' + (p.flagManual ? 'Flag manual — motivo: ' + (p.flagManualMotivo || 'sem motivo informado').replace(/"/g,'&quot;') : 'Editar flag manualmente') + '" style="font-size:10px;color:' + (p.flagManual ? 'var(--accent)' : 'var(--text-hint)') + ';cursor:pointer;">✎</span>'
+          + '<span onclick="abrirModalFlag(' + p.id + ',\'leadtime\')" title="' + ((p.flagManual || p.flagManualMotivo) ? (p.flagManual ? 'Flag manual — motivo: ' : 'Anotação: ') + (p.flagManualMotivo || 'sem motivo informado').replace(/"/g,'&quot;') : 'Editar flag manualmente') + '" style="font-size:10px;color:' + ((p.flagManual || p.flagManualMotivo) ? 'var(--accent)' : 'var(--text-hint)') + ';cursor:pointer;">✎</span>'
           + '</div>'
           + '</td>'
           // Score da entrega (seletor próprio + escala única 0–100)
