@@ -14,11 +14,7 @@ export default async function handler(req, res) {
 
   try {
     const accessToken = await getAccessToken();
-    // 90 dias (não 21) — kick-off/plano de decolagem são reuniões únicas de início de
-    // projeto, não recorrentes como entrega, então facilmente caem fora de uma janela curta
-    // e ficavam invisíveis na fila mesmo nunca tendo sido avaliadas (mesmo motivo que já
-    // tinha feito subir de 7→21 antes, com a Clínica Auryon).
-    const janelaDias = Number(days) > 0 ? Number(days) : 90;
+    const janelaDias = Number(days) > 0 ? Number(days) : 30;
     const sinceISO = new Date(Date.now() - janelaDias * 24 * 60 * 60 * 1000).toISOString();
     const scopeFolderId = folderId || process.env.GOOGLE_DRIVE_MEETINGS_FOLDER_ID || null;
 
