@@ -1,0 +1,16 @@
+name: Deploy to Vercel
+
+# Dispara o deploy hook do Vercel a cada push na main — substitui a integração nativa
+# GitHub App do Vercel, que não pôde ser autorizada pra esta conta. VERCEL_DEPLOY_HOOK é um
+# secret do repositório (Settings > Secrets and variables > Actions).
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Vercel deploy hook
+        run: curl -fsS -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}"
