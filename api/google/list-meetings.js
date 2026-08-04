@@ -23,13 +23,25 @@ export default async function handler(req, res) {
     const files = await listMeetingFiles({ accessToken, sinceISO, folderId: scopeFolderId });
     const excluir = new Set(Array.isArray(excludeIds) ? excludeIds : []);
 
-    // Só reuniões de entrega com cliente — sem padrão fixo de nome, mas "entrega" cobre a
-    // imensa maioria e filtra fora o ruído interno (Daily, Comitê, All Hands, Weekly, etc).
-    const ENTREGA_RE = /entrega/i;
+    // Só reuniões de entrega com cliente — sem padrão fixo de nome (cada consultor nomeia
+    // do seu jeito), então em vez de exigir a palavra "entrega" (o que só pegava quem
+    // efetivamente escrevia isso — na prática só Leonam e Vinicius — e escondia por completo
+    // as reuniões de outros consultores) a lista exclui os padrões que são sempre reunião
+    // interna. Prefere mostrar ruído demais (o ADM ignora/pula na hora de montar a fila) a
+    // esconder reunião de cliente de verdade.
+    const PADROES_INTERNOS = [
+      /daily growthunters/i,
+      /comit[eê]/i,
+      /all hands/i,
+      /\bweekly\b/i,
+      /alinhamento interno/i,
+      /^\s*\[cancelado\]/i,
+    ];
+    const ehInterna = (nome) => PADROES_INTERNOS.some((re) => re.test(nome || ''));
 
     const pendentes = files
       .filter((f) => !excluir.has(f.id))
-      .filter((f) => ENTREGA_RE.test(f.name || ''))
+      .filter((f) => !ehInterna(f.name))
       .map((f) => ({
         id: f.id,
         nome: f.name,

@@ -10979,8 +10979,10 @@ async function audGerarComClaude(){
 // ── FILA DO DRIVE (ADM) ──
 // Abre o modal, busca no Drive as transcrições dos últimos 21 dias que ainda não têm
 // avaliação salva (driveFileId já usado em `auditorias` é excluído no próprio servidor).
-// O servidor já filtra pra só trazer reuniões de entrega com cliente (nome contendo
-// "entrega") — sem isso a lista ficava poluída com Daily/Comitê/All Hands/Weekly interno.
+// O servidor já filtra fora o ruído interno (Daily/Comitê/All Hands/Weekly/Alinhamento
+// Interno) — não dá pra exigir a palavra "entrega" no nome porque cada consultor nomeia
+// do seu jeito (só Leonam/Vinicius escrevem isso), então a lista prefere mostrar alguma
+// reunião interna a mais (o ADM ignora/pula) a esconder reunião de cliente de outro consultor.
 // A "conta de origem" (dono do arquivo no Drive) aparece em cada item pra diferenciar
 // gravações repetidas puxadas de contas diferentes.
 async function audAbrirModalDrive(){
@@ -11049,7 +11051,7 @@ function audSairDoModoProcessamento(){
 
 function audRenderListaDrive(files){
   const lista=document.getElementById('aud-drive-lista'); if(!lista) return;
-  if(!files.length){ lista.innerHTML='<div style="font-size:12px;color:var(--text-hint);padding:8px 0;">Nenhuma reunião de entrega nova nos últimos 21 dias — tudo que existe já foi avaliado (ou nenhum evento tem "entrega" no nome).</div>'; return; }
+  if(!files.length){ lista.innerHTML='<div style="font-size:12px;color:var(--text-hint);padding:8px 0;">Nenhuma reunião nova nos últimos 21 dias — tudo que existe já foi avaliado.</div>'; return; }
   const optCons=(sel)=>'<option value="">Consultor…</option>'+audConsultores().map(c=>'<option '+(c===sel?'selected':'')+'>'+c+'</option>').join('');
   const optTipo=(sel)=>'<option value="">Tipo…</option>'+AUD_TIPOS.map(t=>'<option '+(t===sel?'selected':'')+'>'+t+'</option>').join('');
   const clienteDatalist='<datalist id="aud-drive-cliente-list">'+audClientes().map(c=>'<option value="'+c.replace(/"/g,'&quot;')+'">').join('')+'</datalist>';
