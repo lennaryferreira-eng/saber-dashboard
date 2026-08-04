@@ -840,7 +840,12 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
       <option>Amarelo</option>
       <option>Vermelho</option>
     </select>
-    <button class="base-clear" onclick="document.getElementById('dro-f-cons').value='';document.getElementById('dro-f-flag').value='';buildDRO()">Limpar</button>
+    <select class="base-sel" id="dro-f-status" onchange="buildDRO()">
+      <option value="ativos">Ativos</option>
+      <option value="finalizados">Finalizados</option>
+      <option value="todos">Todos</option>
+    </select>
+    <button class="base-clear" onclick="document.getElementById('dro-f-cons').value='';document.getElementById('dro-f-flag').value='';document.getElementById('dro-f-status').value='ativos';buildDRO()">Limpar</button>
   </div>
 
   <div id="dro-list"></div>
@@ -4073,7 +4078,9 @@ function buildDRO(){
   }
   const consFilter=document.getElementById('dro-f-cons')?.value||'';
   const flagFilter=document.getElementById('dro-f-flag')?.value||'';
-  const lista=projects.filter(p=> isDroFam(p) && calcStatus2(p)!=='Finalizado' &&
+  const statusFilter=document.getElementById('dro-f-status')?.value||'ativos';
+  const lista=projects.filter(p=> isDroFam(p) &&
+    (statusFilter==='todos' || (statusFilter==='finalizados' ? calcStatus2(p)==='Finalizado' : calcStatus2(p)!=='Finalizado')) &&
     (!consFilter||p.consultor===consFilter) && (!flagFilter||p.flag===flagFilter));
 
   // ── Resumo da carteira ──
