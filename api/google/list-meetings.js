@@ -23,8 +23,13 @@ export default async function handler(req, res) {
     const files = await listMeetingFiles({ accessToken, sinceISO, folderId: scopeFolderId });
     const excluir = new Set(Array.isArray(excludeIds) ? excludeIds : []);
 
+    // Só reuniões de entrega com cliente — sem padrão fixo de nome, mas "entrega" cobre a
+    // imensa maioria e filtra fora o ruído interno (Daily, Comitê, All Hands, Weekly, etc).
+    const ENTREGA_RE = /entrega/i;
+
     const pendentes = files
       .filter((f) => !excluir.has(f.id))
+      .filter((f) => ENTREGA_RE.test(f.name || ''))
       .map((f) => ({
         id: f.id,
         nome: f.name,
@@ -32,9 +37,6 @@ export default async function handler(req, res) {
         donoEmail: f.owners?.[0]?.emailAddress || null,
         modificadoEm: f.modifiedTime,
         link: f.webViewLink,
-        _diagParents: f.parents || null,
-        _diagDriveId: f.driveId || null,
-        _diagOwnersFull: f.owners || null,
       }));
 
     res.status(200).json({ files: pendentes });

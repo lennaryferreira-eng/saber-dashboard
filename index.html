@@ -10979,6 +10979,10 @@ async function audGerarComClaude(){
 // ── FILA DO DRIVE (ADM) ──
 // Abre o modal, busca no Drive as transcrições dos últimos 21 dias que ainda não têm
 // avaliação salva (driveFileId já usado em `auditorias` é excluído no próprio servidor).
+// O servidor já filtra pra só trazer reuniões de entrega com cliente (nome contendo
+// "entrega") — sem isso a lista ficava poluída com Daily/Comitê/All Hands/Weekly interno.
+// A "conta de origem" (dono do arquivo no Drive) aparece em cada item pra diferenciar
+// gravações repetidas puxadas de contas diferentes.
 async function audAbrirModalDrive(){
   const mod=document.getElementById('modal-drive-fila'); if(mod) mod.style.display='flex';
   const selecao=document.getElementById('modal-drive-selecao'); if(selecao) selecao.style.display='block';
@@ -11045,7 +11049,7 @@ function audSairDoModoProcessamento(){
 
 function audRenderListaDrive(files){
   const lista=document.getElementById('aud-drive-lista'); if(!lista) return;
-  if(!files.length){ lista.innerHTML='<div style="font-size:12px;color:var(--text-hint);padding:8px 0;">Nenhuma transcrição nova nos últimos 21 dias — tudo que existe já foi avaliado.</div>'; return; }
+  if(!files.length){ lista.innerHTML='<div style="font-size:12px;color:var(--text-hint);padding:8px 0;">Nenhuma reunião de entrega nova nos últimos 21 dias — tudo que existe já foi avaliado (ou nenhum evento tem "entrega" no nome).</div>'; return; }
   const optCons=(sel)=>'<option value="">Consultor…</option>'+audConsultores().map(c=>'<option '+(c===sel?'selected':'')+'>'+c+'</option>').join('');
   const optTipo=(sel)=>'<option value="">Tipo…</option>'+AUD_TIPOS.map(t=>'<option '+(t===sel?'selected':'')+'>'+t+'</option>').join('');
   const clienteDatalist='<datalist id="aud-drive-cliente-list">'+audClientes().map(c=>'<option value="'+c.replace(/"/g,'&quot;')+'">').join('')+'</datalist>';
@@ -11055,7 +11059,7 @@ function audRenderListaDrive(files){
       + '<input type="checkbox" class="aud-drive-check" data-idx="'+i+'" style="margin-top:3px;">'
       + '<div style="flex:1;min-width:0;">'
       + '<div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+f.nome+'</div>'
-      + '<div style="font-size:11px;color:var(--text-hint);margin-bottom:6px;">'+(f.donoNome||f.donoEmail||'dono desconhecido')+' · '+(f.modificadoEm?new Date(f.modificadoEm).toLocaleDateString('pt-BR'):'—')+'</div>'
+      + '<div style="font-size:11px;color:var(--text-hint);margin-bottom:6px;">Conta de origem: <strong>'+(f.donoNome||f.donoEmail||'desconhecida')+'</strong>'+(f.donoNome&&f.donoEmail?' ('+f.donoEmail+')':'')+' · '+(f.modificadoEm?new Date(f.modificadoEm).toLocaleDateString('pt-BR'):'—')+'</div>'
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
       + '<select class="aud-inp aud-drive-consultor" data-idx="'+i+'" style="font-size:12px;padding:5px 8px;" onclick="event.stopPropagation()">'+optCons(consultorSugerido)+'</select>'
       + '<select class="aud-inp aud-drive-tipo" data-idx="'+i+'" style="font-size:12px;padding:5px 8px;" onclick="event.stopPropagation()">'+optTipo('')+'</select>'
