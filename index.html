@@ -1561,6 +1561,29 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
 </section>
 
 <!-- MODAL NOVO PROJETO -->
+<div class="modal-overlay" id="modal-flag-edit" onclick="if(event.target===this)fecharModalFlag()">
+  <div class="modal-box" style="max-width:320px;">
+    <div class="modal-header">
+      <span class="modal-title" id="flag-modal-nome">Editar flag</span>
+      <button class="modal-close" onclick="fecharModalFlag()">✕</button>
+    </div>
+    <div class="modal-body">
+      <label style="display:block;font-size:10px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Flag</label>
+      <select id="flag-modal-sel" class="sel" style="width:100%;font-size:12px;margin-bottom:12px;">
+        <option value="">Automático (calculado)</option>
+        <option value="Verde">Verde</option>
+        <option value="Amarelo">Amarelo</option>
+        <option value="Vermelho">Vermelho</option>
+      </select>
+      <label style="display:block;font-size:10px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Motivo</label>
+      <textarea id="flag-modal-motivo" class="sel" placeholder="Por que essa flag?" style="width:100%;font-size:12px;min-height:80px;margin-bottom:14px;resize:vertical;"></textarea>
+      <div style="display:flex;gap:6px;">
+        <button onclick="salvarModalFlag()" style="flex:1;padding:9px;border:none;border-radius:6px;background:var(--accent);color:#fff;font-size:12px;font-weight:600;cursor:pointer;">Salvar</button>
+        <button onclick="fecharModalFlag()" style="padding:9px 14px;border:1px solid var(--border);border-radius:6px;background:none;color:var(--text-muted);font-size:12px;cursor:pointer;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="modal-novo-projeto" onclick="if(event.target===this)closeNovoProj()">
   <div class="modal-box" style="max-width:480px;">
     <div class="modal-header">
@@ -7557,25 +7580,7 @@ function buildOvGantt() {
       : 'Flag automática';
     return '<tr style="border-bottom:1px solid var(--border);">'
       + '<td style="padding:6px 10px;color:var(--text);font-weight:600;background:var(--surface);position:sticky;left:0;white-space:nowrap;">'
-      + '<span onclick="hsAbrirEdicaoFlag(' + p.id + ')" title="' + flagTitle.replace(/"/g,'&quot;') + '" style="color:' + flagCor + ';font-size:13px;margin-right:5px;cursor:pointer;">⚑' + (p.flagManual ? '<sup style="font-size:8px;">✎</sup>' : '') + '</span>'
-      + '<div id="hs-flag-edit-' + p.id + '" onclick="if(event.target===this) hsFecharEdicaoFlag(' + p.id + ')" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.4);align-items:center;justify-content:center;">'
-      + '<div style="background:var(--surface);border-radius:10px;padding:16px;width:280px;box-shadow:0 8px 32px rgba(0,0,0,.3);text-align:left;">'
-      + '<div style="font-size:12px;font-weight:700;margin-bottom:8px;">' + (p.nome||'').replace(/</g,'&lt;') + '</div>'
-      + '<label style="font-size:10px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;">Flag</label>'
-      + '<select id="hs-flag-sel-' + p.id + '" class="sel" style="width:100%;font-size:12px;margin:3px 0 10px;">'
-      + '<option value="">Automático (calculado)</option>'
-      + '<option value="Verde"' + (p.flagManual==='Verde'?' selected':'') + '>Verde</option>'
-      + '<option value="Amarelo"' + (p.flagManual==='Amarelo'?' selected':'') + '>Amarelo</option>'
-      + '<option value="Vermelho"' + (p.flagManual==='Vermelho'?' selected':'') + '>Vermelho</option>'
-      + '</select>'
-      + '<label style="font-size:10px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;">Motivo</label>'
-      + '<textarea id="hs-flag-motivo-' + p.id + '" class="sel" placeholder="Por que essa flag?" style="width:100%;font-size:12px;min-height:70px;margin:3px 0 10px;resize:vertical;">' + (p.flagManualMotivo || '').replace(/</g,'&lt;') + '</textarea>'
-      + '<div style="display:flex;gap:6px;">'
-      + '<button onclick="hsSalvarFlagManual(' + p.id + ')" style="flex:1;padding:8px;border:none;border-radius:6px;background:var(--accent);color:#fff;font-size:12px;font-weight:600;cursor:pointer;">Salvar</button>'
-      + '<button onclick="hsFecharEdicaoFlag(' + p.id + ')" style="padding:8px 14px;border:1px solid var(--border);border-radius:6px;background:none;color:var(--text-muted);font-size:12px;cursor:pointer;">Cancelar</button>'
-      + '</div>'
-      + '</div>'
-      + '</div>'
+      + '<span onclick="abrirModalFlag(' + p.id + ',\'healthscore\')" title="' + flagTitle.replace(/"/g,'&quot;') + '" style="color:' + flagCor + ';font-size:13px;margin-right:5px;cursor:pointer;">⚑' + (p.flagManual ? '<sup style="font-size:8px;">✎</sup>' : '') + '</span>'
       + (p.nome||'—')
       + (p.flagManual ? '<div style="font-size:9px;font-weight:400;color:var(--text-hint);white-space:normal;max-width:190px;line-height:1.3;margin-top:1px;">' + (p.flagManualMotivo || 'sem motivo informado').replace(/</g,'&lt;') + '</div>' : '')
       + '</td>'
@@ -8439,51 +8444,43 @@ function refreshLtCards() {
 }
 
 // Flag manual no Lead Time — sobrescreve o cálculo automático, com motivo obrigatório pra rastreabilidade
-function ltAbrirEdicaoFlag(id) {
-  document.querySelectorAll('[id^="lt-flag-edit-"]').forEach(e => { if (e.id !== 'lt-flag-edit-' + id) e.style.display = 'none'; });
-  const el = document.getElementById('lt-flag-edit-' + id);
-  if (el) el.style.display = el.style.display === 'none' ? 'flex' : 'none';
-}
-function ltFecharEdicaoFlag(id) {
-  const el = document.getElementById('lt-flag-edit-' + id);
-  if (el) el.style.display = 'none';
-}
-function ltSalvarFlagManual(id) {
+// Edição de flag manual — modal único e global (fora da tabela), disparável tanto do
+// Healthscore quanto do Lead Time. Evita o problema de colocar um popover dentro de uma
+// célula de tabela com coluna "sticky", que quebra o posicionamento em alguns navegadores.
+let _flagModalProjId = null;
+let _flagModalOrigem = null; // 'healthscore' | 'leadtime' — o que re-renderizar ao salvar
+function abrirModalFlag(id, origem) {
   const p = projects.find(x => String(x.id) === String(id));
   if (!p) return;
-  const sel = document.getElementById('lt-flag-sel-' + id);
-  const motivo = document.getElementById('lt-flag-motivo-' + id);
-  const novoValor = sel?.value || '';
-  if (novoValor && !(motivo?.value || '').trim()) { alert('Informe o motivo da flag manual.'); return; }
-  p.flagManual = novoValor;
-  p.flagManualMotivo = novoValor ? (motivo?.value || '').trim() : '';
-  upd();
-  buildLeadTime();
+  _flagModalProjId = id;
+  _flagModalOrigem = origem;
+  const nomeEl = document.getElementById('flag-modal-nome');
+  const selEl = document.getElementById('flag-modal-sel');
+  const motivoEl = document.getElementById('flag-modal-motivo');
+  if (nomeEl) nomeEl.textContent = p.nome || 'Editar flag';
+  if (selEl) selEl.value = p.flagManual || '';
+  if (motivoEl) motivoEl.value = p.flagManualMotivo || '';
+  const modal = document.getElementById('modal-flag-edit');
+  if (modal) modal.style.display = 'flex';
 }
-
-// Mesma edição de flag manual, só que disparada a partir do Healthscore — usa IDs de
-// elemento próprios (hs-flag-...) pra não colidir com o popover do Lead Time, que fica no
-// mesmo DOM (só escondido) quando essa seção está ativa.
-function hsAbrirEdicaoFlag(id) {
-  document.querySelectorAll('[id^="hs-flag-edit-"]').forEach(e => { if (e.id !== 'hs-flag-edit-' + id) e.style.display = 'none'; });
-  const el = document.getElementById('hs-flag-edit-' + id);
-  if (el) el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+function fecharModalFlag() {
+  const modal = document.getElementById('modal-flag-edit');
+  if (modal) modal.style.display = 'none';
+  _flagModalProjId = null;
 }
-function hsFecharEdicaoFlag(id) {
-  const el = document.getElementById('hs-flag-edit-' + id);
-  if (el) el.style.display = 'none';
-}
-function hsSalvarFlagManual(id) {
-  const p = projects.find(x => String(x.id) === String(id));
+function salvarModalFlag() {
+  const p = projects.find(x => String(x.id) === String(_flagModalProjId));
   if (!p) return;
-  const sel = document.getElementById('hs-flag-sel-' + id);
-  const motivo = document.getElementById('hs-flag-motivo-' + id);
-  const novoValor = sel?.value || '';
-  if (novoValor && !(motivo?.value || '').trim()) { alert('Informe o motivo da flag manual.'); return; }
+  const novoValor = document.getElementById('flag-modal-sel')?.value || '';
+  const motivo = document.getElementById('flag-modal-motivo')?.value || '';
+  if (novoValor && !motivo.trim()) { alert('Informe o motivo da flag manual.'); return; }
   p.flagManual = novoValor;
-  p.flagManualMotivo = novoValor ? (motivo?.value || '').trim() : '';
+  p.flagManualMotivo = novoValor ? motivo.trim() : '';
   upd();
-  buildOvGantt();
+  const origem = _flagModalOrigem;
+  fecharModalFlag();
+  if (origem === 'healthscore') buildOvGantt();
+  else if (origem === 'leadtime') buildLeadTime();
 }
 
 function buildLeadTime() {
@@ -8642,25 +8639,7 @@ function buildLeadTime() {
           + '<td style="padding:6px 8px;text-align:center;">'
           + '<div style="display:flex;align-items:center;justify-content:center;gap:4px;">'
           + flagHTML(calcFlagAutomatica(p))
-          + '<span onclick="ltAbrirEdicaoFlag(' + p.id + ')" title="' + (p.flagManual ? 'Flag manual — motivo: ' + (p.flagManualMotivo || 'sem motivo informado').replace(/"/g,'&quot;') : 'Editar flag manualmente') + '" style="font-size:10px;color:' + (p.flagManual ? 'var(--accent)' : 'var(--text-hint)') + ';cursor:pointer;">✎</span>'
-          + '</div>'
-          + '<div id="lt-flag-edit-' + p.id + '" onclick="if(event.target===this) ltFecharEdicaoFlag(' + p.id + ')" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.4);align-items:center;justify-content:center;">'
-          + '<div style="background:var(--surface);border-radius:10px;padding:16px;width:280px;box-shadow:0 8px 32px rgba(0,0,0,.3);text-align:left;">'
-          + '<div style="font-size:12px;font-weight:700;margin-bottom:8px;">' + (p.nome||'').replace(/</g,'&lt;') + '</div>'
-          + '<label style="font-size:10px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;">Flag</label>'
-          + '<select id="lt-flag-sel-' + p.id + '" class="sel" style="width:100%;font-size:12px;margin:3px 0 10px;">'
-          + '<option value="">Automático (calculado)</option>'
-          + '<option value="Verde"' + (p.flagManual==='Verde'?' selected':'') + '>Verde</option>'
-          + '<option value="Amarelo"' + (p.flagManual==='Amarelo'?' selected':'') + '>Amarelo</option>'
-          + '<option value="Vermelho"' + (p.flagManual==='Vermelho'?' selected':'') + '>Vermelho</option>'
-          + '</select>'
-          + '<label style="font-size:10px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;">Motivo</label>'
-          + '<textarea id="lt-flag-motivo-' + p.id + '" class="sel" placeholder="Por que essa flag?" style="width:100%;font-size:12px;min-height:70px;margin:3px 0 10px;resize:vertical;">' + (p.flagManualMotivo || '').replace(/</g,'&lt;') + '</textarea>'
-          + '<div style="display:flex;gap:6px;">'
-          + '<button onclick="ltSalvarFlagManual(' + p.id + ')" style="flex:1;padding:8px;border:none;border-radius:6px;background:var(--accent);color:#fff;font-size:12px;font-weight:600;cursor:pointer;">Salvar</button>'
-          + '<button onclick="ltFecharEdicaoFlag(' + p.id + ')" style="padding:8px 14px;border:1px solid var(--border);border-radius:6px;background:none;color:var(--text-muted);font-size:12px;cursor:pointer;">Cancelar</button>'
-          + '</div>'
-          + '</div>'
+          + '<span onclick="abrirModalFlag(' + p.id + ',\'leadtime\')" title="' + (p.flagManual ? 'Flag manual — motivo: ' + (p.flagManualMotivo || 'sem motivo informado').replace(/"/g,'&quot;') : 'Editar flag manualmente') + '" style="font-size:10px;color:' + (p.flagManual ? 'var(--accent)' : 'var(--text-hint)') + ';cursor:pointer;">✎</span>'
           + '</div>'
           + '</td>'
           // Score da entrega (seletor próprio + escala única 0–100)
