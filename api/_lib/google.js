@@ -47,7 +47,7 @@ export async function listMeetingFiles({ accessToken, sinceISO, folderId }) {
   do {
     const params = new URLSearchParams({
       q,
-      fields: 'nextPageToken,files(id,name,owners(displayName,emailAddress),modifiedTime,webViewLink)',
+      fields: 'nextPageToken,files(id,name,owners(displayName,emailAddress),modifiedTime,webViewLink,parents,driveId)',
       orderBy: 'modifiedTime desc',
       supportsAllDrives: 'true',
       includeItemsFromAllDrives: 'true',

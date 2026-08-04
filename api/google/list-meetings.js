@@ -32,6 +32,9 @@ export default async function handler(req, res) {
         donoEmail: f.owners?.[0]?.emailAddress || null,
         modificadoEm: f.modifiedTime,
         link: f.webViewLink,
+        _diagParents: f.parents || null,
+        _diagDriveId: f.driveId || null,
+        _diagOwnersFull: f.owners || null,
       }));
 
     res.status(200).json({ files: pendentes });
