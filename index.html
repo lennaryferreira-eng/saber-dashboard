@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;0,900;1,400&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
 
@@ -10631,6 +10632,7 @@ function audParseD9(txt, entrega){
 // ── FORMULÁRIO (identificação + colar análise) ──
 function audFormHTML(){
   const opt = (arr,sel) => arr.map(x=>'<option '+(x===sel?'selected':'')+'>'+x+'</option>').join('');
+  const optDatalist = (arr) => arr.map(x=>'<option value="'+x.replace(/"/g,'&quot;')+'">').join('');
   return '<div id="aud-drive-bar" style="display:none;margin-bottom:14px;">'
     + '<button onclick="audAbrirModalDrive()" style="background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:20px;padding:8px 18px;font-size:12px;font-weight:600;cursor:pointer;">🔗 Puxar reuniões do Drive</button>'
     + '</div>'
@@ -10644,23 +10646,18 @@ function audFormHTML(){
     + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px;">'
     + '<div><label class="aud-lbl">Consultor</label><select id="aud-f-consultor" class="aud-inp"><option value="">Selecione…</option>'+opt(audConsultores())+'</select></div>'
     + '<div><label class="aud-lbl">Tipo de entrega</label><select id="aud-f-tipo" class="aud-inp"><option value="">Selecione…</option>'+opt(AUD_TIPOS)+'</select></div>'
-    + '<div><label class="aud-lbl">Cliente</label><select id="aud-f-cliente" class="aud-inp"><option value="">Selecione…</option>'+opt(audClientes())+'</select></div>'
+    + '<div><label class="aud-lbl">Cliente</label><input id="aud-f-cliente" class="aud-inp" list="aud-f-cliente-list" autocomplete="off" placeholder="Digite pra buscar…"><datalist id="aud-f-cliente-list">'+optDatalist(audClientes())+'</datalist></div>'
     + '<div><label class="aud-lbl">Data da reunião</label><input id="aud-f-data" type="date" class="aud-inp"></div>'
     + '</div>'
+    + '<textarea id="aud-analise" style="display:none;"></textarea>'
     + '<div style="background:var(--surface2);border:1px dashed var(--border);border-radius:var(--r-sm);padding:14px;">'
-    + '<label class="aud-lbl">Cole a análise do Claude (dimensões d1–d8 + skill d9)</label>'
-    + '<textarea id="aud-analise" class="aud-inp" rows="5" placeholder="Cole aqui o texto da análise — a página distribui as notas nas 9 dimensões, extrai análise/plano e marca o checklist da d9."></textarea>'
-    + '<div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center;">'
-    + '<button onclick="audImportar()" style="background:var(--accent);color:#fff;border:none;border-radius:20px;padding:8px 20px;font-size:12px;font-weight:600;cursor:pointer;">✦ Importar e preencher</button>'
-    + '<button onclick="audManual()" style="background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:20px;padding:8px 18px;font-size:12px;cursor:pointer;">Preencher manual</button>'
-    + '<span id="aud-form-msg" style="font-size:12px;color:var(--text-hint);"></span>'
-    + '</div></div>'
-    + '<div style="background:var(--surface2);border:1px dashed var(--border);border-radius:var(--r-sm);padding:14px;margin-top:12px;">'
-    + '<label class="aud-lbl">Ou cole a transcrição da reunião — a ferramenta gera a análise com Claude</label>'
-    + '<textarea id="aud-transcricao" class="aud-inp" rows="5" placeholder="Cole aqui a transcrição da call…"></textarea>'
+    + '<label class="aud-lbl">Envie o arquivo da reunião (.pdf, .txt ou .md) — a ferramenta gera a análise com Claude</label>'
+    + '<input type="file" id="aud-arquivo" accept=".pdf,.txt,.md" class="aud-inp">'
     + '<div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center;">'
     + '<button id="aud-btn-gerar-claude" onclick="audGerarComClaude()" style="background:var(--accent);color:#fff;border:none;border-radius:20px;padding:8px 20px;font-size:12px;font-weight:600;cursor:pointer;">✦ Gerar avaliação com Claude</button>'
+    + '<button onclick="audManual()" style="background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:20px;padding:8px 18px;font-size:12px;cursor:pointer;">Preencher manual</button>'
     + '<span id="aud-gerar-msg" style="font-size:12px;color:var(--text-hint);"></span>'
+    + '<span id="aud-form-msg" style="font-size:12px;color:var(--text-hint);"></span>'
     + '</div></div>'
     + '<div id="aud-review" style="display:none;margin-top:18px;"></div>';
 }
@@ -10692,38 +10689,73 @@ function audManual(){
   audRenderReview(scores,obs,'');
 }
 
-// Chama o Claude no servidor (api/evaluate-meeting) com a transcrição colada, escreve o
-// texto devolvido no mesmo textarea de "colar análise pronta" e reaproveita audImportar() —
-// assim os dois caminhos (colar pronto vs. gerar) convergem no mesmo parser/tela de revisão,
-// sem duplicar lógica nem mudar o formato salvo.
+if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// Extrai o texto de um arquivo de reunião (.txt/.md lidos direto; .pdf via pdf.js, texto de
+// cada página concatenado).
+async function audExtrairTextoArquivo(file){
+  const nome=(file.name||'').toLowerCase();
+  if(nome.endsWith('.pdf')){
+    if(!window.pdfjsLib) throw new Error('Biblioteca de PDF ainda carregando — tente de novo em alguns segundos.');
+    const buf=await file.arrayBuffer();
+    const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+    let texto='';
+    for(let i=1;i<=pdf.numPages;i++){
+      const page=await pdf.getPage(i);
+      const content=await page.getTextContent();
+      texto+=content.items.map(it=>it.str).join(' ')+'\n';
+    }
+    return texto;
+  }
+  return await file.text();
+}
+
+// Chama o Claude no servidor (api/evaluate-meeting) com a transcrição — usado tanto pelo
+// upload manual de arquivo quanto pela fila do Drive, num único caminho sem duplicar a
+// lógica de chamada/erro.
+async function audChamarClaude(transcricao){
+  const response=await fetch('/api/evaluate-meeting',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({transcricao})
+  });
+  if(!response.ok){
+    const errBody=await response.json().catch(()=>({}));
+    const motivoReal=errBody?.details?.error?.message;
+    throw new Error(motivoReal || errBody.error || ('A API retornou um erro ('+response.status+')'));
+  }
+  const data=await response.json();
+  const textBlock=(data.content||[]).find(b=>b.type==='text');
+  if(!textBlock || !textBlock.text){ throw new Error('Resposta da IA veio vazia'); }
+  return textBlock.text;
+}
+
+// Gera a avaliação e joga o resultado no parser/tela de revisão existentes (textarea oculta
+// #aud-analise + audImportar()) — o mesmo caminho de sempre, só que preenchido por código em
+// vez de colado à mão.
+async function audGerarEImportar(transcricao){
+  const texto=await audChamarClaude(transcricao);
+  document.getElementById('aud-analise').value=texto;
+  audImportar();
+}
+
 async function audGerarComClaude(){
   if(!audIdentOk()) return;
-  const transcricao=(document.getElementById('aud-transcricao')?.value||'').trim();
+  const arquivo=document.getElementById('aud-arquivo')?.files?.[0];
   const msg=document.getElementById('aud-gerar-msg');
   const btn=document.getElementById('aud-btn-gerar-claude');
-  if(transcricao.length<100){ if(msg){msg.textContent='Cole a transcrição da reunião.';msg.style.color='var(--accent)';} return; }
+  if(!arquivo){ if(msg){msg.textContent='Selecione o arquivo da reunião (.pdf, .txt ou .md).';msg.style.color='var(--accent)';} return; }
   btn.disabled=true;
-  btn.textContent='Avaliando com Claude...';
+  btn.textContent='Lendo arquivo...';
   if(msg){msg.textContent='';msg.style.color='var(--text-hint)';}
   try{
-    const response=await fetch('/api/evaluate-meeting',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({transcricao})
-    });
-    if(!response.ok){
-      const errBody=await response.json().catch(()=>({}));
-      const motivoReal=errBody?.details?.error?.message;
-      throw new Error(motivoReal || errBody.error || ('A API retornou um erro ('+response.status+')'));
-    }
-    const data=await response.json();
-    const textBlock=(data.content||[]).find(b=>b.type==='text');
-    if(!textBlock || !textBlock.text){ throw new Error('Resposta da IA veio vazia'); }
-    document.getElementById('aud-analise').value=textBlock.text;
-    audImportar();
+    const transcricao=(await audExtrairTextoArquivo(arquivo)).trim();
+    if(transcricao.length<100) throw new Error('O arquivo parece vazio ou curto demais pra ser uma transcrição.');
+    btn.textContent='Avaliando com Claude...';
+    await audGerarEImportar(transcricao);
     if(msg){msg.textContent='✓ Gerado — revise e salve.';msg.style.color='var(--green)';}
   }catch(err){
-    if(msg){msg.textContent='Não consegui gerar a avaliação: '+err.message+'. Sua transcrição não foi perdida — tente novamente.';msg.style.color='var(--accent)';}
+    if(msg){msg.textContent='Não consegui gerar a avaliação: '+err.message;msg.style.color='var(--accent)';}
   }finally{
     btn.disabled=false;
     btn.textContent='✦ Gerar avaliação com Claude';
@@ -10760,36 +10792,43 @@ function audRenderListaDrive(files){
   if(!files.length){ lista.innerHTML='<div style="font-size:12px;color:var(--text-hint);padding:8px 0;">Nenhuma transcrição nova nos últimos 7 dias — tudo que existe já foi avaliado.</div>'; return; }
   const optCons=(sel)=>'<option value="">Consultor…</option>'+audConsultores().map(c=>'<option '+(c===sel?'selected':'')+'>'+c+'</option>').join('');
   const optTipo=(sel)=>'<option value="">Tipo…</option>'+AUD_TIPOS.map(t=>'<option '+(t===sel?'selected':'')+'>'+t+'</option>').join('');
-  lista.innerHTML=files.map((f,i)=>{
+  const clienteDatalist='<datalist id="aud-drive-cliente-list">'+audClientes().map(c=>'<option value="'+c.replace(/"/g,'&quot;')+'">').join('')+'</datalist>';
+  lista.innerHTML=clienteDatalist+files.map((f,i)=>{
     const consultorSugerido=audConsultores().find(c=>(f.donoNome||'').toLowerCase().includes(c.toLowerCase()) || (f.donoEmail||'').toLowerCase().includes(c.toLowerCase())) || '';
     return '<label style="display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--border);border-radius:var(--r-sm);cursor:pointer;">'
       + '<input type="checkbox" class="aud-drive-check" data-idx="'+i+'" style="margin-top:3px;">'
       + '<div style="flex:1;min-width:0;">'
       + '<div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+f.nome+'</div>'
       + '<div style="font-size:11px;color:var(--text-hint);margin-bottom:6px;">'+(f.donoNome||f.donoEmail||'dono desconhecido')+' · '+(f.modificadoEm?new Date(f.modificadoEm).toLocaleDateString('pt-BR'):'—')+'</div>'
-      + '<div style="display:flex;gap:8px;">'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
       + '<select class="aud-inp aud-drive-consultor" data-idx="'+i+'" style="font-size:12px;padding:5px 8px;" onclick="event.stopPropagation()">'+optCons(consultorSugerido)+'</select>'
       + '<select class="aud-inp aud-drive-tipo" data-idx="'+i+'" style="font-size:12px;padding:5px 8px;" onclick="event.stopPropagation()">'+optTipo('')+'</select>'
+      + '<input class="aud-inp aud-drive-cliente" data-idx="'+i+'" list="aud-drive-cliente-list" autocomplete="off" placeholder="Cliente…" style="font-size:12px;padding:5px 8px;width:160px;" onclick="event.stopPropagation()">'
       + '</div></div></label>';
   }).join('');
   lista.dataset.files=JSON.stringify(files);
 }
 
-// Monta a fila em memória com os itens marcados e fecha o modal — o processamento em si
-// acontece na área normal da Auditoria (reaproveita audGerarComClaude/audImportar/audRenderReview
-// sem duplicar nada delas).
+// Monta a fila em memória com os itens marcados e fecha o modal — o processamento roda
+// sozinho a partir daí (busca a transcrição e já avalia, sem precisar de nenhum clique
+// extra), reaproveitando audGerarEImportar/audImportar/audRenderReview sem duplicar nada.
 function audAdicionarSelecaoNaFila(){
   const lista=document.getElementById('aud-drive-lista'); if(!lista) return;
   const files=JSON.parse(lista.dataset.files||'[]');
   const itens=[];
+  const erro=document.getElementById('aud-drive-erro');
+  let faltouCliente=false;
   lista.querySelectorAll('.aud-drive-check').forEach(chk=>{
     if(!chk.checked) return;
     const idx=chk.dataset.idx;
     const consultor=lista.querySelector('.aud-drive-consultor[data-idx="'+idx+'"]')?.value||'';
     const tipo=lista.querySelector('.aud-drive-tipo[data-idx="'+idx+'"]')?.value||'';
-    itens.push({...files[idx], consultorSugerido:consultor, tipoSugerido:tipo});
+    const cliente=(lista.querySelector('.aud-drive-cliente[data-idx="'+idx+'"]')?.value||'').trim();
+    if(!cliente) faltouCliente=true;
+    itens.push({...files[idx], consultorSugerido:consultor, tipoSugerido:tipo, clienteSugerido:cliente});
   });
-  if(!itens.length){ const erro=document.getElementById('aud-drive-erro'); if(erro){erro.textContent='Selecione ao menos uma reunião.';erro.style.display='block';} return; }
+  if(!itens.length){ if(erro){erro.textContent='Selecione ao menos uma reunião.';erro.style.display='block';} return; }
+  if(faltouCliente){ if(erro){erro.textContent='Preencha o cliente de cada reunião selecionada.';erro.style.display='block';} return; }
   audFecharModalDrive();
   audFilaAtiva={itens, indice:-1};
   document.getElementById('sec-auditoria')?.scrollIntoView({behavior:'smooth',block:'start'});
@@ -10807,8 +10846,9 @@ function audAtualizaBarraFila(){
   const fill=bar.querySelector('.aud-fila-barra-fill'); if(fill) fill.style.width=pct+'%';
 }
 
-// Busca a transcrição do item atual da fila e a joga no textarea de "Ou cole a transcrição"
-// — o resto do fluxo (gerar com Claude, revisar, salvar) é manual e idêntico ao de sempre.
+// Busca a transcrição do item atual da fila no Drive e já avalia direto com o Claude — sem
+// mostrar a transcrição em textarea nenhuma e sem exigir clique manual. Só para na tela de
+// revisão de sempre, esperando o "Salvar avaliação" (a fila avança sozinha depois do save).
 async function audProcessarProximoDaFila(){
   if(!audFilaAtiva) return;
   audFilaAtiva.indice++;
@@ -10819,7 +10859,7 @@ async function audProcessarProximoDaFila(){
   const setVal=(id,val)=>{const el=document.getElementById(id); if(el) el.value=val||'';};
   setVal('aud-f-consultor', item.consultorSugerido);
   setVal('aud-f-tipo', item.tipoSugerido);
-  setVal('aud-f-cliente', '');
+  setVal('aud-f-cliente', item.clienteSugerido);
   setVal('aud-f-data', (item.modificadoEm||'').slice(0,10));
   const msg=document.getElementById('aud-gerar-msg');
   if(msg){msg.textContent='Baixando transcrição do Drive…';msg.style.color='var(--text-hint)';}
@@ -10829,10 +10869,11 @@ async function audProcessarProximoDaFila(){
     });
     const data=await response.json().catch(()=>({}));
     if(!response.ok) throw new Error(data.error || ('A API retornou um erro ('+response.status+')'));
-    setVal('aud-transcricao', data.texto||'');
-    if(msg){msg.textContent='Transcrição baixada — confira consultor/tipo/cliente/data acima e clique em "Gerar avaliação com Claude".';msg.style.color='var(--text-hint)';}
+    if(msg){msg.textContent='Avaliando com Claude…';msg.style.color='var(--text-hint)';}
+    await audGerarEImportar(data.texto||'');
+    if(msg){msg.textContent='✓ Gerado — revise e salve.';msg.style.color='var(--green)';}
   }catch(err){
-    if(msg){msg.textContent='Não consegui baixar essa transcrição do Drive: '+err.message+'. Pulando pra próxima.';msg.style.color='var(--accent)';}
+    if(msg){msg.textContent='Não consegui avaliar essa reunião: '+err.message+'. Pulando pra próxima.';msg.style.color='var(--accent)';}
     audProcessarProximoDaFila();
   }
 }
