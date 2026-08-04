@@ -1227,7 +1227,7 @@
 
 <!-- MODAL NOVO PROJETO -->
 <div class="modal-overlay" id="modal-flag-edit" onclick="if(event.target===this)fecharModalFlag()">
-  <div class="modal-box" style="max-width:320px;">
+  <div class="modal-box" style="max-width:320px;" role="dialog" aria-modal="true" aria-labelledby="flag-modal-nome">
     <div class="modal-header">
       <span class="modal-title" id="flag-modal-nome">Editar flag</span>
       <button class="modal-close" onclick="fecharModalFlag()">✕</button>
@@ -1250,9 +1250,9 @@
   </div>
 </div>
 <div class="modal-overlay" id="modal-novo-projeto" onclick="if(event.target===this)closeNovoProj()">
-  <div class="modal-box" style="max-width:480px;">
+  <div class="modal-box" style="max-width:480px;" role="dialog" aria-modal="true" aria-labelledby="novo-projeto-title">
     <div class="modal-header">
-      <span class="modal-title">Novo Projeto</span>
+      <span class="modal-title" id="novo-projeto-title">Novo Projeto</span>
       <button class="modal-close" onclick="closeNovoProj()">✕</button>
     </div>
     <div class="modal-body">
@@ -1405,9 +1405,9 @@
 
 <!-- ───────── MODAL: Nova Monetização (Passo 2) ───────── -->
 <div class="modal-overlay" id="modal-nova-mon" onclick="if(event.target===this)closeNovaMon()">
-  <div class="modal-box" style="max-width:480px;">
+  <div class="modal-box" style="max-width:480px;" role="dialog" aria-modal="true" aria-labelledby="nova-mon-title">
     <div class="modal-header">
-      <span class="modal-title">Nova Monetização</span>
+      <span class="modal-title" id="nova-mon-title">Nova Monetização</span>
       <button class="modal-close" onclick="closeNovaMon()">✕</button>
     </div>
     <div class="modal-body">
@@ -1459,9 +1459,9 @@
 
 <!-- ───────── MODAL: Registrar Evento de Pipeline ───────── -->
 <div class="modal-overlay" id="modal-pipe-evento" onclick="if(event.target===this)closeNovoPipeEvento()">
-  <div class="modal-box" style="max-width:480px;">
+  <div class="modal-box" style="max-width:480px;" role="dialog" aria-modal="true" aria-labelledby="pipe-evento-title">
     <div class="modal-header">
-      <span class="modal-title">Registrar Evento</span>
+      <span class="modal-title" id="pipe-evento-title">Registrar Evento</span>
       <button class="modal-close" onclick="closeNovoPipeEvento()">✕</button>
     </div>
     <div class="modal-body">
@@ -1511,9 +1511,9 @@
 
 <!-- ───────── MODAL: Puxar reuniões do Drive (Auditoria de Entregas) ───────── -->
 <div class="modal-overlay" id="modal-drive-fila" onclick="if(event.target===this)audFecharModalDrive()">
-  <div class="modal-box" id="modal-drive-box" style="max-width:820px;max-height:88vh;overflow-y:auto;">
+  <div class="modal-box" id="modal-drive-box" style="max-width:820px;max-height:88vh;overflow-y:auto;" role="dialog" aria-modal="true" aria-labelledby="drive-fila-title">
     <div class="modal-header">
-      <span class="modal-title">Puxar reuniões do Drive</span>
+      <span class="modal-title" id="drive-fila-title">Puxar reuniões do Drive</span>
       <button class="modal-close" onclick="audFecharModalDrive()">✕</button>
     </div>
     <div class="modal-body">
@@ -1535,9 +1535,9 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <div class="modal-overlay" id="modal-consultores" onclick="if(event.target===this)closeConsultoresModal()">
-  <div class="modal-box" style="max-width:540px;">
+  <div class="modal-box" style="max-width:540px;" role="dialog" aria-modal="true" aria-labelledby="consultores-title">
     <div class="modal-header">
-      <span class="modal-title">Gerenciar consultores</span>
+      <span class="modal-title" id="consultores-title">Gerenciar consultores</span>
       <button class="modal-close" onclick="closeConsultoresModal()">✕</button>
     </div>
     <div class="modal-body">
@@ -1558,9 +1558,9 @@
 </div>
 
 <div class="modal-overlay" id="modal-novo-projeto-ter" onclick="if(event.target===this)closeNovoProjTer()">
-  <div class="modal-box" style="max-width:480px;">
+  <div class="modal-box" style="max-width:480px;" role="dialog" aria-modal="true" aria-labelledby="novo-projeto-ter-title">
     <div class="modal-header">
-      <span class="modal-title">Novo Projeto — TER</span>
+      <span class="modal-title" id="novo-projeto-ter-title">Novo Projeto — TER</span>
       <button class="modal-close" onclick="closeNovoProjTer()">✕</button>
     </div>
     <div class="modal-body">
@@ -1621,9 +1621,9 @@
 </div>
 
 <div class="modal-overlay" id="modal-login" onclick="if(event.target===this)closeLoginModal()">
-  <div class="modal-box" style="max-width:360px;">
+  <div class="modal-box" style="max-width:360px;" role="dialog" aria-modal="true" aria-labelledby="login-modal-title">
     <div class="modal-header">
-      <span class="modal-title">Perfil de acesso</span>
+      <span class="modal-title" id="login-modal-title">Perfil de acesso</span>
       <button class="modal-close" onclick="closeLoginModal()">✕</button>
     </div>
     <div class="modal-body">
@@ -1638,6 +1638,23 @@
     </div>
   </div>
 </div>
+
+<!-- Modal genérico de confirmação/alerta — usado por showConfirm()/showAlert() (index.html)
+     no lugar de confirm()/alert() nativos do navegador. -->
+<div class="modal-overlay" id="modal-confirm" onclick="if(event.target===this)_confirmModalResponder(false)">
+  <div class="modal-box" style="max-width:400px;" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-msg">
+    <div class="modal-body">
+      <div id="confirm-modal-msg" style="font-size:13px;color:var(--text);line-height:1.5;white-space:pre-line;"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
+        <button id="confirm-modal-cancel" class="btn btn-ghost" onclick="_confirmModalResponder(false)">Cancelar</button>
+        <button id="confirm-modal-ok" class="btn btn-primary" onclick="_confirmModalResponder(true)">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast global — showToast() (index.html) escreve aqui. -->
+<div id="toast-container" aria-live="polite"></div>
 
 <script>
 
@@ -2322,6 +2339,106 @@ function setStyle(id, prop, val) { const e = document.getElementById(id); if (e)
 function pct(v, max) { return max > 0 ? Math.min(100, Math.round(v / max * 100)) : 0; }
 function BRL(v) { return 'R$ ' + Math.round(v).toLocaleString('pt-BR'); }
 function emptyRow(cols, msg) { return `<tr><td colspan="${cols}" style="color:var(--text-hint);text-align:center;padding:18px;font-size:12px;">${msg}</td></tr>`; }
+
+// ── COMPONENTES COMPARTILHADOS (Fase 1 do redesign) ──
+
+// Mapa de status usado em DRO/Pipeline/etc. — antes existiam duas cópias idênticas
+// (stMap em buildDRO, _stMap numa função separada); agora é uma constante só.
+const STATUS_MAP = {feito:['var(--green)','✓ feito'],atrasado:['var(--red)','⚠ atrasado'],agora:['var(--amber)','● agora'],pendente:['var(--text-hint)','○ pendente'],futuro:['var(--text-hint)','○ futuro']};
+
+// Ícones SVG inline — substitui emoji usados como ícone de UI (Fase 4). Não usar aqui pros
+// ✅/⚠️/❌ da Auditoria (esses são âncoras de parse do texto gerado pelo Claude, ficam como
+// texto) nem pro pool de confete decorativo.
+const ICONS = {
+  check:'<path d="M4 8.5l2.5 2.5L12 4.5"/>',
+  x:'<path d="M4 4l8 8M12 4l-8 8"/>',
+  warning:'<path d="M8 2L1 14h14L8 2z"/><path d="M8 6.5v3.5M8 12h.01"/>',
+  info:'<circle cx="8" cy="8" r="6.5"/><path d="M8 7.5v4M8 5h.01"/>',
+  upload:'<path d="M8 11V3M4.5 6.5L8 3l3.5 3.5M3 13h10"/>',
+  download:'<path d="M8 3v8M4.5 7.5L8 11l3.5-3.5M3 13h10"/>',
+  star:'<path d="M8 1.5l2 4.2 4.6.5-3.4 3.2.9 4.6L8 11.8l-4.1 2.2.9-4.6L1.4 6.2l4.6-.5L8 1.5z"/>',
+  flag:'<path d="M3 14V2M3 3h9l-2 3 2 3H3"/>',
+  edit:'<path d="M11 2l3 3-8 8-3.5 1 1-3.5L11 2z"/>',
+  search:'<circle cx="7" cy="7" r="5"/><path d="M11 11l4 4"/>',
+  link:'<path d="M6.5 9.5L9.5 6.5M7 4.5L8.2 3.3a2.5 2.5 0 013.5 3.5L10.5 8M9 11.5L7.8 12.7a2.5 2.5 0 01-3.5-3.5L5.5 8"/>',
+  lock:'<rect x="3" y="7" width="10" height="7" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 015 0v2"/>',
+  users:'<circle cx="6" cy="5.5" r="2.5"/><path d="M1.5 14v-1a4 4 0 014-4h1a4 4 0 014 4v1"/><circle cx="12" cy="6" r="2"/><path d="M11 14v-1a3.5 3.5 0 00-1.2-2.7"/>',
+  clock:'<circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.5 1.5"/>',
+};
+function icon(name, opts) {
+  opts = opts || {};
+  const size = opts.size || 14;
+  const body = ICONS[name];
+  if (!body) return ''; // nome desconhecido — não quebra a UI, só não renderiza nada
+  const label = opts.label ? '<title>'+opts.label+'</title>' : '';
+  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="'+(opts.label?'false':'true')+'">'+label+body+'</svg>';
+}
+
+// Toast — substitui o padrão de aviso ad-hoc (showToast local do Cultura, alert() cru em
+// vários lugares). type: 'success'|'error'|'info'.
+function showToast(msg, type) {
+  let container = document.getElementById('toast-container');
+  if (!container) return;
+  const el = document.createElement('div');
+  el.className = 'toast ' + (type || 'info');
+  el.textContent = msg;
+  container.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 300);
+  }, 4000);
+}
+
+// Confirmação/alerta em modal — substitui confirm()/alert() nativos (Fase 6). Promise-based:
+// showConfirm resolve true/false; showAlert resolve depois do OK.
+let _confirmResolve = null;
+function _abrirModalConfirm(msg, { confirmLabel, cancelLabel, showCancel }) {
+  return new Promise((resolve) => {
+    _confirmResolve = resolve;
+    document.getElementById('confirm-modal-msg').textContent = msg;
+    const okBtn = document.getElementById('confirm-modal-ok');
+    const cancelBtn = document.getElementById('confirm-modal-cancel');
+    okBtn.textContent = confirmLabel || 'OK';
+    cancelBtn.style.display = showCancel === false ? 'none' : '';
+    if (cancelBtn.style.display !== 'none') cancelBtn.textContent = cancelLabel || 'Cancelar';
+    const modal = document.getElementById('modal-confirm');
+    modal.style.display = 'flex';
+    okBtn.focus();
+  });
+}
+function showConfirm(msg, opts) {
+  opts = opts || {};
+  return _abrirModalConfirm(msg, { confirmLabel: opts.confirmLabel, cancelLabel: opts.cancelLabel, showCancel: true });
+}
+function showAlert(msg, type) {
+  return _abrirModalConfirm(msg, { confirmLabel: 'OK', showCancel: false }).then(() => {});
+}
+function _confirmModalResponder(v) {
+  document.getElementById('modal-confirm').style.display = 'none';
+  if (_confirmResolve) { const r = _confirmResolve; _confirmResolve = null; r(v); }
+}
+
+// Esc fecha o modal visível — nenhum dos 8 modais existentes tinha esse atalho antes.
+// Backdrop-click (já existente em todos) continua funcionando do jeito que estava.
+const MODAL_CLOSE_FN = {
+  'modal-flag-edit':'fecharModalFlag', 'modal-novo-projeto':'closeNovoProj',
+  'modal-nova-mon':'closeNovaMon', 'modal-pipe-evento':'closeNovoPipeEvento',
+  'modal-drive-fila':'audFecharModalDrive', 'modal-consultores':'closeConsultoresModal',
+  'modal-novo-projeto-ter':'closeNovoProjTer', 'modal-login':'closeLoginModal',
+  'modal-confirm':()=>_confirmModalResponder(false),
+};
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  for (const id in MODAL_CLOSE_FN) {
+    const el = document.getElementById(id);
+    if (el && el.style.display !== 'none' && el.style.display !== '') {
+      const fn = MODAL_CLOSE_FN[id];
+      if (typeof fn === 'function') fn(); else if (typeof window[fn] === 'function') window[fn]();
+      break; // só o primeiro modal aberto encontrado — não devem existir dois abertos ao mesmo tempo
+    }
+  }
+});
 
 // ════════════════════════════════════════════════════════════════
 //  PASSO 1 — CAMADA DE DADOS: monetizacoes[] (fonte da verdade)
@@ -3089,6 +3206,7 @@ const PERFIS_POR_EMAIL = {
   'cleiton@v4company.com':       PERFIS['cleiton2026'],
   'vinicius@v4company.com':      PERFIS['vinicius2026'],
   'suzana@v4company.com':        PERFIS['suzana2026'],
+  'suzana.ribeiro@v4company.com': PERFIS['suzana2026'], // e-mail real dela tem sobrenome — "suzana@" sozinho não existe
   'alexandre@v4company.com':     PERFIS['alexandre2026'],
   'eduardo@v4company.com':       PERFIS['eduardo2026'],
 };
@@ -3868,8 +3986,7 @@ function buildDRO(){
     const fasesHTML = DRO_FASES.map(f=>{
       const com=ciclo[f.ck]||{prev:'',real:''};
       const stt=droComiteStatus(com,f.semFim,sem);
-      const stMap={feito:['var(--green)','✓ feito'],atrasado:['var(--red)','⚠ atrasado'],agora:['var(--amber)','● agora'],pendente:['var(--text-hint)','○ pendente'],futuro:['var(--text-hint)','○ futuro']};
-      const [scor,stxt]=stMap[stt];
+      const [scor,stxt]=STATUS_MAP[stt];
       return `<div style="border:1px solid var(--border);border-radius:9px;overflow:hidden;">
         <div style="font-size:11px;font-weight:700;padding:6px 9px;color:#fff;background:${f.cor};display:flex;justify-content:space-between;">${f.nome}<span style="font-weight:500;opacity:.85;">${f.sem}</span></div>
         <div style="padding:8px 9px;font-size:10px;color:var(--text-muted);">
@@ -3893,7 +4010,7 @@ function buildDRO(){
         style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;cursor:pointer;${exp?'margin-bottom:12px;':''}">
         <div>
           <div style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;"><span style="width:9px;height:9px;border-radius:50%;background:var(--dro,#8E5BC4);display:inline-block;"></span>${p.nome} <span class="badge" style="background:rgba(142,91,196,.14);color:var(--dro,#8E5BC4);font-size:10px;margin-top:0;">DRO</span></div>
-          <div style="font-size:12px;color:var(--text-hint);margin-top:2px;">${p.consultor||'—'} · ${p.inicio||'?'} → ${p.prevFim||'?'} · ${ciclos.length} ciclos${p.gmv? ' · GMV R$ '+Number(p.gmv).toLocaleString('pt-BR'):''}</div>
+          <div style="font-size:12px;color:var(--text-hint);margin-top:2px;">${p.consultor||'—'} · ${p.inicio||'?'} → ${p.prevFim||'?'} · ${ciclos.length} ciclos${p.gmv? ' · GMV '+BRL(p.gmv):''}</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;" onclick="event.stopPropagation()">
           ${flagHTML(calcFlagAutomatica(p))}
@@ -4007,11 +4124,10 @@ function drxCard(p, hoje){
   }).join('');
 
   const dI = parseDate(p.inicio);
-  const _stMap={feito:['var(--green)','✓ feito'],atrasado:['var(--red)','⚠ atrasado'],agora:['var(--amber)','● agora'],pendente:['var(--text-hint)','○ pendente'],futuro:['var(--text-hint)','○ futuro']};
   const _marcoItems = DRX_MARCOS.map(m=>{
     const mo=dx.marcos[m.k]||{prev:'',real:''};
     const st=drxMarcoStatus(mo,m.sem,sem);
-    const cor=_stMap[st][0], txt=_stMap[st][1];
+    const cor=STATUS_MAP[st][0], txt=STATUS_MAP[st][1];
     const d = mo.real?parseDate(mo.real): mo.prev?parseDate(mo.prev): (dI? new Date(dI.getTime()+(m.sem-1)*7*864e5):null);
     const html='<div style="border:1px solid var(--border);border-radius:9px;padding:9px 10px;">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;"><b style="font-size:11px;">🏁 '+m.nome+'</b><span style="font-size:10px;font-weight:700;color:'+cor+';">'+txt+'</span></div>'
@@ -4036,7 +4152,7 @@ function drxCard(p, hoje){
   + '<div class="card" style="margin-bottom:1rem;">'
   +   '<div onclick="const pr=projects.find(x=>String(x.id)===String('+p.id+'));pr.droExpanded=!pr.droExpanded;buildDRO();" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;cursor:pointer;'+(exp?'margin-bottom:12px;':'')+'">'
   +     '<div><div style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;"><span style="width:9px;height:9px;border-radius:50%;background:var(--drx,#0d9488);display:inline-block;"></span>'+p.nome+' <span class="badge" style="background:rgba(13,148,136,.14);color:var(--drx,#0d9488);font-size:10px;margin-top:0;">DR-X</span></div>'
-  +     '<div style="font-size:12px;color:var(--text-hint);margin-top:2px;">'+(p.consultor||'—')+' · '+(p.inicio||'?')+' → '+(p.prevFim||'?')+' · 6 semanas'+(p.gmv? ' · GMV R$ '+Number(p.gmv).toLocaleString('pt-BR'):'')+'</div></div>'
+  +     '<div style="font-size:12px;color:var(--text-hint);margin-top:2px;">'+(p.consultor||'—')+' · '+(p.inicio||'?')+' → '+(p.prevFim||'?')+' · 6 semanas'+(p.gmv? ' · GMV '+BRL(p.gmv):'')+'</div></div>'
   +     '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;" onclick="event.stopPropagation()">'+flagHTML(calcFlagAutomatica(p))
   +       '<select class="sel" style="font-size:11px;padding:2px 6px;" onchange="const pr=projects.find(x=>String(x.id)===String('+p.id+'));pr.oport=this.value;upd();"><option value="" '+(!p.oport?'selected':'')+'>Sem oportunidade</option>'+oportSel('Mapeado (AQL)')+oportSel('Apresentar proposta (SQL)')+oportSel('Proposta apresentada (SAL)')+oportSel('Follow (COMMIT)')+'</select>'
   +       '<span style="font-size:16px;color:var(--text-hint);line-height:1;display:inline-block;transform:rotate('+(exp?'0':'180deg')+');">⌃</span>'
@@ -11457,8 +11573,17 @@ function consRowHTML(nome, cor){
     +'<span class="cons-dot" style="width:12px;height:12px;border-radius:50%;background:'+cor+';flex-shrink:0;"></span>'
     +'<input class="cons-nome aud-inp" value="'+safe+'" placeholder="Nome do consultor" style="flex:1;">'
     +'<select class="cons-cor aud-inp" style="width:120px;" onchange="this.closest(\'.cons-row\').querySelector(\'.cons-dot\').style.background=this.value;">'+opts+'</select>'
-    +'<button onclick="this.closest(\'.cons-row\').remove();" title="Remover" style="background:none;border:none;cursor:pointer;color:var(--text-hint);font-size:14px;">✕</button>'
+    +'<button onclick="consRemoverLinha(this)" title="Remover" style="background:none;border:none;cursor:pointer;color:var(--text-hint);font-size:14px;">✕</button>'
     +'</div>';
+}
+// Antes removia a linha direto sem perguntar — só ficava "seguro" porque nada persiste até
+// clicar em "Salvar" no modal, mas nada avisava isso ao usuário nem dava chance de desistir.
+async function consRemoverLinha(btn){
+  const row = btn.closest('.cons-row');
+  const nome = row.querySelector('.cons-nome')?.value || 'este consultor';
+  if (await showConfirm('Remover "'+nome+'" da lista? Só será salvo de verdade se você clicar em "Salvar" depois.')) {
+    row.remove();
+  }
 }
 function openConsultoresModal(){
   const list = (typeof squadList==='function') ? squadList() : (window.CONS_MON||[]);
