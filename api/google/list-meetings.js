@@ -32,7 +32,6 @@ export default async function handler(req, res) {
       /comit[eê]/i,
       /all hands/i,
       /\bweekly\b/i,
-      /alinhamento interno/i,
       /^\s*\[cancelado\]/i,
       /^\s*reuni[aã]o iniciada [aà]s/i, // título automático do Meet sem evento de calendário — sem nenhuma informação
       /^\s*anota[cç][oõ]es feitas presencialmente/i, // idem — genérico, sem cliente identificável
@@ -40,7 +39,11 @@ export default async function handler(req, res) {
       /treinamento.*para consultores/i,
       /treinamento.*copy por ia/i,
       /guaravita/i, // cliente Guaravita não entra nessa fila — pedido explícito
+      /viton\s?44/i, // idem — outro nome usado pra Guaravita/Viton 44
       /check[\s-]?in/i, // reunião de check-in (qualquer cliente) não entra nessa fila — pedido explícito
+      /alinhamento/i, // qualquer alinhamento (interno ou não) não entra nessa fila — pedido explícito
+      /\b1[:\-]1\b/i, // 1:1
+      /nrr day/i,
     ];
     const ehInterna = (nome) => PADROES_INTERNOS.some((re) => re.test(nome || ''));
 

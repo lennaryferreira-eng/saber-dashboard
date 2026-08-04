@@ -10979,11 +10979,11 @@ async function audGerarComClaude(){
 // ── FILA DO DRIVE (ADM) ──
 // Abre o modal, busca no Drive as transcrições dos últimos 30 dias que ainda não têm
 // avaliação salva (driveFileId já usado em `auditorias` é excluído no próprio servidor).
-// O servidor já filtra fora o ruído interno (Daily/Comitê/All Hands/Weekly/
-// Alinhamento Interno/títulos genéricos do Meet/treinamento interno) — não dá pra exigir
-// uma palavra fixa tipo "entrega" no nome porque cada consultor nomeia do seu jeito, então
-// a lista prefere mostrar alguma reunião interna a mais (o ADM ignora/pula) a esconder
-// reunião de cliente de outro consultor.
+// O servidor já filtra fora o ruído/tipos que não interessam pra essa fila (Daily/Comitê/
+// All Hands/Weekly/Alinhamento/1:1/NRR Day/Check-in/Guaravita-Viton44/títulos genéricos do
+// Meet/treinamento interno) — não dá pra exigir uma palavra fixa tipo "entrega" no nome
+// porque cada consultor nomeia do seu jeito, então a lista prefere mostrar alguma reunião
+// interna a mais (o ADM ignora/pula) a esconder reunião de cliente de outro consultor.
 // A "conta de origem" (dono do arquivo no Drive) aparece em cada item pra diferenciar
 // gravações repetidas puxadas de contas diferentes.
 async function audAbrirModalDrive(){
