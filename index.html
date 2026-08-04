@@ -1506,7 +1506,7 @@
 
 <!-- ───────── MODAL: Puxar reuniões do Drive (Auditoria de Entregas) ───────── -->
 <div class="modal-overlay" id="modal-drive-fila" onclick="if(event.target===this)audFecharModalDrive()">
-  <div class="modal-box" id="modal-drive-box" style="max-width:640px;max-height:85vh;overflow-y:auto;">
+  <div class="modal-box" id="modal-drive-box" style="max-width:820px;max-height:88vh;overflow-y:auto;">
     <div class="modal-header">
       <span class="modal-title">Puxar reuniões do Drive</span>
       <button class="modal-close" onclick="audFecharModalDrive()">✕</button>
@@ -10952,23 +10952,23 @@ function audRenderReview(scores,obs,rec){
       const d=AUD_DIMS.find(x=>x.id===id), sc=scores[id]!=null?scores[id]:70;
       const o=obs[id]||{}, oa=o.analise||'', op=o.plano||'';
       if(id==='d9'){
-        html+='<div style="padding:10px 0;border-bottom:1px solid var(--border);">'
-          + '<div style="display:grid;grid-template-columns:1fr 230px;gap:14px;align-items:start;">'
-          + '<div><div style="font-size:13px;font-weight:600;color:'+d.cor+';">'+d.nome+'</div><div style="font-size:11px;color:var(--text-hint);margin-bottom:6px;">'+d.desc+' · '+(entrega||'—')+'</div>'
-          + '<textarea id="aud-analise-d9" rows="2" class="aud-inp" placeholder="Observação técnica…" style="border-left:2px solid '+d.cor+';">'+oa+'</textarea></div>'
+        html+='<div style="padding:16px 0;border-bottom:1px solid var(--border);">'
+          + '<div style="display:grid;grid-template-columns:1fr 230px;gap:18px;align-items:start;">'
+          + '<div><div style="font-size:13px;font-weight:600;color:'+d.cor+';">'+d.nome+'</div><div style="font-size:11px;color:var(--text-hint);margin-bottom:8px;">'+d.desc+' · '+(entrega||'—')+'</div>'
+          + '<textarea id="aud-analise-d9" rows="5" class="aud-inp" placeholder="Observação técnica…" style="border-left:2px solid '+d.cor+';line-height:1.55;resize:vertical;">'+oa+'</textarea></div>'
           + '<div style="display:flex;flex-direction:column;gap:6px;"><input type="range" min="0" max="100" value="'+sc+'" id="aud-range-d9" oninput="audSyncDim(\'d9\',\'range\')" style="accent-color:'+d.cor+';"><input type="number" min="0" max="100" value="'+sc+'" id="aud-num-d9" oninput="audSyncDim(\'d9\',\'num\')" class="aud-inp" style="text-align:center;font-weight:700;"></div>'
-          + '</div><div id="aud-d9-checklist" style="margin-top:10px;"></div></div>';
+          + '</div><div id="aud-d9-checklist" style="margin-top:12px;"></div></div>';
       } else {
-        html+='<div style="display:grid;grid-template-columns:1fr 230px;gap:14px;align-items:start;padding:10px 0;border-bottom:1px solid var(--border);">'
-          + '<div><div style="font-size:13px;font-weight:600;color:'+d.cor+';">'+d.nome+'</div><div style="font-size:11px;color:var(--text-hint);margin-bottom:6px;">'+d.desc+'</div>'
-          + '<textarea id="aud-analise-'+id+'" rows="2" class="aud-inp" placeholder="Análise: o que foi observado…" style="border-left:2px solid '+d.cor+';margin-bottom:6px;">'+oa+'</textarea>'
-          + '<textarea id="aud-plano-'+id+'" rows="2" class="aud-inp" placeholder="Plano de ação: o que melhorar…" style="border-left:2px solid var(--amber);">'+op+'</textarea></div>'
+        html+='<div style="display:grid;grid-template-columns:1fr 230px;gap:18px;align-items:start;padding:16px 0;border-bottom:1px solid var(--border);">'
+          + '<div><div style="font-size:13px;font-weight:600;color:'+d.cor+';">'+d.nome+'</div><div style="font-size:11px;color:var(--text-hint);margin-bottom:8px;">'+d.desc+'</div>'
+          + '<textarea id="aud-analise-'+id+'" rows="5" class="aud-inp" placeholder="Análise: o que foi observado…" style="border-left:2px solid '+d.cor+';margin-bottom:8px;line-height:1.55;resize:vertical;">'+oa+'</textarea>'
+          + '<textarea id="aud-plano-'+id+'" rows="4" class="aud-inp" placeholder="Plano de ação: o que melhorar…" style="border-left:2px solid var(--amber);line-height:1.55;resize:vertical;">'+op+'</textarea></div>'
           + '<div style="display:flex;flex-direction:column;gap:6px;"><input type="range" min="0" max="100" value="'+sc+'" id="aud-range-'+id+'" oninput="audSyncDim(\''+id+'\',\'range\')" style="accent-color:'+d.cor+';"><input type="number" min="0" max="100" value="'+sc+'" id="aud-num-'+id+'" oninput="audSyncDim(\''+id+'\',\'num\')" class="aud-inp" style="text-align:center;font-weight:700;"></div>'
           + '</div>';
       }
     });
   });
-  html+='<div style="margin-top:14px;"><label class="aud-lbl">Recomendação geral</label><textarea id="aud-rec" class="aud-inp" rows="2" placeholder="Principal recomendação…">'+(rec||'')+'</textarea></div>';
+  html+='<div style="margin-top:16px;"><label class="aud-lbl">Recomendação geral</label><textarea id="aud-rec" class="aud-inp" rows="3" placeholder="Principal recomendação…" style="line-height:1.55;resize:vertical;">'+(rec||'')+'</textarea></div>';
   html+='<div style="margin-top:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">'
     + '<div style="font-size:13px;">Nota geral: <strong id="aud-media" style="font-size:22px;color:var(--accent);">—</strong><span style="font-size:12px;color:var(--text-hint);">/100</span></div>'
     + (audEditandoId ? '<span style="font-size:11px;color:var(--amber);font-weight:600;">✎ editando avaliação existente</span>' : '')
