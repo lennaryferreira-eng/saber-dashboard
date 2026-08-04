@@ -3456,7 +3456,10 @@ function updatePerfilBtn() {
   const btn = document.getElementById('perfil-btn');
   if (!btn) return;
   if (currentPerfil) {
-    const sufixo = currentPerfil.consultor ? ' · SOMENTE LEITURA' : ' · ADM';
+    // Só ADM leva sufixo — antes só checava "consultor", então designer (Eduardo, Alexandre)
+    // caía no "else" e aparecia como "· ADM" por engano. Não-ADM agora não leva sufixo nenhum.
+    const ehADM = !currentPerfil.consultor && !currentPerfil.designer && !currentPerfil.viewer;
+    const sufixo = ehADM ? ' · ADM' : '';
     btn.textContent = '👤 ' + currentPerfil.nome.toUpperCase() + sufixo;
     btn.style.background = 'var(--accent)';
     btn.style.color = '#fff';
