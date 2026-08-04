@@ -3198,17 +3198,19 @@ const PERFIS = {
 // Login com Google (substitui a senha compartilhada) — mapeia e-mail @v4company.com pro
 // mesmo objeto de perfil já usado acima, sem duplicar nenhuma definição de permissão.
 const PERFIS_POR_EMAIL = {
-  'leonam.lael@v4company.com':   PERFIS['saberadm2026'],
+  'leonam.lael@v4company.com':      PERFIS['saberadm2026'],
   'lennary.ferreira@v4company.com': PERFIS['saberadm2026'],
-  'camila@v4company.com':        PERFIS['camila2026'],
-  'caio@v4company.com':          PERFIS['caio2026'],
-  'loma@v4company.com':          PERFIS['loma2026'],
-  'cleiton@v4company.com':       PERFIS['cleiton2026'],
-  'vinicius@v4company.com':      PERFIS['vinicius2026'],
-  'suzana@v4company.com':        PERFIS['suzana2026'],
-  'suzana.ribeiro@v4company.com': PERFIS['suzana2026'], // e-mail real dela tem sobrenome — "suzana@" sozinho não existe
-  'alexandre@v4company.com':     PERFIS['alexandre2026'],
-  'eduardo@v4company.com':       PERFIS['eduardo2026'],
+  // E-mails reais confirmados — o padrão "<primeironome>@v4company.com" usado antes era só
+  // um chute e não batia com o e-mail de verdade de quase ninguém (por isso o login da
+  // Suzana falhou: o sistema esperava "suzana@" e o real é "suzana.ribeiro@").
+  'camila-lima@v4company.com':      PERFIS['camila2026'],
+  'ruancaio.ferreira@v4company.com': PERFIS['caio2026'],
+  'aloma.oliveira@v4company.com':   PERFIS['loma2026'],
+  'cleiton@v4company.com':          PERFIS['cleiton2026'],
+  'vinicius.castro@v4company.com':  PERFIS['vinicius2026'],
+  'suzana.ribeiro@v4company.com':   PERFIS['suzana2026'],
+  'alexandre.souza@v4company.com':  PERFIS['alexandre2026'],
+  'eduardo.rodrigues@v4company.com': PERFIS['eduardo2026'],
 };
 const GOOGLE_SIGNIN_CLIENT_ID = '788888653347-eeda74tlsvgtfkagnsqqp1bbrt2ocufv.apps.googleusercontent.com';
 // Abas que ficam visíveis pra quem loga como consultor (não-ADM) — as demais somem do menu.
