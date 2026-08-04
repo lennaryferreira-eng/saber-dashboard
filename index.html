@@ -1506,20 +1506,24 @@
 
 <!-- ───────── MODAL: Puxar reuniões do Drive (Auditoria de Entregas) ───────── -->
 <div class="modal-overlay" id="modal-drive-fila" onclick="if(event.target===this)audFecharModalDrive()">
-  <div class="modal-box" style="max-width:640px;">
+  <div class="modal-box" id="modal-drive-box" style="max-width:640px;max-height:85vh;overflow-y:auto;">
     <div class="modal-header">
       <span class="modal-title">Puxar reuniões do Drive</span>
       <button class="modal-close" onclick="audFecharModalDrive()">✕</button>
     </div>
     <div class="modal-body">
-      <div id="aud-drive-lista" style="display:flex;flex-direction:column;gap:10px;max-height:60vh;overflow-y:auto;">
-        <div style="font-size:12px;color:var(--text-hint);padding:8px 0;">Buscando transcrições recentes…</div>
+      <div id="modal-drive-selecao">
+        <div id="aud-fila-concluida-msg" style="display:none;font-size:13px;color:var(--green);font-weight:600;padding:8px 0;"></div>
+        <div id="aud-drive-lista" style="display:flex;flex-direction:column;gap:10px;max-height:60vh;overflow-y:auto;">
+          <div style="font-size:12px;color:var(--text-hint);padding:8px 0;">Buscando transcrições recentes…</div>
+        </div>
+        <div id="aud-drive-erro" style="display:none;font-size:12px;color:var(--red);padding:8px 12px;background:var(--red-dim);border-radius:var(--r-sm);margin-top:10px;"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:14px;">
+          <button onclick="audFecharModalDrive()" style="font-family:var(--sans);font-size:13px;padding:8px 18px;border:1px solid var(--border);border-radius:20px;background:none;color:var(--text-muted);cursor:pointer;">Cancelar</button>
+          <button onclick="audAdicionarSelecaoNaFila()" style="font-family:var(--sans);font-size:13px;font-weight:600;padding:8px 22px;border:none;border-radius:20px;background:var(--accent);color:#fff;cursor:pointer;">Adicionar selecionadas à fila</button>
+        </div>
       </div>
-      <div id="aud-drive-erro" style="display:none;font-size:12px;color:var(--red);padding:8px 12px;background:var(--red-dim);border-radius:var(--r-sm);margin-top:10px;"></div>
-      <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:14px;">
-        <button onclick="audFecharModalDrive()" style="font-family:var(--sans);font-size:13px;padding:8px 18px;border:1px solid var(--border);border-radius:20px;background:none;color:var(--text-muted);cursor:pointer;">Cancelar</button>
-        <button onclick="audAdicionarSelecaoNaFila()" style="font-family:var(--sans);font-size:13px;font-weight:600;padding:8px 22px;border:none;border-radius:20px;background:var(--accent);color:#fff;cursor:pointer;">Adicionar selecionadas à fila</button>
-      </div>
+      <div id="modal-drive-processando" style="display:none;"></div>
     </div>
   </div>
 </div>
@@ -10671,6 +10675,7 @@ function audIdentOk(){
 let audEditandoId = null; // null = criando avaliação nova; com valor = editando uma já salva
 let audFilaAtiva = null; // {itens:[{id,nome,donoNome,donoEmail,modificadoEm}], indice:number} — fila do Drive em processamento
 let audFilaDriveFileIdAtual = null; // driveFileId do item da fila em revisão agora, capturado por audSalvar()
+let audFilaNosOriginais = null; // guarda onde #aud-fila-progresso e #aud-review viviam na página, pra devolver quando a fila fecha o popup
 
 function audImportar(){
   if(!audIdentOk()) return;
@@ -10726,7 +10731,10 @@ async function audChamarClaude(transcricao){
   }
   const data=await response.json();
   const textBlock=(data.content||[]).find(b=>b.type==='text');
-  if(!textBlock || !textBlock.text){ throw new Error('Resposta da IA veio vazia'); }
+  if(!textBlock || !textBlock.text){
+    if(data.stop_reason==='max_tokens') throw new Error('A resposta foi cortada por limite de tokens antes de terminar — tente de novo (transcrições muito longas podem precisar de mais espaço).');
+    throw new Error('Resposta da IA veio vazia');
+  }
   return textBlock.text;
 }
 
@@ -10767,6 +10775,9 @@ async function audGerarComClaude(){
 // avaliação salva (driveFileId já usado em `auditorias` é excluído no próprio servidor).
 async function audAbrirModalDrive(){
   const mod=document.getElementById('modal-drive-fila'); if(mod) mod.style.display='flex';
+  const selecao=document.getElementById('modal-drive-selecao'); if(selecao) selecao.style.display='block';
+  const proc=document.getElementById('modal-drive-processando'); if(proc) proc.style.display='none';
+  const concluidaMsg=document.getElementById('aud-fila-concluida-msg'); if(concluidaMsg) concluidaMsg.style.display='none';
   const lista=document.getElementById('aud-drive-lista');
   const erro=document.getElementById('aud-drive-erro');
   if(erro){erro.style.display='none';erro.textContent='';}
@@ -10785,7 +10796,46 @@ async function audAbrirModalDrive(){
     if(erro){erro.textContent='Não consegui buscar as reuniões do Drive: '+err.message;erro.style.display='block';}
   }
 }
-function audFecharModalDrive(){ const m=document.getElementById('modal-drive-fila'); if(m) m.style.display='none'; }
+function audFecharModalDrive(){
+  const m=document.getElementById('modal-drive-fila'); if(m) m.style.display='none';
+  // Fechar o popup no meio de uma fila cancela o que falta — devolve a barra/revisão pro
+  // lugar de origem na página em vez de deixar tudo preso dentro do modal escondido.
+  if(audFilaAtiva){ audFilaAtiva=null; audFilaDriveFileIdAtual=null; audSairDoModoProcessamento(); }
+}
+
+// Move a barra de progresso e a tela de revisão pra dentro do popup e mantém ele aberto —
+// audRenderReview()/audAtualizaBarraFila() continuam escrevendo nos mesmos ids de sempre,
+// só que agora esses elementos moraram temporariamente dentro do modal.
+function audEntrarModoProcessamento(){
+  const selecao=document.getElementById('modal-drive-selecao');
+  const proc=document.getElementById('modal-drive-processando');
+  if(selecao) selecao.style.display='none';
+  if(proc) proc.style.display='block';
+  const progresso=document.getElementById('aud-fila-progresso');
+  const review=document.getElementById('aud-review');
+  audFilaNosOriginais={
+    progresso: progresso ? {pai:progresso.parentNode, antes:progresso.nextSibling} : null,
+    review: review ? {pai:review.parentNode, antes:review.nextSibling} : null,
+  };
+  if(proc && progresso) proc.appendChild(progresso);
+  if(proc && review) proc.appendChild(review);
+}
+
+// Devolve os elementos pro lugar original na página (dentro do card "Nova avaliação").
+function audSairDoModoProcessamento(){
+  const selecao=document.getElementById('modal-drive-selecao');
+  const proc=document.getElementById('modal-drive-processando');
+  if(audFilaNosOriginais){
+    const {progresso, review}=audFilaNosOriginais;
+    const elProgresso=document.getElementById('aud-fila-progresso');
+    const elReview=document.getElementById('aud-review');
+    if(progresso && progresso.pai && elProgresso) progresso.pai.insertBefore(elProgresso, progresso.antes);
+    if(review && review.pai && elReview) review.pai.insertBefore(elReview, review.antes);
+    audFilaNosOriginais=null;
+  }
+  if(proc) proc.style.display='none';
+  if(selecao) selecao.style.display='block';
+}
 
 function audRenderListaDrive(files){
   const lista=document.getElementById('aud-drive-lista'); if(!lista) return;
@@ -10829,9 +10879,8 @@ function audAdicionarSelecaoNaFila(){
   });
   if(!itens.length){ if(erro){erro.textContent='Selecione ao menos uma reunião.';erro.style.display='block';} return; }
   if(faltouCliente){ if(erro){erro.textContent='Preencha o cliente de cada reunião selecionada.';erro.style.display='block';} return; }
-  audFecharModalDrive();
+  audEntrarModoProcessamento();
   audFilaAtiva={itens, indice:-1};
-  document.getElementById('sec-auditoria')?.scrollIntoView({behavior:'smooth',block:'start'});
   audProcessarProximoDaFila();
 }
 
@@ -10852,7 +10901,15 @@ function audAtualizaBarraFila(){
 async function audProcessarProximoDaFila(){
   if(!audFilaAtiva) return;
   audFilaAtiva.indice++;
-  if(audFilaAtiva.indice>=audFilaAtiva.itens.length){ audFilaAtiva=null; audFilaDriveFileIdAtual=null; audAtualizaBarraFila(); return; }
+  if(audFilaAtiva.indice>=audFilaAtiva.itens.length){
+    const total=audFilaAtiva.itens.length;
+    audFilaAtiva=null; audFilaDriveFileIdAtual=null; audAtualizaBarraFila();
+    audSairDoModoProcessamento();
+    const concluidaMsg=document.getElementById('aud-fila-concluida-msg');
+    if(concluidaMsg){ concluidaMsg.textContent='✓ Fila concluída — '+total+' reunião(ões) processada(s).'; concluidaMsg.style.display='block'; }
+    const lista=document.getElementById('aud-drive-lista'); if(lista) lista.innerHTML='';
+    return;
+  }
   audAtualizaBarraFila();
   const item=audFilaAtiva.itens[audFilaAtiva.indice];
   audFilaDriveFileIdAtual=item.id;

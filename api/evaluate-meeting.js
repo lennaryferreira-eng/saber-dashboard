@@ -35,7 +35,11 @@ export default async function handler(req, res) {
       apiKey,
       system: MEETING_EVAL_SKILL,
       userText: transcricao,
-      maxTokens: 4096,
+      // O modelo usa "extended thinking" automaticamente antes de responder, e esses tokens
+      // de raciocínio saem do mesmo orçamento de max_tokens. Com 4096 o pensamento sozinho
+      // consumia o limite inteiro e a resposta saía vazia (stop_reason: max_tokens, 0 texto).
+      // 16000 dá espaço de sobra pro raciocínio + a saída completa das 9 dimensões.
+      maxTokens: 16000,
     });
 
     if (!ok) {
