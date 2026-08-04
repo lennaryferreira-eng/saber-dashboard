@@ -40,11 +40,10 @@ export default async function handler(req, res) {
       // consumia o limite inteiro e a resposta saía vazia (stop_reason: max_tokens, 0 texto).
       // 16000 dá espaço de sobra pro raciocínio + a saída completa das 9 dimensões.
       maxTokens: 16000,
-      // Desativa o thinking (a API só aceita temperature != 1 com thinking desligado) e usa
-      // temperature baixa — é uma avaliação com rubrica fixa, não geração criativa, então
-      // queremos a mesma reunião produzindo notas consistentes entre rodadas, não variação.
+      // `temperature` é parâmetro descontinuado pro claude-sonnet-5 (API rejeita com
+      // invalid_request_error) — não dá pra controlar variância por aí. Desativa o thinking
+      // pelo menos, que também é uma fonte de variação entre rodadas na mesma reunião.
       thinking: { type: 'disabled' },
-      temperature: 0,
     });
 
     if (!ok) {
