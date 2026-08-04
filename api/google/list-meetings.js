@@ -14,21 +14,23 @@ export default async function handler(req, res) {
 
   try {
     const accessToken = await getAccessToken();
-    // 21 dias (não 7) — uma reunião de 8 dias atrás (ex: Clínica Auryon, 27/07) já sumia da
-    // fila sem nenhum aviso com a janela antiga, mesmo nunca tendo sido avaliada.
-    const janelaDias = Number(days) > 0 ? Number(days) : 21;
+    // 90 dias (não 21) — kick-off/plano de decolagem são reuniões únicas de início de
+    // projeto, não recorrentes como entrega, então facilmente caem fora de uma janela curta
+    // e ficavam invisíveis na fila mesmo nunca tendo sido avaliadas (mesmo motivo que já
+    // tinha feito subir de 7→21 antes, com a Clínica Auryon).
+    const janelaDias = Number(days) > 0 ? Number(days) : 90;
     const sinceISO = new Date(Date.now() - janelaDias * 24 * 60 * 60 * 1000).toISOString();
     const scopeFolderId = folderId || process.env.GOOGLE_DRIVE_MEETINGS_FOLDER_ID || null;
 
     const files = await listMeetingFiles({ accessToken, sinceISO, folderId: scopeFolderId });
     const excluir = new Set(Array.isArray(excludeIds) ? excludeIds : []);
 
-    // Só reuniões de entrega com cliente — sem padrão fixo de nome (cada consultor nomeia
-    // do seu jeito), então em vez de exigir a palavra "entrega" (o que só pegava quem
-    // efetivamente escrevia isso — na prática só Leonam e Vinicius — e escondia por completo
-    // as reuniões de outros consultores) a lista exclui os padrões que são sempre reunião
-    // interna. Prefere mostrar ruído demais (o ADM ignora/pula na hora de montar a fila) a
-    // esconder reunião de cliente de verdade.
+    // Só reuniões com cliente (entrega, kick-off, plano de decolagem, proposta, etc.) — sem
+    // padrão fixo de nome (cada consultor nomeia do seu jeito), então em vez de exigir uma
+    // palavra específica (o que só pegava quem usava aquele termo exato e escondia por
+    // completo as reuniões de outros consultores) a lista exclui os padrões que são sempre
+    // reunião interna ou título genérico sem informação nenhuma. Prefere mostrar ruído demais
+    // (o ADM ignora/pula na hora de montar a fila) a esconder reunião de cliente de verdade.
     const PADROES_INTERNOS = [
       /daily growthunters/i,
       /comit[eê]/i,
@@ -36,6 +38,11 @@ export default async function handler(req, res) {
       /\bweekly\b/i,
       /alinhamento interno/i,
       /^\s*\[cancelado\]/i,
+      /^\s*reuni[aã]o iniciada [aà]s/i, // título automático do Meet sem evento de calendário — sem nenhuma informação
+      /^\s*anota[cç][oõ]es feitas presencialmente/i, // idem — genérico, sem cliente identificável
+      /treinamentos?\s*\|/i, // "Treinamentos | TF&Co: ..." — formato fixo de treinamento interno
+      /treinamento.*para consultores/i,
+      /treinamento.*copy por ia/i,
     ];
     const ehInterna = (nome) => PADROES_INTERNOS.some((re) => re.test(nome || ''));
 
