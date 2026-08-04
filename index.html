@@ -10737,8 +10737,10 @@ async function audExtrairTextoArquivo(file){
 
 // Chama o Claude no servidor (api/evaluate-meeting) com a transcrição — usado tanto pelo
 // upload manual de arquivo quanto pela fila do Drive, num único caminho sem duplicar a
-// lógica de chamada/erro.
-async function audChamarClaude(transcricao){
+// lógica de chamada/erro. O endpoint responde em streaming (SSE); onProgress(textoAcumulado)
+// é chamado a cada pedaço de texto que chega, pra dar feedback real de progresso em vez de
+// deixar a tela travada entre 0% e 100% esperando a resposta inteira.
+async function audChamarClaude(transcricao, onProgress){
   const response=await fetch('/api/evaluate-meeting',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
@@ -10749,20 +10751,79 @@ async function audChamarClaude(transcricao){
     const motivoReal=errBody?.details?.error?.message;
     throw new Error(motivoReal || errBody.error || ('A API retornou um erro ('+response.status+')'));
   }
-  const data=await response.json();
-  const textBlock=(data.content||[]).find(b=>b.type==='text');
-  if(!textBlock || !textBlock.text){
-    if(data.stop_reason==='max_tokens') throw new Error('A resposta foi cortada por limite de tokens antes de terminar — tente de novo (transcrições muito longas podem precisar de mais espaço).');
+  if(!response.body || !response.body.getReader){
+    // Fallback pra algum ambiente sem streaming — lê a resposta inteira de uma vez.
+    const data=await response.json();
+    const textBlock=(data.content||[]).find(b=>b.type==='text');
+    if(!textBlock || !textBlock.text){
+      if(data.stop_reason==='max_tokens') throw new Error('A resposta foi cortada por limite de tokens antes de terminar — tente de novo (transcrições muito longas podem precisar de mais espaço).');
+      throw new Error('Resposta da IA veio vazia');
+    }
+    return textBlock.text;
+  }
+  const reader=response.body.getReader();
+  const decoder=new TextDecoder();
+  let buffer='', textoAcumulado='', stopReason=null;
+  while(true){
+    const {done, value}=await reader.read();
+    if(done) break;
+    buffer+=decoder.decode(value, {stream:true});
+    const linhas=buffer.split('\n');
+    buffer=linhas.pop(); // guarda a linha incompleta pro próximo pedaço
+    for(const linha of linhas){
+      if(!linha.startsWith('data:')) continue;
+      const payload=linha.slice(5).trim();
+      if(!payload) continue;
+      let evt; try{ evt=JSON.parse(payload); }catch{ continue; }
+      if(evt.type==='content_block_delta' && evt.delta?.type==='text_delta'){
+        textoAcumulado+=evt.delta.text;
+        if(onProgress) onProgress(textoAcumulado);
+      }else if(evt.type==='message_delta' && evt.delta?.stop_reason){
+        stopReason=evt.delta.stop_reason;
+      }else if(evt.type==='error'){
+        throw new Error(evt.error?.message || 'Erro durante a geração da análise.');
+      }
+    }
+  }
+  if(!textoAcumulado){
+    if(stopReason==='max_tokens') throw new Error('A resposta foi cortada por limite de tokens antes de terminar — tente de novo (transcrições muito longas podem precisar de mais espaço).');
     throw new Error('Resposta da IA veio vazia');
   }
-  return textBlock.text;
+  return textoAcumulado;
+}
+
+// Estima o progresso da análise a partir do texto que já chegou via streaming — procura as
+// mesmas âncoras "d1:".."d9:" que audParseScores usa pra saber qual dimensão está sendo
+// escrita agora, em vez de só alternar entre "começou" e "terminou".
+function audEstimarProgressoAnalise(texto){
+  let ultimaDim=0;
+  for(let n=1;n<=9;n++){
+    const re=new RegExp('(?:^|\\n)\\s*d'+n+'\\s*:\\s*\\d{1,3}','im');
+    if(re.test(texto)) ultimaDim=n;
+  }
+  if(ultimaDim===0) return { frac:0.05, label:'Analisando a transcrição…' };
+  if(ultimaDim>=9 && /\n\s*Recomenda[cç][aã]o\s*:/i.test(texto)) return { frac:0.97, label:'Finalizando recomendação…' };
+  return { frac:Math.min(0.9, 0.05+(ultimaDim/9)*0.85), label:'Analisando dimensão D'+ultimaDim+' de 9…' };
+}
+
+// Mostra/atualiza a barra de progresso compartilhada (#aud-fila-progresso) — usada tanto na
+// geração avulsa (upload de arquivo) quanto na fila do Drive, onde ela já é movida pra dentro
+// do modal por audEntrarModoProcessamento(). pct=null esconde a barra.
+function audAtualizaProgresso(pct, label){
+  const bar=document.getElementById('aud-fila-progresso'); if(!bar) return;
+  if(pct==null){ bar.style.display='none'; return; }
+  bar.style.display='flex';
+  const skipBtn=bar.querySelector('button');
+  if(skipBtn) skipBtn.style.display=audFilaAtiva?'inline-block':'none';
+  const texto=bar.querySelector('.aud-fila-texto'); if(texto) texto.textContent=label;
+  const fill=bar.querySelector('.aud-fila-barra-fill'); if(fill) fill.style.width=Math.round(pct)+'%';
 }
 
 // Gera a avaliação e joga o resultado no parser/tela de revisão existentes (textarea oculta
 // #aud-analise + audImportar()) — o mesmo caminho de sempre, só que preenchido por código em
 // vez de colado à mão.
-async function audGerarEImportar(transcricao){
-  const texto=await audChamarClaude(transcricao);
+async function audGerarEImportar(transcricao, onProgress){
+  const texto=await audChamarClaude(transcricao, onProgress);
   document.getElementById('aud-analise').value=texto;
   audImportar();
 }
@@ -10780,9 +10841,15 @@ async function audGerarComClaude(){
     const transcricao=(await audExtrairTextoArquivo(arquivo)).trim();
     if(transcricao.length<100) throw new Error('O arquivo parece vazio ou curto demais pra ser uma transcrição.');
     btn.textContent='Avaliando com Claude...';
-    await audGerarEImportar(transcricao);
+    audAtualizaProgresso(5,'Conectando com Claude…');
+    await audGerarEImportar(transcricao, (textoAcumulado)=>{
+      const {frac, label}=audEstimarProgressoAnalise(textoAcumulado);
+      audAtualizaProgresso(frac*100, label);
+    });
+    audAtualizaProgresso(null);
     if(msg){msg.textContent='✓ Gerado — revise e salve.';msg.style.color='var(--green)';}
   }catch(err){
+    audAtualizaProgresso(null);
     if(msg){msg.textContent='Não consegui gerar a avaliação: '+err.message;msg.style.color='var(--accent)';}
   }finally{
     btn.disabled=false;
@@ -10824,7 +10891,7 @@ function audFecharModalDrive(){
 }
 
 // Move a barra de progresso e a tela de revisão pra dentro do popup e mantém ele aberto —
-// audRenderReview()/audAtualizaBarraFila() continuam escrevendo nos mesmos ids de sempre,
+// audRenderReview()/audAtualizaProgresso() continuam escrevendo nos mesmos ids de sempre,
 // só que agora esses elementos moraram temporariamente dentro do modal.
 function audEntrarModoProcessamento(){
   const selecao=document.getElementById('modal-drive-selecao');
@@ -10904,52 +10971,52 @@ function audAdicionarSelecaoNaFila(){
   audProcessarProximoDaFila();
 }
 
-function audAtualizaBarraFila(){
-  const bar=document.getElementById('aud-fila-progresso'); if(!bar) return;
-  if(!audFilaAtiva){ bar.style.display='none'; return; }
-  const {itens, indice}=audFilaAtiva;
-  if(indice<0 || indice>=itens.length){ bar.style.display='none'; return; }
-  const n=indice+1, total=itens.length, pct=Math.round((n/total)*100);
-  bar.style.display='flex';
-  const texto=bar.querySelector('.aud-fila-texto'); if(texto) texto.textContent='Avaliando reunião '+n+' de '+total+' — '+itens[indice].nome+' ('+pct+'%)';
-  const fill=bar.querySelector('.aud-fila-barra-fill'); if(fill) fill.style.width=pct+'%';
-}
-
 // Busca a transcrição do item atual da fila no Drive e já avalia direto com o Claude — sem
 // mostrar a transcrição em textarea nenhuma e sem exigir clique manual. Só para na tela de
 // revisão de sempre, esperando o "Salvar avaliação" (a fila avança sozinha depois do save).
+// A barra combina o progresso de fila (item N de M) com o progresso real da chamada ao
+// Claude pro item atual, então ela anda continuamente em vez de pular só quando um item
+// termina — evita ficar presa em 0% ou 100% o tempo todo.
 async function audProcessarProximoDaFila(){
   if(!audFilaAtiva) return;
   audFilaAtiva.indice++;
   if(audFilaAtiva.indice>=audFilaAtiva.itens.length){
     const total=audFilaAtiva.itens.length;
-    audFilaAtiva=null; audFilaDriveFileIdAtual=null; audAtualizaBarraFila();
+    audFilaAtiva=null; audFilaDriveFileIdAtual=null; audAtualizaProgresso(null);
     audSairDoModoProcessamento();
     const concluidaMsg=document.getElementById('aud-fila-concluida-msg');
     if(concluidaMsg){ concluidaMsg.textContent='✓ Fila concluída — '+total+' reunião(ões) processada(s).'; concluidaMsg.style.display='block'; }
     const lista=document.getElementById('aud-drive-lista'); if(lista) lista.innerHTML='';
     return;
   }
-  audAtualizaBarraFila();
-  const item=audFilaAtiva.itens[audFilaAtiva.indice];
+  const {itens, indice}=audFilaAtiva;
+  const total=itens.length;
+  const item=itens[indice];
+  const rotulo='Reunião '+(indice+1)+' de '+total+' — '+item.nome;
   audFilaDriveFileIdAtual=item.id;
   const setVal=(id,val)=>{const el=document.getElementById(id); if(el) el.value=val||'';};
   setVal('aud-f-consultor', item.consultorSugerido);
   setVal('aud-f-tipo', item.tipoSugerido);
   setVal('aud-f-cliente', item.clienteSugerido);
   setVal('aud-f-data', (item.modificadoEm||'').slice(0,10));
+  audAtualizaProgresso((indice/total)*100, rotulo+' — baixando transcrição…');
   const msg=document.getElementById('aud-gerar-msg');
-  if(msg){msg.textContent='Baixando transcrição do Drive…';msg.style.color='var(--text-hint)';}
+  if(msg){msg.textContent='';msg.style.color='var(--text-hint)';}
   try{
     const response=await fetch('/api/google/fetch-transcript',{
       method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({fileId:item.id})
     });
     const data=await response.json().catch(()=>({}));
     if(!response.ok) throw new Error(data.error || ('A API retornou um erro ('+response.status+')'));
-    if(msg){msg.textContent='Avaliando com Claude…';msg.style.color='var(--text-hint)';}
-    await audGerarEImportar(data.texto||'');
+    audAtualizaProgresso((indice/total)*100, rotulo+' — conectando com Claude…');
+    await audGerarEImportar(data.texto||'', (textoAcumulado)=>{
+      const {frac, label}=audEstimarProgressoAnalise(textoAcumulado);
+      audAtualizaProgresso(((indice+frac)/total)*100, rotulo+' — '+label);
+    });
+    audAtualizaProgresso(((indice+1)/total)*100, rotulo+' — concluída');
     if(msg){msg.textContent='✓ Gerado — revise e salve.';msg.style.color='var(--green)';}
   }catch(err){
+    audAtualizaProgresso(null);
     if(msg){msg.textContent='Não consegui avaliar essa reunião: '+err.message+'. Pulando pra próxima.';msg.style.color='var(--accent)';}
     audProcessarProximoDaFila();
   }

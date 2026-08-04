@@ -9,7 +9,7 @@
 // formato de texto que o parser da Auditoria de Entregas (audParseScores /
 // audParseObs / audParseD9 / audParseRec, em index.html) já sabe ler.
 
-import { callClaude } from './_lib/anthropic.js';
+import { callClaudeStream } from './_lib/anthropic.js';
 import { MEETING_EVAL_SKILL } from './_lib/meeting-eval-skill.js';
 
 export default async function handler(req, res) {
@@ -31,28 +31,51 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { ok, status, data } = await callClaude({
+    const anthropicRes = await callClaudeStream({
       apiKey,
       system: MEETING_EVAL_SKILL,
       userText: transcricao,
-      // O modelo usa "extended thinking" automaticamente antes de responder, e esses tokens
-      // de raciocínio saem do mesmo orçamento de max_tokens. Com 4096 o pensamento sozinho
-      // consumia o limite inteiro e a resposta saía vazia (stop_reason: max_tokens, 0 texto).
-      // 16000 dá espaço de sobra pro raciocínio + a saída completa das 9 dimensões.
-      maxTokens: 16000,
       // `temperature` é parâmetro descontinuado pro claude-sonnet-5 (API rejeita com
-      // invalid_request_error) — não dá pra controlar variância por aí. Desativa o thinking
-      // pelo menos, que também é uma fonte de variação entre rodadas na mesma reunião.
+      // invalid_request_error) — não dá pra reduzir variância por aí. Testei thinking:adaptive
+      // pra dar espaço de raciocínio ao procedimento de pontuação mecânico da skill (3
+      // componentes por dimensão), mas em teste real (3 rodadas na mesma transcrição) isso só
+      // deixou a chamada ~3x mais lenta (110-180s vs ~50s) sem reduzir a variância de forma
+      // clara — mantém thinking desativado, que já é mais rápido/barato, e deixa a redução de
+      // variância por conta do procedimento mecânico da skill (menos espaço de números
+      // possíveis + arredondamento pra múltiplo de 5 + resolver empate pro valor mais baixo).
       thinking: { type: 'disabled' },
+      // 16000 dá espaço de sobra pra saída completa das 9 dimensões (texto real fica em
+      // ~2500-3000 tokens) sem risco de truncar (bug antigo era com 4096 + thinking ligado).
+      maxTokens: 16000,
     });
 
-    if (!ok) {
-      res.status(status).json({ error: 'Erro da API da Anthropic', details: data });
+    if (!anthropicRes.ok) {
+      const data = await anthropicRes.json().catch(() => ({}));
+      res.status(anthropicRes.status).json({ error: 'Erro da API da Anthropic', details: data });
       return;
     }
 
-    res.status(200).json(data);
+    // Repassa o stream SSE da Anthropic direto pro frontend — audChamarClaude() (index.html)
+    // interpreta os eventos content_block_delta pra mostrar progresso real (qual dimensão
+    // D1-D9 está sendo escrita agora) em vez de ficar preso entre 0% e 100%.
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    });
+
+    const reader = anthropicRes.body.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      res.write(value);
+    }
+    res.end();
   } catch (err) {
-    res.status(500).json({ error: 'Falha ao chamar a Anthropic: ' + err.message });
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Falha ao chamar a Anthropic: ' + err.message });
+    } else {
+      res.end();
+    }
   }
 }

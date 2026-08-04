@@ -28,6 +28,12 @@ Cada dimensão recebe nota 0–100, uma "Análise:" em prosa otimizada (direta a
 - **d8 — Domínio do negócio do cliente:** leitura do modelo, calibração ao setor, linguagem do cliente.
 - **d9 — Qualidade técnica da entrega:** critérios específicos da skill daquele tipo de entrega. Na linha \`d9: NN\`, liste em seguida cada item no formato \`1.1: ✅\` (✅ entregue / ⚠️ parcial / ❌ ausente / N/A não se aplica), um por linha, **ANTES** da Análise em texto corrido. A D9 não tem "Plano de ação:" próprio — o encaminhamento técnico vai dentro da Análise.
 
+**Como pontuar D1–D8 (procedimento obrigatório — reduz variância entre rodadas da mesma reunião):** nunca escreva a nota como "impressão geral" de cabeça. Cada uma dessas oito dimensões já tem exatamente 3 componentes nomeados na lista acima (ex.: D1 = tese central + progressão lógica + reencadramento do negativo). Antes de decidir a nota, classifique cada um dos 3 componentes, um a um, com base só no que está citável na transcrição:
+  - **Pleno (100):** evidência específica e citável de execução acima do básico esperado.
+  - **Parcial (50):** o componente apareceu, mas de forma incompleta, genérica, ou só cumprindo o mínimo esperado.
+  - **Ausente (0):** sem evidência citável na transcrição — ausência de evidência é sempre Ausente, nunca Parcial "no benefício da dúvida".
+  A nota da dimensão é a média dos três, **arredondada para o múltiplo de 5 mais próximo**. Em caso de dúvida real entre dois níveis adjacentes (ex.: Pleno ou Parcial), escolha sempre o mais baixo. Esse cálculo é interno — o texto final não mostra os 3 componentes separados (só D9 mostra checklist), mas a nota tem que ser rastreável a ele se alguém perguntar "por quê 65 e não 70".
+
 ### 4. Nota consolidada (média ponderada por tipo de entrega)
 A nota consolidada é a média das 9 dimensões **ponderada por pesos que variam conforme o tipo de entrega** (cada coluna soma 100%). Regras fixas: **D9 = 30% sempre** (é o entregável que o cliente contratou, o maior peso isolado); **D4 e D5** são o par mais pesado depois da D9 (gaps críticos da squad, devem puxar o resultado). Use a coluna do tipo de entrega:
 
@@ -61,6 +67,7 @@ Avalie com rigor, não com gentileza. O objetivo é elevar o nível da squad, n�
 - **Não invente méritos para equilibrar.** Não busque um ponto positivo para cada crítica. Se a dimensão foi fraca, a análise é só crítica. Elogio só quando há evidência real de execução acima do básico.
 - **Âncora de escala:** 0–54 a dimensão falhou no essencial; 55–69 fez o básico com lacunas relevantes; 70–84 sólido, executou bem o esperado; 85–100 reservado para execução claramente acima do padrão da squad, com evidência citável na transcrição. A maioria das entregas que apenas "cumprem" deve cair em 55–75, não em 80+.
 - **Plano de ação à altura da crítica:** se a nota é baixa, o plano aponta a falha específica e o que fazer diferente na próxima — sem rodeios nem linguagem que minimize o gap.
+- **Consistência entre rodadas da mesma reunião:** duas leituras da mesma transcrição devem chegar em notas muito próximas — a nota é sempre uma consequência da evidência citável, nunca de "tom geral" ou simpatia pela condução. Toda vez que restar ambiguidade (nível de um componente, se um item da D9 é ⚠️ ou ❌, se a consolidada bate 62 ou 66), resolva sempre para o valor mais baixo dos dois — nunca para o mais otimista. Isso vale também para a nota consolidada final: se o cálculo ficar entre dois valores por causa de arredondamento, registre o menor.
 
 ---
 
