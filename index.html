@@ -2805,9 +2805,18 @@ function calcStatus2(p) {
   if (p.status2 === 'Finalizado') return 'Finalizado';
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   if (!p.inicio) return 'Início em breve';
-  // DRO: finalizado apenas quando prevFim (fim do contrato) passou
+  // DRO/DRX: finalizado só quando o ÚLTIMO comitê/marco tiver sido REALMENTE registrado
+  // (data real preenchida) — não quando a data prevista do contrato simplesmente passar.
+  // Uma data prevista vencida não significa que o trabalho encerrou de fato.
   if (isDroFam(p)) {
-    if (p.prevFim && parseDate(p.prevFim) < hoje) return 'Finalizado';
+    if (p.modelo === 'DRX') {
+      const marcos = drxInit(p).marcos;
+      if (marcos.final && marcos.final.real) return 'Finalizado';
+      return 'Em andamento';
+    }
+    const ciclos = droGetCiclos(p);
+    const ultimoCiclo = ciclos[ciclos.length - 1];
+    if (ultimoCiclo && ultimoCiclo.c3 && ultimoCiclo.c3.real) return 'Finalizado';
     return 'Em andamento';
   }
   // Se tem realFim, usa ele
