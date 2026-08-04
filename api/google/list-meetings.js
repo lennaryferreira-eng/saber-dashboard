@@ -39,6 +39,8 @@ export default async function handler(req, res) {
       /treinamentos?\s*\|/i, // "Treinamentos | TF&Co: ..." — formato fixo de treinamento interno
       /treinamento.*para consultores/i,
       /treinamento.*copy por ia/i,
+      /guaravita/i, // cliente Guaravita não entra nessa fila — pedido explícito
+      /check[\s-]?in/i, // reunião de check-in (qualquer cliente) não entra nessa fila — pedido explícito
     ];
     const ehInterna = (nome) => PADROES_INTERNOS.some((re) => re.test(nome || ''));
 
