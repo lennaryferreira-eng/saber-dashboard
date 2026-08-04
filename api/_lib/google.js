@@ -38,22 +38,34 @@ export async function getAccessToken() {
 export async function listMeetingFiles({ accessToken, sinceISO, folderId }) {
   let q = `mimeType='application/vnd.google-apps.document' and (name contains 'Transcript' or name contains 'Anotações do Gemini' or name contains 'Anotacoes do Gemini') and modifiedTime > '${sinceISO}' and trashed=false`;
   if (folderId) q += ` and '${folderId}' in parents`;
-  const params = new URLSearchParams({
-    q,
-    fields: 'files(id,name,owners(displayName,emailAddress),modifiedTime,webViewLink)',
-    orderBy: 'modifiedTime desc',
-    supportsAllDrives: 'true',
-    includeItemsFromAllDrives: 'true',
-    pageSize: '100',
-  });
-  const res = await fetch(DRIVE_FILES_URL + '?' + params.toString(), {
-    headers: { Authorization: 'Bearer ' + accessToken },
-  });
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error('Falha ao listar arquivos do Drive: ' + (data.error?.message || res.status));
-  }
-  return data.files || [];
+
+  // Pagina até esgotar o Drive ou bater um teto de segurança — sem isso, qualquer período
+  // com mais de 100 arquivos (o pageSize de uma página só) descartava o resto em silêncio,
+  // escondendo reuniões sem nenhum aviso de que a lista estava incompleta.
+  const files = [];
+  let pageToken;
+  do {
+    const params = new URLSearchParams({
+      q,
+      fields: 'nextPageToken,files(id,name,owners(displayName,emailAddress),modifiedTime,webViewLink)',
+      orderBy: 'modifiedTime desc',
+      supportsAllDrives: 'true',
+      includeItemsFromAllDrives: 'true',
+      pageSize: '100',
+    });
+    if (pageToken) params.set('pageToken', pageToken);
+    const res = await fetch(DRIVE_FILES_URL + '?' + params.toString(), {
+      headers: { Authorization: 'Bearer ' + accessToken },
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error('Falha ao listar arquivos do Drive: ' + (data.error?.message || res.status));
+    }
+    files.push(...(data.files || []));
+    pageToken = data.nextPageToken;
+  } while (pageToken && files.length < 1000); // teto de segurança — 1000 reuniões no período já é um cenário absurdo
+
+  return files;
 }
 
 // Exporta um Google Doc (transcrição) como texto puro.

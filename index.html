@@ -10858,7 +10858,7 @@ async function audGerarComClaude(){
 }
 
 // ── FILA DO DRIVE (ADM) ──
-// Abre o modal, busca no Drive as transcrições dos últimos 7 dias que ainda não têm
+// Abre o modal, busca no Drive as transcrições dos últimos 21 dias que ainda não têm
 // avaliação salva (driveFileId já usado em `auditorias` é excluído no próprio servidor).
 async function audAbrirModalDrive(){
   const mod=document.getElementById('modal-drive-fila'); if(mod) mod.style.display='flex';
@@ -10873,7 +10873,7 @@ async function audAbrirModalDrive(){
     const excludeIds=auditorias.map(a=>a.driveFileId).filter(Boolean);
     const response=await fetch('/api/google/list-meetings',{
       method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({excludeIds, days:7})
+      body:JSON.stringify({excludeIds, days:21})
     });
     const data=await response.json().catch(()=>({}));
     if(!response.ok) throw new Error(data.error || ('A API retornou um erro ('+response.status+')'));
@@ -10926,7 +10926,7 @@ function audSairDoModoProcessamento(){
 
 function audRenderListaDrive(files){
   const lista=document.getElementById('aud-drive-lista'); if(!lista) return;
-  if(!files.length){ lista.innerHTML='<div style="font-size:12px;color:var(--text-hint);padding:8px 0;">Nenhuma transcrição nova nos últimos 7 dias — tudo que existe já foi avaliado.</div>'; return; }
+  if(!files.length){ lista.innerHTML='<div style="font-size:12px;color:var(--text-hint);padding:8px 0;">Nenhuma transcrição nova nos últimos 21 dias — tudo que existe já foi avaliado.</div>'; return; }
   const optCons=(sel)=>'<option value="">Consultor…</option>'+audConsultores().map(c=>'<option '+(c===sel?'selected':'')+'>'+c+'</option>').join('');
   const optTipo=(sel)=>'<option value="">Tipo…</option>'+AUD_TIPOS.map(t=>'<option '+(t===sel?'selected':'')+'>'+t+'</option>').join('');
   const clienteDatalist='<datalist id="aud-drive-cliente-list">'+audClientes().map(c=>'<option value="'+c.replace(/"/g,'&quot;')+'">').join('')+'</datalist>';

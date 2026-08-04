@@ -14,7 +14,9 @@ export default async function handler(req, res) {
 
   try {
     const accessToken = await getAccessToken();
-    const janelaDias = Number(days) > 0 ? Number(days) : 7;
+    // 21 dias (não 7) — uma reunião de 8 dias atrás (ex: Clínica Auryon, 27/07) já sumia da
+    // fila sem nenhum aviso com a janela antiga, mesmo nunca tendo sido avaliada.
+    const janelaDias = Number(days) > 0 ? Number(days) : 21;
     const sinceISO = new Date(Date.now() - janelaDias * 24 * 60 * 60 * 1000).toISOString();
     const scopeFolderId = folderId || process.env.GOOGLE_DRIVE_MEETINGS_FOLDER_ID || null;
 
