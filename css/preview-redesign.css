@@ -9,7 +9,7 @@
    proposta de refinamento tipográfico: números/títulos condensados de
    impacto, texto corrido numa humanista mais legível em densidade de dado. */
 .preview-body-font, .preview-body-font input, .preview-body-font select, .preview-body-font textarea {
-  font-family:'Hanken Grotesk',var(--sans);
+  font-family:'Inter',var(--sans);
 }
 .preview-body-font .title, .preview-body-font .sec-title, .preview-body-font .mval,
 .preview-body-font .display-num {
@@ -34,7 +34,7 @@
 /* ===== Menu "Dados" (substitui os 4 botões soltos: Planilha/Exportar/Importar/Backup) ===== */
 .dados-menu{position:relative;display:inline-block;}
 .dados-menu.open .dados-menu-trigger{background:var(--surface2);color:var(--text);}
-.dados-menu-list{position:absolute;top:calc(100% + 6px);left:0;min-width:220px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-md);padding:6px;display:none;z-index:var(--z-dropdown);}
+.dados-menu-list{position:absolute;top:calc(100% + 6px);left:0;min-width:220px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-md);padding:6px;display:none;z-index:1000;}
 .dados-menu.open .dados-menu-list{display:block;}
 .dados-menu-item{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border:none;background:none;border-radius:var(--r-sm);font-family:var(--sans);font-size:var(--fs-md);color:var(--text);cursor:pointer;text-align:left;}
 .dados-menu-item:hover{background:var(--surface2);}
