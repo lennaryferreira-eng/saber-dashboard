@@ -167,6 +167,28 @@
         <div class="mmeta">Meta: 50</div>
       </div>
     </div>
+
+    <div id="ov-healthscore-card" class="card" style="margin-top:1.6rem;">
+      <div class="card-title" style="margin:0 0 1rem;">Healthscore</div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:var(--fs-xs);color:var(--text-hint);background:var(--surface2);border-radius:var(--r-sm);padding:8px 12px;margin-bottom:.8rem;">
+        <span style="font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Como a flag é calculada:</span>
+        <span><span class="flag-dot flag-V" style="display:inline-block;"></span> Verde — score ≥70 e no prazo</span>
+        <span><span class="flag-dot flag-A" style="display:inline-block;"></span> Amarelo — bateu só 1 dos 2</span>
+        <span><span class="flag-dot flag-R" style="display:inline-block;"></span> Vermelho — nenhum dos 2, ou 8+ dias sem entrega</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;">
+          <span style="display:inline-flex;border-radius:4px;overflow:hidden;"><span style="background:var(--green);color:#fff;font-size:8px;font-weight:700;padding:2px 5px;">Etapa</span><span style="background:var(--amber);color:#fff;font-size:8px;font-weight:700;padding:2px 5px;">75</span></span>
+          = prazo (esq.) + score (dir.)
+        </span>
+        <span>Sem preenchimento = estimativa, ainda não entregue</span>
+      </div>
+      <p style="font-size:var(--fs-sm);color:var(--text-hint);margin:-0.5rem 0 .6rem;">Em qual etapa cada projeto está, semana a semana. Cada etapa entregue mostra dois indicadores lado a lado: prazo (esquerda) e score da avaliação (direita).</p>
+      <div id="ov-gantt-carga" style="margin-bottom:1.2rem;"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:.8rem;padding:8px 12px;background:var(--surface2);border-radius:var(--r-sm);flex-wrap:wrap;">
+        <span style="font-size:var(--fs-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);">Insights da semana atual</span>
+      </div>
+      <div id="ov-insights-semana" style="margin-bottom:1.2rem;"></div>
+      <div id="ov-gantt-wrap" style="overflow-x:auto;"></div>
+    </div>
   </section>
 
   <!-- ============ BASE DE PROJETOS ============ -->
@@ -233,18 +255,28 @@
 
     <div class="gantt-legend">
       <b>Status:</b>
-      <span><span class="gantt-legend-dot" style="background:var(--green);"></span>No prazo</span>
-      <span><span class="gantt-legend-dot" style="background:var(--amber);"></span>Em risco</span>
-      <span><span class="gantt-legend-dot" style="background:var(--red);"></span>Atrasado</span>
+      <span><span class="gantt-legend-dot" style="background:var(--green);"></span>Monetizado</span>
+      <span><span class="gantt-legend-dot" style="background:var(--blue);"></span>Em andamento</span>
+      <span><span class="gantt-legend-dot" style="background:var(--amber);"></span>Pausado</span>
+      <span><span class="gantt-legend-dot" style="background:var(--red);"></span>Churn / atrasado</span>
+    </div>
+
+    <div class="card" style="margin-bottom:1rem;">
+      <div id="carga-semanal"></div>
     </div>
 
     <div class="tbl-wrap gantt-table" style="border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-sm);">
-      <table>
-        <thead><tr id="leadtime-thead"><th style="min-width:200px;">Projeto</th></tr></thead>
-        <tbody id="leadtime-tbody">
+      <table style="border-collapse:collapse;">
+        <thead id="gantt-thead"></thead>
+        <tbody id="gantt-tbody">
           <tr><td colspan="8" style="text-align:center;color:var(--text-hint);">Carregando…</td></tr>
         </tbody>
       </table>
+    </div>
+
+    <div class="card" style="margin-top:1.4rem;">
+      <div class="card-title">DRO / DRX — linha do tempo</div>
+      <div id="gantt-dro-list"></div>
     </div>
   </section>
 
@@ -282,6 +314,16 @@
           <div style="color:var(--text-hint);">Carregando avaliações reais…</div>
         </div>
       </div>
+    </div>
+
+    <div class="card" style="margin-top:1.4rem;">
+      <div class="card-title" style="margin-bottom:1rem;">Heatmap de dimensões — por consultor</div>
+      <div id="aud-heat-body" style="overflow-x:auto;">Carregando…</div>
+    </div>
+
+    <div class="card" style="margin-top:1.4rem;">
+      <div class="card-title" style="margin-bottom:1rem;">Análises por recorte — por consultor</div>
+      <div id="aud-agg-body">Carregando…</div>
     </div>
   </section>
 
@@ -469,12 +511,21 @@
         </div>
       </div>
       <div>
-        <div class="card" style="margin-bottom:1.2rem;text-align:center;">
-          <div class="card-title" style="margin-bottom:10px;">Radar por dimensão (sinais reais)</div>
-          <div id="cultura-radar" style="display:flex;justify-content:center;">Carregando…</div>
+        <div class="card" style="margin-bottom:1.2rem;">
+          <div class="card-title" style="margin-bottom:10px;">Ranking do squad</div>
+          <div id="squad-ranking" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">Carregando…</div>
+          <div class="card-title" style="margin-bottom:10px;">Anti-padrões mais frequentes</div>
+          <div id="squad-antipadroes" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;"></div>
+          <div class="card-title" style="margin-bottom:10px;">Radar do squad — G.R.O.W.T.H.</div>
+          <div id="squad-radar-growth" style="display:flex;justify-content:center;"></div>
         </div>
         <div id="cultura-feed">Carregando sinais reais…</div>
       </div>
+    </div>
+
+    <div class="card" style="margin-top:1.4rem;">
+      <div class="card-title" style="margin-bottom:1rem;">Radares por consultor</div>
+      <div id="consultores-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;">Carregando…</div>
     </div>
   </section>
 
@@ -556,6 +607,154 @@ const AQL_FALLBACK = ['#2f6fed','#1f9d55','#c8102e','#8E5BC4','#c07a10','#0d9488
 let projects = [], npsData = {}, cspManual = {}, monMetas = {}, aqlMetas = {}, auditorias = [], sinaisCulturais = [];
 let CONS_MON = ['Caio','Leonam','Loma','Camila','Cleiton'];
 let dotColors = {'Caio':'var(--blue)','Leonam':'var(--green)','Loma':'var(--accent)','Camila':'var(--purple)','Cleiton':'var(--amber)'};
+
+// ── Constantes reais de DRO/DRX/Auditoria (portadas de index.html) ──────
+const DRO_TRAVAS = [
+  ['T7','Exposição'],['T6','Atenção'],['T5','Interesse'],['T4','Qualificação'],
+  ['T3','Compromisso'],['T2','Decisão'],['T1','Retenção']
+];
+const DRO_FASES = [
+  { nome:'Diagnóstico', sem:'sem 1–4',  cor:'var(--blue)',  ck:'c1', cnome:'C1 Validação', semFim:4,  resumo:'Kickoff, Árvore de Objetivos, 7 travas, CRT, Nuvem de Conflitos.' },
+  { nome:'Otimização',  sem:'sem 5–8',  cor:'var(--amber)', ck:'c2', cnome:'C2 Expansão',  semFim:8,  resumo:'Sprint plano de ação, SWOT, PUV, ICP, AEMR, Forecast.' },
+  { nome:'Expansão',    sem:'sem 9–12', cor:'var(--green)', ck:'c3', cnome:'C3 Final',      semFim:12, resumo:'Escalar, identificar nova restrição, Matriz de Expansão.' }
+];
+const DRX_MARCOS = [
+  { k:'kickoff',   nome:'Kick-off',                  sem:1, fase:'Fase 1 · Onboarding (S1)' },
+  { k:'validacao', nome:'Validação da Trava',        sem:3, fase:'Fase 2 · Diagnóstica (S2–3)' },
+  { k:'final',     nome:'Comitê Final · Decolagem',  sem:6, fase:'Final · Decolagem (S6)' }
+];
+const DRX_QUICKWIN = { T7:'Setup de mídia', T6:'Pack de criativos', T5:'Landing page', T4:'Playbook comercial', T3:'Kit anti-no-show', T2:'Arsenal de fechamento', T1:'Régua de retenção' };
+const STATUS_MAP = {feito:['var(--green)','feito'],atrasado:['var(--red)','atrasado'],agora:['var(--amber)','● agora'],pendente:['var(--text-hint)','○ pendente'],futuro:['var(--text-hint)','○ futuro']};
+const AUD_DIMS = [
+  {id:'d1',nome:'Controle narrativo'},{id:'d2',nome:'Escuta ativa e equilíbrio'},{id:'d3',nome:'Gestão de objeções'},
+  {id:'d4',nome:'Tradução técnica → negócio'},{id:'d5',nome:'Arquitetura de urgência'},{id:'d6',nome:'Arquitetura de conversão'},
+  {id:'d7',nome:'Construção de confiança'},{id:'d8',nome:'Domínio do negócio do cliente'},{id:'d9',nome:'Qualidade técnica da entrega'}
+];
+const SEM_LABEL_SHORT = ['Growth','Kick off','1ª Entr.','2ª Entr.','3ª Entr.','4ª Entr.','Decol.'];
+
+function droInitData(p) {
+  const d = (p.droData && typeof p.droData === 'object') ? p.droData : {};
+  if (!Array.isArray(d.ciclos)) d.ciclos = [];
+  if (!Array.isArray(d.auditorias)) d.auditorias = [];
+  return d;
+}
+function droAddMonths(d, n) { const r = new Date(d); r.setMonth(r.getMonth() + n); return r; }
+function droGetCiclos(p) {
+  const d = droInitData(p);
+  const ini = parseDate(p.inicio); if (!ini) return [];
+  const fim = parseDate(p.prevFim) || droAddMonths(ini, 3);
+  let meses = (fim.getFullYear()-ini.getFullYear())*12 + (fim.getMonth()-ini.getMonth());
+  if (fim.getDate() > ini.getDate()) meses += 1;
+  const n = Math.max(1, Math.ceil(meses/3));
+  const out = [];
+  for (let i=0;i<n;i++) {
+    const s = d.ciclos[i] || {};
+    out.push({ num:i+1, inicio:droAddMonths(ini,i*3), fim:droAddMonths(ini,(i+1)*3),
+      trava:s.trava||'', foco:s.foco||'',
+      c1:s.c1||{prev:'',real:''}, c2:s.c2||{prev:'',real:''}, c3:s.c3||{prev:'',real:''} });
+  }
+  return out;
+}
+function droSemana(ciclo) {
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  if (hoje < ciclo.inicio) return 0;
+  if (hoje >= ciclo.fim) return 13;
+  return Math.min(12, Math.floor((hoje-ciclo.inicio)/864e5/7)+1);
+}
+function droComiteStatus(com, semFim, semAtual) {
+  if (com && com.real) return 'feito';
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  if (com && com.prev) { const dp = parseDate(com.prev); if (dp && hoje > dp) return 'atrasado'; }
+  if (semAtual > 13 || semAtual === 0) return 'futuro';
+  if (semAtual > semFim) return 'atrasado';
+  if (semAtual >= semFim-1) return 'agora';
+  return 'pendente';
+}
+function droCicloAtualIdx(ciclos) {
+  for (let i=0;i<ciclos.length;i++) { const s = droSemana(ciclos[i]); if (s>=1 && s<=12) return i; }
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  for (let i=0;i<ciclos.length;i++) { if (hoje < ciclos[i].inicio) return i; }
+  return Math.max(0, ciclos.length-1);
+}
+function droTravaLabel(k) { const f = DRO_TRAVAS.find(([kk])=>kk===k); return f ? f[0]+' '+f[1] : (k||''); }
+function drxInit(p) {
+  const d = droInitData(p);
+  if (!d.drx || typeof d.drx !== 'object') d.drx = {};
+  if (!d.drx.marcos) d.drx.marcos = {};
+  ['kickoff','validacao','final'].forEach(k => { if (!d.drx.marcos[k]) d.drx.marcos[k] = {prev:'',real:''}; });
+  if (!Array.isArray(d.drx.travasSec)) d.drx.travasSec = [];
+  if (typeof d.drx.travaPrim !== 'string') d.drx.travaPrim = '';
+  return d.drx;
+}
+function drxSemana(p) {
+  const ini = parseDate(p.inicio); if (!ini) return 0;
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  if (hoje < ini) return 0;
+  const fim = new Date(ini.getFullYear(), ini.getMonth(), ini.getDate()+42);
+  if (hoje >= fim) return 7;
+  return Math.min(6, Math.floor((hoje-ini)/864e5/7)+1);
+}
+function drxMarcoStatus(mo, semAlvo, semAtual) {
+  if (mo && mo.real) return 'feito';
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  if (mo && mo.prev) { const dp = parseDate(mo.prev); if (dp && hoje > dp) return 'atrasado'; }
+  if (semAtual === 0) return 'futuro';
+  if (semAtual > semAlvo) return 'atrasado';
+  if (semAtual >= semAlvo) return 'agora';
+  return 'pendente';
+}
+function nomeEtapaCurto(p, si) { return SEM_LABEL_SHORT[si] || ('Etapa '+si); }
+function semDataPlanejada(p, si) {
+  if (si === 0 || si === 1) return p.inicio ? addDays(p.inicio, 7*(si+1)) : null;
+  const ent = p.entregas || {};
+  const prev = ent[si-1] || ent[String(si-1)];
+  const refDate = (prev && prev.real) || semDataEtapa(p, si-1) || p.inicio;
+  return refDate ? addDays(refDate, 7) : null;
+}
+function consColor(c) { return dotColors[c] || 'var(--text-hint)'; }
+function audClassif(media) {
+  if (media === null || media === undefined) return {cor:'var(--text-hint)', txt:'sem dado'};
+  if (media >= 85) return {cor:'var(--green)', txt:'excelente'};
+  if (media >= 70) return {cor:'var(--green)', txt:'bom'};
+  if (media >= 55) return {cor:'var(--amber)', txt:'regular'};
+  return {cor:'var(--red)', txt:'abaixo do esperado'};
+}
+function audHeatColor(v) {
+  if (v === null) return 'background:var(--surface3);color:var(--text-hint);';
+  const t = Math.max(0, Math.min(100, v)) / 100;
+  const tCurva = Math.pow(t, 1.6);
+  const hue = Math.round(tCurva * 120);
+  return 'background:hsl('+hue+',68%,50%);color:#fff;font-weight:700;';
+}
+function audAggData(groupBy, list) {
+  const groups = {};
+  list.forEach(a => {
+    let key;
+    if (groupBy === 'entrega') key = a.entrega || '—';
+    else key = a.consultor || '—';
+    if (!groups[key]) groups[key] = { nome:key, count:0, dimsSum:{}, dimsCount:{}, mediaSum:0, mediaCount:0 };
+    const g = groups[key];
+    g.count++;
+    AUD_DIMS.forEach(d => {
+      const v = a.scores && a.scores[d.id];
+      if (v !== undefined && v !== '' && !isNaN(parseFloat(v))) { g.dimsSum[d.id] = (g.dimsSum[d.id]||0)+parseFloat(v); g.dimsCount[d.id] = (g.dimsCount[d.id]||0)+1; }
+    });
+    const nota = a.nota !== undefined && a.nota !== '' && !isNaN(parseFloat(a.nota)) ? parseFloat(a.nota) : null;
+    if (nota !== null) { g.mediaSum += nota; g.mediaCount++; }
+  });
+  return Object.values(groups).map(g => ({
+    nome: g.nome, count: g.count,
+    dims: Object.fromEntries(AUD_DIMS.map(d => [d.id, g.dimsCount[d.id] ? Math.round(g.dimsSum[d.id]/g.dimsCount[d.id]) : null])),
+    media: g.mediaCount ? Math.round(g.mediaSum/g.mediaCount) : null
+  })).sort((a,b) => (b.media||0)-(a.media||0));
+}
+function getWeekBoundsPv(offset) {
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const dow = hoje.getDay() || 7;
+  const inicio = new Date(hoje); inicio.setDate(hoje.getDate() - dow + 1 + offset*7);
+  const fim = new Date(inicio); fim.setDate(inicio.getDate()+6); fim.setHours(23,59,59,999);
+  return { inicio, fim };
+}
 
 function _parseMaybe(val, fallback) {
   if (val === null || val === undefined) return fallback;
@@ -936,6 +1135,175 @@ function renderVisaoGeral() {
   if (labelEl) labelEl.textContent = 'Movimentado pelo Squad · ' + mesAtual.label + '/' + mesAtual.ano;
   if (valEl) valEl.textContent = BRL(rMes.total);
   if (subEl) subEl.textContent = projComFee.size + ' projeto(s) com fee';
+
+  renderHealthscore();
+}
+
+function renderHealthscore() {
+  const wrap = document.getElementById('ov-gantt-wrap');
+  if (!wrap) return;
+  const { hoje, semanas } = ganttWeeks();
+
+  const toISOf6 = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const janelaIni = toISOf6(semanas[0]), janelaFim = toISOf6(semanas[semanas.length-1]);
+  let prjs = projects.filter(p => {
+    if (isDroFam(p)) return false;
+    if (!p.inicio) return false;
+    if (calcStatus2(p) === 'Em andamento') return true;
+    const ent = p.entregas || {};
+    return [0,1,2,3,4,5,6].some(i => { const e = ent[i]||ent[String(i)]; return e && e.real && e.real >= janelaIni && e.real <= janelaFim; });
+  });
+  prjs.sort((a,b) => (a.inicio||'') < (b.inicio||'') ? -1 : 1);
+
+  renderWeeklyLoadChart('ov-gantt-carga', prjs);
+
+  // ── Insights da semana atual ──
+  const { inicio, fim } = getWeekBoundsPv(0);
+  const toISOi = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const iniISO = toISOi(inicio), fimISO = toISOi(fim);
+  const entregasDaSemana = [];
+  projects.forEach(p => {
+    if (isDroFam(p)) return;
+    const ent = p.entregas || {};
+    const ordem = ordemCompleta(p);
+    [0,1,2,3,4,5,6].forEach(si => {
+      const e = ent[si] || ent[String(si)];
+      if (!e || !e.real) return;
+      if (e.real < iniISO || e.real > fimISO) return;
+      const pos = ordem.indexOf(si);
+      let refDate = null;
+      if (pos === 0 || pos === 1) refDate = p.inicio || null;
+      else { const siAnt = ordem[pos-1]; refDate = (p.entregas?.[siAnt]||p.entregas?.[String(siAnt)])?.real || null; }
+      const prazo7 = refDate ? addDays(refDate, 7) : null;
+      const atraso = prazo7 ? diffDays(prazo7, e.real) : null;
+      const score = (e.score !== undefined && e.score !== '' && !isNaN(parseFloat(e.score))) ? parseFloat(e.score) : null;
+      entregasDaSemana.push({ atraso, score });
+    });
+  });
+  const adiantadas = entregasDaSemana.filter(x => x.atraso !== null && x.atraso < 0).length;
+  const noPrazo = entregasDaSemana.filter(x => x.atraso === 0).length;
+  const atrasadas = entregasDaSemana.filter(x => x.atraso !== null && x.atraso > 0).length;
+  const totalPrazo = adiantadas + noPrazo + atrasadas;
+  const comScore = entregasDaSemana.filter(x => x.score !== null);
+  const scoreRuim = comScore.filter(x => x.score < 55).length;
+  const scoreBasico = comScore.filter(x => x.score >= 55 && x.score < 70).length;
+  const scoreSolido = comScore.filter(x => x.score >= 70 && x.score < 85).length;
+  const scoreAcima = comScore.filter(x => x.score >= 85).length;
+  const totalScore = comScore.length;
+  const projetosAtivosAgora = projects.filter(p => !isDroFam(p) && p.inicio && calcStatus2(p) === 'Em andamento');
+  const flags = { Verde:0, Amarelo:0, Vermelho:0 };
+  projetosAtivosAgora.forEach(p => { const f = calcFlagAutomatica(p); if (flags[f] !== undefined) flags[f]++; });
+  const totalFlags = projetosAtivosAgora.length;
+  const pct2 = (v,t) => t>0 ? Math.round(v/t*100) : 0;
+  const quadGrande = (valor,pctVal,cor,label) => '<div style="text-align:center;flex:1;min-width:76px;background:var(--surface);border:1px solid var(--border);border-top:3px solid '+cor+';border-radius:6px;padding:10px 6px;">'
+    + '<div style="font-size:22px;font-weight:800;color:'+cor+';line-height:1;">'+valor+'</div>'
+    + '<div style="font-size:var(--fs-xs);font-weight:700;color:'+cor+';margin-top:3px;">'+pctVal+'%</div>'
+    + '<div style="font-size:9px;color:var(--text-hint);margin-top:2px;text-transform:uppercase;letter-spacing:.03em;">'+label+'</div></div>';
+  const quadPeq = (valor,pctVal,cor,label) => '<div style="flex:1;min-width:58px;background:var(--surface);border:1px solid var(--border);border-top:2px solid '+cor+';border-radius:5px;padding:6px 4px;text-align:center;">'
+    + '<div style="font-size:15px;font-weight:800;color:'+cor+';line-height:1;">'+valor+'</div>'
+    + '<div style="font-size:9px;font-weight:700;color:'+cor+';margin-top:2px;">'+pctVal+'%</div>'
+    + '<div style="font-size:8px;color:var(--text-hint);margin-top:1px;text-transform:uppercase;letter-spacing:.02em;">'+label+'</div></div>';
+  const cardFlags = '<div style="flex:1;min-width:260px;background:var(--surface2);border-radius:var(--r-sm);padding:14px 16px;">'
+    + '<div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:10px;">Flags dos projetos ativos agora</div>'
+    + '<div style="display:flex;gap:8px;">'
+    + quadGrande(flags.Verde, pct2(flags.Verde,totalFlags), 'var(--green)', 'Verde')
+    + quadGrande(flags.Amarelo, pct2(flags.Amarelo,totalFlags), 'var(--amber)', 'Amarelo')
+    + quadGrande(flags.Vermelho, pct2(flags.Vermelho,totalFlags), 'var(--accent)', 'Vermelho')
+    + '</div>' + (totalFlags===0 ? '<div style="font-size:var(--fs-sm);color:var(--text-hint);margin-top:8px;">Nenhum projeto ativo.</div>' : '') + '</div>';
+  const cardDestrinche = '<div style="flex:1;min-width:260px;background:var(--surface2);border-radius:var(--r-sm);padding:14px 16px;">'
+    + '<div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:8px;">Composição da flag — prazo</div>'
+    + '<div style="display:flex;gap:6px;margin-bottom:12px;">' + quadPeq(adiantadas,pct2(adiantadas,totalPrazo),'var(--green)','Adiant.') + quadPeq(noPrazo,pct2(noPrazo,totalPrazo),'var(--green)','No prazo') + quadPeq(atrasadas,pct2(atrasadas,totalPrazo),'var(--accent)','Atrasadas') + '</div>'
+    + '<div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:8px;">Composição da flag — score</div>'
+    + '<div style="display:flex;gap:6px;">' + quadPeq(scoreRuim,pct2(scoreRuim,totalScore),'var(--accent)','Ruim') + quadPeq(scoreBasico,pct2(scoreBasico,totalScore),'var(--amber)','Básico') + quadPeq(scoreSolido,pct2(scoreSolido,totalScore),'var(--green)','Sólido') + quadPeq(scoreAcima,pct2(scoreAcima,totalScore),'var(--green)','Acima padrão') + '</div>'
+    + (entregasDaSemana.length===0 ? '<div style="font-size:var(--fs-sm);color:var(--text-hint);margin-top:10px;">Nenhuma entrega registrada nessa semana.</div>' : '') + '</div>';
+  const insightsEl = document.getElementById('ov-insights-semana');
+  if (insightsEl) insightsEl.innerHTML = '<div style="display:flex;gap:14px;flex-wrap:wrap;">' + cardFlags + cardDestrinche + '</div>';
+
+  // ── Tabela Healthscore (por projeto × semana) ──
+  if (!prjs.length) { wrap.innerHTML = '<div style="padding:16px 0;color:var(--text-hint);font-size:var(--fs-base);">Nenhum projeto encontrado.</div>'; return; }
+  const labelsMap = {};
+  prjs.forEach(p => {
+    const dIp = parseDate(p.inicio);
+    if (!dIp) return;
+    const dFrealP = p.realFim ? parseDate(p.realFim) : null;
+    let dFp;
+    if (dFrealP) dFp = dFrealP;
+    else { const dFprevP = p.prevFim ? parseDate(p.prevFim) : new Date(dIp.getTime()+45*864e5); const dFdecolP = (function(){ const d = semDataEtapa(p,6); return d?parseDate(d):null; })(); dFp = [dFprevP, dFdecolP].filter(Boolean).reduce((a,b)=>a>b?a:b); }
+    const entp = p.entregas || {};
+    const reaisp = {};
+    for (let si=0; si<=6; si++) { const ep = entp[si]||entp[String(si)]; if (ep && ep.real) reaisp[si] = ep.real; }
+    const labelMap = {};
+    const shown = new Set();
+    semanas.forEach(s => {
+      const sEnd = new Date(s.getTime()+6*864e5);
+      if (!(dIp <= sEnd && dFp >= s)) return;
+      const sISO = toISOf6(s), eISO = toISOf6(sEnd);
+      const reaisHere = [0,1,2,3,4,5,6].filter(si => reaisp[si] && reaisp[si] >= sISO && reaisp[si] <= eISO);
+      if (reaisHere.length > 0) {
+        reaisHere.forEach(si => shown.add(si));
+        const cores = reaisHere.map(si => {
+          const refDate = (si===0||si===1) ? p.inicio : (entp[si-1]||entp[String(si-1)])?.real;
+          const prazo7 = refDate ? addDays(refDate,7) : null;
+          const real = reaisp[si];
+          const atraso = prazo7 && real ? diffDays(prazo7, real) : null;
+          return atraso === null ? null : (atraso<=0 ? 'verde' : 'vermelho');
+        });
+        const corFinal = cores.includes('vermelho') ? 'vermelho' : (cores.length && cores.every(c=>c==='verde') ? 'verde' : null);
+        const scoresAqui = reaisHere.map(si => { const e = entp[si]||entp[String(si)]; return (e && e.score !== undefined && e.score !== '' && !isNaN(parseFloat(e.score))) ? parseFloat(e.score) : null; });
+        labelMap[sISO] = { text: reaisHere.map(si => nomeEtapaCurto(p,si)).join('<br>'), cor: corFinal, score: scoresAqui };
+      } else {
+        const cands = [];
+        for (let si=0; si<=6; si++) { if (si in reaisp) continue; if (shown.has(si)) continue; const d = semDataEtapa(p, si); if (d && d >= sISO && d <= eISO) cands.push([d,si]); }
+        cands.sort((a,b) => a[0]<b[0]?-1:1);
+        if (cands.length > 0) {
+          shown.add(cands[0][1]);
+          const siEscolhido = cands[0][1];
+          const eEscolhido = entp[siEscolhido]||entp[String(siEscolhido)];
+          const scoreEstimado = (eEscolhido && eEscolhido.score !== undefined && eEscolhido.score !== '' && !isNaN(parseFloat(eEscolhido.score))) ? parseFloat(eEscolhido.score) : null;
+          labelMap[sISO] = { text: nomeEtapaCurto(p, siEscolhido), cor: null, score: [scoreEstimado] };
+        } else labelMap[sISO] = { text:'', cor:null, score:[] };
+      }
+    });
+    labelsMap[p.id] = labelMap;
+  });
+
+  const hojeISO = toISOf6(hoje);
+  const header = '<tr>'
+    + '<th style="text-align:left;padding:6px 10px;background:var(--surface2);min-width:160px;">Projeto</th>'
+    + '<th style="text-align:left;padding:6px 10px;background:var(--surface2);min-width:100px;">Consultor</th>'
+    + semanas.map(s => { const sEnd = new Date(s.getTime()+6*864e5); const isAtual = hojeISO >= toISOf6(s) && hojeISO <= toISOf6(sEnd); const d = s.getDate().toString().padStart(2,'0')+'/'+(s.getMonth()+1).toString().padStart(2,'0'); return '<th style="padding:6px 8px;text-align:center;background:'+(isAtual?'rgba(212,0,26,.08)':'var(--surface2)')+';white-space:nowrap;font-size:var(--fs-xs);font-weight:'+(isAtual?700:400)+';color:'+(isAtual?'var(--accent)':'var(--text-hint)')+';">'+d+'</th>'; }).join('')
+    + '</tr>';
+
+  const rows = prjs.map(p => {
+    const lm = labelsMap[p.id] || {};
+    const flagAuto = calcFlagAutomatica(p);
+    const flagCor = { Verde:'var(--green)', Amarelo:'var(--amber)', Vermelho:'var(--accent)' }[flagAuto] || 'var(--text-hint)';
+    return '<tr style="border-bottom:1px solid var(--border);">'
+      + '<td style="padding:6px 10px;color:var(--text);font-weight:600;white-space:nowrap;"><span class="flag-dot" style="background:'+flagCor+';display:inline-block;margin-right:6px;"></span>'+escapeHtmlPv(p.nome||'—')+'</td>'
+      + '<td style="padding:6px 10px;color:var(--text-muted);">'+escapeHtmlPv(p.consultor||'—')+'</td>'
+      + semanas.map(s => {
+          const sISO = toISOf6(s);
+          const isAtual = hojeISO >= sISO && hojeISO <= toISOf6(new Date(s.getTime()+6*864e5));
+          const cel = lm[sISO] || { text:'', cor:null, score:[] };
+          const bgCor = cel.cor === 'verde' ? 'var(--green)' : cel.cor === 'vermelho' ? 'var(--accent)' : null;
+          const scoresArr = Array.isArray(cel.score) ? cel.score : [];
+          const temAlgumScore = scoresArr.some(sv => sv !== null);
+          const scoreDourado = scoresArr.some(sv => sv !== null && sv >= 85);
+          const scoreHTML = scoresArr.length ? scoresArr.map(sv => { const cor = sv===null?'var(--text-hint)':sv>=70?'var(--green)':sv>=55?'var(--amber)':'var(--accent)'; return '<span style="display:block;background:'+cor+';color:#fff;font-size:8px;font-weight:700;padding:3px 6px;white-space:nowrap;">'+(sv===null?'—':sv)+'</span>'; }).join('') : '<span style="display:block;background:var(--text-hint);color:#fff;font-size:8px;font-weight:700;padding:3px 6px;white-space:nowrap;">—</span>';
+          const temSinal = bgCor !== null || temAlgumScore;
+          const conteudo = cel.text
+            ? (temSinal
+                ? '<div style="display:inline-flex;border-radius:5px;overflow:hidden;vertical-align:middle;'+(scoreDourado?'box-shadow:0 0 0 1.5px #D4AF37;':'')+'">'
+                  + '<span style="background:'+(bgCor||'var(--text-hint)')+';color:#fff;font-size:8px;font-weight:700;padding:3px 6px;white-space:nowrap;">'+cel.text+'</span>'
+                  + '<span style="border-left:2px solid #fff;">'+scoreHTML+'</span></div>'
+                : '<span style="font-size:var(--fs-xs);font-weight:600;color:var(--text);white-space:nowrap;">'+cel.text+'</span>')
+            : '';
+          return '<td style="padding:6px 8px;text-align:center;background:'+(isAtual?'rgba(212,0,26,.04)':'transparent')+';">'+conteudo+'</td>';
+        }).join('')
+      + '</tr>';
+  }).join('');
+
+  wrap.innerHTML = '<table style="border-collapse:collapse;font-size:var(--fs-sm);min-width:100%;"><thead>'+header+'</thead><tbody>'+rows+'</tbody></table>';
 }
 
 function renderBase() {
@@ -970,63 +1338,379 @@ function escapeHtmlPv(str) {
   return div.innerHTML;
 }
 
+function dv(s) { return s ? String(s).replace(/"/g,'&quot;') : ''; }
+const droExpandedState = {};
+
+function droCardHtml(p) {
+  const d = droInitData(p);
+  const ciclos = droGetCiclos(p);
+  const atualIdx = droCicloAtualIdx(ciclos);
+  if (droExpandedState[p.id] === undefined) droExpandedState[p.id] = { exp: true, view: atualIdx };
+  const st = droExpandedState[p.id];
+  const vi = Math.min(st.view, ciclos.length-1);
+  const ciclo = ciclos[vi];
+  const exp = st.exp;
+  const fmtBR = dt => dt ? dt.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'}) : '?';
+
+  const trilha = ciclos.map((c,i) => {
+    const sem = droSemana(c);
+    const done = sem >= 13;
+    const cur = i === atualIdx;
+    const sel = i === vi;
+    const bc = done ? 'var(--green)' : cur ? '#8E5BC4' : 'var(--border)';
+    const col = done ? '#fff' : cur ? '#8E5BC4' : 'var(--text-hint)';
+    const line = i < ciclos.length-1 ? '<div style="flex:1;height:2px;min-width:12px;background:'+(done?'var(--green)':'var(--border)')+';"></div>' : '';
+    return '<button type="button" onclick="droSetView('+p.id+','+i+')" title="Ver ciclo '+c.num+'" style="font:inherit;padding:0;margin:0;background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:92px;cursor:pointer;">'
+      + '<div style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:var(--fs-base);font-weight:700;border:2px solid '+bc+';background:var(--surface);color:'+col+';'+(sel?'box-shadow:0 0 0 3px rgba(142,91,196,.15);':'')+'">'+(done?'✓':c.num)+'</div>'
+      + '<div style="font-size:9px;color:var(--text-hint);text-align:center;line-height:1.25;">Ciclo '+c.num+'<br>'+fmtBR(c.inicio)+'–'+fmtBR(droAddMonths(c.inicio,2))+'<br><b style="color:'+(c.trava?'#8E5BC4':'var(--text-hint)')+';">'+(c.trava?droTravaLabel(c.trava).split(' ')[0]:'—')+'</b></div>'
+      + '</button>' + (line?'<div style="display:flex;align-items:center;flex:0 0 auto;">'+line+'</div>':'');
+  }).join('');
+
+  const chain = DRO_TRAVAS.map(([k,n]) => {
+    const gov = ciclo.trava === k;
+    return '<div style="flex:1;text-align:center;font-size:9px;font-weight:700;padding:4px 2px;border-radius:4px;background:'+(gov?'#8E5BC4':'var(--surface3)')+';color:'+(gov?'#fff':'var(--text-hint)')+';" title="'+k+' '+n+'">'+k+'</div>';
+  }).join('');
+
+  const sem = droSemana(ciclo);
+  const semPct = sem<=0?0: sem>=13?100: Math.round(sem/12*100);
+  const semTxt = sem===0?'não iniciado': sem>=13?'encerrado':('Semana '+sem+'/12');
+
+  const fasesHTML = DRO_FASES.map(f => {
+    const com = ciclo[f.ck] || {prev:'',real:''};
+    const stt = droComiteStatus(com, f.semFim, sem);
+    const [scor, slabel] = STATUS_MAP[stt];
+    return '<div style="border:1px solid var(--border);border-radius:9px;overflow:hidden;">'
+      + '<div style="font-size:var(--fs-sm);font-weight:700;padding:6px 9px;color:#fff;background:'+f.cor+';display:flex;justify-content:space-between;">'+f.nome+'<span style="font-weight:500;opacity:.85;">'+f.sem+'</span></div>'
+      + '<div style="padding:8px 9px;font-size:var(--fs-xs);color:var(--text-muted);">'+f.resumo
+      + '<div style="margin-top:7px;border-top:1px dashed var(--border);padding-top:7px;">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;"><b style="font-size:var(--fs-xs);">'+f.cnome+'</b><span style="font-size:var(--fs-xs);font-weight:700;color:'+scor+';">'+slabel+'</span></div>'
+      + '<div style="font-size:9px;color:var(--text-hint);">prev: '+fmtDataBr(com.prev)+' · real: '+fmtDataBr(com.real)+'</div>'
+      + '</div></div></div>';
+  }).join('');
+
+  const flagAuto = calcFlagAutomatica(p);
+  const flagCls = flagAuto === 'Verde' ? 'flag-V' : flagAuto === 'Amarelo' ? 'flag-A' : 'flag-R';
+
+  return '<div class="card" style="margin-bottom:1rem;">'
+    + '<div onclick="droToggleExpandedPv('+p.id+')" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;cursor:pointer;'+(exp?'margin-bottom:12px;':'')+'">'
+    + '<div><div style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;"><span style="width:9px;height:9px;border-radius:50%;background:#8E5BC4;display:inline-block;"></span>'+escapeHtmlPv(p.nome)+' <span class="badge" style="background:rgba(142,91,196,.14);color:#8E5BC4;font-size:var(--fs-xs);margin-top:0;">DRO</span> <span class="flag-dot '+flagCls+'"></span></div>'
+    + '<div style="font-size:var(--fs-base);color:var(--text-hint);margin-top:2px;">'+escapeHtmlPv(p.consultor||'—')+' · '+fmtDataBr(p.inicio)+' → '+fmtDataBr(p.prevFim)+' · '+ciclos.length+' ciclos</div></div>'
+    + '<span style="font-size:var(--fs-xl);color:var(--text-hint);line-height:1;display:inline-block;transform:rotate('+(exp?'0':'180deg')+');">⌃</span>'
+    + '</div>'
+    + '<div style="display:'+(exp?'block':'none')+'">'
+    + '<div style="display:flex;align-items:center;margin:6px 0 8px;overflow-x:auto;">'+trilha+'</div>'
+    + '<div style="border:1px solid rgba(142,91,196,.25);border-radius:10px;padding:13px;background:linear-gradient(180deg,rgba(142,91,196,.05),transparent);">'
+    + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;"><b style="font-size:var(--fs-md);">Ciclo '+ciclo.num+' · '+fmtBR(ciclo.inicio)+'–'+fmtBR(droAddMonths(ciclo.inicio,2))+'</b><span style="font-size:var(--fs-xs);font-weight:700;color:'+(sem>=1&&sem<=12?'#8E5BC4':'var(--text-hint)')+';">'+semTxt+'</span>'
+    + '<span style="margin-left:auto;font-size:var(--fs-xs);color:var(--text-hint);">Trava governante: <b style="color:#8E5BC4;">'+(ciclo.trava?droTravaLabel(ciclo.trava):'— não definida —')+'</b></span></div>'
+    + '<div style="display:flex;gap:3px;margin-bottom:8px;">'+chain+'</div>'
+    + (ciclo.foco ? '<div style="font-size:var(--fs-sm);color:var(--text);margin-bottom:10px;font-style:italic;">"'+escapeHtmlPv(ciclo.foco)+'"</div>' : '')
+    + '<div style="height:7px;border-radius:5px;background:var(--surface3);overflow:hidden;"><div style="height:100%;width:'+semPct+'%;background:#8E5BC4;border-radius:5px;"></div></div>'
+    + '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-hint);margin-top:2px;"><span>Sem 1</span><span>Sem 12</span></div>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-top:12px;">'+fasesHTML+'</div>'
+    + '</div></div></div>';
+}
+
+function drxCardHtml(p) {
+  const dx = drxInit(p);
+  if (droExpandedState[p.id] === undefined) droExpandedState[p.id] = { exp: true, view: 0 };
+  const exp = droExpandedState[p.id].exp;
+  const sem = drxSemana(p);
+  const semPct = sem<=0?0: sem>=7?100: Math.round(sem/6*100);
+  const semTxt = sem===0?'não iniciado': sem>=7?'encerrado':('Semana '+sem+'/6');
+  const qw = dx.travaPrim ? (DRX_QUICKWIN[dx.travaPrim]||'') : '';
+
+  const chain = DRO_TRAVAS.map(([k,n]) => {
+    const prim = dx.travaPrim === k, sec = dx.travasSec.includes(k);
+    const bg = prim ? '#0d9488' : sec ? 'rgba(13,148,136,.25)' : 'var(--surface3)';
+    const co = prim ? '#fff' : sec ? '#0d9488' : 'var(--text-hint)';
+    return '<div style="flex:1;text-align:center;font-size:9px;font-weight:700;padding:4px 2px;border-radius:4px;background:'+bg+';color:'+co+';" title="'+k+' '+n+'">'+k+'</div>';
+  }).join('');
+
+  const marcosHTML = DRX_MARCOS.map(m => {
+    const mo = dx.marcos[m.k] || {prev:'',real:''};
+    const stt = drxMarcoStatus(mo, m.sem, sem);
+    const [cor, mlabel] = STATUS_MAP[stt];
+    return '<div style="border:1px solid var(--border);border-radius:9px;padding:9px 10px;">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;"><b style="font-size:var(--fs-sm);">'+m.nome+'</b><span style="font-size:var(--fs-xs);font-weight:700;color:'+cor+';">'+mlabel+'</span></div>'
+      + '<div style="font-size:9px;color:var(--text-hint);margin-bottom:6px;">'+m.fase+'</div>'
+      + '<div style="font-size:9px;color:var(--text-hint);">prev: '+fmtDataBr(mo.prev)+' · real: '+fmtDataBr(mo.real)+'</div>'
+      + '</div>';
+  }).join('');
+
+  const flagAuto = calcFlagAutomatica(p);
+  const flagCls = flagAuto === 'Verde' ? 'flag-V' : flagAuto === 'Amarelo' ? 'flag-A' : 'flag-R';
+
+  return '<div class="card" style="margin-bottom:1rem;">'
+    + '<div onclick="droToggleExpandedPv('+p.id+')" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;cursor:pointer;'+(exp?'margin-bottom:12px;':'')+'">'
+    + '<div><div style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;"><span style="width:9px;height:9px;border-radius:50%;background:#0d9488;display:inline-block;"></span>'+escapeHtmlPv(p.nome)+' <span class="badge" style="background:rgba(13,148,136,.14);color:#0d9488;font-size:var(--fs-xs);margin-top:0;">DR-X</span> <span class="flag-dot '+flagCls+'"></span></div>'
+    + '<div style="font-size:var(--fs-base);color:var(--text-hint);margin-top:2px;">'+escapeHtmlPv(p.consultor||'—')+' · '+fmtDataBr(p.inicio)+' → '+fmtDataBr(p.prevFim)+' · 6 semanas</div></div>'
+    + '<span style="font-size:var(--fs-xl);color:var(--text-hint);line-height:1;display:inline-block;transform:rotate('+(exp?'0':'180deg')+');">⌃</span>'
+    + '</div>'
+    + '<div style="display:'+(exp?'block':'none')+'">'
+    + '<div style="border:1px solid rgba(13,148,136,.25);border-radius:10px;padding:13px;background:linear-gradient(180deg,rgba(13,148,136,.05),transparent);">'
+    + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;"><b style="font-size:var(--fs-md);">Diagnóstico DR-X · 6 semanas</b><span style="font-size:var(--fs-xs);font-weight:700;color:'+(sem>=1&&sem<=6?'#0d9488':'var(--text-hint)')+';">'+semTxt+'</span>'
+    + (qw ? '<span style="margin-left:auto;font-size:var(--fs-xs);font-weight:700;color:#0d9488;background:rgba(13,148,136,.1);padding:2px 8px;border-radius:20px;">Quick Win: '+qw+'</span>' : '')
+    + '</div>'
+    + '<div style="font-size:var(--fs-xs);color:var(--text-hint);margin-bottom:8px;">Trava primária: <b style="color:#0d9488;">'+(dx.travaPrim?droTravaLabel(dx.travaPrim):'— não definida —')+'</b></div>'
+    + '<div style="display:flex;gap:3px;margin-bottom:8px;">'+chain+'</div>'
+    + '<div style="height:7px;border-radius:5px;background:var(--surface3);overflow:hidden;"><div style="height:100%;width:'+semPct+'%;background:#0d9488;border-radius:5px;"></div></div>'
+    + '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-hint);margin-top:2px;"><span>Sem 1</span><span>Sem 6 · Decolagem</span></div>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;margin-top:12px;">'+marcosHTML+'</div>'
+    + '</div></div></div>';
+}
+
+function droSetView(projId, idx) { if (!droExpandedState[projId]) droExpandedState[projId] = {exp:true,view:0}; droExpandedState[projId].view = idx; renderDro(); }
+function droToggleExpandedPv(id) { if (!droExpandedState[id]) droExpandedState[id] = {exp:true,view:0}; droExpandedState[id].exp = !droExpandedState[id].exp; renderDro(); }
+
 function renderDro() {
   const box = document.getElementById('dro-cards');
   if (!box) return;
   const droProjects = projects.filter(isDroFam);
   if (!droProjects.length) { box.innerHTML = '<div class="card" style="color:var(--text-hint);">Nenhum projeto DRO/DRX no Supabase.</div>'; return; }
-  box.innerHTML = droProjects.map((p, i) => {
-    const flag = p.flag || '—';
-    const flagCls = flag === 'Verde' ? 'flag-V' : flag === 'Amarelo' ? 'flag-A' : flag === 'Vermelho' ? 'flag-V' : '';
-    const ps = prazoStatus(p);
-    return '<div class="cycle-card' + (i===0?' expanded':'') + '">'
-      + '<button class="cycle-card-header" onclick="toggleCycleCard(this)">'
-      + '<div class="cycle-card-title"><h3>' + escapeHtmlPv(p.nome) + '</h3>'
-      + '<span class="badge b-purple" style="margin:0;">' + escapeHtmlPv(p.modelo) + '</span>'
-      + (flag !== '—' ? '<span class="flag-dot ' + flagCls + '"></span><span style="font-size:var(--fs-xs);color:var(--text-hint);">' + escapeHtmlPv(flag) + '</span>' : '<span style="font-size:var(--fs-xs);color:var(--text-hint);">Sem flag manual</span>')
-      + '</div>'
-      + '<svg class="cycle-card-chevron" width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>'
-      + '</button>'
-      + '<div class="cycle-card-body">'
-      + '<div style="margin-bottom:.6rem;display:flex;justify-content:space-between;font-size:var(--fs-sm);"><span>Prazo (contrato)</span><span style="color:var(--accent);font-weight:600;">' + escapeHtmlPv(ps.label) + '</span></div>'
-      + '<div style="font-size:var(--fs-sm);color:var(--text-hint);">Consultor: ' + escapeHtmlPv(p.consultor||'—') + ' · Início: ' + fmtDataBr(p.inicio) + ' · Fim previsto: ' + fmtDataBr(p.prevFim) + '</div>'
-      + '<div style="font-size:var(--fs-xs);color:var(--text-hint);margin-top:10px;">Ciclos/comitês detalhados de DRO/DRX não estão replicados neste espelho — consulte a página real para o estado completo de governança.</div>'
-      + '</div></div>';
-  }).join('');
+  box.innerHTML = droProjects.map(p => p.modelo === 'DRX' ? drxCardHtml(p) : droCardHtml(p)).join('');
 }
 
 function fmtDataBr(s) { return s ? s.split('-').reverse().join('/') : '—'; }
 
+function ganttWeeks() {
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const startRef = new Date(hoje);
+  const dow = startRef.getDay() || 7;
+  startRef.setDate(startRef.getDate() - dow + 1 - 7);
+  const endRef = new Date(startRef); endRef.setMonth(endRef.getMonth()+6);
+  const semanas = []; let cur = new Date(startRef);
+  while (cur <= endRef) { semanas.push(new Date(cur)); cur.setDate(cur.getDate()+7); }
+  return { hoje, semanas };
+}
+
+function renderWeeklyLoadChart(elId, list) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const { hoje, semanas } = ganttWeeks();
+  function ativoNaSemana(p, s, sEnd) {
+    const ini = parseDate(p.inicio); if (!ini) return false;
+    const fim = parseDate(p.realFim || p.prevFim) || new Date(ini.getTime()+45*864e5);
+    return ini <= sEnd && fim >= s;
+  }
+  const contagens = semanas.map(s => { const sEnd = new Date(s.getTime()+6*864e5); return list.filter(p => ativoNaSemana(p, s, sEnd)).length; });
+  const maxCarga = Math.max(...contagens, 1);
+  el.innerHTML = '<div style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);margin-bottom:6px;">Projetos ativos por semana</div>'
+    + '<div style="overflow-x:auto;"><div style="display:flex;gap:3px;min-width:max-content;">'
+    + semanas.map((s,i) => {
+        const sEnd = new Date(s.getTime()+6*864e5);
+        const isHoje = hoje >= s && hoje <= sEnd;
+        const cnt = contagens[i];
+        const pctH = Math.round(cnt/maxCarga*100);
+        const d = s.getDate().toString().padStart(2,'0') + '/' + (s.getMonth()+1).toString().padStart(2,'0');
+        const color = isHoje ? 'var(--accent)' : 'var(--blue)';
+        return '<div style="text-align:center;min-width:38px;">'
+          + '<div style="font-size:9px;color:'+(isHoje?'var(--accent)':'var(--text-hint)')+';margin-bottom:3px;font-weight:'+(isHoje?600:400)+';">'+d+'</div>'
+          + '<div style="height:48px;display:flex;align-items:flex-end;"><div style="width:100%;height:'+pctH+'%;min-height:2px;background:'+color+';border-radius:2px 2px 0 0;opacity:.85;"></div></div>'
+          + '<div style="font-size:9px;color:'+(isHoje?'var(--accent)':'var(--text-hint)')+';margin-top:2px;font-weight:'+(isHoje?600:400)+';">'+cnt+'</div>'
+          + '</div>';
+      }).join('')
+    + '</div></div>';
+}
+
 function renderLeadTime() {
-  const thead = document.getElementById('leadtime-thead');
-  const tbody = document.getElementById('leadtime-tbody');
+  const thead = document.getElementById('gantt-thead');
+  const tbody = document.getElementById('gantt-tbody');
   if (!tbody) return;
-  thead.innerHTML = '<th style="min-width:200px;">Projeto</th>' + SEMANAS.map(s => '<th>' + s.replace(/^\d+ª /,'') + '</th>').join('');
-  const list = projects.filter(p => !isDroFam(p) && p.inicio && calcStatus2(p) !== 'Finalizado' && calcStatus2(p) !== 'Churn' && calcStatus2(p) !== 'Pausado');
-  if (!list.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-hint);">Nenhum projeto em andamento.</td></tr>'; return; }
-  tbody.innerHTML = list.map(p => {
-    const ent = p.entregas || {};
-    const hojeISO = new Date().toISOString().slice(0,10);
-    let firstMissing = -1;
-    for (let i=0;i<7;i++) { if (!(ent[i] && ent[i].real)) { firstMissing = i; break; } }
-    const tds = SEMANAS.map((label, i) => {
-      const e = ent[i] || ent[String(i)];
-      if (e && e.real) return '<td><span class="gantt-block ok">' + fmtDataBr(e.real) + '</span></td>';
-      if (i === firstMissing) {
-        const ps = prazoStatus(p);
-        const bad = ps.badge === 'b-red';
-        return '<td><span class="gantt-block ' + (bad?'bad':'warn') + '">' + (bad?'Atrasado':'Em curso') + '</span></td>';
+  const { hoje, semanas } = ganttWeeks();
+  const startRef = semanas[0], endRef = semanas[semanas.length-1];
+
+  let prjs = projects.filter(p => {
+    if (!p.inicio) return false;
+    if (isDroFam(p)) return false;
+    const s2 = calcStatus2(p);
+    if (s2 === 'Churn' || s2 === 'Pausado') return false;
+    const dI = parseDate(p.inicio);
+    const dFmax = [p.realFim, p.prevFim].filter(Boolean).reduce((a,b) => a > b ? a : b, '');
+    const dFinal = dFmax ? parseDate(dFmax) : new Date(dI.getTime()+45*864e5);
+    return dFinal >= startRef && dI <= endRef;
+  });
+  prjs.sort((a,b) => (a.inicio||'') < (b.inicio||'') ? -1 : 1);
+
+  renderWeeklyLoadChart('carga-semanal', prjs);
+
+  const mesGroups = [];
+  const mesNomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  semanas.forEach(s => {
+    const mo = s.getMonth(), yr = s.getFullYear();
+    const last = mesGroups[mesGroups.length-1];
+    if (last && last.mo === mo && last.yr === yr) last.count++;
+    else mesGroups.push({mo, yr, count:1, label: mesNomes[mo]+' '+yr});
+  });
+  thead.innerHTML = '<tr>'
+    + '<th style="min-width:160px;text-align:left;padding:5px 8px;">Projeto</th>'
+    + '<th style="min-width:80px;text-align:left;padding:5px 8px;">Consultor</th>'
+    + mesGroups.map(g => '<th colspan="'+g.count+'" style="text-align:center;">'+g.label+'</th>').join('')
+    + '</tr><tr><th></th><th></th>'
+    + semanas.map(s => {
+        const sEnd = new Date(s.getTime()+6*864e5);
+        const isHoje = hoje >= s && hoje <= sEnd;
+        const d = s.getDate().toString().padStart(2,'0') + '/' + (s.getMonth()+1).toString().padStart(2,'0');
+        return '<th style="min-width:52px;text-align:center;'+(isHoje?'color:var(--accent);background:rgba(196,82,26,.06);':'')+'">'+d+'</th>';
+      }).join('')
+    + '</tr>';
+
+  if (!prjs.length) { tbody.innerHTML = '<tr><td colspan="'+(semanas.length+2)+'" style="text-align:center;color:var(--text-hint);padding:20px;">Nenhum projeto no período</td></tr>'; renderGanttDro(semanas); return; }
+
+  const MON_COLOR_FN = p => {
+    const s = calcStatus2(p), c = p.conv || '';
+    if (c === 'Monetizado') return 'var(--green)';
+    if (s === 'Churn') return 'var(--red)';
+    if (s === 'Pausado') return 'var(--amber)';
+    if (s === 'Finalizado' && c === 'Não monetizado') return 'var(--text-hint)';
+    return 'var(--blue)';
+  };
+
+  tbody.innerHTML = prjs.map(p => {
+    const dI = parseDate(p.inicio);
+    const dFreal = p.realFim ? parseDate(p.realFim) : null;
+    let dF;
+    if (dFreal) dF = dFreal;
+    else {
+      const dFprev = p.prevFim ? parseDate(p.prevFim) : new Date(dI.getTime()+45*864e5);
+      const dFdecol = (function(){ const d = semDataEtapa(p,6); return d ? parseDate(d) : null; })();
+      dF = [dFprev, dFdecol].filter(Boolean).reduce((a,b) => a > b ? a : b);
+    }
+    const color = MON_COLOR_FN(p);
+    const nome = p.nome.length > 26 ? p.nome.slice(0,24)+'…' : p.nome;
+
+    const cells = semanas.map(s => {
+      const sEnd = new Date(s.getTime()+6*864e5);
+      const isHoje = hoje >= s && hoje <= sEnd;
+      const active = dI <= sEnd && dF >= s;
+      const overdue = !active && dI <= sEnd && hoje >= s && !p.realFim && dF < s;
+      let bar = '';
+      if (active || overdue) {
+        const leftPct = dI > s ? Math.round((dI-s)/(7*864e5)*100) : 0;
+        const rightPct = !overdue && dF < sEnd ? Math.round((sEnd-dF)/(7*864e5)*100) : 0;
+        if (overdue) {
+          bar = '<div class="gantt-bar" style="background:var(--red);left:0%;right:0%;opacity:.7;display:flex;align-items:center;justify-content:center;overflow:visible;"><span style="font-size:8px;font-weight:700;color:#fff;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.4);padding:0 2px;">⚠ Atraso</span></div>';
+        } else {
+          const planAtual = null;
+          let semStatusColor = color;
+          const _sISO = s.getFullYear()+'-'+String(s.getMonth()+1).padStart(2,'0')+'-'+String(s.getDate()).padStart(2,'0');
+          const _eISO = sEnd.getFullYear()+'-'+String(sEnd.getMonth()+1).padStart(2,'0')+'-'+String(sEnd.getDate()).padStart(2,'0');
+          const etapasReaisNaSemana = [0,1,2,3,4,5,6].filter(si => { const e = p.entregas && (p.entregas[si]||p.entregas[String(si)]); return e && e.real && e.real >= _sISO && e.real <= _eISO; });
+          etapasReaisNaSemana.forEach(si => {
+            const e = p.entregas[si] || p.entregas[String(si)];
+            const plan = semDataPlanejada(p, si);
+            if (plan && e.real) { const atraso = diffDays(plan, e.real); semStatusColor = atraso <= 0 ? 'var(--green)' : 'var(--red)'; }
+          });
+          let semLabel;
+          if (etapasReaisNaSemana.length > 0) semLabel = etapasReaisNaSemana.map(si => nomeEtapaCurto(p, si)).join('<br>');
+          else {
+            const cands = [];
+            for (let si=0; si<=6; si++) { const e = p.entregas && (p.entregas[si]||p.entregas[String(si)]); if (e && e.real) continue; const d = semDataEtapa(p, si); if (d && d >= _sISO && d <= _eISO) cands.push([d,si]); }
+            cands.sort((a,b) => a[0] < b[0] ? -1 : 1);
+            semLabel = cands.length ? nomeEtapaCurto(p, cands[0][1]) : '';
+          }
+          const markers = [0,1,2,3,4,5,6].map(si => {
+            const ent = p.entregas && (p.entregas[si]||p.entregas[String(si)]);
+            const hasReal = ent && ent.real;
+            const planD = semDataPlanejada(p, si);
+            const posDate = hasReal ? ent.real : planD;
+            if (!posDate) return '';
+            const dPos = parseDate(posDate);
+            if (!dPos || dPos < s || dPos > sEnd) return '';
+            const posWPct = Math.round((dPos-s)/(7*864e5)*100);
+            const atraso = hasReal && planD ? diffDays(planD, ent.real) : null;
+            const dotBg = !hasReal ? 'rgba(255,255,255,.7)' : (atraso!==null && atraso<=0) ? '#4ade80' : '#f87171';
+            const title = nomeEtapaCurto(p,si) + (hasReal ? (atraso>0 ? ' +'+atraso+'d' : ' ✓') : ' pendente');
+            return '<div title="'+title+'" style="position:absolute;top:2px;left:calc('+posWPct+'% - 4px);width:8px;height:8px;border-radius:50%;background:'+dotBg+';border:1.5px solid rgba(0,0,0,.2);z-index:3;"></div>';
+          }).join('');
+          bar = '<div class="gantt-bar" style="background:'+semStatusColor+';left:'+leftPct+'%;right:'+rightPct+'%;display:flex;align-items:center;justify-content:center;overflow:visible;">'
+            + '<span style="font-size:8px;font-weight:600;color:#fff;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.4);padding:0 2px;line-height:1;position:relative;z-index:2;">'+semLabel+'</span>'
+            + markers + '</div>';
+        }
       }
-      return '<td></td>';
+      return '<td style="position:relative;'+(isHoje?'background:rgba(196,82,26,.05);':'')+'">'+bar+'</td>';
     }).join('');
-    return '<tr><td><b>' + escapeHtmlPv(p.nome) + '</b></td>' + tds + '</tr>';
+
+    const dotColor = consColor(p.consultor);
+    return '<tr><td class="gantt-name" title="'+escapeHtmlPv(p.nome)+'">'+escapeHtmlPv(nome)+'</td>'
+      + '<td class="gantt-cons"><span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:7px;height:7px;border-radius:50%;background:'+dotColor+';flex-shrink:0;"></span>'+escapeHtmlPv(p.consultor||'—')+'</span></td>'
+      + cells + '</tr>';
   }).join('');
+
+  renderGanttDro(semanas);
+}
+
+function renderGanttDro(semanas) {
+  const container = document.getElementById('gantt-dro-list');
+  if (!container) return;
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const todosAtivos = projects.filter(p => {
+    if (!isDroFam(p) || !p.inicio) return false;
+    const s2 = calcStatus2(p);
+    if (s2 === 'Finalizado' || s2 === 'Churn' || s2 === 'Pausado') return false;
+    if (p.prevFim && parseDate(p.prevFim) < hoje) return false;
+    return true;
+  });
+  if (!todosAtivos.length) { container.innerHTML = '<p style="font-size:var(--fs-base);color:var(--text-hint);">Nenhum projeto DRO/DRX ativo.</p>'; return; }
+
+  const headers = '<th style="min-width:180px;text-align:left;padding:4px 8px;">Projeto</th>'
+    + semanas.map(s => { const sEnd = new Date(s.getTime()+6*864e5); const isHoje = hoje >= s && hoje <= sEnd; const label = s.getDate().toString().padStart(2,'0')+'/'+(s.getMonth()+1).toString().padStart(2,'0'); return '<th style="font-size:9px;min-width:52px;padding:3px 2px;text-align:center;'+(isHoje?'background:rgba(212,0,26,.08);color:var(--accent);font-weight:700;':'')+'">'+label+'</th>'; }).join('');
+
+  const rows = todosAtivos.map(p => {
+    const dI = parseDate(p.inicio);
+    if (!dI) return '';
+    const isDrx = p.modelo === 'DRX';
+    const dF = isDrx ? new Date(dI.getTime()+42*864e5) : (parseDate(p.prevFim||p.realFim) || new Date(dI.getTime()+270*864e5));
+    const dot = consColor(p.consultor);
+    const nome = p.nome.length > 26 ? p.nome.slice(0,24)+'…' : p.nome;
+    const baseColor = isDrx ? '#0d9488' : '#8E5BC4';
+    const badgeTxt = isDrx ? 'DR-X' : 'DRO';
+
+    const eventos = [];
+    if (isDrx) {
+      const dx = drxInit(p);
+      const shortM = {kickoff:'Kick-off', validacao:'Validação', final:'Decolagem'};
+      DRX_MARCOS.forEach(m => { const mo = dx.marcos[m.k]||{}; const d = mo.real?parseDate(mo.real):mo.prev?parseDate(mo.prev):new Date(dI.getTime()+(m.sem-1)*7*864e5); if (d) eventos.push({d, label:shortM[m.k], feito: !!mo.real}); });
+    } else {
+      const ciclos = droGetCiclos(p);
+      const multi = ciclos.length > 1;
+      ciclos.forEach(c => { DRO_FASES.forEach(f => { const com = c[f.ck]||{}; const d = com.real?parseDate(com.real):com.prev?parseDate(com.prev):new Date(c.inicio.getTime()+f.semFim*7*864e5); if (d) eventos.push({d, label: f.cnome.split(' ')[0]+(multi?(' C'+c.num):''), feito: !!com.real}); }); });
+    }
+    (p.droData?.auditorias||[]).forEach(a => { if (a.dataPrev) { const d = parseDate(a.dataPrev); if (d) eventos.push({d, label: a.nome||'Auditoria', feito: !!a.feita}); } });
+
+    const cells = semanas.map(s => {
+      const sEnd = new Date(s.getTime()+6*864e5);
+      const isHoje = hoje >= s && hoje <= sEnd;
+      const bgHoje = isHoje ? 'rgba(212,0,26,.04)' : '';
+      const active = dI <= sEnd && dF >= s;
+      if (!active) return '<td style="background:'+bgHoje+';"></td>';
+      const here = eventos.filter(e => e.d >= s && e.d <= sEnd);
+      const leftPct = dI > s ? Math.round((dI-s)/(7*864e5)*100) : 0;
+      const rightPct = dF < sEnd ? Math.round((sEnd-dF)/(7*864e5)*100) : 0;
+      let barContent;
+      if (here.length) {
+        const txt = here.map(e => (e.feito?'✓ ':'')+e.label).join('<br>');
+        barContent = '<div class="gantt-bar" style="background:'+baseColor+';left:'+leftPct+'%;right:'+rightPct+'%;display:flex;align-items:center;justify-content:center;overflow:visible;"><span style="font-size:8px;font-weight:600;color:#fff;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.4);padding:0 2px;line-height:1.25;">'+txt+'</span></div>';
+      } else {
+        barContent = '<div class="gantt-bar" style="background:'+baseColor+';left:'+leftPct+'%;right:'+rightPct+'%;opacity:.28;"></div>';
+      }
+      return '<td style="position:relative;background:'+bgHoje+';">'+barContent+'</td>';
+    }).join('');
+
+    return '<tr><td style="padding:6px 8px;"><div style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:'+dot+';flex-shrink:0;"></span><span style="font-size:var(--fs-sm);font-weight:500;">'+escapeHtmlPv(nome)+'</span><span style="font-size:9px;background:'+baseColor+';color:#fff;padding:1px 5px;border-radius:10px;margin-left:2px;">'+badgeTxt+'</span></div><div style="font-size:var(--fs-xs);color:var(--text-hint);padding-left:14px;">'+escapeHtmlPv(p.consultor||'')+'</div></td>'+cells+'</tr>';
+  }).join('');
+
+  container.innerHTML = '<div style="overflow-x:auto;"><table style="border-collapse:collapse;width:100%;font-size:var(--fs-sm);"><thead><tr>'+headers+'</tr></thead><tbody>'+rows+'</tbody></table></div>';
 }
 
 function renderAuditoria() {
   const box = document.getElementById('auditoria-list');
   if (!box) return;
-  if (!auditorias.length) { box.innerHTML = '<div style="color:var(--text-hint);">Nenhuma avaliação de auditoria registrada no Supabase.</div>'; return; }
+  if (!auditorias.length) {
+    box.innerHTML = '<div style="color:var(--text-hint);">Nenhuma avaliação de auditoria registrada no Supabase.</div>';
+    const heat = document.getElementById('aud-heat-body'); if (heat) heat.innerHTML = '<div style="color:var(--text-hint);">Sem dados.</div>';
+    const agg = document.getElementById('aud-agg-body'); if (agg) agg.innerHTML = '<div style="color:var(--text-hint);">Sem dados.</div>';
+    return;
+  }
   const ordered = [...auditorias].sort((a,b) => (b.data||'').localeCompare(a.data||''));
   box.innerHTML = '<div class="checklist-group">' + ordered.slice(0,15).map(a => {
     const nota = a.nota !== undefined && a.nota !== '' && !isNaN(parseFloat(a.nota)) ? parseFloat(a.nota) : null;
@@ -1042,6 +1726,44 @@ function renderAuditoria() {
       + '<div class="checklist-item-desc">' + escapeHtmlPv(a.consultor||'—') + ' · ' + fmtDataBr(a.data) + (nota!==null ? ' · nota ' + nota : '') + '</div></div>'
       + '</div>';
   }).join('') + '</div>';
+
+  renderAuditoriaHeat();
+  renderAuditoriaAgg();
+}
+
+function renderAuditoriaHeat() {
+  const body = document.getElementById('aud-heat-body');
+  if (!body) return;
+  const data = audAggData('consultor', auditorias);
+  if (!data.length) { body.innerHTML = '<div style="color:var(--text-hint);">Sem dados.</div>'; return; }
+  let html = '<table style="border-collapse:collapse;font-size:var(--fs-sm);min-width:100%;">';
+  html += '<thead><tr><th style="text-align:left;padding:5px 8px;color:var(--text-hint);font-size:9px;text-transform:uppercase;letter-spacing:.05em;">Consultor</th>';
+  AUD_DIMS.forEach(d => { html += '<th title="'+escapeHtmlPv(d.nome)+'" style="padding:5px 6px;color:var(--text-hint);font-size:9px;font-weight:600;text-align:center;">'+d.id.toUpperCase()+'</th>'; });
+  html += '<th style="padding:5px 8px;color:var(--text-hint);font-size:9px;text-align:center;">Geral</th></tr></thead><tbody>';
+  data.forEach(row => {
+    html += '<tr><td style="padding:5px 8px;color:var(--text);white-space:nowrap;">'+escapeHtmlPv(row.nome)+'</td>';
+    AUD_DIMS.forEach(d => { const v = row.dims[d.id]; html += '<td style="padding:7px 6px;text-align:center;font-weight:600;'+audHeatColor(v)+'border:1px solid var(--surface);">'+(v!==null?v:'—')+'</td>'; });
+    const cl = audClassif(row.media);
+    html += '<td style="padding:7px 8px;text-align:center;font-weight:700;color:'+cl.cor+';">'+(row.media!==null?row.media:'—')+'</td></tr>';
+  });
+  html += '</tbody></table>';
+  html += '<div style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:var(--fs-xs);color:var(--text-hint);flex-wrap:wrap;"><span>0</span><div style="flex:0 0 160px;height:10px;border-radius:5px;background:linear-gradient(90deg,hsl(0,68%,50%) 0%,hsl(9,68%,50%) 20%,hsl(28,68%,50%) 40%,hsl(53,68%,50%) 60%,hsl(84,68%,50%) 80%,hsl(120,68%,50%) 100%);"></div><span>100</span><span style="margin-left:8px;">células mais avermelhadas = dimensões a desenvolver</span></div>';
+  body.innerHTML = html;
+}
+
+function renderAuditoriaAgg() {
+  const body = document.getElementById('aud-agg-body');
+  if (!body) return;
+  const data = audAggData('consultor', auditorias);
+  if (!data.length) { body.innerHTML = '<div style="color:var(--text-hint);">Sem dados.</div>'; return; }
+  body.innerHTML = data.map(row => {
+    const cl = audClassif(row.media), w = Math.max(2, row.media||0);
+    return '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">'
+      + '<div style="width:150px;font-size:var(--fs-base);color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escapeHtmlPv(row.nome)+'</div>'
+      + '<div style="flex:1;background:var(--surface3);border-radius:4px;height:22px;overflow:hidden;min-width:120px;"><div style="height:100%;width:'+w+'%;background:'+cl.cor+';opacity:.85;border-radius:4px;display:flex;align-items:center;padding:0 8px;"><span style="font-size:var(--fs-sm);font-weight:700;color:#fff;">'+(row.media!==null?row.media:'—')+'</span></div></div>'
+      + '<div style="width:110px;font-size:var(--fs-xs);color:var(--text-hint);text-align:right;">'+row.count+' aval. · '+cl.txt+'</div>'
+      + '</div>';
+  }).join('');
 }
 
 function renderConversao() {
@@ -1307,26 +2029,108 @@ function renderCultura() {
     }
   }
   const feedEl = document.getElementById('cultura-feed');
-  if (!feedEl) return;
-  if (!sinaisCulturais.length) { feedEl.innerHTML = '<div class="cultura-signal" style="color:var(--text-hint);">Nenhum sinal registrado ainda.</div>'; return; }
-  const ordered = [...sinaisCulturais].sort((a,b) => (b.created_at||'').localeCompare(a.created_at||'')).slice(0,20);
-  feedEl.innerHTML = ordered.map(s => {
-    const isPos = s.tipo === 'alinhado';
-    const dimList = DIMENSOES[s.framework] || [];
-    const dimMeta = dimList.find(d => d.code === s.dimensao) || {label: s.dimensao||''};
-    const iconSvg = isPos
-      ? '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.5l2.5 2.5L12 4.5"/></svg>'
-      : '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>';
-    return '<div class="cultura-signal">'
-      + '<div class="cultura-signal-head">'
-      + '<span class="cultura-badge-dim ' + (isPos?'pos':'neg') + '">' + iconSvg + '</span>'
-      + '<b>' + escapeHtmlPv(s.consultor||'Squad geral') + '</b>'
-      + '<span style="font-size:var(--fs-xs);color:var(--text-hint);">' + escapeHtmlPv(s.framework||'') + ' — ' + escapeHtmlPv(dimMeta.label||'') + '</span>'
-      + '<span class="badge ' + (isPos?'b-green':'b-red') + '" style="margin:0;margin-left:auto;">' + (isPos?'Alinhado':'Anti-padrão') + '</span>'
+  if (feedEl) {
+    if (!sinaisCulturais.length) { feedEl.innerHTML = '<div class="cultura-signal" style="color:var(--text-hint);">Nenhum sinal registrado ainda.</div>'; }
+    else {
+      const ordered = [...sinaisCulturais].sort((a,b) => (b.created_at||'').localeCompare(a.created_at||'')).slice(0,20);
+      feedEl.innerHTML = ordered.map(s => {
+        const isPos = s.tipo === 'alinhado';
+        const dimList = DIMENSOES[s.framework] || [];
+        const dimMeta = dimList.find(d => d.code === s.dimensao) || {label: s.dimensao||''};
+        const iconSvg = isPos
+          ? '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.5l2.5 2.5L12 4.5"/></svg>'
+          : '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>';
+        return '<div class="cultura-signal">'
+          + '<div class="cultura-signal-head">'
+          + '<span class="cultura-badge-dim ' + (isPos?'pos':'neg') + '">' + iconSvg + '</span>'
+          + '<b>' + escapeHtmlPv(s.consultor||'Squad geral') + '</b>'
+          + '<span style="font-size:var(--fs-xs);color:var(--text-hint);">' + escapeHtmlPv(s.framework||'') + ' — ' + escapeHtmlPv(dimMeta.label||'') + '</span>'
+          + '<span class="badge ' + (isPos?'b-green':'b-red') + '" style="margin:0;margin-left:auto;">' + (isPos?'Alinhado':'Anti-padrão') + '</span>'
+          + '</div>'
+          + '<p style="font-size:var(--fs-md);color:var(--text);line-height:1.5;">' + escapeHtmlPv(s.descricao||'') + '</p>'
+          + '</div>';
+      }).join('');
+    }
+  }
+
+  renderCulturaConsultores();
+  renderCulturaSquad();
+}
+
+function computeConsultorStatsPv(consultor, list) {
+  const own = list.filter(s => s.consultor === consultor);
+  const aligned = own.filter(s => s.tipo === 'alinhado').length;
+  const anti = own.filter(s => s.tipo === 'anti_padrao').length;
+  const total = aligned + anti;
+  const scorePct = total ? Math.round((aligned/total)*100) : 0;
+  function dimValues(framework) {
+    return DIMENSOES[framework].map(d => {
+      const dimSignals = own.filter(s => s.framework === framework && s.dimensao === d.code);
+      const a = dimSignals.filter(s => s.tipo === 'alinhado').length;
+      const t = dimSignals.length;
+      return t ? Math.round((a/t)*100) : 0;
+    });
+  }
+  return { consultor, total, aligned, anti, scorePct, growthValues: dimValues('GROWTH'), pifeValues: dimValues('PIFE') };
+}
+
+function renderCulturaConsultores() {
+  const grid = document.getElementById('consultores-grid');
+  if (!grid) return;
+  const consultores = [...new Set(sinaisCulturais.map(s => s.consultor))].filter(Boolean).sort();
+  if (!consultores.length) { grid.innerHTML = '<div style="color:var(--text-hint);">Sem sinais registrados ainda.</div>'; return; }
+  grid.innerHTML = consultores.map(c => {
+    const st = computeConsultorStatsPv(c, sinaisCulturais);
+    const radarG = drawRadar(DIMENSOES.GROWTH, st.growthValues, 150, FW_COLOR.GROWTH);
+    const radarP = drawRadar(DIMENSOES.PIFE, st.pifeValues, 120, FW_COLOR.PIFE);
+    const scoreCls = st.scorePct >= 75 ? 'b-green' : st.scorePct >= 50 ? 'b-amber' : 'b-red';
+    return '<div class="card">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
+      + '<div><div style="font-weight:700;font-size:var(--fs-lg);">' + escapeHtmlPv(c) + '</div><div style="font-size:var(--fs-xs);color:var(--text-hint);">' + st.total + ' sinal(is) · ' + st.aligned + ' alinhados · ' + st.anti + ' anti-padrão</div></div>'
+      + '<span class="badge ' + scoreCls + '">' + (st.total ? st.scorePct + '%' : '—') + '</span>'
       + '</div>'
-      + '<p style="font-size:var(--fs-md);color:var(--text);line-height:1.5;">' + escapeHtmlPv(s.descricao||'') + '</p>'
-      + '</div>';
+      + '<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">'
+      + '<div style="text-align:center;">' + radarG + '<div style="font-size:var(--fs-xs);color:var(--text-hint);margin-top:4px;">G.R.O.W.T.H.</div></div>'
+      + '<div style="text-align:center;">' + radarP + '<div style="font-size:var(--fs-xs);color:var(--text-hint);margin-top:4px;">PIFE</div></div>'
+      + '</div></div>';
   }).join('');
+}
+
+function renderCulturaSquad() {
+  const rankingEl = document.getElementById('squad-ranking');
+  const antiEl = document.getElementById('squad-antipadroes');
+  const radarEl = document.getElementById('squad-radar-growth');
+  if (!rankingEl) return;
+  const consultores = [...new Set(sinaisCulturais.map(s => s.consultor))].filter(Boolean);
+  const stats = consultores.map(c => computeConsultorStatsPv(c, sinaisCulturais)).filter(s => s.total > 0);
+  stats.sort((a,b) => b.scorePct - a.scorePct);
+  rankingEl.innerHTML = stats.length ? stats.map((s,i) => '<div class="ov-row"><span class="ov-name">' + (i+1) + '. ' + escapeHtmlPv(s.consultor) + '</span>'
+    + '<div style="display:flex;align-items:center;gap:8px;flex:1;max-width:200px;"><div class="prog-bg" style="flex:1;margin:0;"><div class="prog-fill" style="width:' + s.scorePct + '%;background:' + (s.scorePct>=75?'var(--green)':s.scorePct>=50?'var(--amber)':'var(--red)') + ';"></div></div><span style="font-size:var(--fs-xs);font-weight:700;">' + s.scorePct + '%</span></div></div>').join('')
+    : '<div style="color:var(--text-hint);">Sem sinais suficientes.</div>';
+
+  const antiMap = {};
+  sinaisCulturais.filter(s => s.tipo === 'anti_padrao').forEach(s => { const key = s.framework+'::'+s.dimensao; antiMap[key] = (antiMap[key]||0)+1; });
+  const antiEntries = Object.entries(antiMap).sort((a,b) => b[1]-a[1]).slice(0,8);
+  if (antiEl) {
+    if (!antiEntries.length) antiEl.innerHTML = '<div style="color:var(--text-hint);">Nenhum anti-padrão registrado — bom sinal.</div>';
+    else {
+      const maxAnti = antiEntries[0][1];
+      antiEl.innerHTML = antiEntries.map(([key,count]) => {
+        const [fw, code] = key.split('::');
+        const meta = dimMeta(fw, code);
+        return '<div class="ov-row"><span class="ov-name">' + code + ' — ' + escapeHtmlPv(meta.label||'') + '</span>'
+          + '<div style="display:flex;align-items:center;gap:8px;flex:1;max-width:200px;"><div class="prog-bg" style="flex:1;margin:0;"><div class="prog-fill" style="width:' + (count/maxAnti*100) + '%;background:var(--red);"></div></div><span style="font-size:var(--fs-xs);font-weight:700;">' + count + 'x</span></div></div>';
+      }).join('');
+    }
+  }
+  if (radarEl) {
+    const growthAvg = DIMENSOES.GROWTH.map(d => {
+      const dimSignals = sinaisCulturais.filter(s => s.framework === 'GROWTH' && s.dimensao === d.code);
+      const a = dimSignals.filter(s => s.tipo === 'alinhado').length;
+      return dimSignals.length ? Math.round(a/dimSignals.length*100) : 0;
+    });
+    radarEl.innerHTML = sinaisCulturais.length ? drawRadar(DIMENSOES.GROWTH, growthAvg, 220, FW_COLOR.GROWTH) : '<div style="color:var(--text-hint);">Sem dados.</div>';
+  }
 }
 
 // ============================================================

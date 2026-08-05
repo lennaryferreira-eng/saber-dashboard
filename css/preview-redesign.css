@@ -139,3 +139,13 @@
 
 /* ===== Mini sparkline (NPS / AQL) ===== */
 .spark-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.4rem 1.6rem;margin-bottom:1.4rem;}
+
+/* ===== Gantt real (Lead Time / DRO) — index.html não define CSS pra .gantt-bar
+   (só estilo inline), então essas regras de posicionamento são um acréscimo do
+   redesign pra renderizar a barra contínua corretamente. ===== */
+.gantt-table{table-layout:fixed;}
+.gantt-table td{height:36px;padding:0;}
+.gantt-table th{white-space:nowrap;}
+.gantt-bar{position:absolute;top:4px;bottom:4px;border-radius:4px;min-width:6px;}
+.gantt-name{padding:6px 8px !important;height:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;}
+.gantt-cons{padding:6px 8px !important;height:auto;white-space:nowrap;}
