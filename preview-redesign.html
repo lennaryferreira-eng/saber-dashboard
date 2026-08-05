@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>[ESPELHO] Redesign — Coordenação SABER</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;0,900;1,400&family=Barlow:wght@300;400;500;600&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="css/preview-redesign.css">
+</head>
+<body class="preview-body-font">
+
+<div class="preview-banner">🔍 <strong>ESPELHO DE REDESIGN</strong> — protótipo estático pra aprovação, não é a página real. Nenhum dado aqui é salvo ou vem do Supabase.</div>
+
+<header>
+  <div>
+    <div class="eyebrow">Painel de Indicadores</div>
+    <h1 class="title">Coordenação SABER</h1>
+    <p class="subtitle">Escopo de marketing · Receita one-time · 2026</p>
+  </div>
+  <div style="text-align:right;">
+    <span class="qbadge">2026 — Q1 · Q2 · Q3 · Q4</span>
+    <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:8px;flex-wrap:wrap;">
+
+      <!-- Menu "Dados" — consolida Planilha/Exportar/Importar/Backup -->
+      <div class="dados-menu" id="dados-menu">
+        <button class="btn dados-menu-trigger" onclick="toggleDadosMenu(event)">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="8" cy="3.5" rx="5.5" ry="2"/><path d="M2.5 3.5V12.5C2.5 13.6 5 14.5 8 14.5s5.5-.9 5.5-2V3.5"/><path d="M2.5 8c0 1.1 2.5 2 5.5 2s5.5-.9 5.5-2"/></svg>
+          Dados
+          <svg class="chevron" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>
+        </button>
+        <div class="dados-menu-list">
+          <button class="dados-menu-item" onclick="mockAction('Atualizar planilha')">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 14h13"/><path d="M4 13V8M8 13V5M12 13V9" stroke-width="2.2"/></svg>
+            Atualizar planilha
+          </button>
+          <button class="dados-menu-item" onclick="mockAction('Exportar dados')">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v8M4.5 7.5L8 11l3.5-3.5M3 13h10"/></svg>
+            Exportar dados
+          </button>
+          <button class="dados-menu-item" onclick="mockAction('Importar dados')">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 11V3M4.5 6.5L8 3l3.5 3.5M3 13h10"/></svg>
+            Importar dados
+          </button>
+          <button class="dados-menu-item" onclick="mockAction('Restaurar backup')">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3L2 7l4 4"/><path d="M2 7h7a4 4 0 014 4v2"/></svg>
+            Restaurar backup
+          </button>
+        </div>
+      </div>
+
+      <button class="btn" onclick="mockAction('Consultores')" title="Gerenciar consultores do squad">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="5.5" r="2.5"/><path d="M1.5 14v-1a4 4 0 014-4h1a4 4 0 014 4v1"/><circle cx="12" cy="6" r="2"/><path d="M11 14v-1a3.5 3.5 0 00-1.2-2.7"/></svg>
+        Consultores
+      </button>
+      <button class="btn" onclick="mockAction('Entrar')" style="font-weight:700;letter-spacing:.04em;">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 015 0v2"/></svg>
+        ENTRAR
+      </button>
+    </div>
+    <span id="last-upd">Atualizado em 05 de ago. de 2026</span>
+    <span style="font-size:var(--fs-sm);color:var(--green);display:block;margin-top:2px;text-align:right;">● Online (mockup)</span>
+  </div>
+</header>
+
+<div class="coord-switch">
+  <button class="coord-btn active" onclick="mockAction('Trocar pra TER')">Coordenação SABER</button>
+  <button class="coord-btn" onclick="mockAction('Trocar pra TER')">Coordenação TER</button>
+</div>
+
+<nav>
+  <div class="nav-inner">
+  <div class="nav-group">
+    <div class="nav-group-label g-geral">Geral</div>
+    <div class="nav-group-tabs">
+      <button class="nav-tab active" onclick="show('visao')">Visão Geral</button>
+      <button class="nav-tab tab-base" onclick="show('base')">Base de Projetos</button>
+    </div>
+  </div>
+  <div class="nav-sep"></div>
+  <div class="nav-group">
+    <div class="nav-group-label g-okrs">OKRs</div>
+    <div class="nav-group-tabs">
+      <button class="nav-tab" onclick="show('conversao')">Tx. Conversão</button>
+      <button class="nav-tab" onclick="show('prazo')">Projetos no Prazo</button>
+      <button class="nav-tab" onclick="show('csp')">Taxa CSP</button>
+      <button class="nav-tab" onclick="show('nps')">NPS</button>
+      <button class="nav-tab" onclick="show('pdi')">PDI do Time</button>
+      <button class="nav-tab" onclick="show('aql')">AQL</button>
+    </div>
+  </div>
+  <div class="nav-sep"></div>
+  <div class="nav-group">
+    <div class="nav-group-label g-gestao">Gestão</div>
+    <div class="nav-group-tabs">
+      <button class="nav-tab" onclick="show('leadtime')">Lead Time</button>
+      <button class="nav-tab" onclick="show('dro')">DRO/DRX</button>
+      <button class="nav-tab" onclick="show('pipeline')">Pipeline</button>
+      <button class="nav-tab" onclick="show('monetizacao')">Monetização</button>
+      <button class="nav-tab" onclick="show('capacity')">Capacity</button>
+      <button class="nav-tab" onclick="show('performance')">Performance</button>
+      <button class="nav-tab" onclick="show('auditoria')">Auditoria de Entregas</button>
+      <button class="nav-tab" onclick="show('cultura')">Termômetro Cultural</button>
+    </div>
+  </div>
+  </div>
+</nav>
+
+<main>
+
+  <!-- ============ VISÃO GERAL ============ -->
+  <section class="section active" id="sec-visao">
+    <div class="sec-head">
+      <h2 class="sec-title">Visão Geral</h2>
+      <p class="sec-desc">Todos os indicadores consolidados — 2026.</p>
+    </div>
+
+    <div class="filter-bar">
+      <span class="filter-label">Visualizar:</span>
+      <button class="filter-btn year active">Ano completo</button>
+      <button class="filter-btn">Jan</button>
+      <button class="filter-btn">Fev</button>
+      <button class="filter-btn">Mar</button>
+      <button class="filter-btn">Abr</button>
+      <button class="filter-btn">Mai</button>
+      <button class="filter-btn">Jun</button>
+      <span class="filter-sep"></span>
+      <button class="filter-btn">Jul</button>
+      <button class="filter-btn">Ago</button>
+      <button class="filter-btn">Set</button>
+      <button class="filter-btn">Out</button>
+      <button class="filter-btn">Nov</button>
+      <button class="filter-btn">Dez</button>
+    </div>
+
+    <div class="card" style="background:var(--accent);color:#fff;border:none;padding:2rem 2.2rem;">
+      <div class="mlabel" style="color:rgba(255,255,255,.8);">Movimentado pelo Squad · Agosto/2026</div>
+      <div style="font-family:var(--serif);font-size:56px;font-weight:700;line-height:1;margin:6px 0 10px;">R$ 60.055</div>
+      <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);border-radius:20px;padding:5px 14px;font-size:var(--fs-sm);font-weight:600;">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12l4.5-5 3 3L14 4"/><path d="M10 4h4v4"/></svg>
+        4 projetos com fee
+      </div>
+    </div>
+
+    <div class="mgrid mg4">
+      <div class="mcard c-accent">
+        <span class="mcard-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 4.5a1 1 0 011-1h3l1.2 1.6H13a1 1 0 011 1V12a1 1 0 01-1 1H3a1 1 0 01-1-1V4.5z"/></svg></span>
+        <div class="mlabel">Taxa CSP</div>
+        <div class="mval">—</div>
+        <div class="prog-bg"><div class="prog-fill" style="width:0%;background:var(--accent);"></div></div>
+        <div class="mmeta">Meta: ≤ 5%</div>
+      </div>
+      <div class="mcard c-green">
+        <span class="mcard-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 8h3l2-5 3 10 2-5h2"/></svg></span>
+        <div class="mlabel">Taxa de Conversão</div>
+        <div class="mval">28,5%</div>
+        <div class="prog-bg"><div class="prog-fill" style="width:71%;background:var(--green);"></div></div>
+        <div class="mmeta">Meta: 40%</div>
+      </div>
+      <div class="mcard c-blue">
+        <span class="mcard-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.5 1.5"/></svg></span>
+        <div class="mlabel">Projetos no Prazo</div>
+        <div class="mval">93%</div>
+        <div class="prog-bg"><div class="prog-fill" style="width:93%;background:var(--blue);"></div></div>
+        <div class="mmeta">Meta: 80%</div>
+      </div>
+      <div class="mcard c-purple">
+        <span class="mcard-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.5l2 4.2 4.6.5-3.4 3.2.9 4.6L8 11.8l-4.1 2.2.9-4.6L1.4 6.2l4.6-.5L8 1.5z"/></svg></span>
+        <div class="mlabel">NPS</div>
+        <div class="mval">72</div>
+        <div class="prog-bg"><div class="prog-fill" style="width:90%;background:var(--purple);"></div></div>
+        <div class="mmeta">Meta: 50</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ BASE DE PROJETOS ============ -->
+  <section class="section" id="sec-base">
+    <div class="sec-head">
+      <h2 class="sec-title">Base de Projetos</h2>
+      <p class="sec-desc">Gerenciamento centralizado de todos os projetos ativos e finalizados.</p>
+    </div>
+
+    <div class="base-toolbar">
+      <div class="base-filter-group">
+        <span class="base-filter-label">Status</span>
+        <select class="base-sel"><option>Todos</option><option>No prazo</option><option>Atenção</option><option>Atrasado</option></select>
+      </div>
+      <div class="base-filter-group">
+        <span class="base-filter-label">Consultor</span>
+        <select class="base-sel"><option>Todos</option><option>Camila</option><option>Loma</option><option>Caio</option><option>Leonam</option></select>
+      </div>
+      <div class="base-filter-group">
+        <span class="base-filter-label">Modelo</span>
+        <select class="base-sel"><option>Todos</option><option>Estruturação Estratégica</option><option>DRO</option><option>DRX</option></select>
+      </div>
+      <button class="base-clear">Limpar filtros</button>
+      <span class="base-count">24 projetos</span>
+    </div>
+
+    <div class="tbl-wrap" style="border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-sm);">
+      <table>
+        <thead>
+          <tr>
+            <th>Projeto</th>
+            <th>Status</th>
+            <th>Consultor</th>
+            <th>Prazo</th>
+            <th>Progresso</th>
+            <th style="text-align:right;">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>Mag Carretas</b><br><span style="color:var(--text-hint);font-size:var(--fs-xs);">Estruturação Estratégica</span></td>
+            <td><span class="badge b-green">No prazo</span></td>
+            <td>Camila</td>
+            <td>15 Set 2026</td>
+            <td><div style="display:flex;align-items:center;gap:8px;"><div class="prog-bg" style="flex:1;margin:0;"><div class="prog-fill" style="width:75%;background:var(--green);"></div></div><span style="font-size:var(--fs-xs);">75%</span></div></td>
+            <td style="text-align:right;"><button style="background:none;border:none;cursor:pointer;color:var(--text-hint);">⋮</button></td>
+          </tr>
+          <tr>
+            <td><b>BioMagistral</b><br><span style="color:var(--text-hint);font-size:var(--fs-xs);">DRO</span></td>
+            <td><span class="badge b-amber">Atenção</span></td>
+            <td>Loma</td>
+            <td>30 Ago 2026</td>
+            <td><div style="display:flex;align-items:center;gap:8px;"><div class="prog-bg" style="flex:1;margin:0;"><div class="prog-fill" style="width:40%;background:var(--amber);"></div></div><span style="font-size:var(--fs-xs);">40%</span></div></td>
+            <td style="text-align:right;"><button style="background:none;border:none;cursor:pointer;color:var(--text-hint);">⋮</button></td>
+          </tr>
+          <tr>
+            <td><b>Sand Blue</b><br><span style="color:var(--text-hint);font-size:var(--fs-xs);">DRX</span></td>
+            <td><span class="badge b-red">Atrasado</span></td>
+            <td>Vinicius</td>
+            <td style="color:var(--accent);font-weight:600;">12 Jul 2026</td>
+            <td><div style="display:flex;align-items:center;gap:8px;"><div class="prog-bg" style="flex:1;margin:0;"><div class="prog-fill" style="width:90%;background:var(--red);"></div></div><span style="font-size:var(--fs-xs);">90%</span></div></td>
+            <td style="text-align:right;"><button style="background:none;border:none;cursor:pointer;color:var(--text-hint);">⋮</button></td>
+          </tr>
+          <tr>
+            <td><b>Clínica Auryon</b><br><span style="color:var(--text-hint);font-size:var(--fs-xs);">Estruturação Estratégica</span></td>
+            <td><span class="badge b-green">No prazo</span></td>
+            <td>Caio</td>
+            <td>10 Out 2026</td>
+            <td><div style="display:flex;align-items:center;gap:8px;"><div class="prog-bg" style="flex:1;margin:0;"><div class="prog-fill" style="width:15%;background:var(--green);"></div></div><span style="font-size:var(--fs-xs);">15%</span></div></td>
+            <td style="text-align:right;"><button style="background:none;border:none;cursor:pointer;color:var(--text-hint);">⋮</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ DRO/DRX ============ -->
+  <section class="section" id="sec-dro">
+    <div class="sec-head">
+      <h2 class="sec-title">DRO / DRX</h2>
+      <p class="sec-desc">Acompanhamento por ciclos de 3 meses — fases, comitês, trava governante e auditorias.</p>
+    </div>
+
+    <div class="cycle-card expanded">
+      <button class="cycle-card-header" onclick="toggleCycleCard(this)">
+        <div class="cycle-card-title">
+          <h3>Justo Precatório</h3>
+          <span class="badge b-purple" style="margin:0;">DRO</span>
+          <span class="flag-dot flag-A"></span>
+          <span style="font-size:var(--fs-xs);color:var(--text-hint);">Amarelo</span>
+        </div>
+        <svg class="cycle-card-chevron" width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>
+      </button>
+      <div class="cycle-card-body">
+        <div class="stepper">
+          <div class="stepper-fill" style="width:50%;"></div>
+          <div class="stepper-step done"><div class="stepper-dot"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.5l2.5 2.5L12 4.5"/></svg></div><span class="stepper-label">Ciclo 1</span></div>
+          <div class="stepper-step done"><div class="stepper-dot"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.5l2.5 2.5L12 4.5"/></svg></div><span class="stepper-label">Ciclo 2</span></div>
+          <div class="stepper-step current"><div class="stepper-dot">3</div><span class="stepper-label">Ciclo 3</span></div>
+          <div class="stepper-step"><div class="stepper-dot">4</div><span class="stepper-label">Ciclo 4</span></div>
+        </div>
+        <div style="margin-bottom:.6rem;display:flex;justify-content:space-between;font-size:var(--fs-sm);"><span>Progresso do ciclo atual</span><span style="color:var(--accent);font-weight:600;">60%</span></div>
+        <div class="prog-bg" style="margin:0 0 1.4rem;"><div class="prog-fill" style="width:60%;background:var(--accent);"></div></div>
+        <div class="checklist-group-title">Comitês desse ciclo</div>
+        <label class="subitem-row done"><input type="checkbox" checked> <span class="subitem-title">Comitê de abertura — realizado</span></label>
+        <label class="subitem-row"><input type="checkbox"> <span class="subitem-title">Comitê de meio de ciclo</span> <span class="subitem-meta">previsto: 20/set</span></label>
+        <label class="subitem-row"><input type="checkbox"> <span class="subitem-title">Comitê de fechamento</span> <span class="subitem-meta">previsto: 15/out</span></label>
+      </div>
+    </div>
+
+    <div class="cycle-card">
+      <button class="cycle-card-header" onclick="toggleCycleCard(this)">
+        <div class="cycle-card-title">
+          <h3>Guaravita</h3>
+          <span class="badge b-blue" style="margin:0;">DRX</span>
+          <span class="flag-dot flag-V"></span>
+          <span style="font-size:var(--fs-xs);color:var(--text-hint);">Verde</span>
+        </div>
+        <svg class="cycle-card-chevron" width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>
+      </button>
+    </div>
+  </section>
+
+  <!-- ============ LEAD TIME ============ -->
+  <section class="section" id="sec-leadtime">
+    <div class="sec-head">
+      <h2 class="sec-title">Lead Time</h2>
+      <p class="sec-desc">Acompanhamento das entregas por semana.</p>
+    </div>
+
+    <div class="gantt-legend">
+      <b>Status:</b>
+      <span><span class="gantt-legend-dot" style="background:var(--green);"></span>No prazo</span>
+      <span><span class="gantt-legend-dot" style="background:var(--amber);"></span>Em risco</span>
+      <span><span class="gantt-legend-dot" style="background:var(--red);"></span>Atrasado</span>
+    </div>
+
+    <div class="tbl-wrap gantt-table" style="border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-sm);">
+      <table>
+        <thead>
+          <tr>
+            <th style="min-width:200px;">Projeto</th>
+            <th>Sem 1</th><th>Sem 2</th><th>Sem 3</th><th>Sem 4</th><th>Sem 5</th><th>Sem 6</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>Mag Carretas</b></td>
+            <td><span class="gantt-block ok">Sizing</span></td>
+            <td><span class="gantt-block ok">Sizing</span></td>
+            <td><span class="gantt-block ok">Produção</span></td>
+            <td></td><td></td><td></td>
+          </tr>
+          <tr>
+            <td><b>BioMagistral</b></td>
+            <td></td>
+            <td><span class="gantt-block warn">Estratégia (atrasado)</span></td>
+            <td><span class="gantt-block warn">Estratégia (atrasado)</span></td>
+            <td></td><td></td><td></td>
+          </tr>
+          <tr>
+            <td><b>Sand Blue</b></td>
+            <td><span class="gantt-block bad">Diagnóstico</span></td>
+            <td></td><td></td><td></td><td></td><td></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ AUDITORIA DE ENTREGAS ============ -->
+  <section class="section" id="sec-auditoria">
+    <div class="sec-head">
+      <h2 class="sec-title">Auditoria de Entregas</h2>
+      <p class="sec-desc">Avaliação de qualidade das entregas — 9 dimensões · Squad Saber.</p>
+    </div>
+
+    <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;">
+      <div class="card" style="flex:1;min-width:280px;">
+        <div class="card-title">Nova avaliação</div>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div><span class="field-label">Consultor</span><select class="aud-inp"><option>Selecione…</option></select></div>
+          <div><span class="field-label">Tipo de entrega</span><select class="aud-inp"><option>Selecione…</option></select></div>
+          <div><span class="field-label">Cliente</span><input class="aud-inp" placeholder="Digite pra buscar…"></div>
+          <div>
+            <span class="field-label">Envie o arquivo da reunião</span>
+            <div style="border:1.5px dashed var(--border-md);border-radius:var(--r);padding:1.4rem;text-align:center;color:var(--text-hint);font-size:var(--fs-sm);cursor:pointer;">
+              <svg width="24" height="24" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:6px;" aria-hidden="true"><path d="M8 11V3M4.5 6.5L8 3l3.5 3.5M3 13h10"/></svg>
+              <div>Arraste o arquivo ou clique pra selecionar</div>
+            </div>
+          </div>
+          <button class="btn btn-primary" style="justify-content:center;">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 1l1.3 5L14 8l-4.7 2L8 15l-1.3-5L2 8l4.7-2L8 1z"/></svg>
+            Gerar avaliação com Claude
+          </button>
+        </div>
+      </div>
+
+      <div style="flex:2;min-width:320px;">
+        <div class="card-title" style="margin-bottom:1rem;">Checklist da entrega — Kickoff</div>
+        <div class="card">
+          <div class="checklist-group">
+            <div class="checklist-group-title">Entendimento do negócio</div>
+            <div class="checklist-item">
+              <span class="checklist-item-icon ok"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.5l2.5 2.5L12 4.5"/></svg></span>
+              <div><div class="checklist-item-title">Alinhamento de marca</div><div class="checklist-item-desc">Cores e tom de voz conferidos com o brandbook do cliente.</div></div>
+            </div>
+            <div class="checklist-item">
+              <span class="checklist-item-icon warn"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2L1 14h14L8 2z"/><path d="M8 6.5v3.5M8 12h.01"/></svg></span>
+              <div><div class="checklist-item-title">Objetivos de negócio</div><div class="checklist-item-desc">Levantados parcialmente — falta confirmar meta trimestral com o cliente.</div></div>
+            </div>
+            <div class="checklist-item">
+              <span class="checklist-item-icon bad"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></span>
+              <div><div class="checklist-item-title">Compromisso de envio de material pós-call</div><div class="checklist-item-desc">Não foi mencionado na call.</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ABAS AINDA NÃO REDESENHADAS NESSE ESPELHO ============ -->
+  <template id="placeholder-tpl">
+    <div class="preview-placeholder">
+      <svg width="32" height="32" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3.5" width="12" height="10.5" rx="1.5"/><path d="M2 6.5h12M5 2v3M11 2v3"/></svg>
+      <p>Essa aba ainda não foi redesenhada individualmente nesse espelho — ao aprovar a direção visual, ela vai reaproveitar os mesmos padrões de card, tabela e badge já mostrados em Visão Geral, Base de Projetos, DRO/DRX, Lead Time e Auditoria.</p>
+    </div>
+  </template>
+
+  <section class="section" id="sec-conversao"><div class="sec-head"><h2 class="sec-title">Tx. Conversão</h2></div></section>
+  <section class="section" id="sec-prazo"><div class="sec-head"><h2 class="sec-title">Projetos no Prazo</h2></div></section>
+  <section class="section" id="sec-csp"><div class="sec-head"><h2 class="sec-title">Taxa CSP</h2></div></section>
+  <section class="section" id="sec-nps"><div class="sec-head"><h2 class="sec-title">NPS</h2></div></section>
+  <section class="section" id="sec-pdi"><div class="sec-head"><h2 class="sec-title">PDI do Time</h2></div></section>
+  <section class="section" id="sec-aql"><div class="sec-head"><h2 class="sec-title">AQL</h2></div></section>
+  <section class="section" id="sec-pipeline"><div class="sec-head"><h2 class="sec-title">Pipeline</h2></div></section>
+  <section class="section" id="sec-monetizacao"><div class="sec-head"><h2 class="sec-title">Monetização</h2></div></section>
+  <section class="section" id="sec-capacity"><div class="sec-head"><h2 class="sec-title">Capacity</h2></div></section>
+  <section class="section" id="sec-performance"><div class="sec-head"><h2 class="sec-title">Performance</h2></div></section>
+  <section class="section" id="sec-cultura"><div class="sec-head"><h2 class="sec-title">Termômetro Cultural</h2></div></section>
+
+</main>
+
+<script>
+function show(sec) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  const secEl = document.getElementById('sec-' + sec);
+  if (secEl) {
+    secEl.classList.add('active');
+    // preenche o placeholder na primeira vez que a aba (ainda não desenhada) é aberta
+    if (!secEl.querySelector('.sec-desc') && !secEl.querySelector('.preview-placeholder')) {
+      const tpl = document.getElementById('placeholder-tpl').content.cloneNode(true);
+      secEl.appendChild(tpl);
+    }
+  }
+  document.querySelectorAll('.nav-tab').forEach(t => {
+    if (t.getAttribute('onclick') && t.getAttribute('onclick').indexOf("'" + sec + "'") >= 0) {
+      t.classList.add('active');
+    }
+  });
+  window.scrollTo({top: 0, behavior: 'instant'});
+}
+
+function toggleDadosMenu(ev) {
+  ev.stopPropagation();
+  document.getElementById('dados-menu').classList.toggle('open');
+}
+document.addEventListener('click', () => document.getElementById('dados-menu').classList.remove('open'));
+
+function toggleCycleCard(btn) {
+  btn.closest('.cycle-card').classList.toggle('expanded');
+}
+
+function mockAction(label) {
+  alert('[Espelho] "' + label + '" — ação real acontece só na página de produção.');
+}
+</script>
+
+</body>
+</html>

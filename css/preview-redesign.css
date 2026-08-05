@@ -1,0 +1,90 @@
+/* ============================================================
+   PREVIEW DE REDESIGN — espelho pra aprovação (Lennary)
+   Camada ADITIVA sobre css/styles.css — não altera nenhum token nem
+   componente existente, só acrescenta o que é novo nesse redesign.
+   Se aprovado, essas regras migram pra styles.css e essa página some.
+   ============================================================ */
+
+/* Corpo de texto em Hanken Grotesk (títulos continuam Barlow Condensed) —
+   proposta de refinamento tipográfico: números/títulos condensados de
+   impacto, texto corrido numa humanista mais legível em densidade de dado. */
+.preview-body-font, .preview-body-font input, .preview-body-font select, .preview-body-font textarea {
+  font-family:'Hanken Grotesk',var(--sans);
+}
+.preview-body-font .title, .preview-body-font .sec-title, .preview-body-font .mval,
+.preview-body-font .display-num {
+  font-family:var(--serif);
+}
+
+/* ===== Menu "Dados" (substitui os 4 botões soltos: Planilha/Exportar/Importar/Backup) ===== */
+.dados-menu{position:relative;display:inline-block;}
+.dados-menu-trigger{display:inline-flex;align-items:center;gap:6px;}
+.dados-menu-trigger .chevron{transition:transform var(--transition-fast);}
+.dados-menu.open .dados-menu-trigger .chevron{transform:rotate(180deg);}
+.dados-menu-list{position:absolute;top:calc(100% + 6px);left:0;min-width:220px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-md);padding:6px;display:none;z-index:var(--z-dropdown);}
+.dados-menu.open .dados-menu-list{display:block;}
+.dados-menu-item{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border:none;background:none;border-radius:var(--r-sm);font-family:var(--sans);font-size:var(--fs-md);color:var(--text);cursor:pointer;text-align:left;}
+.dados-menu-item:hover{background:var(--surface2);}
+.dados-menu-item svg{flex-shrink:0;color:var(--text-hint);}
+
+/* ===== Card de métrica com ícone (KPI grid da Visão Geral) ===== */
+.mcard-icon{position:absolute;top:1.2rem;right:1.2rem;color:var(--text-hint);}
+
+/* ===== Card expansível com stepper de ciclo (DRO/DRX) ===== */
+.cycle-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-sm);overflow:hidden;margin-bottom:1rem;}
+.cycle-card-header{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:1.2rem 1.4rem;background:none;border:none;cursor:pointer;text-align:left;flex-wrap:wrap;}
+.cycle-card-header:hover{background:var(--surface2);}
+.cycle-card-title{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.cycle-card-title h3{font-family:var(--serif);font-size:var(--fs-2xl);color:var(--text);}
+.cycle-card-chevron{color:var(--text-hint);transition:transform var(--transition-base);flex-shrink:0;}
+.cycle-card.expanded .cycle-card-chevron{transform:rotate(180deg);}
+.cycle-card-body{display:none;border-top:1px solid var(--border);padding:1.4rem;}
+.cycle-card.expanded .cycle-card-body{display:block;}
+
+.stepper{position:relative;display:flex;justify-content:space-between;max-width:560px;margin:0 auto 2.2rem;padding:0 8px;}
+.stepper::before{content:'';position:absolute;top:15px;left:8px;right:8px;height:2px;background:var(--border);z-index:0;}
+.stepper-fill{position:absolute;top:15px;left:8px;height:2px;background:var(--accent);z-index:0;transition:width var(--transition-base);}
+.stepper-step{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:6px;}
+.stepper-dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--sans);font-size:var(--fs-md);font-weight:700;background:var(--surface);border:2px solid var(--border);color:var(--text-hint);}
+.stepper-step.done .stepper-dot{background:var(--accent);border-color:var(--accent);color:#fff;}
+.stepper-step.current .stepper-dot{background:var(--surface);border-color:var(--accent);color:var(--accent);box-shadow:0 0 0 4px var(--accent-dim);}
+.stepper-label{font-size:var(--fs-xs);color:var(--text-hint);white-space:nowrap;}
+.stepper-step.current .stepper-label{color:var(--accent);font-weight:600;}
+
+.subitem-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--r-sm);transition:background var(--transition-fast);}
+.subitem-row:hover{background:var(--surface2);}
+.subitem-row input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;}
+.subitem-row .subitem-title{font-size:var(--fs-md);color:var(--text);}
+.subitem-row.done .subitem-title{text-decoration:line-through;color:var(--text-hint);}
+.subitem-row .subitem-meta{font-size:var(--fs-xs);color:var(--text-hint);}
+
+/* ===== Checklist de avaliação (Auditoria) ===== */
+.checklist-group{margin-bottom:1.4rem;}
+.checklist-group-title{font-size:var(--fs-sm);font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-hint);margin-bottom:.7rem;}
+.checklist-item{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+.checklist-item:last-child{border-bottom:none;}
+.checklist-item-icon{flex-shrink:0;margin-top:2px;}
+.checklist-item-icon.ok{color:var(--green);}
+.checklist-item-icon.warn{color:var(--amber);}
+.checklist-item-icon.bad{color:var(--red);}
+.checklist-item-title{font-size:var(--fs-md);font-weight:600;color:var(--text);}
+.checklist-item-desc{font-size:var(--fs-base);color:var(--text-hint);margin-top:2px;}
+
+/* ===== Timeline/Gantt semanal (reaproveitando .tbl-wrap/.gantt-table já existentes) ===== */
+.gantt-legend{display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:var(--fs-xs);color:var(--text-hint);background:var(--surface2);border-radius:var(--r-sm);padding:8px 12px;margin-bottom:1rem;}
+.gantt-legend b{text-transform:uppercase;letter-spacing:.05em;color:var(--text);}
+.gantt-legend-dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:middle;}
+.gantt-block{display:inline-flex;align-items:center;justify-content:center;width:100%;padding:5px 8px;border-radius:var(--r-sm);font-size:var(--fs-xs);font-weight:700;color:#fff;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.gantt-block.ok{background:var(--green);}
+.gantt-block.warn{background:var(--amber);}
+.gantt-block.bad{background:var(--red);}
+.gantt-table td{padding:6px;}
+
+/* Faixa de aviso no topo da página — deixa claro que isso é um mockup, não o painel real */
+.preview-banner{background:var(--text);color:var(--bg);font-family:var(--sans);font-size:var(--fs-sm);text-align:center;padding:8px 16px;letter-spacing:.02em;}
+.preview-banner strong{color:#fff;}
+
+/* Placeholder pras abas ainda não redesenhadas nesse espelho */
+.preview-placeholder{border:1px dashed var(--border-md);border-radius:var(--r);padding:3rem 2rem;text-align:center;color:var(--text-hint);}
+.preview-placeholder svg{margin-bottom:12px;color:var(--text-hint);}
+.preview-placeholder p{font-size:var(--fs-md);max-width:460px;margin:0 auto;line-height:1.6;}
