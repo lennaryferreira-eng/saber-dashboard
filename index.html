@@ -829,7 +829,7 @@
     <div class="card-title">Acompanhamento por membro</div>
     <div class="tbl-wrap"><table><thead id="pdi-thead"></thead><tbody id="pdi-tbody"></tbody></table></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:9px;padding-top:9px;border-top:1px solid var(--border);">
-      <button onclick="pdiAddRow()" style="font-family:var(--sans);font-size:var(--fs-sm);padding:5px 12px;border:1px solid var(--border);border-radius:20px;background:var(--surface2);color:var(--text-muted);cursor:pointer;"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="true"><path d="M8 2v12M2 8h12"/></svg> Adicionar pessoa</button>
+      <button class="btn" onclick="pdiAddRow()"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="true"><path d="M8 2v12M2 8h12"/></svg> Adicionar pessoa</button>
       <span style="font-size:var(--fs-sm);color:var(--text-hint);">Consultores linkam ao card de Performance · "Outro" para designers e demais.</span>
     </div>
   </div>
@@ -1244,8 +1244,8 @@
       <label style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Motivo</label>
       <textarea id="flag-modal-motivo" class="sel" placeholder="Por que essa flag?" style="width:100%;font-size:var(--fs-base);min-height:80px;margin-bottom:14px;resize:vertical;"></textarea>
       <div style="display:flex;gap:6px;">
-        <button onclick="salvarModalFlag()" style="flex:1;padding:9px;border:none;border-radius:6px;background:var(--accent);color:#fff;font-size:var(--fs-base);font-weight:600;cursor:pointer;">Salvar</button>
-        <button onclick="fecharModalFlag()" style="padding:9px 14px;border:1px solid var(--border);border-radius:6px;background:none;color:var(--text-muted);font-size:var(--fs-base);cursor:pointer;">Cancelar</button>
+        <button class="btn btn-primary" onclick="salvarModalFlag()" style="flex:1;border-radius:6px;">Salvar</button>
+        <button class="btn btn-ghost" onclick="fecharModalFlag()" style="border-radius:6px;">Cancelar</button>
       </div>
     </div>
   </div>
@@ -1316,8 +1316,8 @@
         <div id="np-erro" style="display:none;font-size:var(--fs-base);color:var(--red);padding:8px 12px;background:var(--red-dim);border-radius:var(--r-sm);"></div>
 
         <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:4px;">
-          <button onclick="closeNovoProj()" style="font-family:var(--sans);font-size:var(--fs-md);padding:8px 18px;border:1px solid var(--border);border-radius:20px;background:none;color:var(--text-muted);cursor:pointer;">Cancelar</button>
-          <button onclick="confirmNovoProj()" style="font-family:var(--sans);font-size:var(--fs-md);font-weight:600;padding:8px 22px;border:none;border-radius:20px;background:var(--accent);color:#fff;cursor:pointer;">Criar projeto</button>
+          <button class="btn btn-ghost" onclick="closeNovoProj()">Cancelar</button>
+          <button class="btn btn-primary" onclick="confirmNovoProj()">Criar projeto</button>
         </div>
 
       </div>
@@ -1450,8 +1450,8 @@
         </div>
         <div id="nm-erro" style="display:none;font-size:var(--fs-base);color:var(--red);padding:8px 12px;background:var(--red-dim);border-radius:var(--r-sm);"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:4px;">
-          <button onclick="closeNovaMon()" style="font-family:var(--sans);font-size:var(--fs-md);padding:8px 18px;border:1px solid var(--border);border-radius:20px;background:none;color:var(--text-muted);cursor:pointer;">Cancelar</button>
-          <button onclick="confirmNovaMon()" style="font-family:var(--sans);font-size:var(--fs-md);font-weight:600;padding:8px 22px;border:none;border-radius:20px;background:var(--accent);color:#fff;cursor:pointer;">Registrar monetização</button>
+          <button class="btn btn-ghost" onclick="closeNovaMon()">Cancelar</button>
+          <button class="btn btn-primary" onclick="confirmNovaMon()">Registrar monetização</button>
         </div>
       </div>
     </div>
@@ -1502,8 +1502,8 @@
         </div>
         <div id="pev-erro" style="display:none;font-size:var(--fs-base);color:var(--red);padding:8px 12px;background:var(--red-dim);border-radius:var(--r-sm);"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:4px;">
-          <button onclick="closeNovoPipeEvento()" style="font-family:var(--sans);font-size:var(--fs-md);padding:8px 18px;border:1px solid var(--border);border-radius:20px;background:none;color:var(--text-muted);cursor:pointer;">Cancelar</button>
-          <button onclick="confirmNovoPipeEvento()" style="font-family:var(--sans);font-size:var(--fs-md);font-weight:600;padding:8px 22px;border:none;border-radius:20px;background:var(--accent);color:#fff;cursor:pointer;">Registrar evento</button>
+          <button class="btn btn-ghost" onclick="closeNovoPipeEvento()">Cancelar</button>
+          <button class="btn btn-primary" onclick="confirmNovoPipeEvento()">Registrar evento</button>
         </div>
       </div>
     </div>
@@ -1525,8 +1525,8 @@
         </div>
         <div id="aud-drive-erro" style="display:none;font-size:var(--fs-base);color:var(--red);padding:8px 12px;background:var(--red-dim);border-radius:var(--r-sm);margin-top:10px;"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:14px;">
-          <button onclick="audFecharModalDrive()" style="font-family:var(--sans);font-size:var(--fs-md);padding:8px 18px;border:1px solid var(--border);border-radius:20px;background:none;color:var(--text-muted);cursor:pointer;">Cancelar</button>
-          <button onclick="audAdicionarSelecaoNaFila()" style="font-family:var(--sans);font-size:var(--fs-md);font-weight:600;padding:8px 22px;border:none;border-radius:20px;background:var(--accent);color:#fff;cursor:pointer;">Adicionar selecionadas à fila</button>
+          <button class="btn btn-ghost" onclick="audFecharModalDrive()">Cancelar</button>
+          <button class="btn btn-primary" onclick="audAdicionarSelecaoNaFila()">Adicionar selecionadas à fila</button>
         </div>
       </div>
       <div id="modal-drive-processando" style="display:none;"></div>
@@ -1545,12 +1545,12 @@
       <p style="font-size:var(--fs-sm);color:var(--text-hint);margin:0 0 12px;">Define quem aparece nos filtros e listas do painel (e nas listas suspensas da Auditoria). A ordem aqui é a ordem usada nas telas.</p>
       <div id="cons-modal-rows"></div>
       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
-        <button onclick="consAddRow()" style="font-size:var(--fs-sm);padding:6px 14px;border:1px solid var(--border);border-radius:20px;background:var(--surface);color:var(--text-muted);cursor:pointer;">+ Adicionar</button>
-        <button onclick="consPuxarProjetos()" style="font-size:var(--fs-sm);padding:6px 14px;border:1px solid var(--border);border-radius:20px;background:var(--surface);color:var(--text-muted);cursor:pointer;"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="true"><path d="M13 8a5 5 0 10-1.6 3.7"/><path d="M13 4v4h-4"/></svg> Puxar dos projetos</button>
+        <button class="btn" onclick="consAddRow()">+ Adicionar</button>
+        <button class="btn" onclick="consPuxarProjetos()"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="true"><path d="M13 8a5 5 0 10-1.6 3.7"/><path d="M13 4v4h-4"/></svg> Puxar dos projetos</button>
       </div>
       <div style="display:flex;gap:10px;align-items:center;margin-top:18px;">
-        <button onclick="consSalvar()" style="background:var(--accent);color:#fff;border:none;border-radius:20px;padding:8px 22px;font-size:var(--fs-base);font-weight:600;cursor:pointer;">Salvar</button>
-        <button onclick="closeConsultoresModal()" style="background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:20px;padding:8px 18px;font-size:var(--fs-base);cursor:pointer;">Cancelar</button>
+        <button class="btn btn-primary" onclick="consSalvar()">Salvar</button>
+        <button class="btn btn-ghost" onclick="closeConsultoresModal()">Cancelar</button>
         <span id="cons-modal-msg" style="font-size:var(--fs-sm);color:var(--text-hint);"></span>
       </div>
       <div style="margin-top:14px;font-size:var(--fs-xs);color:var(--text-hint);border-top:1px solid var(--border);padding-top:10px;">Renomear aqui muda os filtros, mas não reescreve o consultor já gravado nos projetos antigos. Salva no Supabase (precisa da coluna <code>consultores</code>).</div>
@@ -1612,8 +1612,8 @@
           <div style="font-size:var(--fs-base);color:var(--text-hint);padding:9px 0;">Calculada automaticamente a partir do início + modelo (Recorrente e Treinamentos avulsos ficam sem data)</div>
         </div>
         <div style="display:flex;gap:10px;align-items:center;margin-top:6px;">
-          <button onclick="salvarNovoProjTer()" style="background:var(--accent);color:#fff;border:none;border-radius:20px;padding:9px 24px;font-size:var(--fs-md);font-weight:600;cursor:pointer;">Criar projeto</button>
-          <button onclick="closeNovoProjTer()" style="background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:20px;padding:9px 18px;font-size:var(--fs-base);cursor:pointer;">Cancelar</button>
+          <button class="btn btn-primary" onclick="salvarNovoProjTer()">Criar projeto</button>
+          <button class="btn btn-ghost" onclick="closeNovoProjTer()">Cancelar</button>
           <span id="npt-msg" style="font-size:var(--fs-sm);color:var(--accent);"></span>
         </div>
       </div>
@@ -1631,10 +1631,10 @@
       <div id="login-perfil-atual" style="font-size:var(--fs-base);color:var(--text-hint);margin-bottom:14px;"></div>
       <div style="font-size:var(--fs-sm);color:var(--text-hint);">Pra trocar de perfil, saia e entre de novo com outra conta @v4company.com.</div>
       <div style="display:flex;gap:10px;align-items:center;margin-top:14px;">
-        <button onclick="closeLoginModal()" style="background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:20px;padding:8px 18px;font-size:var(--fs-base);cursor:pointer;">Fechar</button>
+        <button class="btn btn-ghost" onclick="closeLoginModal()">Fechar</button>
       </div>
       <div id="login-logout-area" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);display:none;">
-        <button onclick="doLogout()" style="background:none;border:1px solid var(--border);color:var(--text-muted);border-radius:20px;padding:7px 18px;font-size:var(--fs-base);cursor:pointer;">Sair (bloqueia o acesso de novo)</button>
+        <button class="btn btn-ghost" onclick="doLogout()">Sair (bloqueia o acesso de novo)</button>
       </div>
     </div>
   </div>
@@ -4250,8 +4250,8 @@ function droAudBlock(p, hoje){
     + '<div><label style="font-size:var(--fs-sm);color:var(--text-hint);display:block;margin-bottom:3px;">Responsável</label><input type="text" id="dro-aud-resp-'+p.id+'" class="sel" placeholder="Nome do responsável" style="width:100%;font-size:var(--fs-base);"></div>'
     + '<div><label style="font-size:var(--fs-sm);color:var(--text-hint);display:block;margin-bottom:3px;">Entregáveis</label><input type="text" id="dro-aud-entregaveis-'+p.id+'" class="sel" placeholder="Ex: Relatório" style="width:100%;font-size:var(--fs-base);"></div>'
     + '</div><div style="display:flex;gap:8px;justify-content:flex-end;">'
-    + '<button onclick="droHideAddAuditoria('+p.id+')" style="font-size:var(--fs-sm);padding:4px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;cursor:pointer;">Cancelar</button>'
-    + '<button onclick="droConfirmAddAuditoria('+p.id+')" style="font-size:var(--fs-sm);padding:4px 12px;border:none;border-radius:6px;background:var(--accent);color:#fff;cursor:pointer;font-weight:600;">Adicionar</button>'
+    + '<button class="btn btn-ghost" onclick="droHideAddAuditoria('+p.id+')" style="border-radius:6px;">Cancelar</button>'
+    + '<button class="btn btn-primary" onclick="droConfirmAddAuditoria('+p.id+')" style="border-radius:6px;">Adicionar</button>'
     + '</div></div></div>';
 }
 
@@ -10799,14 +10799,14 @@ function audFormHTML(){
   const opt = (arr,sel) => arr.map(x=>'<option '+(x===sel?'selected':'')+'>'+x+'</option>').join('');
   const optDatalist = (arr) => arr.map(x=>'<option value="'+x.replace(/"/g,'&quot;')+'">').join('');
   return '<div id="aud-drive-bar" style="display:none;margin-bottom:14px;">'
-    + '<button onclick="audAbrirModalDrive()" style="background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:20px;padding:8px 18px;font-size:var(--fs-base);font-weight:600;cursor:pointer;">'+icon('link')+' Puxar reuniões do Drive</button>'
+    + '<button class="btn" onclick="audAbrirModalDrive()">'+icon('link')+' Puxar reuniões do Drive</button>'
     + '</div>'
     + '<div id="aud-fila-progresso" style="display:none;align-items:center;gap:12px;margin-bottom:14px;background:var(--surface2);border-radius:var(--r-sm);padding:10px 14px;">'
     + '<div style="flex:1;">'
     + '<div class="aud-fila-texto" style="font-size:var(--fs-base);color:var(--text-muted);margin-bottom:6px;"></div>'
     + '<div style="background:var(--surface3);border-radius:8px;height:6px;overflow:hidden;"><div class="aud-fila-barra-fill" style="background:var(--accent);height:100%;width:0%;transition:width .3s;"></div></div>'
     + '</div>'
-    + '<button onclick="audPularItemDaFila()" style="background:none;color:var(--text-hint);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:var(--fs-sm);cursor:pointer;white-space:nowrap;">Pular esta</button>'
+    + '<button class="btn btn-ghost" onclick="audPularItemDaFila()" style="white-space:nowrap;">Pular esta</button>'
     + '</div>'
     + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px;">'
     + '<div><label class="aud-lbl">Consultor</label><select id="aud-f-consultor" class="aud-inp"><option value="">Selecione…</option>'+opt(audConsultores())+'</select></div>'
@@ -10819,8 +10819,8 @@ function audFormHTML(){
     + '<label class="aud-lbl">Envie o arquivo da reunião (.pdf, .txt ou .md) — a ferramenta gera a análise com Claude</label>'
     + '<input type="file" id="aud-arquivo" accept=".pdf,.txt,.md" class="aud-inp">'
     + '<div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center;">'
-    + '<button id="aud-btn-gerar-claude" onclick="audGerarComClaude()" style="background:var(--accent);color:#fff;border:none;border-radius:20px;padding:8px 20px;font-size:var(--fs-base);font-weight:600;cursor:pointer;">'+icon('sparkle')+' Gerar avaliação com Claude</button>'
-    + '<button onclick="audManual()" style="background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:20px;padding:8px 18px;font-size:var(--fs-base);cursor:pointer;">Preencher manual</button>'
+    + '<button id="aud-btn-gerar-claude" class="btn btn-primary" onclick="audGerarComClaude()">'+icon('sparkle')+' Gerar avaliação com Claude</button>'
+    + '<button class="btn btn-ghost" onclick="audManual()">Preencher manual</button>'
     + '<span id="aud-gerar-msg" style="font-size:var(--fs-base);color:var(--text-hint);"></span>'
     + '<span id="aud-form-msg" style="font-size:var(--fs-base);color:var(--text-hint);"></span>'
     + '</div></div>'
@@ -11207,8 +11207,8 @@ function audRenderReview(scores,obs,rec){
   html+='<div style="margin-top:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">'
     + '<div style="font-size:var(--fs-md);">Nota geral: <strong id="aud-media" style="font-size:22px;color:var(--accent);">—</strong><span style="font-size:var(--fs-base);color:var(--text-hint);">/100</span></div>'
     + (audEditandoId ? '<span style="font-size:var(--fs-sm);color:var(--amber);font-weight:600;">'+icon('edit',{size:11})+' editando avaliação existente</span>' : '')
-    + '<button id="aud-btn-salvar" onclick="audSalvar()" style="background:var(--accent);color:#fff;border:none;border-radius:20px;padding:9px 24px;font-size:var(--fs-md);font-weight:600;cursor:pointer;">'+(audEditandoId?'Salvar alterações':'Salvar avaliação')+'</button>'
-    + '<button onclick="audCancelar()" style="background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:20px;padding:9px 18px;font-size:var(--fs-base);cursor:pointer;">Cancelar</button>'
+    + '<button id="aud-btn-salvar" class="btn btn-primary" onclick="audSalvar()">'+(audEditandoId?'Salvar alterações':'Salvar avaliação')+'</button>'
+    + '<button class="btn btn-ghost" onclick="audCancelar()">Cancelar</button>'
     + '</div>';
   const rv=document.getElementById('aud-review'); rv.innerHTML=html; rv.style.display='block';
   audRenderD9Checklist(entrega);
