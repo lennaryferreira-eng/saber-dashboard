@@ -23,6 +23,14 @@
 .header-text-btn{border:none;background:none;padding:4px 2px;font-family:var(--sans);font-size:var(--fs-sm);font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-hint);cursor:pointer;transition:color var(--transition-fast);}
 .header-text-btn:hover{color:var(--accent);}
 
+/* ===== Switch SABER/TER — versão leve, sem a faixa preta de largura total.
+   Continua logo acima das 3 abas (Geral/OKRs/Gestão), só que integrado ao
+   fundo da página em vez de cortar a tela num bloco à parte. ===== */
+.coord-switch{background:transparent;padding:0 2rem 10px;justify-content:flex-start;position:static;box-shadow:none;}
+.coord-btn{color:var(--text-hint);background:var(--surface);border:1px solid var(--border);}
+.coord-btn:hover{color:var(--text);background:var(--surface2);}
+.coord-btn.active{color:#fff;background:var(--accent);border-color:var(--accent);}
+
 /* ===== Menu "Dados" (substitui os 4 botões soltos: Planilha/Exportar/Importar/Backup) ===== */
 .dados-menu{position:relative;display:inline-block;}
 .dados-menu.open .dados-menu-trigger{background:var(--surface2);color:var(--text);}
