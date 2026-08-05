@@ -5,15 +5,14 @@
    Se aprovado, essas regras migram pra styles.css e essa página some.
    ============================================================ */
 
-/* Corpo de texto em Hanken Grotesk (títulos continuam Barlow Condensed) —
-   proposta de refinamento tipográfico: números/títulos condensados de
-   impacto, texto corrido numa humanista mais legível em densidade de dado. */
-.preview-body-font, .preview-body-font input, .preview-body-font select, .preview-body-font textarea {
-  font-family:'Inter',var(--sans);
-}
-.preview-body-font .title, .preview-body-font .sec-title, .preview-body-font .mval,
-.preview-body-font .display-num {
-  font-family:var(--serif);
+/* Corpo de texto em Inter (títulos/números continuam Barlow Condensed) —
+   redefine o próprio token --sans em vez de só sobrepor .preview-body-font,
+   porque nav/abas/botões (nav-tab, coord-btn, nav-group-label, .sel etc.)
+   chamam var(--sans) direto no styles.css — sobrepor só o body deixava
+   esses elementos presos na fonte condensada antiga, misturando as duas
+   fontes na mesma tela. */
+.preview-body-font {
+  --sans:'Inter',system-ui,sans-serif;
 }
 
 /* ===== Ações do header, versão "limpa" (sem pill/borda) — só o botão de conta continua
