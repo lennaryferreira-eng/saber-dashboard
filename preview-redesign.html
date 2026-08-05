@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;0,900;1,400&family=Barlow:wght@300;400;500;600&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css">
 <link rel="stylesheet" href="css/preview-redesign.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 </head>
 <body class="preview-body-font">
 
@@ -22,12 +23,12 @@
     <span class="qbadge">2026 — Q1 · Q2 · Q3 · Q4</span>
     <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:8px;flex-wrap:wrap;">
 
-      <!-- Menu "Dados" — consolida Planilha/Exportar/Importar/Backup -->
+      <!-- Menu "Dados" — consolida Planilha/Exportar/Importar/Backup. Só ícone, sem
+           label/pill/borda — ação secundária de baixa frequência, não precisa do mesmo
+           peso visual de Consultores/Entrar. -->
       <div class="dados-menu" id="dados-menu">
-        <button class="btn dados-menu-trigger" onclick="toggleDadosMenu(event)">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="8" cy="3.5" rx="5.5" ry="2"/><path d="M2.5 3.5V12.5C2.5 13.6 5 14.5 8 14.5s5.5-.9 5.5-2V3.5"/><path d="M2.5 8c0 1.1 2.5 2 5.5 2s5.5-.9 5.5-2"/></svg>
-          Dados
-          <svg class="chevron" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>
+        <button class="header-icon-btn dados-menu-trigger" onclick="toggleDadosMenu(event)" title="Dados (planilha, exportar, importar, backup)" aria-label="Dados">
+          <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="8" cy="3.5" rx="5.5" ry="2"/><path d="M2.5 3.5V12.5C2.5 13.6 5 14.5 8 14.5s5.5-.9 5.5-2V3.5"/><path d="M2.5 8c0 1.1 2.5 2 5.5 2s5.5-.9 5.5-2"/></svg>
         </button>
         <div class="dados-menu-list">
           <button class="dados-menu-item" onclick="mockAction('Atualizar planilha')">
@@ -49,14 +50,8 @@
         </div>
       </div>
 
-      <button class="btn" onclick="mockAction('Consultores')" title="Gerenciar consultores do squad">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="5.5" r="2.5"/><path d="M1.5 14v-1a4 4 0 014-4h1a4 4 0 014 4v1"/><circle cx="12" cy="6" r="2"/><path d="M11 14v-1a3.5 3.5 0 00-1.2-2.7"/></svg>
-        Consultores
-      </button>
-      <button class="btn" onclick="mockAction('Entrar')" style="font-weight:700;letter-spacing:.04em;">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 015 0v2"/></svg>
-        ENTRAR
-      </button>
+      <button class="header-text-btn" onclick="mockAction('Consultores')" title="Gerenciar consultores do squad">Consultores</button>
+      <button class="header-text-btn" onclick="mockAction('Entrar')">Entrar</button>
     </div>
     <span id="last-upd">Atualizado em 05 de ago. de 2026</span>
     <span style="font-size:var(--fs-sm);color:var(--green);display:block;margin-top:2px;text-align:right;">● Online (mockup)</span>
@@ -134,11 +129,11 @@
     </div>
 
     <div class="card" style="background:var(--accent);color:#fff;border:none;padding:2rem 2.2rem;">
-      <div class="mlabel" style="color:rgba(255,255,255,.8);">Movimentado pelo Squad · Agosto/2026</div>
-      <div style="font-family:var(--serif);font-size:56px;font-weight:700;line-height:1;margin:6px 0 10px;">R$ 60.055</div>
+      <div class="mlabel" style="color:rgba(255,255,255,.8);" id="visao-mon-label">Movimentado pelo Squad · carregando…</div>
+      <div style="font-family:var(--serif);font-size:56px;font-weight:700;line-height:1;margin:6px 0 10px;" id="visao-mon-val">—</div>
       <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);border-radius:20px;padding:5px 14px;font-size:var(--fs-sm);font-weight:600;">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12l4.5-5 3 3L14 4"/><path d="M10 4h4v4"/></svg>
-        4 projetos com fee
+        <span id="visao-mon-sub">— projetos com fee</span>
       </div>
     </div>
 
@@ -146,29 +141,29 @@
       <div class="mcard c-accent">
         <span class="mcard-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 4.5a1 1 0 011-1h3l1.2 1.6H13a1 1 0 011 1V12a1 1 0 01-1 1H3a1 1 0 01-1-1V4.5z"/></svg></span>
         <div class="mlabel">Taxa CSP</div>
-        <div class="mval">—</div>
-        <div class="prog-bg"><div class="prog-fill" style="width:0%;background:var(--accent);"></div></div>
+        <div class="mval" id="kpi-csp-val">—</div>
+        <div class="prog-bg"><div class="prog-fill" id="kpi-csp-bar" style="width:0%;background:var(--accent);"></div></div>
         <div class="mmeta">Meta: ≤ 5%</div>
       </div>
       <div class="mcard c-green">
         <span class="mcard-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 8h3l2-5 3 10 2-5h2"/></svg></span>
         <div class="mlabel">Taxa de Conversão</div>
-        <div class="mval">28,5%</div>
-        <div class="prog-bg"><div class="prog-fill" style="width:71%;background:var(--green);"></div></div>
+        <div class="mval" id="kpi-conv-val">—</div>
+        <div class="prog-bg"><div class="prog-fill" id="kpi-conv-bar" style="width:0%;background:var(--green);"></div></div>
         <div class="mmeta">Meta: 40%</div>
       </div>
       <div class="mcard c-blue">
         <span class="mcard-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.5 1.5"/></svg></span>
         <div class="mlabel">Projetos no Prazo</div>
-        <div class="mval">93%</div>
-        <div class="prog-bg"><div class="prog-fill" style="width:93%;background:var(--blue);"></div></div>
+        <div class="mval" id="kpi-prazo-val">—</div>
+        <div class="prog-bg"><div class="prog-fill" id="kpi-prazo-bar" style="width:0%;background:var(--blue);"></div></div>
         <div class="mmeta">Meta: 80%</div>
       </div>
       <div class="mcard c-purple">
         <span class="mcard-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.5l2 4.2 4.6.5-3.4 3.2.9 4.6L8 11.8l-4.1 2.2.9-4.6L1.4 6.2l4.6-.5L8 1.5z"/></svg></span>
         <div class="mlabel">NPS</div>
-        <div class="mval">72</div>
-        <div class="prog-bg"><div class="prog-fill" style="width:90%;background:var(--purple);"></div></div>
+        <div class="mval" id="kpi-nps-val">—</div>
+        <div class="prog-bg"><div class="prog-fill" id="kpi-nps-bar" style="width:0%;background:var(--purple);"></div></div>
         <div class="mmeta">Meta: 50</div>
       </div>
     </div>
@@ -195,7 +190,7 @@
         <select class="base-sel"><option>Todos</option><option>Estruturação Estratégica</option><option>DRO</option><option>DRX</option></select>
       </div>
       <button class="base-clear">Limpar filtros</button>
-      <span class="base-count">24 projetos</span>
+      <span class="base-count" id="base-count">carregando…</span>
     </div>
 
     <div class="tbl-wrap" style="border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-sm);">
@@ -210,39 +205,8 @@
             <th style="text-align:right;">Ações</th>
           </tr>
         </thead>
-        <tbody>
-          <tr>
-            <td><b>Mag Carretas</b><br><span style="color:var(--text-hint);font-size:var(--fs-xs);">Estruturação Estratégica</span></td>
-            <td><span class="badge b-green">No prazo</span></td>
-            <td>Camila</td>
-            <td>15 Set 2026</td>
-            <td><div style="display:flex;align-items:center;gap:8px;"><div class="prog-bg" style="flex:1;margin:0;"><div class="prog-fill" style="width:75%;background:var(--green);"></div></div><span style="font-size:var(--fs-xs);">75%</span></div></td>
-            <td style="text-align:right;"><button style="background:none;border:none;cursor:pointer;color:var(--text-hint);">⋮</button></td>
-          </tr>
-          <tr>
-            <td><b>BioMagistral</b><br><span style="color:var(--text-hint);font-size:var(--fs-xs);">DRO</span></td>
-            <td><span class="badge b-amber">Atenção</span></td>
-            <td>Loma</td>
-            <td>30 Ago 2026</td>
-            <td><div style="display:flex;align-items:center;gap:8px;"><div class="prog-bg" style="flex:1;margin:0;"><div class="prog-fill" style="width:40%;background:var(--amber);"></div></div><span style="font-size:var(--fs-xs);">40%</span></div></td>
-            <td style="text-align:right;"><button style="background:none;border:none;cursor:pointer;color:var(--text-hint);">⋮</button></td>
-          </tr>
-          <tr>
-            <td><b>Sand Blue</b><br><span style="color:var(--text-hint);font-size:var(--fs-xs);">DRX</span></td>
-            <td><span class="badge b-red">Atrasado</span></td>
-            <td>Vinicius</td>
-            <td style="color:var(--accent);font-weight:600;">12 Jul 2026</td>
-            <td><div style="display:flex;align-items:center;gap:8px;"><div class="prog-bg" style="flex:1;margin:0;"><div class="prog-fill" style="width:90%;background:var(--red);"></div></div><span style="font-size:var(--fs-xs);">90%</span></div></td>
-            <td style="text-align:right;"><button style="background:none;border:none;cursor:pointer;color:var(--text-hint);">⋮</button></td>
-          </tr>
-          <tr>
-            <td><b>Clínica Auryon</b><br><span style="color:var(--text-hint);font-size:var(--fs-xs);">Estruturação Estratégica</span></td>
-            <td><span class="badge b-green">No prazo</span></td>
-            <td>Caio</td>
-            <td>10 Out 2026</td>
-            <td><div style="display:flex;align-items:center;gap:8px;"><div class="prog-bg" style="flex:1;margin:0;"><div class="prog-fill" style="width:15%;background:var(--green);"></div></div><span style="font-size:var(--fs-xs);">15%</span></div></td>
-            <td style="text-align:right;"><button style="background:none;border:none;cursor:pointer;color:var(--text-hint);">⋮</button></td>
-          </tr>
+        <tbody id="base-tbody">
+          <tr><td colspan="6" style="text-align:center;color:var(--text-hint);">Carregando dados reais do Supabase…</td></tr>
         </tbody>
       </table>
     </div>
@@ -255,43 +219,8 @@
       <p class="sec-desc">Acompanhamento por ciclos de 3 meses — fases, comitês, trava governante e auditorias.</p>
     </div>
 
-    <div class="cycle-card expanded">
-      <button class="cycle-card-header" onclick="toggleCycleCard(this)">
-        <div class="cycle-card-title">
-          <h3>Justo Precatório</h3>
-          <span class="badge b-purple" style="margin:0;">DRO</span>
-          <span class="flag-dot flag-A"></span>
-          <span style="font-size:var(--fs-xs);color:var(--text-hint);">Amarelo</span>
-        </div>
-        <svg class="cycle-card-chevron" width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>
-      </button>
-      <div class="cycle-card-body">
-        <div class="stepper">
-          <div class="stepper-fill" style="width:50%;"></div>
-          <div class="stepper-step done"><div class="stepper-dot"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.5l2.5 2.5L12 4.5"/></svg></div><span class="stepper-label">Ciclo 1</span></div>
-          <div class="stepper-step done"><div class="stepper-dot"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.5l2.5 2.5L12 4.5"/></svg></div><span class="stepper-label">Ciclo 2</span></div>
-          <div class="stepper-step current"><div class="stepper-dot">3</div><span class="stepper-label">Ciclo 3</span></div>
-          <div class="stepper-step"><div class="stepper-dot">4</div><span class="stepper-label">Ciclo 4</span></div>
-        </div>
-        <div style="margin-bottom:.6rem;display:flex;justify-content:space-between;font-size:var(--fs-sm);"><span>Progresso do ciclo atual</span><span style="color:var(--accent);font-weight:600;">60%</span></div>
-        <div class="prog-bg" style="margin:0 0 1.4rem;"><div class="prog-fill" style="width:60%;background:var(--accent);"></div></div>
-        <div class="checklist-group-title">Comitês desse ciclo</div>
-        <label class="subitem-row done"><input type="checkbox" checked> <span class="subitem-title">Comitê de abertura — realizado</span></label>
-        <label class="subitem-row"><input type="checkbox"> <span class="subitem-title">Comitê de meio de ciclo</span> <span class="subitem-meta">previsto: 20/set</span></label>
-        <label class="subitem-row"><input type="checkbox"> <span class="subitem-title">Comitê de fechamento</span> <span class="subitem-meta">previsto: 15/out</span></label>
-      </div>
-    </div>
-
-    <div class="cycle-card">
-      <button class="cycle-card-header" onclick="toggleCycleCard(this)">
-        <div class="cycle-card-title">
-          <h3>Guaravita</h3>
-          <span class="badge b-blue" style="margin:0;">DRX</span>
-          <span class="flag-dot flag-V"></span>
-          <span style="font-size:var(--fs-xs);color:var(--text-hint);">Verde</span>
-        </div>
-        <svg class="cycle-card-chevron" width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>
-      </button>
+    <div id="dro-cards">
+      <div class="card" style="color:var(--text-hint);">Carregando ciclos DRO/DRX reais…</div>
     </div>
   </section>
 
@@ -311,32 +240,9 @@
 
     <div class="tbl-wrap gantt-table" style="border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-sm);">
       <table>
-        <thead>
-          <tr>
-            <th style="min-width:200px;">Projeto</th>
-            <th>Sem 1</th><th>Sem 2</th><th>Sem 3</th><th>Sem 4</th><th>Sem 5</th><th>Sem 6</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><b>Mag Carretas</b></td>
-            <td><span class="gantt-block ok">Sizing</span></td>
-            <td><span class="gantt-block ok">Sizing</span></td>
-            <td><span class="gantt-block ok">Produção</span></td>
-            <td></td><td></td><td></td>
-          </tr>
-          <tr>
-            <td><b>BioMagistral</b></td>
-            <td></td>
-            <td><span class="gantt-block warn">Estratégia (atrasado)</span></td>
-            <td><span class="gantt-block warn">Estratégia (atrasado)</span></td>
-            <td></td><td></td><td></td>
-          </tr>
-          <tr>
-            <td><b>Sand Blue</b></td>
-            <td><span class="gantt-block bad">Diagnóstico</span></td>
-            <td></td><td></td><td></td><td></td><td></td>
-          </tr>
+        <thead><tr id="leadtime-thead"><th style="min-width:200px;">Projeto</th></tr></thead>
+        <tbody id="leadtime-tbody">
+          <tr><td colspan="8" style="text-align:center;color:var(--text-hint);">Carregando…</td></tr>
         </tbody>
       </table>
     </div>
@@ -371,23 +277,9 @@
       </div>
 
       <div style="flex:2;min-width:320px;">
-        <div class="card-title" style="margin-bottom:1rem;">Checklist da entrega — Kickoff</div>
-        <div class="card">
-          <div class="checklist-group">
-            <div class="checklist-group-title">Entendimento do negócio</div>
-            <div class="checklist-item">
-              <span class="checklist-item-icon ok"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.5l2.5 2.5L12 4.5"/></svg></span>
-              <div><div class="checklist-item-title">Alinhamento de marca</div><div class="checklist-item-desc">Cores e tom de voz conferidos com o brandbook do cliente.</div></div>
-            </div>
-            <div class="checklist-item">
-              <span class="checklist-item-icon warn"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2L1 14h14L8 2z"/><path d="M8 6.5v3.5M8 12h.01"/></svg></span>
-              <div><div class="checklist-item-title">Objetivos de negócio</div><div class="checklist-item-desc">Levantados parcialmente — falta confirmar meta trimestral com o cliente.</div></div>
-            </div>
-            <div class="checklist-item">
-              <span class="checklist-item-icon bad"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></span>
-              <div><div class="checklist-item-title">Compromisso de envio de material pós-call</div><div class="checklist-item-desc">Não foi mencionado na call.</div></div>
-            </div>
-          </div>
+        <div class="card-title" style="margin-bottom:1rem;">Avaliações reais (Supabase)</div>
+        <div class="card" id="auditoria-list">
+          <div style="color:var(--text-hint);">Carregando avaliações reais…</div>
         </div>
       </div>
     </div>
@@ -402,24 +294,19 @@
     <div class="mgrid mg2" style="margin-bottom:1.6rem;">
       <div class="mcard c-green">
         <div class="mlabel">Taxa de conversão</div>
-        <div class="mval">28,5%</div>
-        <div class="prog-bg"><div class="prog-fill" style="width:71%;background:var(--green);"></div></div>
-        <div class="mmeta">Meta: 40% · 6 de 21 projetos mapeados converteram</div>
+        <div class="mval" id="conv-kpi-val">—</div>
+        <div class="prog-bg"><div class="prog-fill" id="conv-kpi-bar" style="width:0%;background:var(--green);"></div></div>
+        <div class="mmeta" id="conv-kpi-meta">Meta: 40%</div>
       </div>
       <div class="mcard c-blue">
-        <div class="mlabel">Projetos no funil</div>
-        <div class="mval">21</div>
-        <div class="mmeta">Somando as 4 etapas abaixo</div>
+        <div class="mlabel">Projetos iniciados no ano</div>
+        <div class="mval" id="conv-total-val">—</div>
+        <div class="mmeta">Base para o cálculo de conversão</div>
       </div>
     </div>
     <div class="card">
-      <div class="card-title">Funil por etapa</div>
-      <div class="funnel">
-        <div class="funnel-row"><span class="funnel-label">Mapeado (AQL)</span><div class="funnel-bar-wrap"><div class="funnel-bar" style="width:100%;background:var(--blue);">21</div></div></div>
-        <div class="funnel-row"><span class="funnel-label">Apresentar proposta (SQL)</span><div class="funnel-bar-wrap"><div class="funnel-bar" style="width:76%;background:var(--blue);">16</div></div></div>
-        <div class="funnel-row"><span class="funnel-label">Proposta apresentada (SAL)</span><div class="funnel-bar-wrap"><div class="funnel-bar" style="width:52%;background:var(--amber);">11</div></div></div>
-        <div class="funnel-row"><span class="funnel-label">Follow (COMMIT)</span><div class="funnel-bar-wrap"><div class="funnel-bar" style="width:29%;background:var(--green);">6</div></div></div>
-      </div>
+      <div class="card-title">Funil por etapa (campo `oport` real)</div>
+      <div class="funnel" id="conv-funnel">—</div>
     </div>
   </section>
 
@@ -430,18 +317,13 @@
       <p class="sec-desc">Semanas ativas no mês — meta de 80% de entregas no prazo.</p>
     </div>
     <div class="mgrid mg3" style="margin-bottom:1.6rem;">
-      <div class="mcard c-blue"><div class="mlabel">No prazo</div><div class="mval">93%</div><div class="prog-bg"><div class="prog-fill" style="width:93%;background:var(--blue);"></div></div><div class="mmeta">Meta: 80%</div></div>
-      <div class="mcard c-green"><div class="mlabel">Adiantadas</div><div class="mval">4</div><div class="mmeta">de 43 semanas ativas</div></div>
-      <div class="mcard c-red"><div class="mlabel">Atrasadas</div><div class="mval">3</div><div class="mmeta">precisam de atenção</div></div>
+      <div class="mcard c-blue"><div class="mlabel">No prazo</div><div class="mval" id="prazo-kpi-val">—</div><div class="prog-bg"><div class="prog-fill" id="prazo-kpi-bar" style="width:0%;background:var(--blue);"></div></div><div class="mmeta">Meta: 80%</div></div>
+      <div class="mcard c-green"><div class="mlabel">No prazo</div><div class="mval" id="prazo-ok-count">—</div><div class="mmeta">projetos avaliados</div></div>
+      <div class="mcard c-red"><div class="mlabel">Fora do prazo</div><div class="mval" id="prazo-bad-count">—</div><div class="mmeta">precisam de atenção</div></div>
     </div>
     <div class="card">
-      <div class="card-title">Semanas por projeto</div>
-      <div style="display:flex;flex-direction:column;gap:10px;">
-        <div class="ov-row"><span class="ov-name">Mag Carretas</span><span class="semana-pill s-done">Sem 6 · concluída</span></div>
-        <div class="ov-row"><span class="ov-name">BioMagistral</span><span class="semana-pill s-current">Sem 4 · em andamento</span></div>
-        <div class="ov-row"><span class="ov-name">Sand Blue</span><span class="semana-pill s-overdue">Sem 3 · atrasada +5d</span></div>
-        <div class="ov-row"><span class="ov-name">Clínica Auryon</span><span class="semana-pill s-future">Sem 2 · a iniciar</span></div>
-      </div>
+      <div class="card-title">Status por projeto (regra real: 52 dias da Estruturação Estratégica)</div>
+      <div style="display:flex;flex-direction:column;gap:10px;" id="prazo-list">Carregando…</div>
     </div>
   </section>
 
@@ -452,17 +334,13 @@
       <p class="sec-desc">Cancelamentos sem pagamento — registro manual por mês. Meta: ≤ 5%.</p>
     </div>
     <div class="mgrid mg2" style="margin-bottom:1.6rem;">
-      <div class="mcard c-accent"><div class="mlabel">Média do ano</div><div class="mval">3,2%</div><div class="prog-bg"><div class="prog-fill" style="width:64%;background:var(--accent);"></div></div><div class="mmeta">Meta: ≤ 5%</div></div>
-      <div class="mcard c-gray"><div class="mlabel">Pior mês</div><div class="mval">Jun · 6,1%</div><div class="mmeta">Único mês acima da meta</div></div>
+      <div class="mcard c-accent"><div class="mlabel">Média do ano</div><div class="mval" id="csp-kpi-val">—</div><div class="prog-bg"><div class="prog-fill" id="csp-kpi-bar" style="width:0%;background:var(--accent);"></div></div><div class="mmeta">Meta: ≤ 5%</div></div>
+      <div class="mcard c-gray"><div class="mlabel">Pior mês</div><div class="mval" id="csp-worst-val">—</div><div class="mmeta">registro manual (`csp_manual`)</div></div>
     </div>
     <div class="tbl-wrap" style="border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-sm);">
       <table>
-        <thead><tr><th>Mês</th><th>Ativos no mês</th><th>Cancelados sem pagto</th><th>Taxa CSP</th></tr></thead>
-        <tbody>
-          <tr><td>Junho</td><td>18</td><td>1</td><td><span class="badge b-red">6,1%</span></td></tr>
-          <tr><td>Julho</td><td>20</td><td>1</td><td><span class="badge b-green">5,0%</span></td></tr>
-          <tr><td>Agosto</td><td>22</td><td>0</td><td><span class="badge b-green">0,0%</span></td></tr>
-        </tbody>
+        <thead><tr><th>Mês</th><th>Taxa CSP</th></tr></thead>
+        <tbody id="csp-tbody"><tr><td colspan="2" style="text-align:center;color:var(--text-hint);">Carregando…</td></tr></tbody>
       </table>
     </div>
   </section>
@@ -475,23 +353,14 @@
     </div>
     <div class="spark-wrap">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;">
-        <div><div class="mlabel">NPS acumulado</div><div class="mval">72</div></div>
-        <svg width="220" height="56" viewBox="0 0 220 56" fill="none" aria-hidden="true">
-          <polyline points="0,40 36,32 72,36 108,20 144,24 180,10 220,14" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-          <circle cx="220" cy="14" r="4" fill="var(--green)"/>
-        </svg>
+        <div><div class="mlabel">NPS acumulado (ano)</div><div class="mval" id="nps-kpi-val">—</div></div>
       </div>
-      <div class="mmeta">Tendência das últimas 7 respostas — de 55 (Mar) pra 72 (Ago).</div>
+      <div style="position:relative;height:180px;"><canvas id="npsChart"></canvas></div>
     </div>
     <div class="tbl-wrap" style="border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-sm);">
       <table>
         <thead><tr><th>Projeto</th><th>Nota</th><th>Data</th><th>Classificação</th></tr></thead>
-        <tbody>
-          <tr><td>Mag Carretas</td><td>10</td><td>02/08/2026</td><td><span class="badge b-green">Promotor</span></td></tr>
-          <tr><td>Justo Precatório</td><td>9</td><td>28/07/2026</td><td><span class="badge b-green">Promotor</span></td></tr>
-          <tr><td>Guaravita</td><td>7</td><td>15/07/2026</td><td><span class="badge b-amber">Neutro</span></td></tr>
-          <tr><td>Sand Blue</td><td>4</td><td>10/07/2026</td><td><span class="badge b-red">Detrator</span></td></tr>
-        </tbody>
+        <tbody id="nps-tbody"><tr><td colspan="4" style="text-align:center;color:var(--text-hint);">Carregando…</td></tr></tbody>
       </table>
     </div>
   </section>
@@ -504,13 +373,8 @@
     </div>
     <div class="tbl-wrap" style="border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-sm);">
       <table>
-        <thead><tr><th>Consultor</th><th>Mar</th><th>Jun</th><th>Set</th><th>Dez</th><th>Média</th></tr></thead>
-        <tbody>
-          <tr><td><b>Camila</b></td><td>85%</td><td>90%</td><td>—</td><td>—</td><td><span class="badge b-green">88%</span></td></tr>
-          <tr><td><b>Loma</b></td><td>70%</td><td>82%</td><td>—</td><td>—</td><td><span class="badge b-amber">76%</span></td></tr>
-          <tr><td><b>Caio</b></td><td>92%</td><td>95%</td><td>—</td><td>—</td><td><span class="badge b-green">94%</span></td></tr>
-          <tr><td><b>Leonam</b></td><td>78%</td><td>88%</td><td>—</td><td>—</td><td><span class="badge b-green">83%</span></td></tr>
-        </tbody>
+        <thead><tr id="pdi-thead"><th>Consultor</th><th>Mar</th><th>Jun</th><th>Set</th><th>Dez</th><th>Média</th></tr></thead>
+        <tbody id="pdi-tbody"><tr><td colspan="6" style="text-align:center;color:var(--text-hint);">Carregando…</td></tr></tbody>
       </table>
     </div>
   </section>
@@ -519,21 +383,15 @@
   <section class="section" id="sec-aql">
     <div class="sec-head">
       <h2 class="sec-title">AQL</h2>
-      <p class="sec-desc">Ritmo de qualificação de leads (AQL) por consultor ao longo das semanas.</p>
+      <p class="sec-desc">Ritmo de qualificação de leads (AQL) por consultor ao longo das semanas do mês atual.</p>
     </div>
     <div class="spark-wrap">
-      <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:14px;font-size:var(--fs-sm);">
-        <span><span class="gantt-legend-dot" style="background:var(--blue);"></span>Caio</span>
-        <span><span class="gantt-legend-dot" style="background:var(--green);"></span>Leonam</span>
-        <span><span class="gantt-legend-dot" style="background:var(--accent);"></span>Loma</span>
-        <span><span class="gantt-legend-dot" style="background:var(--purple);"></span>Camila</span>
-      </div>
-      <svg width="100%" height="120" viewBox="0 0 480 120" fill="none" aria-hidden="true" style="max-width:600px;">
-        <polyline points="0,90 80,70 160,75 240,50 320,55 400,30 480,25" stroke="var(--blue)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-        <polyline points="0,100 80,95 160,80 240,85 320,60 400,58 480,40" stroke="var(--green)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-        <polyline points="0,60 80,65 160,50 240,60 320,45 400,50 480,55" stroke="var(--accent)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-        <polyline points="0,80 80,60 160,65 240,40 320,42 400,35 480,20" stroke="var(--purple)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      </svg>
+      <div id="aql-legend" style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:14px;font-size:var(--fs-sm);"></div>
+      <div style="position:relative;height:220px;"><canvas id="aqlChart"></canvas></div>
+    </div>
+    <div class="spark-wrap">
+      <div class="card-title" style="margin-bottom:10px;">Histórico mensal — Realizado vs Meta</div>
+      <div style="position:relative;height:220px;"><canvas id="aqlHistChart"></canvas></div>
     </div>
   </section>
 
@@ -543,24 +401,8 @@
       <h2 class="sec-title">Pipeline</h2>
       <p class="sec-desc">Oportunidades comerciais por etapa.</p>
     </div>
-    <div class="kanban-board">
-      <div>
-        <div class="kanban-col-title">Mapeado <span>3</span></div>
-        <div class="kanban-card"><div class="kanban-card-title">Clínica Auryon</div><div class="kanban-card-meta">Leonam · R$ 18.000</div></div>
-        <div class="kanban-card"><div class="kanban-card-title">Aruna Açaí</div><div class="kanban-card-meta">Lennary · R$ 9.500</div></div>
-      </div>
-      <div>
-        <div class="kanban-col-title">Proposta (SQL) <span>2</span></div>
-        <div class="kanban-card"><div class="kanban-card-title">Mundo Telecom</div><div class="kanban-card-meta">Leonam · R$ 24.000</div></div>
-      </div>
-      <div>
-        <div class="kanban-col-title">Apresentada (SAL) <span>2</span></div>
-        <div class="kanban-card"><div class="kanban-card-title">Sand Blue</div><div class="kanban-card-meta">Vinicius · R$ 32.000</div></div>
-      </div>
-      <div>
-        <div class="kanban-col-title">Follow (COMMIT) <span>1</span></div>
-        <div class="kanban-card"><div class="kanban-card-title">Mag Carretas</div><div class="kanban-card-meta">Camila · R$ 45.000</div></div>
-      </div>
+    <div class="kanban-board" id="pipeline-kanban">
+      <div class="card" style="color:var(--text-hint);grid-column:1/-1;">Carregando pipeline real…</div>
     </div>
   </section>
 
@@ -572,12 +414,8 @@
     </div>
     <div class="tbl-wrap" style="border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-sm);">
       <table>
-        <thead><tr><th>Projeto</th><th>Mês</th><th>OT</th><th>Rec</th><th>Dossiê</th><th>Alin.</th><th>Passagem</th></tr></thead>
-        <tbody>
-          <tr><td><b>Mag Carretas</b></td><td>Ago/2026</td><td>R$ 30.000</td><td>R$ 15.000</td><td>✓</td><td>✓</td><td>—</td></tr>
-          <tr><td><b>BioMagistral</b></td><td>Ago/2026</td><td>R$ 18.000</td><td>—</td><td>✓</td><td>—</td><td>—</td></tr>
-          <tr><td><b>Justo Precatório</b></td><td>Jul/2026</td><td>R$ 22.000</td><td>R$ 8.000</td><td>✓</td><td>✓</td><td>✓</td></tr>
-        </tbody>
+        <thead><tr><th>Projeto</th><th>Mês</th><th>Consultor</th><th>Modelo</th></tr></thead>
+        <tbody id="mon-tbody"><tr><td colspan="4" style="text-align:center;color:var(--text-hint);">Carregando…</td></tr></tbody>
       </table>
     </div>
   </section>
@@ -589,18 +427,13 @@
       <p class="sec-desc">Carga semanal por consultor — capacidade total do squad: 1.800h.</p>
     </div>
     <div class="mgrid mg2" style="margin-bottom:1.6rem;">
-      <div class="mcard c-blue"><div class="mlabel">Horas alocadas</div><div class="mval">1.420h</div><div class="prog-bg"><div class="prog-fill" style="width:78%;background:var(--blue);"></div></div><div class="mmeta">78% da capacidade</div></div>
-      <div class="mcard c-gray"><div class="mlabel">Consultor mais sobrecarregado</div><div class="mval">Vinicius</div><div class="mmeta">96% de ocupação essa semana</div></div>
+      <div class="mcard c-blue"><div class="mlabel">Projetos ativos</div><div class="mval" id="cap-total-val">—</div><div class="mmeta">não finalizados/pausados/churn</div></div>
+      <div class="mcard c-gray"><div class="mlabel">Consultor com mais projetos ativos</div><div class="mval" id="cap-top-val">—</div><div class="mmeta" id="cap-top-meta">—</div></div>
     </div>
     <div class="tbl-wrap" style="border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-sm);">
       <table>
-        <thead><tr><th>Consultor</th><th>Sem 1</th><th>Sem 2</th><th>Sem 3</th><th>Sem 4</th></tr></thead>
-        <tbody>
-          <tr><td><b>Camila</b></td><td><span class="heat-cell low">62%</span></td><td><span class="heat-cell mid">78%</span></td><td><span class="heat-cell low">55%</span></td><td><span class="heat-cell mid">70%</span></td></tr>
-          <tr><td><b>Loma</b></td><td><span class="heat-cell mid">80%</span></td><td><span class="heat-cell high">96%</span></td><td><span class="heat-cell mid">85%</span></td><td><span class="heat-cell mid">82%</span></td></tr>
-          <tr><td><b>Vinicius</b></td><td><span class="heat-cell high">96%</span></td><td><span class="heat-cell high">92%</span></td><td><span class="heat-cell mid">88%</span></td><td><span class="heat-cell high">96%</span></td></tr>
-          <tr><td><b>Caio</b></td><td><span class="heat-cell low">48%</span></td><td><span class="heat-cell low">52%</span></td><td><span class="heat-cell empty">—</span></td><td><span class="heat-cell low">60%</span></td></tr>
-        </tbody>
+        <thead><tr><th>Consultor</th><th>Projetos ativos</th></tr></thead>
+        <tbody id="cap-tbody"><tr><td colspan="2" style="text-align:center;color:var(--text-hint);">Carregando…</td></tr></tbody>
       </table>
     </div>
   </section>
@@ -611,37 +444,8 @@
       <h2 class="sec-title">Performance</h2>
       <p class="sec-desc">Ranking dos consultores por KPIs atingidos — ano completo.</p>
     </div>
-    <div class="perf-grid">
-      <div class="perf-rank-card gold">
-        <div class="perf-crown"><svg width="24" height="24" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12h11M3 12L2.3 6l2.9 2.4L8 4l2.8 4.4L13.7 6l-.7 6"/></svg></div>
-        <div class="perf-avatar">CA</div>
-        <div style="font-family:var(--serif);font-size:var(--fs-2xl);font-weight:700;">Camila</div>
-        <div style="font-size:var(--fs-xs);color:var(--text-hint);display:flex;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" style="color:#F59E0B;" aria-hidden="true"><circle cx="8" cy="10" r="4"/><path d="M6 6.5L4 2M10 6.5l2-4.5"/></svg> 1º lugar</div>
-        <div class="perf-score-bar-wrap"><div class="perf-score-bar" style="width:100%;"></div></div>
-        <div style="font-size:var(--fs-xs);color:var(--text-hint);margin-bottom:8px;">4/4 KPIs · 100%</div>
-        <div class="perf-kpi-row"><span>Prazo</span><span style="color:var(--green);">✓ 93%</span></div>
-        <div class="perf-kpi-row"><span>Conversão</span><span style="color:var(--green);">✓ 42%</span></div>
-      </div>
-      <div class="perf-rank-card">
-        <div style="height:24px;"></div>
-        <div class="perf-avatar">LO</div>
-        <div style="font-family:var(--serif);font-size:var(--fs-2xl);font-weight:700;">Loma</div>
-        <div style="font-size:var(--fs-xs);color:var(--text-hint);display:flex;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" style="color:#9CA3AF;" aria-hidden="true"><circle cx="8" cy="10" r="4"/><path d="M6 6.5L4 2M10 6.5l2-4.5"/></svg> 2º lugar</div>
-        <div class="perf-score-bar-wrap"><div class="perf-score-bar" style="width:75%;"></div></div>
-        <div style="font-size:var(--fs-xs);color:var(--text-hint);margin-bottom:8px;">3/4 KPIs · 75%</div>
-        <div class="perf-kpi-row"><span>Prazo</span><span style="color:var(--green);">✓ 85%</span></div>
-        <div class="perf-kpi-row"><span>Conversão</span><span style="color:var(--red);">✗ 22%</span></div>
-      </div>
-      <div class="perf-rank-card">
-        <div style="height:24px;"></div>
-        <div class="perf-avatar">CA</div>
-        <div style="font-family:var(--serif);font-size:var(--fs-2xl);font-weight:700;">Caio</div>
-        <div style="font-size:var(--fs-xs);color:var(--text-hint);">3º lugar</div>
-        <div class="perf-score-bar-wrap"><div class="perf-score-bar" style="width:50%;"></div></div>
-        <div style="font-size:var(--fs-xs);color:var(--text-hint);margin-bottom:8px;">2/4 KPIs · 50%</div>
-        <div class="perf-kpi-row"><span>Prazo</span><span style="color:var(--red);">✗ 60%</span></div>
-        <div class="perf-kpi-row"><span>Conversão</span><span style="color:var(--green);">✓ 38%</span></div>
-      </div>
+    <div class="perf-grid" id="perf-grid">
+      <div class="card" style="color:var(--text-hint);">Carregando ranking real…</div>
     </div>
   </section>
 
@@ -665,24 +469,11 @@
         </div>
       </div>
       <div>
-        <div class="cultura-signal">
-          <div class="cultura-signal-head">
-            <span class="cultura-badge-dim pos"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.5l2.5 2.5L12 4.5"/></svg></span>
-            <b>Camila</b>
-            <span style="font-size:var(--fs-xs);color:var(--text-hint);">G.R.O.W.T.H. — Ownership</span>
-            <span class="badge b-green" style="margin:0;margin-left:auto;">Alinhado</span>
-          </div>
-          <p style="font-size:var(--fs-md);color:var(--text);line-height:1.5;">Assumiu sozinha a comunicação com o cliente Mag Carretas durante um imprevisto de agenda do time, sem esperar orientação.</p>
+        <div class="card" style="margin-bottom:1.2rem;text-align:center;">
+          <div class="card-title" style="margin-bottom:10px;">Radar por dimensão (sinais reais)</div>
+          <div id="cultura-radar" style="display:flex;justify-content:center;">Carregando…</div>
         </div>
-        <div class="cultura-signal">
-          <div class="cultura-signal-head">
-            <span class="cultura-badge-dim neg"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></span>
-            <b>Squad geral</b>
-            <span style="font-size:var(--fs-xs);color:var(--text-hint);">PIFE — Feedback</span>
-            <span class="badge b-red" style="margin:0;margin-left:auto;">Anti-padrão</span>
-          </div>
-          <p style="font-size:var(--fs-md);color:var(--text);line-height:1.5;">Reunião de comitê passou por cima de um ponto crítico levantado por um consultor júnior sem discutir.</p>
-        </div>
+        <div id="cultura-feed">Carregando sinais reais…</div>
       </div>
     </div>
   </section>
@@ -690,17 +481,911 @@
 </main>
 
 <script>
+// ============================================================
+// DADOS REAIS — fetch read-only do Supabase (mesma anon key/URL já
+// expostas no index.html de produção) + reimplementação fiel das
+// fórmulas reais de negócio (index.html) usadas nos KPIs e gráficos.
+// Simplificações assumidas (documentadas onde aparecem):
+//  - calcStatus2/prazoStatus para DRO/DRX: sem replicar drxInit()/
+//    droGetCiclos() (máquina de estado de comitês) — usa o campo
+//    status2/flag já persistido pelo backend quando disponível.
+//  - semDataEtapa: sem a projeção "próxima etapa = última data + 7d"
+//    quando não há nenhuma data real — só afeta a ordenação de
+//    fallback em calcFlagAutomatica quando o projeto não tem NENHUMA
+//    entrega registrada ainda.
+//  - Capacity: sem capData/capManual (horas por semana) — mostra
+//    contagem real de projetos ativos por consultor.
+//  - Performance: ranking construído a partir de prazo%/conversão%
+//    reais por consultor (não é bytes-idênтico a buildPerformance).
+// ============================================================
+
+const SB_URL = 'https://riawjqvezolgyldldyzi.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJpYXdqcXZlem9sZ3lsZGxkeXppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyMDM3NDUsImV4cCI6MjA5MTc3OTc0NX0.1hmeQ7YCM0LvekZc7aNYy-D4jyVwxC6jK_W3kn5PVwA';
+const SB_HEADERS = { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY };
+const SB_TABLE = 'saber_data';
+
+const QUARTERS = [
+  {key:'q1',label:'Q1 2026',meses:[
+    {key:'jan',label:'Janeiro', idx:0,ano:2026},
+    {key:'fev',label:'Fevereiro',idx:1,ano:2026},
+    {key:'mar',label:'Março',   idx:2,ano:2026}
+  ]},
+  {key:'q2',label:'Q2 2026',meses:[
+    {key:'abr',label:'Abril',   idx:3,ano:2026},
+    {key:'mai',label:'Maio',    idx:4,ano:2026},
+    {key:'jun',label:'Junho',   idx:5,ano:2026}
+  ]},
+  {key:'q3',label:'Q3 2026',meses:[
+    {key:'jul',label:'Julho',   idx:6,ano:2026},
+    {key:'ago',label:'Agosto',  idx:7,ano:2026},
+    {key:'set',label:'Setembro',idx:8,ano:2026}
+  ]},
+  {key:'q4',label:'Q4 2026',meses:[
+    {key:'out',label:'Outubro', idx:9, ano:2026},
+    {key:'nov',label:'Novembro',idx:10,ano:2026},
+    {key:'dez',label:'Dezembro',idx:11,ano:2026}
+  ]}
+];
+const ALL_MESES = QUARTERS.flatMap(q => q.meses);
+const QUARTER_CLOSE_IDX = QUARTERS.map(q => q.meses[q.meses.length - 1].idx);
+const isQuarterClose = idx => QUARTER_CLOSE_IDX.includes(idx);
+const _MES_ORDEM = {'Janeiro':1,'Fevereiro':2,'Março':3,'Abril':4,'Maio':5,'Junho':6,'Julho':7,'Agosto':8,'Setembro':9,'Outubro':10,'Novembro':11,'Dezembro':12};
+const SEMANAS = ['1ª Growthclass','2ª Kick off','3ª 1ª Entrega','4ª 2ª Entrega','5ª 3ª Entrega','6ª 4ª Entrega','7ª Decolagem'];
+
+const DIMENSOES = {
+  GROWTH: [
+    {code:'G', label:'GTM to Learn Faster'},
+    {code:'R', label:'Radical Candor'},
+    {code:'O', label:'Ownership'},
+    {code:'W', label:'Working Backwards'},
+    {code:'T', label:'Trust in Science'},
+    {code:'H', label:'High Standards, Frugal Execution'}
+  ],
+  PIFE: [
+    {code:'P', label:'Professional'},
+    {code:'I', label:'Intelectual'},
+    {code:'F', label:'Fitness/Físico'},
+    {code:'E', label:'Emocional'}
+  ]
+};
+const FW_COLOR = {GROWTH: 'var(--accent)', PIFE: 'var(--purple)'};
+
+const AQL_PALETTE = { 'var(--blue)':'#2f6fed','var(--green)':'#1f9d55','var(--accent)':'#c8102e','var(--purple)':'#8E5BC4','var(--amber)':'#c07a10','var(--teal)':'#0d9488','var(--pink)':'#db2777','var(--indigo)':'#4f46e5','var(--olive)':'#65a30d','var(--terracotta)':'#c2410c','var(--cyan)':'#0891b2','var(--text-muted)':'#8a8a8a' };
+const AQL_FALLBACK = ['#2f6fed','#1f9d55','#c8102e','#8E5BC4','#c07a10','#0d9488','#db2777','#4f46e5','#65a30d','#c2410c','#0891b2','#607D8B'];
+
+let projects = [], npsData = {}, cspManual = {}, monMetas = {}, aqlMetas = {}, auditorias = [], sinaisCulturais = [];
+let CONS_MON = ['Caio','Leonam','Loma','Camila','Cleiton'];
+let dotColors = {'Caio':'var(--blue)','Leonam':'var(--green)','Loma':'var(--accent)','Camila':'var(--purple)','Cleiton':'var(--amber)'};
+
+function _parseMaybe(val, fallback) {
+  if (val === null || val === undefined) return fallback;
+  if (typeof val === 'string') { try { return JSON.parse(val); } catch (e) { return fallback; } }
+  return val;
+}
+
+// ── Helpers fiéis (portados de index.html) ──────────────────────
+function parseDate(s) {
+  if (!s) return null;
+  const p = s.split('-').map(Number);
+  return p.length === 3 ? new Date(p[0], p[1]-1, p[2]) : null;
+}
+function addDays(s, n) {
+  const d = parseDate(s);
+  if (!d) return '';
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0,10);
+}
+function diffDays(a, b) {
+  const da = parseDate(a), db = parseDate(b);
+  if (!da || !db) return null;
+  return Math.round((db - da) / 864e5);
+}
+function isDroFam(p){ return !!p && (p.modelo==='DRO' || p.modelo==='DRX'); }
+function monPV(v){ if(v===null||v===undefined||v==='')return 0; const n=parseFloat(String(v).replace(/[R$\s]/g,'').replace(/\./g,'').replace(',','.')); return isNaN(n)?0:n; }
+function BRL(v){ return 'R$ ' + Math.round(v).toLocaleString('pt-BR'); }
+function pct(v,max){ return max>0 ? Math.min(100, Math.round(v/max*100)) : 0; }
+function badgeFor(v, meta, lower) {
+  if (v === null || v === undefined || isNaN(v)) return ['b-gray', 'sem dado'];
+  if (lower) return v <= meta ? ['b-green', '✓ Atingido'] : ['b-red', '✗ Não atingido'];
+  return v >= meta ? ['b-green', '✓ Atingido'] : ['b-red', '✗ Não atingido'];
+}
+
+function dataFimReal(p) {
+  const ent = p.entregas || {};
+  if (ent[6] && ent[6].real) return ent[6].real;
+  if (p.realFim) return p.realFim;
+  return null;
+}
+
+function calcStatus2(p) {
+  if (p.status2 === 'Churn' || p.status2 === 'Pausado') return p.status2;
+  if (p.status2 === 'Finalizado') return 'Finalizado';
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  if (!p.inicio) return 'Início em breve';
+  if (isDroFam(p)) {
+    // Simplificado — ver nota no topo do arquivo.
+    return p.status2 || 'Em andamento';
+  }
+  if (p.realFim) {
+    const dr = parseDate(p.realFim);
+    if (dr && dr < hoje) return 'Finalizado';
+    if (dr && dr >= hoje) return 'Em andamento';
+  }
+  const ent = p.entregas || {};
+  const entTer = Array.isArray(p.entregasTer) ? p.entregasTer : [];
+  const ultimaEntregaTer = (p.recorrencia !== 'Recorrente' && entTer.length) ? entTer[entTer.length - 1] : null;
+  const temDecolagem = (ent[6] && ent[6].real) || (ultimaEntregaTer && ultimaEntregaTer.real);
+  if (temDecolagem) {
+    const dataDecolagem = (ent[6] && ent[6].real) || ultimaEntregaTer.real;
+    const dd = parseDate(dataDecolagem);
+    if (dd && dd < hoje) return 'Finalizado';
+  }
+  let temAlgumaEntrega = false;
+  for (let i = 0; i < 7; i++) { if (ent[i] && ent[i].real) { temAlgumaEntrega = true; break; } }
+  if (!temAlgumaEntrega) temAlgumaEntrega = entTer.some(e => e && e.real);
+  if (temAlgumaEntrega && !temDecolagem) return 'Em andamento';
+  if (p.prevFim) {
+    const pd = parseDate(p.prevFim);
+    if (pd && pd < hoje) return 'Finalizado';
+  }
+  const di = parseDate(p.inicio);
+  if (di && di > hoje) return 'Início em breve';
+  return 'Em andamento';
+}
+
+function prazoStatus(p) {
+  if (!p.inicio) return {ok:null, label:'—', dias:null, badge:'b-gray'};
+  if (p.dataReembolso) {
+    const dias = diffDays(p.inicio, p.dataReembolso);
+    return { ok: null, interrompido: true, dias, label:'⊘ interrompido', badge:'b-gray' };
+  }
+  const dIni  = parseDate(p.inicio);
+  const dPrev = p.prevFim ? parseDate(p.prevFim) : null;
+  const hoje  = new Date(); hoje.setHours(0,0,0,0);
+
+  if (isDroFam(p)) {
+    if (!dPrev) return {ok: null, label:'—', dias: null, badge:'b-gray'};
+    const rest = Math.round((dPrev - hoje) / 864e5);
+    if (p.realFim) {
+      const dias = diffDays(p.inicio, p.realFim);
+      return { ok: true, dias, label:'Encerrado', badge:'b-gray' };
+    }
+    if (rest < 0) return { ok: null, dias: null, label:'Encerrado', badge:'b-gray' };
+    if (rest <= 30) return { ok: true, dias: rest, label: rest + 'd restantes', badge:'b-amber' };
+    return { ok: true, dias: rest, label: rest + 'd restantes', badge:'b-blue' };
+  }
+
+  const lim52 = new Date(dIni.getTime() + 52 * 864e5);
+  const fim = dataFimReal(p);
+  if (fim) {
+    const dReal = parseDate(fim);
+    const dias  = diffDays(p.inicio, fim);
+    const ok    = dReal <= lim52;
+    return { ok, dias, label: ok ? ('✓ ' + dias + 'd — no prazo') : ('✗ ' + dias + 'd — fora do prazo'), badge: ok ? 'b-green' : 'b-red' };
+  }
+
+  const diasPrev = p.prevFim ? diffDays(p.inicio, p.prevFim) : null;
+  const dec      = Math.round((hoje - dIni) / 864e5);
+  const rest     = Math.round((lim52 - hoje) / 864e5);
+  const ok       = !(hoje > lim52);
+  if (dec < 0) return { ok, dias: diasPrev, label: 'Inicia em ' + Math.abs(dec) + 'd', badge:'b-gray' };
+  if (!ok)     return { ok, dias: diasPrev, label: '✗ ' + dec + 'd — fora do prazo', badge:'b-red' };
+  if (rest <= 7) return { ok, dias: diasPrev, label: rest + 'd p/ o limite', badge:'b-amber' };
+  return { ok, dias: diasPrev, label: rest + 'd p/ o limite', badge:'b-blue' };
+}
+
+function semIdxNodia(diaOffset, totalDias) {
+  return Math.min(Math.floor(diaOffset / (totalDias / SEMANAS.length)), SEMANAS.length - 1);
+}
+function mesesAtivos(p) {
+  if (!p.inicio) return [];
+  const dIni   = parseDate(p.inicio);
+  const total  = p.prevFim ? diffDays(p.inicio, p.prevFim) : 45;
+  const mMap   = {};
+  for (let d = 0; d <= total; d++) {
+    const dia = new Date(dIni.getTime() + d * 864e5);
+    const mes = dia.getMonth();
+    const ano = dia.getFullYear();
+    if (ano !== 2026) continue;
+    const sem = semIdxNodia(d, total);
+    if (!mMap[mes]) mMap[mes] = new Set();
+    mMap[mes].add(sem);
+  }
+  return Object.entries(mMap)
+    .filter(([, sems]) => { const arr = [...sems]; return !arr.every(s => s === 0) && !arr.every(s => s === 5); })
+    .map(([m]) => parseInt(m)).sort();
+}
+
+function prazoStatusNoMes(p, mIdx, mAno) {
+  const base = prazoStatus(p);
+  if (base.ok === null || !p.inicio) return base;
+  const dIni = parseDate(p.inicio);
+  const deadline = new Date(dIni.getTime() + 52 * 864e5);
+  const mStart = new Date(mAno, mIdx, 1);
+  const mEnd   = new Date(mAno, mIdx + 1, 0);
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const fim = dataFimReal(p);
+  const dFim = fim ? parseDate(fim) : null;
+  if (dFim && dFim.getMonth() === mIdx && dFim.getFullYear() === mAno) return base;
+  const endpoint = dFim || hoje;
+  const overdue = (endpoint > deadline) && (deadline <= mEnd) && (endpoint >= mStart);
+  if (overdue) return { ok: false, dias: base.dias, label: '✗ atrasado', badge:'b-red' };
+  return { ok: true, dias: base.dias, label: '✓ em execução', badge:'b-green' };
+}
+function prazoNoMesCard(p, mIdx, mAno) {
+  if (isDroFam(p) || !p.inicio) return false;
+  if (p.dataReembolso) {
+    if (mAno !== 2026 || !mesesAtivos(p).includes(mIdx)) return false;
+    const dr = parseDate(p.dataReembolso);
+    return !dr || (new Date(mAno, mIdx, 1) <= new Date(dr.getFullYear(), dr.getMonth(), 1));
+  }
+  if (mAno === 2026 && mesesAtivos(p).includes(mIdx)) return true;
+  const dIni = parseDate(p.inicio);
+  const deadline = new Date(dIni.getTime() + 52 * 864e5);
+  const mStart = new Date(mAno, mIdx, 1);
+  const mEnd   = new Date(mAno, mIdx + 1, 0);
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const fim = dataFimReal(p);
+  const dFim = fim ? parseDate(fim) : null;
+  if (dFim && dFim.getMonth() === mIdx && dFim.getFullYear() === mAno) return true;
+  const endpoint = dFim || hoje;
+  return (endpoint > deadline) && (deadline <= mEnd) && (endpoint >= mStart);
+}
+
+// Simplificado: sem a projeção "última data + 7d" quando não há nenhuma data real (ver nota no topo).
+function semDataEtapa(p, etapaIdx) {
+  const ent = p.entregas || {};
+  const eReal = ent[etapaIdx] || ent[String(etapaIdx)];
+  return (eReal && eReal.real) || null;
+}
+function ordemEntregasPorData(p) {
+  const meio = [2,3,4,5];
+  const comData = meio.map(si => {
+    const ent = p.entregas && (p.entregas[si] || p.entregas[String(si)]);
+    const real = ent && ent.real;
+    const dataRef = real || semDataEtapa(p, si);
+    return { si, dataRef };
+  });
+  comData.sort((a,b) => {
+    if (a.dataRef && b.dataRef) return a.dataRef < b.dataRef ? -1 : (a.dataRef > b.dataRef ? 1 : a.si - b.si);
+    if (a.dataRef && !b.dataRef) return -1;
+    if (!a.dataRef && b.dataRef) return 1;
+    return a.si - b.si;
+  });
+  return comData.map(x => x.si);
+}
+function ordemCompleta(p) { return [0,1,...ordemEntregasPorData(p),6]; }
+
+function calcFlagAutomatica(p) {
+  if (p.flagManual) return p.flagManual;
+  if (isDroFam(p)) return p.flag || '—';
+  const ent = p.entregas || {};
+  const hojeISO = new Date().toISOString().slice(0,10);
+  const ordem = ordemCompleta(p);
+  const candidatos = [];
+  ordem.forEach((si, pos) => {
+    const e = ent[si] || ent[String(si)];
+    if (!e || !e.real || e.real > hojeISO) return;
+    let refAnterior = null;
+    if (pos === 0 || pos === 1) refAnterior = p.inicio || null;
+    else { const siAnt = ordem[pos-1]; refAnterior = ((ent[siAnt] || ent[String(siAnt)]) || {}).real || null; }
+    const esperado = refAnterior ? addDays(refAnterior, 7) : null;
+    candidatos.push({ si, real: e.real, score: e.score, esperado });
+  });
+  candidatos.sort((a,b) => a.real < b.real ? 1 : -1);
+
+  let referencia = null, decolagemGenuina = false;
+  for (const c of candidatos) {
+    const scorable = c.si >= 1;
+    const temScore = c.score !== undefined && c.score !== '' && !isNaN(parseFloat(c.score));
+    if (!scorable || temScore) { referencia = c.real; if (c.si === 6) decolagemGenuina = true; break; }
+    if (c.esperado && c.real > c.esperado) { /* nasceu atrasada e sem nota — não conta */ }
+    else if (c.esperado) {
+      const diasDesdeEntrega = diffDays(c.real, hojeISO);
+      if (diasDesdeEntrega < 8) { referencia = c.real; if (c.si === 6) decolagemGenuina = true; break; }
+    } else { referencia = c.real; if (c.si === 6) decolagemGenuina = true; break; }
+  }
+  if (!decolagemGenuina) {
+    referencia = referencia || p.inicio;
+    if (referencia) { const diasParado = diffDays(referencia, hojeISO); if (diasParado > 8) return 'Vermelho'; }
+  }
+  let scoreRecente = null;
+  for (let i = 6; i >= 0; i--) {
+    const e = ent[i] || ent[String(i)];
+    if (e && e.score !== undefined && e.score !== '' && !isNaN(parseFloat(e.score))) { scoreRecente = parseFloat(e.score); break; }
+  }
+  const scoreOk = scoreRecente !== null && scoreRecente >= 70;
+  const prazoOk = prazoStatus(p).ok === true;
+  const atingidos = (scoreOk?1:0) + (prazoOk?1:0);
+  if (atingidos === 2) return 'Verde';
+  if (atingidos === 1) return 'Amarelo';
+  return 'Vermelho';
+}
+
+function projMonetizouNoMes(p, label, ano) {
+  return (p.monetizacoes||[]).some(m => { if (!m.mesMon) return false; const [lb,an] = m.mesMon.split('/'); return lb===label && parseInt(an)===ano; });
+}
+function monReceitaNoMes(label, ano) {
+  let ot=0, rec=0; const mesMonWanted = label+'/'+ano;
+  projects.forEach(p => (p.monetizacoes||[]).forEach(m => { if (m && m.mesMon === mesMonWanted) { ot += monPV(m.valorOT); rec += monPV(m.valorRec); } }));
+  return {ot, rec, total: ot+rec};
+}
+function getSemanasDoMes(label, ano) {
+  const mesIdx = (_MES_ORDEM[label]||0) - 1;
+  if (mesIdx < 0 || !ano) return [];
+  const primeiro = new Date(ano, mesIdx, 1);
+  const ultimo   = new Date(ano, mesIdx + 1, 0);
+  const ds = primeiro.getDay();
+  const seg = new Date(primeiro);
+  seg.setDate(primeiro.getDate() - (ds === 0 ? 6 : ds - 1));
+  seg.setHours(0,0,0,0);
+  const f2 = d => String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0');
+  const semanas = []; let cursor = new Date(seg); let n = 1;
+  while (cursor <= ultimo) {
+    const ini = new Date(cursor); ini.setHours(0,0,0,0);
+    const fim = new Date(cursor); fim.setDate(cursor.getDate()+6); fim.setHours(23,59,59,999);
+    semanas.push({ ini, fim, n, label:'Sem '+n, range: f2(ini)+'–'+f2(fim), key: ini.toISOString().slice(0,10) });
+    cursor.setDate(cursor.getDate()+7); n++;
+  }
+  return semanas;
+}
+function pipeEventosDoMes(label, ano) {
+  const mesIdx = (_MES_ORDEM[label]||0) - 1;
+  const out = [];
+  projects.forEach(p => {
+    if (isDroFam(p)) return;
+    (p.pipeEventos||[]).forEach(ev => {
+      const dt = parseDate(ev.data);
+      if (dt && dt.getMonth() === mesIdx && dt.getFullYear() === ano) {
+        out.push({ id:ev.id, tipo:ev.tipo, data:ev.data, consultor:ev.consultor||p.consultor||'—' });
+      }
+    });
+  });
+  return out;
+}
+
+// ── Compute NPS ──────────────────────────────────────────────────
+function computeNPS() {
+  const base = projects.filter(p => calcStatus2(p) === 'Finalizado' && (!p.modelo || p.modelo !== 'DRO'));
+  const notas = []; const respostas = [];
+  base.forEach(p => {
+    const nd = npsData[String(p.id)];
+    if (!nd || nd.nota === '' || nd.nota === undefined || !nd.dataResp) return;
+    const n = parseInt(nd.nota);
+    if (!isNaN(n)) { notas.push(n); respostas.push({ projeto: p.nome, nota: n, data: nd.dataResp }); }
+  });
+  const score = notas.length ? Math.round((notas.filter(n=>n>=9).length - notas.filter(n=>n<=6).length) / notas.length * 100) : null;
+  return { score, respostas };
+}
+
+function computeCSP() {
+  const rows = ALL_MESES.map(m => ({ mes: m.label, key: m.key, val: cspManual[m.key] !== undefined ? Number(cspManual[m.key]) : null }));
+  const defined = rows.filter(r => r.val !== null && !isNaN(r.val));
+  const avg = defined.length ? parseFloat((defined.reduce((a,r)=>a+r.val,0)/defined.length).toFixed(1)) : null;
+  return { rows, avg };
+}
+
+function computeConversao() {
+  let convIniciados = 0, convMon = 0;
+  ALL_MESES.forEach(m => {
+    convIniciados += projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && p.inicio && parseDate(p.inicio)?.getMonth() === m.idx && parseDate(p.inicio)?.getFullYear() === m.ano).length;
+    convMon += projects.filter(p => !isDroFam(p) && projMonetizouNoMes(p, m.label, m.ano)).length;
+  });
+  const v = convIniciados > 0 ? Math.round(convMon / convIniciados * 100) : null;
+  return { v, convIniciados, convMon };
+}
+
+function computePrazo() {
+  let pTotal = 0, pOk = 0;
+  ALL_MESES.forEach(m => {
+    const doMes = projects.filter(p => prazoNoMesCard(p, m.idx, m.ano));
+    doMes.forEach(p => { const st = prazoStatusNoMes(p, m.idx, m.ano); if (st.ok === true) { pTotal++; pOk++; } else if (st.ok === false) pTotal++; });
+  });
+  const v = pTotal > 0 ? Math.round(pOk / pTotal * 100) : null;
+  return { v, pOk, pBad: pTotal - pOk, pTotal };
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function renderAll() {
+  renderVisaoGeral();
+  renderBase();
+  renderDro();
+  renderLeadTime();
+  renderAuditoria();
+  renderConversao();
+  renderPrazo();
+  renderCsp();
+  renderNps();
+  renderPdi();
+  renderAql();
+  renderPipeline();
+  renderMonetizacao();
+  renderCapacity();
+  renderPerformance();
+  renderCultura();
+}
+
+function setKpi(prefix, val, meta, lower, fmt) {
+  const valEl = document.getElementById('kpi-' + prefix + '-val');
+  const barEl = document.getElementById('kpi-' + prefix + '-bar');
+  if (valEl) valEl.textContent = (val === null || val === undefined) ? '—' : fmt(val);
+  if (barEl) {
+    const w = val !== null ? pct(lower ? Math.max(0, meta*2 - val) : val, lower ? meta*2 : 100) : 0;
+    barEl.style.width = w + '%';
+    const [cls] = badgeFor(val, meta, lower);
+    barEl.style.background = cls === 'b-green' ? 'var(--green)' : cls === 'b-red' ? 'var(--red)' : 'var(--text-hint)';
+  }
+}
+
+function renderVisaoGeral() {
+  const csp = computeCSP(), conv = computeConversao(), prazo = computePrazo(), nps = computeNPS();
+  setKpi('csp', csp.avg, 5, true, v => v.toFixed(1).replace('.',',') + '%');
+  setKpi('conv', conv.v, 40, false, v => v + '%');
+  setKpi('prazo', prazo.v, 80, false, v => v + '%');
+  setKpi('nps', nps.score, 50, false, v => String(v));
+
+  const mesAtual = ALL_MESES.find(m => m.idx === 7 && m.ano === 2026); // Agosto/2026
+  const rMes = monReceitaNoMes(mesAtual.label, mesAtual.ano);
+  const projComFee = new Set();
+  projects.forEach(p => (p.monetizacoes||[]).forEach(m => { if (m && m.mesMon === mesAtual.label+'/'+mesAtual.ano && (monPV(m.valorOT)>0 || monPV(m.valorRec)>0)) projComFee.add(p.id); }));
+  const labelEl = document.getElementById('visao-mon-label');
+  const valEl = document.getElementById('visao-mon-val');
+  const subEl = document.getElementById('visao-mon-sub');
+  if (labelEl) labelEl.textContent = 'Movimentado pelo Squad · ' + mesAtual.label + '/' + mesAtual.ano;
+  if (valEl) valEl.textContent = BRL(rMes.total);
+  if (subEl) subEl.textContent = projComFee.size + ' projeto(s) com fee';
+}
+
+function renderBase() {
+  const tbody = document.getElementById('base-tbody');
+  const countEl = document.getElementById('base-count');
+  if (!tbody) return;
+  if (!projects.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-hint);">Nenhum projeto encontrado no Supabase.</td></tr>'; if (countEl) countEl.textContent = '0 projetos'; return; }
+  if (countEl) countEl.textContent = projects.length + ' projetos';
+  tbody.innerHTML = projects.map(p => {
+    const status = calcStatus2(p);
+    const flag = calcFlagAutomatica(p);
+    const badgeCls = flag === 'Verde' ? 'b-green' : flag === 'Amarelo' ? 'b-amber' : flag === 'Vermelho' ? 'b-red' : 'b-gray';
+    const ps = prazoStatus(p);
+    const ent = p.entregas || {};
+    let doneCount = 0; for (let i=0;i<7;i++) if (ent[i] && ent[i].real) doneCount++;
+    const progPct = Math.round(doneCount/7*100);
+    const progColor = flag === 'Verde' ? 'var(--green)' : flag === 'Amarelo' ? 'var(--amber)' : flag === 'Vermelho' ? 'var(--red)' : 'var(--text-hint)';
+    return '<tr>'
+      + '<td><b>' + escapeHtmlPv(p.nome||'—') + '</b><br><span style="color:var(--text-hint);font-size:var(--fs-xs);">' + escapeHtmlPv(p.modelo||'Estruturação Estratégica') + '</span></td>'
+      + '<td><span class="badge ' + badgeCls + '">' + escapeHtmlPv(status) + '</span></td>'
+      + '<td>' + escapeHtmlPv(p.consultor||'—') + '</td>'
+      + '<td' + (ps.badge==='b-red' ? ' style="color:var(--accent);font-weight:600;"' : '') + '>' + escapeHtmlPv(ps.label) + '</td>'
+      + '<td><div style="display:flex;align-items:center;gap:8px;"><div class="prog-bg" style="flex:1;margin:0;"><div class="prog-fill" style="width:' + progPct + '%;background:' + progColor + ';"></div></div><span style="font-size:var(--fs-xs);">' + progPct + '%</span></div></td>'
+      + '<td style="text-align:right;"><button style="background:none;border:none;cursor:pointer;color:var(--text-hint);">⋮</button></td>'
+      + '</tr>';
+  }).join('');
+}
+
+function escapeHtmlPv(str) {
+  const div = document.createElement('div');
+  div.textContent = str === null || str === undefined ? '' : String(str);
+  return div.innerHTML;
+}
+
+function renderDro() {
+  const box = document.getElementById('dro-cards');
+  if (!box) return;
+  const droProjects = projects.filter(isDroFam);
+  if (!droProjects.length) { box.innerHTML = '<div class="card" style="color:var(--text-hint);">Nenhum projeto DRO/DRX no Supabase.</div>'; return; }
+  box.innerHTML = droProjects.map((p, i) => {
+    const flag = p.flag || '—';
+    const flagCls = flag === 'Verde' ? 'flag-V' : flag === 'Amarelo' ? 'flag-A' : flag === 'Vermelho' ? 'flag-V' : '';
+    const ps = prazoStatus(p);
+    return '<div class="cycle-card' + (i===0?' expanded':'') + '">'
+      + '<button class="cycle-card-header" onclick="toggleCycleCard(this)">'
+      + '<div class="cycle-card-title"><h3>' + escapeHtmlPv(p.nome) + '</h3>'
+      + '<span class="badge b-purple" style="margin:0;">' + escapeHtmlPv(p.modelo) + '</span>'
+      + (flag !== '—' ? '<span class="flag-dot ' + flagCls + '"></span><span style="font-size:var(--fs-xs);color:var(--text-hint);">' + escapeHtmlPv(flag) + '</span>' : '<span style="font-size:var(--fs-xs);color:var(--text-hint);">Sem flag manual</span>')
+      + '</div>'
+      + '<svg class="cycle-card-chevron" width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>'
+      + '</button>'
+      + '<div class="cycle-card-body">'
+      + '<div style="margin-bottom:.6rem;display:flex;justify-content:space-between;font-size:var(--fs-sm);"><span>Prazo (contrato)</span><span style="color:var(--accent);font-weight:600;">' + escapeHtmlPv(ps.label) + '</span></div>'
+      + '<div style="font-size:var(--fs-sm);color:var(--text-hint);">Consultor: ' + escapeHtmlPv(p.consultor||'—') + ' · Início: ' + fmtDataBr(p.inicio) + ' · Fim previsto: ' + fmtDataBr(p.prevFim) + '</div>'
+      + '<div style="font-size:var(--fs-xs);color:var(--text-hint);margin-top:10px;">Ciclos/comitês detalhados de DRO/DRX não estão replicados neste espelho — consulte a página real para o estado completo de governança.</div>'
+      + '</div></div>';
+  }).join('');
+}
+
+function fmtDataBr(s) { return s ? s.split('-').reverse().join('/') : '—'; }
+
+function renderLeadTime() {
+  const thead = document.getElementById('leadtime-thead');
+  const tbody = document.getElementById('leadtime-tbody');
+  if (!tbody) return;
+  thead.innerHTML = '<th style="min-width:200px;">Projeto</th>' + SEMANAS.map(s => '<th>' + s.replace(/^\d+ª /,'') + '</th>').join('');
+  const list = projects.filter(p => !isDroFam(p) && p.inicio && calcStatus2(p) !== 'Finalizado' && calcStatus2(p) !== 'Churn' && calcStatus2(p) !== 'Pausado');
+  if (!list.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-hint);">Nenhum projeto em andamento.</td></tr>'; return; }
+  tbody.innerHTML = list.map(p => {
+    const ent = p.entregas || {};
+    const hojeISO = new Date().toISOString().slice(0,10);
+    let firstMissing = -1;
+    for (let i=0;i<7;i++) { if (!(ent[i] && ent[i].real)) { firstMissing = i; break; } }
+    const tds = SEMANAS.map((label, i) => {
+      const e = ent[i] || ent[String(i)];
+      if (e && e.real) return '<td><span class="gantt-block ok">' + fmtDataBr(e.real) + '</span></td>';
+      if (i === firstMissing) {
+        const ps = prazoStatus(p);
+        const bad = ps.badge === 'b-red';
+        return '<td><span class="gantt-block ' + (bad?'bad':'warn') + '">' + (bad?'Atrasado':'Em curso') + '</span></td>';
+      }
+      return '<td></td>';
+    }).join('');
+    return '<tr><td><b>' + escapeHtmlPv(p.nome) + '</b></td>' + tds + '</tr>';
+  }).join('');
+}
+
+function renderAuditoria() {
+  const box = document.getElementById('auditoria-list');
+  if (!box) return;
+  if (!auditorias.length) { box.innerHTML = '<div style="color:var(--text-hint);">Nenhuma avaliação de auditoria registrada no Supabase.</div>'; return; }
+  const ordered = [...auditorias].sort((a,b) => (b.data||'').localeCompare(a.data||''));
+  box.innerHTML = '<div class="checklist-group">' + ordered.slice(0,15).map(a => {
+    const nota = a.nota !== undefined && a.nota !== '' && !isNaN(parseFloat(a.nota)) ? parseFloat(a.nota) : null;
+    const icon = nota === null ? 'warn' : nota >= 70 ? 'ok' : 'bad';
+    const iconSvg = icon === 'ok'
+      ? '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.5l2.5 2.5L12 4.5"/></svg>'
+      : icon === 'bad'
+      ? '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>'
+      : '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2L1 14h14L8 2z"/><path d="M8 6.5v3.5M8 12h.01"/></svg>';
+    return '<div class="checklist-item">'
+      + '<span class="checklist-item-icon ' + icon + '">' + iconSvg + '</span>'
+      + '<div><div class="checklist-item-title">' + escapeHtmlPv(a.cliente||'Cliente não informado') + ' — ' + escapeHtmlPv(a.entrega||'—') + '</div>'
+      + '<div class="checklist-item-desc">' + escapeHtmlPv(a.consultor||'—') + ' · ' + fmtDataBr(a.data) + (nota!==null ? ' · nota ' + nota : '') + '</div></div>'
+      + '</div>';
+  }).join('') + '</div>';
+}
+
+function renderConversao() {
+  const conv = computeConversao();
+  const valEl = document.getElementById('conv-kpi-val');
+  const barEl = document.getElementById('conv-kpi-bar');
+  const metaEl = document.getElementById('conv-kpi-meta');
+  const totalEl = document.getElementById('conv-total-val');
+  if (valEl) valEl.textContent = conv.v !== null ? conv.v + '%' : '—';
+  if (barEl) { barEl.style.width = pct(conv.v||0, 100) + '%'; const [cls] = badgeFor(conv.v, 40, false); barEl.style.background = cls==='b-green'?'var(--green)':cls==='b-red'?'var(--red)':'var(--text-hint)'; }
+  if (metaEl) metaEl.textContent = 'Meta: 40% · ' + conv.convMon + ' de ' + conv.convIniciados + ' projetos iniciados converteram';
+  if (totalEl) totalEl.textContent = conv.convIniciados;
+
+  const oportGroups = {};
+  projects.filter(p => !isDroFam(p)).forEach(p => { const key = p.oport || 'Sem etapa definida'; oportGroups[key] = (oportGroups[key]||0)+1; });
+  const entries = Object.entries(oportGroups).sort((a,b) => b[1]-a[1]);
+  const funnelEl = document.getElementById('conv-funnel');
+  if (!funnelEl) return;
+  if (!entries.length) { funnelEl.innerHTML = '<div style="color:var(--text-hint);">Sem projetos.</div>'; return; }
+  const max = Math.max(...entries.map(e => e[1]));
+  const cores = ['var(--blue)','var(--amber)','var(--green)','var(--purple)','var(--accent)'];
+  funnelEl.innerHTML = entries.map(([label, v], i) => '<div class="funnel-row"><span class="funnel-label">' + escapeHtmlPv(label) + '</span><div class="funnel-bar-wrap"><div class="funnel-bar" style="width:' + Math.max(6, Math.round(v/max*100)) + '%;background:' + cores[i%cores.length] + ';">' + v + '</div></div></div>').join('');
+}
+
+function renderPrazo() {
+  const prazo = computePrazo();
+  const valEl = document.getElementById('prazo-kpi-val');
+  const barEl = document.getElementById('prazo-kpi-bar');
+  const okEl = document.getElementById('prazo-ok-count');
+  const badEl = document.getElementById('prazo-bad-count');
+  if (valEl) valEl.textContent = prazo.v !== null ? prazo.v + '%' : '—';
+  if (barEl) { barEl.style.width = pct(prazo.v||0,100) + '%'; const [cls] = badgeFor(prazo.v, 80, false); barEl.style.background = cls==='b-green'?'var(--green)':cls==='b-red'?'var(--red)':'var(--text-hint)'; }
+  if (okEl) okEl.textContent = prazo.pOk;
+  if (badEl) badEl.textContent = prazo.pBad;
+
+  const listEl = document.getElementById('prazo-list');
+  if (!listEl) return;
+  const relevantes = projects.filter(p => !isDroFam(p) && p.inicio && calcStatus2(p) !== 'Finalizado' && calcStatus2(p) !== 'Churn' && calcStatus2(p) !== 'Pausado');
+  if (!relevantes.length) { listEl.innerHTML = '<div style="color:var(--text-hint);">Nenhum projeto em aberto.</div>'; return; }
+  listEl.innerHTML = relevantes.map(p => {
+    const ps = prazoStatus(p);
+    return '<div class="ov-row"><span class="ov-name">' + escapeHtmlPv(p.nome) + '</span><span class="badge ' + ps.badge + '" style="margin:0;">' + escapeHtmlPv(ps.label) + '</span></div>';
+  }).join('');
+}
+
+function renderCsp() {
+  const csp = computeCSP();
+  const valEl = document.getElementById('csp-kpi-val');
+  const barEl = document.getElementById('csp-kpi-bar');
+  const worstEl = document.getElementById('csp-worst-val');
+  const tbody = document.getElementById('csp-tbody');
+  if (valEl) valEl.textContent = csp.avg !== null ? csp.avg.toFixed(1).replace('.',',') + '%' : '—';
+  if (barEl) { barEl.style.width = pct(csp.avg||0, 10) + '%'; const [cls] = badgeFor(csp.avg, 5, true); barEl.style.background = cls==='b-green'?'var(--accent)':cls==='b-red'?'var(--red)':'var(--text-hint)'; }
+  const withVal = csp.rows.filter(r => r.val !== null);
+  const worst = withVal.length ? withVal.reduce((a,b) => a.val > b.val ? a : b) : null;
+  if (worstEl) worstEl.textContent = worst ? worst.mes + ' · ' + worst.val.toFixed(1).replace('.',',') + '%' : 'sem registros';
+  if (tbody) {
+    if (!withVal.length) { tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:var(--text-hint);">Nenhum registro manual de CSP no Supabase.</td></tr>'; }
+    else tbody.innerHTML = withVal.map(r => { const [cls] = badgeFor(r.val, 5, true); return '<tr><td>' + r.mes + '</td><td><span class="badge ' + cls + '">' + r.val.toFixed(1).replace('.',',') + '%</span></td></tr>'; }).join('');
+  }
+}
+
+let npsChartObj = null;
+function renderNps() {
+  const nps = computeNPS();
+  const valEl = document.getElementById('nps-kpi-val');
+  if (valEl) valEl.textContent = nps.score !== null ? nps.score : '—';
+  const tbody = document.getElementById('nps-tbody');
+  if (tbody) {
+    if (!nps.respostas.length) tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-hint);">Nenhuma resposta de NPS registrada.</td></tr>';
+    else tbody.innerHTML = [...nps.respostas].sort((a,b)=> (b.data||'').localeCompare(a.data||'')).map(r => {
+      const cls = r.nota>=9?'b-green':r.nota<=6?'b-red':'b-amber';
+      const label = r.nota>=9?'Promotor':r.nota<=6?'Detrator':'Neutro';
+      return '<tr><td>' + escapeHtmlPv(r.projeto) + '</td><td>' + r.nota + '</td><td>' + fmtDataBr(r.data) + '</td><td><span class="badge ' + cls + '">' + label + '</span></td></tr>';
+    }).join('');
+  }
+  const canvas = document.getElementById('npsChart');
+  if (!canvas || typeof Chart === 'undefined') return;
+  const dataPorMes = ALL_MESES.map(m => {
+    const doMes = nps.respostas.filter(r => { const d = new Date(r.data); return d.getMonth()===m.idx && d.getFullYear()===m.ano; });
+    if (!doMes.length) return null;
+    return Math.round((doMes.filter(r=>r.nota>=9).length - doMes.filter(r=>r.nota<=6).length) / doMes.length * 100);
+  });
+  if (npsChartObj) npsChartObj.destroy();
+  npsChartObj = new Chart(canvas, {
+    type: 'line',
+    data: { labels: ALL_MESES.map(m => m.label.slice(0,3)), datasets: [
+      {label:'NPS', data: dataPorMes, borderColor:'#A06010', backgroundColor:'rgba(160,96,16,.07)', borderWidth:2, pointRadius:4, pointBackgroundColor:'#A06010', fill:true, tension:.3, spanGaps:true},
+      {label:'Meta', data: ALL_MESES.map(()=>50), borderColor:'rgba(0,0,0,.15)', borderDash:[6,4], pointRadius:0, borderWidth:1.5, fill:false}
+    ]},
+    options: { responsive:true, maintainAspectRatio:false,
+      plugins: {legend:{display:false}, tooltip:{callbacks:{label: c => c.dataset.label + ': ' + c.parsed.y}}},
+      scales: { y:{min:0,max:100,ticks:{color:'#A09A94',font:{size:11}},grid:{color:'rgba(0,0,0,.05)'},border:{display:false}},
+                x:{ticks:{color:'#A09A94',font:{size:10},maxRotation:45},grid:{display:false},border:{display:false}} } }
+  });
+}
+
+function renderPdi() {
+  const tbody = document.getElementById('pdi-tbody');
+  if (!tbody) return;
+  const rows = (typeof pdiData !== 'undefined' && pdiData && Array.isArray(pdiData.rows)) ? pdiData.rows : [];
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-hint);">Sem dados de PDI no Supabase.</td></tr>'; return; }
+  tbody.innerHTML = rows.map(r => {
+    const vals = QUARTER_CLOSE_IDX.map(idx => { const v = r.m && r.m[idx]; return (v !== undefined && v !== null && v !== '') ? Number(v) : null; });
+    const defined = vals.filter(v => v !== null);
+    const avg = defined.length ? Math.round(defined.reduce((a,b)=>a+b,0)/defined.length) : null;
+    const [cls] = badgeFor(avg, 80, false);
+    return '<tr><td><b>' + escapeHtmlPv(r.consultor||'—') + '</b></td>'
+      + vals.map(v => '<td>' + (v!==null ? v+'%' : '—') + '</td>').join('')
+      + '<td>' + (avg!==null ? '<span class="badge ' + cls + '">' + avg + '%</span>' : '—') + '</td></tr>';
+  }).join('');
+}
+
+let aqlChartObj = null, aqlHistChartObj = null;
+function renderAql() {
+  const mesInfo = ALL_MESES.find(m => m.idx === 7 && m.ano === 2026); // Agosto/2026 (mês atual)
+  const legendEl = document.getElementById('aql-legend');
+  if (legendEl) legendEl.innerHTML = CONS_MON.map(nome => '<span><span class="gantt-legend-dot" style="background:' + (dotColors[nome]||'var(--accent)') + ';"></span>' + escapeHtmlPv(nome) + '</span>').join('');
+
+  const canvas = document.getElementById('aqlChart');
+  if (canvas && typeof Chart !== 'undefined') {
+    const semanas = getSemanasDoMes(mesInfo.label, mesInfo.ano);
+    const evs = pipeEventosDoMes(mesInfo.label, mesInfo.ano);
+    function semIdx(dataStr) { const dt = parseDate(dataStr); if (!dt) return -1; for (let i=0;i<semanas.length;i++) { if (dt>=semanas[i].ini && dt<=semanas[i].fim) return i; } return -1; }
+    const datasets = CONS_MON.map((nome, i) => {
+      const counts = semanas.map(()=>0);
+      evs.filter(e => e.consultor === nome).forEach(e => { const si = semIdx(e.data); if (si>=0) counts[si]++; });
+      const cor = AQL_PALETTE[dotColors[nome]] || AQL_FALLBACK[i % AQL_FALLBACK.length];
+      return { label: nome, data: counts, borderColor: cor, backgroundColor: cor, borderWidth:2, pointRadius:3, pointBackgroundColor: cor, tension:.3, fill:false, spanGaps:true };
+    });
+    if (aqlChartObj) aqlChartObj.destroy();
+    if (semanas.length) {
+      aqlChartObj = new Chart(canvas, { type:'line', data: { labels: semanas.map(s => s.label + ' (' + s.range + ')'), datasets },
+        options: { responsive:true, maintainAspectRatio:false,
+          plugins: { legend:{display:true,position:'bottom',labels:{boxWidth:10,font:{size:10}}}, tooltip:{callbacks:{label: c => c.dataset.label + ': ' + c.parsed.y + ' AQL' + (c.parsed.y===1?'':'s')}} },
+          scales: { y:{beginAtZero:true,ticks:{precision:0,color:'#A09A94',font:{size:11}},grid:{color:'rgba(0,0,0,.05)'},border:{display:false}},
+                    x:{ticks:{color:'#A09A94',font:{size:10}},grid:{display:false},border:{display:false}} } } });
+    }
+  }
+
+  const histCanvas = document.getElementById('aqlHistChart');
+  if (histCanvas && typeof Chart !== 'undefined') {
+    const idxSel = ALL_MESES.findIndex(m => m.key === mesInfo.key && m.ano === mesInfo.ano);
+    const janela = ALL_MESES.slice(Math.max(0, idxSel-5), idxSel+1);
+    const labels = janela.map(m => m.label.slice(0,3) + '/' + String(m.ano).slice(2));
+    const realizadoArr = janela.map(m => pipeEventosDoMes(m.label, m.ano).length);
+    const metaArr = janela.map(m => { const meta = aqlMetas[m.key] || {}; return meta.total || null; });
+    if (aqlHistChartObj) aqlHistChartObj.destroy();
+    aqlHistChartObj = new Chart(histCanvas, { data: { labels, datasets: [
+      { type:'bar', label:'Realizado', data: realizadoArr, backgroundColor:'#2f6fed', borderRadius:4, order:2 },
+      { type:'line', label:'Meta', data: metaArr, borderColor:'#c8102e', borderWidth:2, borderDash:[6,4], pointRadius:3, pointBackgroundColor:'#c8102e', fill:false, spanGaps:true, order:1 }
+    ]}, options: { responsive:true, maintainAspectRatio:false,
+      plugins: { legend:{display:true,position:'bottom',labels:{boxWidth:10,font:{size:10}}} },
+      scales: { y:{beginAtZero:true,ticks:{precision:0,color:'#A09A94',font:{size:11}},grid:{color:'rgba(0,0,0,.05)'},border:{display:false}},
+                x:{ticks:{color:'#A09A94',font:{size:10}},grid:{display:false},border:{display:false}} } } });
+  }
+}
+
+function renderPipeline() {
+  const board = document.getElementById('pipeline-kanban');
+  if (!board) return;
+  const groups = {};
+  projects.filter(p => !isDroFam(p) && calcStatus2(p) !== 'Finalizado' && calcStatus2(p) !== 'Churn').forEach(p => {
+    const key = p.oport || 'Sem etapa definida';
+    (groups[key] = groups[key] || []).push(p);
+  });
+  const keys = Object.keys(groups);
+  if (!keys.length) { board.innerHTML = '<div class="card" style="color:var(--text-hint);grid-column:1/-1;">Nenhuma oportunidade em aberto no campo `oport`.</div>'; return; }
+  board.innerHTML = keys.map(key => {
+    const list = groups[key];
+    return '<div><div class="kanban-col-title">' + escapeHtmlPv(key) + ' <span>' + list.length + '</span></div>'
+      + list.map(p => '<div class="kanban-card"><div class="kanban-card-title">' + escapeHtmlPv(p.nome) + '</div><div class="kanban-card-meta">' + escapeHtmlPv(p.consultor||'—') + (p.gmv ? ' · ' + BRL(monPV(p.gmv)) : '') + '</div></div>').join('')
+      + '</div>';
+  }).join('');
+}
+
+function renderMonetizacao() {
+  const tbody = document.getElementById('mon-tbody');
+  if (!tbody) return;
+  const rows = [];
+  projects.forEach(p => (p.monetizacoes||[]).forEach(m => { if (m && m.mesMon) rows.push({ nome: p.nome, mesMon: m.mesMon, consultor: p.consultor, modelo: p.modelo||'Estruturação Estratégica' }); }));
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-hint);">Nenhuma monetização registrada.</td></tr>'; return; }
+  rows.sort((a,b) => { const ma = ALL_MESES.find(x=>x.label+'/'+x.ano===a.mesMon), mb = ALL_MESES.find(x=>x.label+'/'+x.ano===b.mesMon); return (mb?mb.idx:0) - (ma?ma.idx:0); });
+  tbody.innerHTML = rows.map(r => '<tr><td><b>' + escapeHtmlPv(r.nome) + '</b></td><td>' + escapeHtmlPv(r.mesMon) + '</td><td>' + escapeHtmlPv(r.consultor||'—') + '</td><td>' + escapeHtmlPv(r.modelo) + '</td></tr>').join('');
+}
+
+function renderCapacity() {
+  const ativos = projects.filter(p => { const s = calcStatus2(p); return s !== 'Finalizado' && s !== 'Churn' && s !== 'Pausado'; });
+  const totalEl = document.getElementById('cap-total-val');
+  if (totalEl) totalEl.textContent = ativos.length;
+  const porCons = {};
+  ativos.forEach(p => { const c = p.consultor || '—'; porCons[c] = (porCons[c]||0)+1; });
+  const entries = Object.entries(porCons).sort((a,b)=>b[1]-a[1]);
+  const topEl = document.getElementById('cap-top-val');
+  const topMetaEl = document.getElementById('cap-top-meta');
+  if (entries.length) { if (topEl) topEl.textContent = entries[0][0]; if (topMetaEl) topMetaEl.textContent = entries[0][1] + ' projetos ativos'; }
+  const tbody = document.getElementById('cap-tbody');
+  if (tbody) {
+    if (!entries.length) tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:var(--text-hint);">Nenhum projeto ativo.</td></tr>';
+    else tbody.innerHTML = entries.map(([nome,n]) => '<tr><td><b>' + escapeHtmlPv(nome) + '</b></td><td>' + n + '</td></tr>').join('');
+  }
+}
+
+function renderPerformance() {
+  const grid = document.getElementById('perf-grid');
+  if (!grid) return;
+  const ranking = CONS_MON.map(nome => {
+    const own = projects.filter(p => p.consultor === nome && !isDroFam(p));
+    const iniciados = own.filter(p => p.inicio && parseDate(p.inicio)?.getFullYear() === 2026).length;
+    const monetizaram = own.filter(p => ALL_MESES.some(m => projMonetizouNoMes(p, m.label, m.ano))).length;
+    const convPct = iniciados > 0 ? Math.round(monetizaram/iniciados*100) : null;
+    const comPrazo = own.filter(p => p.inicio && calcStatus2(p) !== 'Churn').map(p => prazoStatus(p)).filter(ps => ps.ok !== null);
+    const prazoOk = comPrazo.filter(ps => ps.ok === true).length;
+    const prazoPct = comPrazo.length > 0 ? Math.round(prazoOk/comPrazo.length*100) : null;
+    const scores = [convPct, prazoPct].filter(v => v !== null);
+    const scorePct = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : 0;
+    return { nome, convPct, prazoPct, scorePct, temDados: own.length > 0 };
+  }).filter(r => r.temDados).sort((a,b) => b.scorePct - a.scorePct);
+  if (!ranking.length) { grid.innerHTML = '<div class="card" style="color:var(--text-hint);">Nenhum consultor com projetos atribuídos.</div>'; return; }
+  const medalIcon = (pos) => pos === 0
+    ? '<div class="perf-crown"><svg width="24" height="24" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12h11M3 12L2.3 6l2.9 2.4L8 4l2.8 4.4L13.7 6l-.7 6"/></svg></div>'
+    : '<div style="height:24px;"></div>';
+  grid.innerHTML = ranking.map((r, i) => {
+    const initials = r.nome.slice(0,2).toUpperCase();
+    return '<div class="perf-rank-card' + (i===0?' gold':'') + '">'
+      + medalIcon(i)
+      + '<div class="perf-avatar">' + initials + '</div>'
+      + '<div style="font-family:var(--serif);font-size:var(--fs-2xl);font-weight:700;">' + escapeHtmlPv(r.nome) + '</div>'
+      + '<div style="font-size:var(--fs-xs);color:var(--text-hint);">' + (i+1) + 'º lugar</div>'
+      + '<div class="perf-score-bar-wrap"><div class="perf-score-bar" style="width:' + r.scorePct + '%;"></div></div>'
+      + '<div style="font-size:var(--fs-xs);color:var(--text-hint);margin-bottom:8px;">Score combinado: ' + r.scorePct + '%</div>'
+      + '<div class="perf-kpi-row"><span>Prazo</span><span style="color:' + (r.prazoPct!==null && r.prazoPct>=80?'var(--green)':'var(--red)') + ';">' + (r.prazoPct!==null ? r.prazoPct+'%' : '—') + '</span></div>'
+      + '<div class="perf-kpi-row"><span>Conversão</span><span style="color:' + (r.convPct!==null && r.convPct>=40?'var(--green)':'var(--red)') + ';">' + (r.convPct!==null ? r.convPct+'%' : '—') + '</span></div>'
+      + '</div>';
+  }).join('');
+}
+
+function drawRadar(dims, valuesPct, size, colorHex) {
+  const n = dims.length;
+  const cx = size/2, cy = size/2, r = size/2 - 18;
+  const angleFor = i => (Math.PI*2*i/n) - Math.PI/2;
+  const gridPolys = [0.33,0.66,1].map(lvl => {
+    const pts = dims.map((_,i) => { const a = angleFor(i); return (cx+Math.cos(a)*r*lvl) + ',' + (cy+Math.sin(a)*r*lvl); }).join(' ');
+    return '<polygon points="'+pts+'" fill="none" stroke="var(--border)" stroke-width="1"/>';
+  }).join('');
+  const axisLines = dims.map((_,i) => { const a = angleFor(i); return '<line x1="'+cx+'" y1="'+cy+'" x2="'+(cx+Math.cos(a)*r)+'" y2="'+(cy+Math.sin(a)*r)+'" stroke="var(--border)" stroke-width="1"/>'; }).join('');
+  const dataPts = dims.map((d,i) => { const a = angleFor(i); const v = Math.max(valuesPct[i],4)/100*r; return (cx+Math.cos(a)*v)+','+(cy+Math.sin(a)*v); }).join(' ');
+  const labels = dims.map((d,i) => { const a = angleFor(i); const lx = cx+Math.cos(a)*(r+13), ly = cy+Math.sin(a)*(r+13); return '<text x="'+lx+'" y="'+ly+'" fill="var(--text-hint)" font-family="var(--sans)" font-size="11" font-weight="600" text-anchor="middle" dominant-baseline="middle">'+d.code+'</text>'; }).join('');
+  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'">' + gridPolys + axisLines + '<polygon points="'+dataPts+'" fill="'+colorHex+'" fill-opacity="0.22" stroke="'+colorHex+'" stroke-width="2"/>' + labels + '</svg>';
+}
+
+function renderCultura() {
+  const radarEl = document.getElementById('cultura-radar');
+  if (radarEl) {
+    if (!sinaisCulturais.length) { radarEl.innerHTML = '<div style="color:var(--text-hint);">Nenhum sinal cultural registrado no Supabase.</div>'; }
+    else {
+      const growthValues = DIMENSOES.GROWTH.map(d => {
+        const dimSignals = sinaisCulturais.filter(s => s.framework === 'GROWTH' && s.dimensao === d.code);
+        const a = dimSignals.filter(s => s.tipo === 'alinhado').length;
+        return dimSignals.length ? Math.round(a/dimSignals.length*100) : 0;
+      });
+      radarEl.innerHTML = drawRadar(DIMENSOES.GROWTH, growthValues, 220, FW_COLOR.GROWTH);
+    }
+  }
+  const feedEl = document.getElementById('cultura-feed');
+  if (!feedEl) return;
+  if (!sinaisCulturais.length) { feedEl.innerHTML = '<div class="cultura-signal" style="color:var(--text-hint);">Nenhum sinal registrado ainda.</div>'; return; }
+  const ordered = [...sinaisCulturais].sort((a,b) => (b.created_at||'').localeCompare(a.created_at||'')).slice(0,20);
+  feedEl.innerHTML = ordered.map(s => {
+    const isPos = s.tipo === 'alinhado';
+    const dimList = DIMENSOES[s.framework] || [];
+    const dimMeta = dimList.find(d => d.code === s.dimensao) || {label: s.dimensao||''};
+    const iconSvg = isPos
+      ? '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.5l2.5 2.5L12 4.5"/></svg>'
+      : '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>';
+    return '<div class="cultura-signal">'
+      + '<div class="cultura-signal-head">'
+      + '<span class="cultura-badge-dim ' + (isPos?'pos':'neg') + '">' + iconSvg + '</span>'
+      + '<b>' + escapeHtmlPv(s.consultor||'Squad geral') + '</b>'
+      + '<span style="font-size:var(--fs-xs);color:var(--text-hint);">' + escapeHtmlPv(s.framework||'') + ' — ' + escapeHtmlPv(dimMeta.label||'') + '</span>'
+      + '<span class="badge ' + (isPos?'b-green':'b-red') + '" style="margin:0;margin-left:auto;">' + (isPos?'Alinhado':'Anti-padrão') + '</span>'
+      + '</div>'
+      + '<p style="font-size:var(--fs-md);color:var(--text);line-height:1.5;">' + escapeHtmlPv(s.descricao||'') + '</p>'
+      + '</div>';
+  }).join('');
+}
+
+// ============================================================
+// FETCH REAL DO SUPABASE (read-only, mesma anon key exposta em produção)
+// ============================================================
+let pdiData = { rows: [] };
+function normalizePdiPv(raw) {
+  if (!raw) return { rows: [] };
+  if (Array.isArray(raw.rows)) return raw;
+  return { rows: [] };
+}
+
+async function loadRealData() {
+  try {
+    const res = await fetch(SB_URL + '/rest/v1/' + SB_TABLE + '?id=eq.main&select=*', { headers: SB_HEADERS });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    if (!rows.length) { renderAll(); return; }
+    const row = rows[0];
+    if (row.projects) { const prjs = _parseMaybe(row.projects, []); if (Array.isArray(prjs)) projects = prjs; }
+    if (row.nps_data) { const nd = _parseMaybe(row.nps_data, {}); if (nd && typeof nd === 'object') Object.entries(nd).forEach(([k,v]) => npsData[String(k)] = v); }
+    if (row.csp_manual) { const cm = _parseMaybe(row.csp_manual, {}); if (cm && typeof cm === 'object') Object.assign(cspManual, cm); }
+    if (row.mon_metas) { const mm = _parseMaybe(row.mon_metas, {}); if (mm && typeof mm === 'object') Object.assign(monMetas, mm); }
+    if (row.aql_metas) { const am = _parseMaybe(row.aql_metas, {}); if (am && typeof am === 'object') Object.assign(aqlMetas, am); }
+    if (row.auditorias) { const av = _parseMaybe(row.auditorias, []); if (Array.isArray(av)) auditorias = av; }
+    if (row.sinais_culturais) { const sc = _parseMaybe(row.sinais_culturais, []); if (Array.isArray(sc)) sinaisCulturais = sc; }
+    if (row.pdi_data) { pdiData = normalizePdiPv(_parseMaybe(row.pdi_data, {rows:[]})); }
+    if (row.consultores) { const cm = _parseMaybe(row.consultores, {}); if (cm && Array.isArray(cm.list) && cm.list.length) CONS_MON = cm.list; if (cm && cm.colors) dotColors = Object.assign({}, dotColors, cm.colors); }
+    renderAll();
+  } catch (e) {
+    console.error('Falha ao carregar dados reais do Supabase:', e);
+    document.querySelectorAll('main .section').forEach(sec => {
+      const banner = document.createElement('div');
+      banner.style.cssText = 'background:var(--red-dim,#fde2e2);color:var(--red,#b91c1c);border-radius:var(--r-sm);padding:10px 14px;margin-bottom:14px;font-size:var(--fs-sm);';
+      banner.textContent = '⚠ Não foi possível carregar os dados reais do Supabase — verifique a conexão.';
+      sec.insertBefore(banner, sec.firstChild.nextSibling);
+    });
+  }
+}
+
+document.addEventListener('DOMContentLoaded', loadRealData);
+
+// ============================================================
+// UI (menu/nav/modais) — sem alteração de comportamento
+// ============================================================
 function show(sec) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   const secEl = document.getElementById('sec-' + sec);
   if (secEl) secEl.classList.add('active');
   document.querySelectorAll('.nav-tab').forEach(t => {
-    if (t.getAttribute('onclick') && t.getAttribute('onclick').indexOf("'" + sec + "'") >= 0) {
-      t.classList.add('active');
-    }
+    if (t.getAttribute('onclick') && t.getAttribute('onclick').indexOf("'" + sec + "'") >= 0) t.classList.add('active');
   });
   window.scrollTo({top: 0, behavior: 'instant'});
+  // Canvases dentro de abas escondidas (display:none) têm tamanho 0 no momento em que o
+  // Chart.js é construído — sem isso, o gráfico fica em branco até a janela ser redimensionada.
+  requestAnimationFrame(() => {
+    [npsChartObj, aqlChartObj, aqlHistChartObj].forEach(c => { if (c) c.resize(); });
+  });
 }
 
 function toggleDadosMenu(ev) {
@@ -716,6 +1401,7 @@ function toggleCycleCard(btn) {
 function mockAction(label) {
   alert('[Espelho] "' + label + '" — ação real acontece só na página de produção.');
 }
+
 </script>
 
 </body>
