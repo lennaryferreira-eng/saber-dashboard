@@ -6,7 +6,6 @@
 <title>Coordenação SABER — Painel 2026</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;0,900;1,400&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css">
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
@@ -29,7 +28,10 @@
   <div style="width:100%;max-width:380px;padding:0 24px;text-align:center;">
     <div style="font-family:var(--cond);font-size:1.1rem;font-weight:700;letter-spacing:.08em;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:6px;">Growthunters</div>
     <div style="font-family:var(--cond);font-size:2rem;font-weight:800;color:#fff;margin-bottom:28px;">Entrar com Google</div>
-    <div id="gsi-button-container" style="display:flex;justify-content:center;"></div>
+    <button id="google-login-btn" onclick="location.href='/api/google/login-url'" style="display:inline-flex;align-items:center;gap:10px;background:#fff;color:#1A1714;border:none;border-radius:24px;padding:12px 28px;font-family:var(--sans);font-size:var(--fs-lg);font-weight:600;cursor:pointer;">
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 01-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 009 18z"/><path fill="#FBBC05" d="M3.97 10.72A5.4 5.4 0 013.68 9c0-.6.1-1.18.29-1.72V4.95H.96A9 9 0 000 9c0 1.45.35 2.83.96 4.05l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.59-2.59C13.46.89 11.43 0 9 0A9 9 0 00.96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>
+      Entrar com Google
+    </button>
     <div id="gate-error" style="color:var(--accent);font-size:var(--fs-base);font-weight:600;margin-top:14px;min-height:16px;"></div>
     <div style="color:rgba(255,255,255,.4);font-size:var(--fs-sm);margin-top:18px;">Só contas @v4company.com têm acesso.</div>
   </div>
@@ -1538,6 +1540,22 @@
         </div>
       </div>
       <div id="modal-drive-processando" style="display:none;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ───────── MODAL: Quem já conectou a Agenda/Drive (Auditoria de Entregas) ───────── -->
+<div class="modal-overlay" id="modal-conexoes-google" onclick="if(event.target===this)closeConexoesGoogle()">
+  <div class="modal-box" style="max-width:480px;" role="dialog" aria-modal="true" aria-labelledby="conexoes-google-title">
+    <div class="modal-header">
+      <span class="modal-title" id="conexoes-google-title">Quem já conectou a Agenda</span>
+      <button class="modal-close" onclick="closeConexoesGoogle()" title="Fechar"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:var(--fs-sm);color:var(--text-hint);margin:0 0 12px;">Desde o login novo, cada pessoa autoriza Agenda + Drive ao entrar no painel. Quem ainda aparece "não conectou" precisa logar de novo pra aparecer aqui.</p>
+      <div id="conexoes-google-lista" style="display:flex;flex-direction:column;gap:6px;max-height:60vh;overflow-y:auto;">
+        <div style="font-size:var(--fs-base);color:var(--text-hint);padding:8px 0;">Carregando…</div>
+      </div>
     </div>
   </div>
 </div>
@@ -3239,7 +3257,6 @@ const PERFIS_POR_EMAIL = {
   'vitor.emilio@v4company.com':     PERFIS['visualizar2026'],
   'whellen.medeiros@v4company.com': PERFIS['visualizar2026'],
 };
-const GOOGLE_SIGNIN_CLIENT_ID = '788888653347-eeda74tlsvgtfkagnsqqp1bbrt2ocufv.apps.googleusercontent.com';
 // Abas que ficam visíveis pra quem loga como consultor (não-ADM) — as demais somem do menu.
 const CONSULTOR_TABS_PERMITIDAS = ['base', 'aql', 'leadtime', 'performance', 'auditoria', 'pipeline', 'capacity'];
 // Designers têm um recorte menor — sem AQL nem Performance (não fazem sentido pra eles)
@@ -3345,24 +3362,37 @@ function doLogout() {
   applyViewerLockdown();
   // esquece a sessão e volta a bloquear o acesso — precisa logar de novo pra continuar usando
   try { localStorage.removeItem('saber_gsi_email'); } catch (e) {}
-  // evita que o Google reselecione a mesma conta silenciosamente no próximo carregamento
-  if (window.google?.accounts?.id) google.accounts.id.disableAutoSelect();
   const gate = document.getElementById('login-gate');
   if (gate) gate.style.display = 'flex';
-  initGoogleSignIn();
   refreshAll();
 }
 
-// Recebe o ID token do Google Identity Services, manda pro servidor validar (assinatura,
-// domínio @v4company.com, e-mail verificado) e só então mapeia pra um perfil conhecido.
-async function onGoogleCredential(response) {
+// Volta do redirect de /api/google/login-url (via api/google/login-callback.js), que anexa
+// ?login_token=... na URL — um token assinado de curta duração (não é o e-mail cru: isso
+// seria falsificável, qualquer um digitaria o e-mail de um ADM na barra de endereço).
+// Troca esse token por um e-mail verificado no servidor antes de aplicar qualquer login.
+async function handleLoginRedirectReturn() {
+  const params = new URLSearchParams(location.search);
+  const loginToken = params.get('login_token');
+  const loginError = params.get('login_error');
+  if (!loginToken && !loginError) return false;
+
+  // Limpa a URL (?login_token=.../?login_error=...) sem recarregar a página.
+  params.delete('login_token');
+  params.delete('login_error');
+  const cleanUrl = location.pathname + (params.toString() ? '?' + params.toString() : '') + location.hash;
+  history.replaceState(null, '', cleanUrl);
+
   const errEl = document.getElementById('gate-error');
-  if (errEl) errEl.textContent = '';
+  if (loginError) {
+    if (errEl) errEl.textContent = decodeURIComponent(loginError);
+    return true;
+  }
   try {
-    const r = await fetch('/api/google/verify-login', {
+    const r = await fetch('/api/google/verify-login-token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ credential: response.credential }),
+      body: JSON.stringify({ token: loginToken }),
     });
     const data = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(data.error || ('Erro ao verificar login (' + r.status + ')'));
@@ -3379,26 +3409,17 @@ async function onGoogleCredential(response) {
   } catch (err) {
     if (errEl) errEl.textContent = err.message;
   }
+  return true;
 }
 
-function initGoogleSignIn() {
-  if (!window.google?.accounts?.id) { setTimeout(initGoogleSignIn, 200); return; }
-  google.accounts.id.initialize({
-    client_id: GOOGLE_SIGNIN_CLIENT_ID,
-    hd: 'v4company.com',
-    callback: onGoogleCredential,
-  });
-  const box = document.getElementById('gsi-button-container');
-  if (box) {
-    box.innerHTML = '';
-    google.accounts.id.renderButton(box, { theme: 'filled_black', size: 'large', shape: 'pill', text: 'signin_with', width: 320 });
-  }
-}
+// Ao carregar a página: primeiro confere se acabou de voltar do login (ver acima); senão,
+// se já tem um e-mail verificado salvo neste navegador (fica guardado por dias/semanas, tipo
+// "lembrar de mim" — só some se a pessoa clicar em Sair), libera o acesso direto reaplicando
+// o mesmo mapeamento; senão mostra o botão de "Entrar com Google".
+async function checkGateSession() {
+  const veioDoLogin = await handleLoginRedirectReturn();
+  if (veioDoLogin) return;
 
-// Ao carregar a página: se já tem um e-mail verificado salvo neste navegador (fica
-// guardado por dias/semanas, tipo "lembrar de mim" — só some se a pessoa clicar em Sair),
-// libera o acesso direto reaplicando o mesmo mapeamento; senão mostra o botão do Google.
-function checkGateSession() {
   let email = null;
   try { email = localStorage.getItem('saber_gsi_email'); } catch (e) {}
   const perfil = email ? PERFIS_POR_EMAIL[email] : null;
@@ -3408,7 +3429,6 @@ function checkGateSession() {
     if (gate) gate.style.display = 'none';
   } else {
     if (gate) gate.style.display = 'flex';
-    initGoogleSignIn();
   }
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', checkGateSession); else checkGateSession();
@@ -10812,7 +10832,8 @@ function audFormHTML(){
   const opt = (arr,sel) => arr.map(x=>'<option '+(x===sel?'selected':'')+'>'+x+'</option>').join('');
   const optDatalist = (arr) => arr.map(x=>'<option value="'+x.replace(/"/g,'&quot;')+'">').join('');
   return '<div id="aud-drive-bar" style="display:none;margin-bottom:14px;">'
-    + '<button class="btn" onclick="audAbrirModalDrive()">'+icon('link')+' Puxar reuniões do Drive</button>'
+    + '<button class="btn" style="margin-right:8px;" onclick="audAbrirModalDrive()">'+icon('link')+' Puxar reuniões do Drive</button>'
+    + '<button class="btn" onclick="audAbrirPainelConexoes()">'+icon('users')+' Quem já conectou a Agenda</button>'
     + '</div>'
     + '<div id="aud-fila-progresso" style="display:none;align-items:center;gap:12px;margin-bottom:14px;background:var(--surface2);border-radius:var(--r-sm);padding:10px 14px;">'
     + '<div style="flex:1;">'
@@ -11049,6 +11070,39 @@ function audFecharModalDrive(){
   // Fechar o popup no meio de uma fila cancela o que falta — devolve a barra/revisão pro
   // lugar de origem na página em vez de deixar tudo preso dentro do modal escondido.
   if(audFilaAtiva){ audFilaAtiva=null; audFilaDriveFileIdAtual=null; audSairDoModoProcessamento(); }
+}
+
+// Painel ADM: quem já autorizou Agenda+Drive no login novo x quem ainda não (roster
+// completo vem de PERFIS_POR_EMAIL, cruzado com o que api/google/connections-status.js
+// devolve — nunca inclui o refresh_token, só e-mail + data).
+async function audAbrirPainelConexoes(){
+  const mod=document.getElementById('modal-conexoes-google'); if(mod) mod.style.display='flex';
+  const lista=document.getElementById('conexoes-google-lista');
+  if(lista) lista.innerHTML='<div style="font-size:var(--fs-base);color:var(--text-hint);padding:8px 0;">Carregando…</div>';
+  try{
+    const response=await fetch('/api/google/connections-status');
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok) throw new Error(data.error || ('A API retornou um erro ('+response.status+')'));
+    const conectados={};
+    (data.connections||[]).forEach(c=>{ conectados[c.email]=c.connectedAt; });
+    const linhas=Object.entries(PERFIS_POR_EMAIL).map(([email,perfil])=>{
+      const conectadoEm=conectados[email];
+      const nome=perfil?.nome || email;
+      const status=conectadoEm
+        ? '<span style="color:var(--green);font-weight:600;">'+icon('check')+' Conectado em '+new Date(conectadoEm).toLocaleDateString('pt-BR')+'</span>'
+        : '<span style="color:var(--text-hint);">— Ainda não conectou</span>';
+      return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-sm);background:var(--surface2);">'
+        + '<div><div style="font-weight:600;">'+nome+'</div><div style="font-size:var(--fs-xs);color:var(--text-hint);">'+email+'</div></div>'
+        + '<div style="font-size:var(--fs-sm);white-space:nowrap;">'+status+'</div>'
+        + '</div>';
+    });
+    if(lista) lista.innerHTML=linhas.join('');
+  }catch(err){
+    if(lista) lista.innerHTML='<div style="font-size:var(--fs-base);color:var(--red);padding:8px 0;">Não consegui carregar: '+err.message+'</div>';
+  }
+}
+function closeConexoesGoogle(){
+  const m=document.getElementById('modal-conexoes-google'); if(m) m.style.display='none';
 }
 
 // Move a barra de progresso e a tela de revisão pra dentro do popup e mantém ele aberto —

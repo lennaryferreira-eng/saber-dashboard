@@ -5,13 +5,17 @@
 
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const DRIVE_FILES_URL = 'https://www.googleapis.com/drive/v3/files';
+const CALENDAR_EVENTS_URL = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
 
-export async function getAccessToken() {
+// `refreshToken` opcional: sem ele, cai no GOOGLE_REFRESH_TOKEN de sempre (conta única
+// compartilhada, usada pela fila admin antiga). Com ele, renova o token de uma pessoa
+// específica (fluxo novo de login por pessoa — ver api/google/login-callback.js).
+export async function getAccessToken({ refreshToken } = {}) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
-  if (!clientId || !clientSecret || !refreshToken) {
-    throw new Error('Google Drive não configurado (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_REFRESH_TOKEN ausentes no Vercel)');
+  const token = refreshToken || process.env.GOOGLE_REFRESH_TOKEN;
+  if (!clientId || !clientSecret || !token) {
+    throw new Error('Google não configurado (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / refresh token ausentes)');
   }
   const res = await fetch(TOKEN_URL, {
     method: 'POST',
@@ -19,7 +23,7 @@ export async function getAccessToken() {
     body: new URLSearchParams({
       client_id: clientId,
       client_secret: clientSecret,
-      refresh_token: refreshToken,
+      refresh_token: token,
       grant_type: 'refresh_token',
     }),
   });
@@ -28,6 +32,53 @@ export async function getAccessToken() {
     throw new Error('Falha ao renovar o token do Google: ' + (data.error_description || data.error || res.status));
   }
   return data.access_token;
+}
+
+// Valida um ID token do Google (assinatura/expiração via endpoint tokeninfo do próprio
+// Google) e confirma que foi emitido pra este app e por uma conta @v4company.com.
+// Extraído de api/google/verify-login.js pra ser reusado também no fluxo de login novo
+// (api/google/login-callback.js).
+export async function verifyGoogleIdToken(idToken) {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  if (!clientId) {
+    throw new Error('GOOGLE_CLIENT_ID não configurado no Vercel (Settings > Environment Variables)');
+  }
+  const res = await fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken));
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error_description || 'Token inválido ou expirado');
+  }
+  if (data.aud !== clientId) {
+    throw new Error('Token não foi emitido para este app');
+  }
+  if (data.email_verified !== 'true' && data.email_verified !== true) {
+    throw new Error('E-mail não verificado pelo Google');
+  }
+  if (data.hd !== 'v4company.com') {
+    throw new Error('Só contas @v4company.com têm acesso a este painel');
+  }
+  return { email: String(data.email || '').toLowerCase() };
+}
+
+// Lista os eventos da Agenda (Calendar) de uma pessoa numa janela de tempo — usado pela
+// visualização semanal da fila de auditoria (api/google/calendar-events.js).
+export async function listCalendarEvents({ accessToken, timeMinISO, timeMaxISO }) {
+  const params = new URLSearchParams({
+    timeMin: timeMinISO,
+    timeMax: timeMaxISO,
+    singleEvents: 'true',
+    orderBy: 'startTime',
+    maxResults: '250',
+    fields: 'items(id,summary,start,end,attachments,hangoutLink)',
+  });
+  const res = await fetch(CALENDAR_EVENTS_URL + '?' + params.toString(), {
+    headers: { Authorization: 'Bearer ' + accessToken },
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error('Falha ao listar eventos da Agenda: ' + (data.error?.message || res.status));
+  }
+  return data.items || [];
 }
 
 // Lista transcrições/notas de reunião (Google Docs gerados automaticamente pelo Meet)
