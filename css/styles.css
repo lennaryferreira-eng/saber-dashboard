@@ -27,15 +27,18 @@
 :root {
   --bg:#F5F2EB; --surface:#FFFFFF; --surface2:#F0EDE6; --surface3:#E8E4DC;
   --border:rgba(0,0,0,.12); --border-md:rgba(0,0,0,.20);
-  --text:#1A1714; --text-muted:#5C5650; --text-hint:#736D64;
+  --text:#1A1714; --text-muted:#5C5650; --text-hint:#6B655D;
   --accent:#D4001A; --accent-dim:rgba(212,0,26,.08);
   --shadow-sm:0 1px 2px rgba(26,23,20,.04), 0 1px 3px rgba(26,23,20,.05);
   --shadow-md:0 2px 6px rgba(26,23,20,.06), 0 4px 16px rgba(26,23,20,.06);
-  --green:#16A34A; --green-dim:rgba(22,163,74,.10);
+  /* --green/--amber escurecidos na auditoria WCAG (Fase 3) — os valores originais
+     (#16A34A/#F2A900) falhavam contraste AA como texto (ex.: badge .b-amber batia só
+     1.85:1 contra o próprio fundo). Mantêm o mesmo hue/identidade, só mais escuros. */
+  --green:#0F7234; --green-dim:rgba(15,114,52,.10);
   /* --red é sempre igual a --accent (mesmo vermelho de marca) — um token só, dois nomes
      semânticos (accent = ação/marca, red = status negativo) pra não duplicar o valor. */
   --red:var(--accent); --red-dim:var(--accent-dim);
-  --amber:#F2A900; --amber-dim:rgba(242,169,0,.12);
+  --amber:#7F5900; --amber-dim:rgba(127,89,0,.12);
   --blue:#1D5FA8; --blue-dim:rgba(29,95,168,.10);
   --purple:#6D35B8; --purple-dim:rgba(109,53,184,.10);
   --teal:#0D9488; --teal-dim:rgba(13,148,136,.10);
