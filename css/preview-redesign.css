@@ -88,3 +88,49 @@
 .preview-placeholder{border:1px dashed var(--border-md);border-radius:var(--r);padding:3rem 2rem;text-align:center;color:var(--text-hint);}
 .preview-placeholder svg{margin-bottom:12px;color:var(--text-hint);}
 .preview-placeholder p{font-size:var(--fs-md);max-width:460px;margin:0 auto;line-height:1.6;}
+
+/* ===== Funil (Tx. Conversão / Pipeline) ===== */
+.funnel{display:flex;flex-direction:column;gap:10px;margin-bottom:1.6rem;}
+.funnel-row{display:flex;align-items:center;gap:14px;}
+.funnel-label{width:200px;flex-shrink:0;font-size:var(--fs-sm);color:var(--text-muted);}
+.funnel-bar-wrap{flex:1;background:var(--surface2);border-radius:var(--r-sm);overflow:hidden;height:28px;}
+.funnel-bar{height:100%;display:flex;align-items:center;padding-left:12px;color:#fff;font-size:var(--fs-sm);font-weight:700;border-radius:var(--r-sm);transition:width .4s;}
+.funnel-count{width:56px;text-align:right;flex-shrink:0;font-size:var(--fs-md);font-weight:700;color:var(--text);}
+
+/* ===== Kanban (Pipeline) ===== */
+.kanban-board{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;align-items:start;}
+.kanban-col-title{font-size:var(--fs-sm);font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-hint);margin-bottom:10px;display:flex;justify-content:space-between;}
+.kanban-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:8px;box-shadow:var(--shadow-sm);}
+.kanban-card-title{font-size:var(--fs-md);font-weight:600;color:var(--text);margin-bottom:4px;}
+.kanban-card-meta{font-size:var(--fs-xs);color:var(--text-hint);}
+@media(max-width:900px){.kanban-board{grid-template-columns:repeat(2,1fr);}}
+
+/* ===== Heatmap de capacidade ===== */
+.heat-cell{display:inline-flex;align-items:center;justify-content:center;width:44px;height:26px;border-radius:var(--r-sm);font-size:var(--fs-xs);font-weight:700;color:#fff;}
+.heat-cell.low{background:var(--green);}
+.heat-cell.mid{background:var(--amber);}
+.heat-cell.high{background:var(--red);}
+.heat-cell.empty{background:var(--surface3);color:var(--text-hint);}
+
+/* ===== Ranking de Performance ===== */
+.perf-grid{display:flex;gap:16px;flex-wrap:wrap;}
+.perf-rank-card{width:200px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;box-shadow:var(--shadow-sm);position:relative;}
+.perf-rank-card.gold{border:2px solid #F59E0B;box-shadow:0 4px 16px rgba(245,158,11,.12);}
+.perf-crown{text-align:center;color:#F59E0B;margin-bottom:-6px;}
+.perf-avatar{width:52px;height:52px;border-radius:50%;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:20px;font-weight:700;color:var(--text-muted);margin-bottom:8px;}
+.perf-score-bar-wrap{height:8px;border-radius:5px;background:var(--surface3);overflow:hidden;margin:10px 0 8px;}
+.perf-score-bar{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--amber),#F5C842);}
+.perf-kpi-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:var(--fs-xs);color:var(--text-muted);border-top:1px solid var(--border);}
+.perf-kpi-row:first-of-type{border-top:none;}
+
+/* ===== Termômetro Cultural ===== */
+.cultura-layout{display:grid;grid-template-columns:340px 1fr;gap:20px;}
+@media(max-width:900px){.cultura-layout{grid-template-columns:1fr;}}
+.cultura-signal{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:10px;box-shadow:var(--shadow-sm);}
+.cultura-signal-head{display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap;}
+.cultura-badge-dim{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.cultura-badge-dim.pos{background:var(--green-dim);color:var(--green);}
+.cultura-badge-dim.neg{background:var(--red-dim);color:var(--red);}
+
+/* ===== Mini sparkline (NPS / AQL) ===== */
+.spark-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.4rem 1.6rem;margin-bottom:1.4rem;}
