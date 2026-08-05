@@ -26,7 +26,7 @@
 /* ===== Switch SABER/TER — versão leve, sem a faixa preta de largura total.
    Continua logo acima das 3 abas (Geral/OKRs/Gestão), só que integrado ao
    fundo da página em vez de cortar a tela num bloco à parte. ===== */
-.coord-switch{background:transparent;padding:0 2rem 10px;justify-content:flex-start;position:static;box-shadow:none;}
+.coord-switch{background:transparent;padding:0 2rem 10px;justify-content:center;position:static;box-shadow:none;}
 .coord-btn{color:var(--text-hint);background:var(--surface);border:1px solid var(--border);}
 .coord-btn:hover{color:var(--text);background:var(--surface2);}
 .coord-btn.active{color:#fff;background:var(--accent);border-color:var(--accent);}
