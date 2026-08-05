@@ -1846,7 +1846,7 @@ document.getElementById('btn-registrar').addEventListener('click', async () => {
 });
 
 document.getElementById('btn-reset').addEventListener('click', async () => {
-  if(!confirm('Isso vai apagar todos os sinais registrados. Confirma?')) return;
+  if(!(await showConfirm('Isso vai apagar todos os sinais registrados. Confirma?'))) return;
   sinaisCulturais = [];
   upd();
   renderAll();
@@ -3266,7 +3266,7 @@ function closeLoginModal() {
 }
 
 
-function restoreBackup() {
+async function restoreBackup() {
   // Procura entre os backups rotativos + emergência o mais recente QUE TENHA projetos
   const keys = ['saber_backup_1','saber_backup_2','saber_backup_3','saber_emergency','saber_backup'];
   let best = null;
@@ -3282,9 +3282,9 @@ function restoreBackup() {
       }
     } catch(e){}
   }
-  if (!best) { alert('Nenhum backup local com projetos foi encontrado neste navegador.'); return; }
+  if (!best) { await showAlert('Nenhum backup local com projetos foi encontrado neste navegador.'); return; }
   const dstr = best.when ? new Date(best.when).toLocaleString('pt-BR') : 'data desconhecida';
-  if (!confirm('Restaurar backup "' + best.key + '" de ' + dstr + ' com ' + best.n + ' projetos?\n\nIsso vai sobrescrever os dados atuais.')) return;
+  if (!(await showConfirm('Restaurar backup "' + best.key + '" de ' + dstr + ' com ' + best.n + ' projetos?\n\nIsso vai sobrescrever os dados atuais.'))) return;
   try {
     const data = best.data;
     if (data.projects && Array.isArray(data.projects)) projects = data.projects;
@@ -3302,8 +3302,8 @@ function restoreBackup() {
     refreshAll();
     buildLeadTime();
     upd(); // salva no Supabase
-    alert('Backup restaurado: ' + best.n + ' projetos (' + best.key + ').');
-  } catch(e) { alert('Erro ao restaurar: ' + e.message); }
+    await showAlert('Backup restaurado: ' + best.n + ' projetos (' + best.key + ').');
+  } catch(e) { await showAlert('Erro ao restaurar: ' + e.message); }
 }
 
 // Aplica um perfil já validado (usado tanto pelo modal opcional quanto pela tela de bloqueio)
@@ -4281,9 +4281,9 @@ function droHideAddAuditoria(projId) {
   });
 }
 
-function droConfirmAddAuditoria(projId) {
+async function droConfirmAddAuditoria(projId) {
   const nome = document.getElementById('dro-aud-nome-' + projId)?.value?.trim();
-  if (!nome) { alert('Informe o nome da auditoria.'); return; }
+  if (!nome) { await showAlert('Informe o nome da auditoria.'); return; }
   const dataPrev = document.getElementById('dro-aud-dataprev-' + projId)?.value || '';
   const responsavel = document.getElementById('dro-aud-resp-' + projId)?.value?.trim() || '';
   const entregaveis = document.getElementById('dro-aud-entregaveis-' + projId)?.value?.trim() || '';
@@ -4811,11 +4811,11 @@ function addProject() {
   upd();
 }
 
-function removeProject(id) {
+async function removeProject(id) {
   if (typeof VIEWER !== 'undefined' && VIEWER) return;       // modo visualização não exclui
   const p = projects.find(x => String(x.id) === String(id));
   if (!p) return;
-  if (!confirm('Excluir o projeto "' + (p.nome || '—') + '"?\nEsta ação não pode ser desfeita.')) return;
+  if (!(await showConfirm('Excluir o projeto "' + (p.nome || '—') + '"?\nEsta ação não pode ser desfeita.'))) return;
   projects = projects.filter(x => String(x.id) !== String(id));  // comparação por string (id pode vir como texto)
   renderBase();
   upd();
@@ -5106,8 +5106,8 @@ function setFieldTer(el) {
   upd();
 }
 
-function removerProjTer(id) {
-  if (!confirm('Excluir este projeto da TER?')) return;
+async function removerProjTer(id) {
+  if (!(await showConfirm('Excluir este projeto da TER?'))) return;
   projects = projects.filter(x => String(x.id) !== String(id));
   renderBaseTer(); upd();
 }
@@ -8334,12 +8334,12 @@ function fecharModalFlag() {
   if (modal) modal.style.display = 'none';
   _flagModalProjId = null;
 }
-function salvarModalFlag() {
+async function salvarModalFlag() {
   const p = projects.find(x => String(x.id) === String(_flagModalProjId));
   if (!p) return;
   const novoValor = document.getElementById('flag-modal-sel')?.value || '';
   const motivo = (document.getElementById('flag-modal-motivo')?.value || '').trim();
-  if (novoValor && !motivo) { alert('Informe o motivo da flag manual.'); return; }
+  if (novoValor && !motivo) { await showAlert('Informe o motivo da flag manual.'); return; }
   p.flagManual = novoValor;
   // O motivo é salvo mesmo que a flag continue "Automático" — é uma anotação válida por si
   // só (ex: "sabemos que está vermelho, mas é temporário"), não depende de ter sobrescrito
@@ -8594,14 +8594,14 @@ function entregasPontuais(p) {
   if (!Array.isArray(p.entregasPontuais)) p.entregasPontuais = [];
   return p.entregasPontuais;
 }
-function ltAddEntregaPontual(id) {
+async function ltAddEntregaPontual(id) {
   const p = projects.find(x => String(x.id) === String(id));
   if (!p) return;
   const nomeInput = document.getElementById('lt-pontual-nome-' + id);
   const dataInput = document.getElementById('lt-pontual-data-' + id);
   const nome = (nomeInput?.value || '').trim();
   const data = dataInput?.value || '';
-  if (!nome) { alert('Digite o nome da entrega antes de adicionar.'); return; }
+  if (!nome) { await showAlert('Digite o nome da entrega antes de adicionar.'); return; }
   entregasPontuais(p).push({ nome, real: data, obs: '' });
   upd();
   buildLeadTimeTer();
@@ -8888,24 +8888,24 @@ function ltSetFieldRec(id, f, val) {
 }
 
 // Adiciona um novo registro semanal (data + o que aconteceu) — substitui o campo "observação" fixo
-function ltRecAdd(id) {
+async function ltRecAdd(id) {
   const p = projects.find(x => String(x.id) === String(id));
   if (!p) return;
   const dataInp = document.getElementById('lt-rec-data-' + id);
   const notaInp = document.getElementById('lt-rec-nota-' + id);
   const data = dataInp?.value || '';
   const nota = (notaInp?.value || '').trim();
-  if (!data || !nota) { alert('Preencha a data e o que aconteceu nessa semana antes de adicionar.'); return; }
+  if (!data || !nota) { await showAlert('Preencha a data e o que aconteceu nessa semana antes de adicionar.'); return; }
   ltRecRegistros(p).push({ data, nota });
   if (dataInp) dataInp.value = '';
   if (notaInp) notaInp.value = '';
   buildLeadTimeRec();
   upd();
 }
-function ltRecRemover(id, idx) {
+async function ltRecRemover(id, idx) {
   const p = projects.find(x => String(x.id) === String(id));
   if (!p) return;
-  if (!confirm('Excluir este registro semanal?')) return;
+  if (!(await showConfirm('Excluir este registro semanal?'))) return;
   ltRecRegistros(p).splice(idx, 1);
   buildLeadTimeRec();
   upd();
@@ -10571,7 +10571,7 @@ function perfUploadFoto(nome, input) {
   const reader = new FileReader();
   reader.onload = e => {
     const img = new Image();
-    img.onload = () => {
+    img.onload = async () => {
       const size = 200;                       // avatar pequeno → leve
       const canvas = document.createElement('canvas');
       canvas.width = size; canvas.height = size;
@@ -10582,13 +10582,13 @@ function perfUploadFoto(nome, input) {
       ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
       let dataUrl;
       try { dataUrl = canvas.toDataURL('image/jpeg', 0.82); }
-      catch (err) { alert('Não foi possível processar a imagem.'); return; }
+      catch (err) { await showAlert('Não foi possível processar a imagem.'); return; }
       perfFotos[nome] = dataUrl;
       try { localStorage.setItem('perf-foto-' + nome, dataUrl); } catch (le) {} // cache local
       if (typeof sbScheduleSave === 'function' && !VIEWER) sbScheduleSave();      // sincroniza
       buildPerformance();
     };
-    img.onerror = () => alert('Arquivo de imagem inválido.');
+    img.onerror = async () => { await showAlert('Arquivo de imagem inválido.'); };
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
@@ -11310,8 +11310,8 @@ function audSalvar(){
   if (audFilaAtiva && typeof audProcessarProximoDaFila === 'function') audProcessarProximoDaFila();
 }
 
-function audRemover(id){
-  if(!confirm('Excluir esta avaliação?')) return;
+async function audRemover(id){
+  if(!(await showConfirm('Excluir esta avaliação?'))) return;
   const a = auditorias.find(x => x.id === id);
   // Limpa o score já sincronizado no projeto também — senão fica um score órfão pra trás,
   // aparecendo no Lead Time/Healthscore sem avaliação nenhuma por trás dele. Só limpa se o
@@ -11805,10 +11805,10 @@ async function atualizarPlanilha() {
       body: JSON.stringify({action: 'atualizarPlanilha'})
     });
     if (btn) btn.innerHTML = icon('chart') + ' Planilha';
-    alert('✅ Planilha atualizada com os dados do Supabase!\nVerifique a aba Projetos na planilha.');
+    await showAlert('✅ Planilha atualizada com os dados do Supabase!\nVerifique a aba Projetos na planilha.');
   } catch(e) {
     if (btn) btn.innerHTML = icon('chart') + ' Planilha';
-    alert('❌ Erro ao atualizar planilha: ' + e.message);
+    await showAlert('❌ Erro ao atualizar planilha: ' + e.message);
   }
 }
 
@@ -12097,7 +12097,7 @@ function sbImport(input) {
       setSyncStatus('↑ Dados importados — salvando…', 'var(--blue)');
       await sbSave();
     } catch(err) {
-      alert('Erro ao importar: arquivo inválido.');
+      await showAlert('Erro ao importar: arquivo inválido.');
       console.error(err);
     }
   };
@@ -12288,15 +12288,18 @@ buildNpsChart(ALL_MESES.map(() => null));
 // Base importada do CSV (123 projetos)
 projects = []; // dados carregados do Supabase
 // carrega dados do Supabase e inicia sync
-// Verifica se há dados de emergência salvos localmente
-(function() {
+// Verifica se há dados de emergência salvos localmente — precisa terminar (e esperar a
+// decisão do usuário no modal) ANTES do sbLoad() começar, senão o sbLoad já teria rodado
+// (e no caminho de sucesso, sobrescrito `projects` vindo do Supabase) antes da restauração
+// de emergência ser aplicada. Por isso está tudo numa única IIFE async, em sequência.
+(async function() {
   try {
     const emergency = localStorage.getItem('saber_emergency');
     const emergencyAt = localStorage.getItem('saber_emergency_at');
     if (emergency && emergencyAt) {
       const d = JSON.parse(emergency);
       if (d.projects && d.projects.length > projects.length) {
-        if (confirm('⚠ Encontrados dados de emergência salvos em ' + new Date(emergencyAt).toLocaleString('pt-BR') + ' com ' + d.projects.length + ' projetos.\n\nDeseja restaurar esses dados?')) {
+        if (await showConfirm('⚠ Encontrados dados de emergência salvos em ' + new Date(emergencyAt).toLocaleString('pt-BR') + ' com ' + d.projects.length + ' projetos.\n\nDeseja restaurar esses dados?')) {
           projects = d.projects;
           if (d.nps_data) Object.assign(npsData, d.nps_data);
           if (d.mon_metas) Object.assign(monMetas, d.mon_metas);
@@ -12309,20 +12312,18 @@ projects = []; // dados carregados do Supabase
       }
     }
   } catch(e) { console.warn('Erro ao verificar emergência:', e); }
-})();
 
-
-// Inicialização: carrega do Supabase ANTES de qualquer refresh
-// (não chama refreshAll antes do sbLoad para evitar salvar dados vazios)
-setSyncStatus('Carregando…', 'var(--text-hint)');
-_carregandoInicial = true;
-sbLoad().then(() => {
+  // Inicialização: carrega do Supabase ANTES de qualquer refresh
+  // (não chama refreshAll antes do sbLoad para evitar salvar dados vazios)
+  setSyncStatus('Carregando…', 'var(--text-hint)');
+  _carregandoInicial = true;
+  await sbLoad();
   _carregandoInicial = false;
   renderBase();
   refreshAll();
   buildLeadTime();
   sbStartPolling();
-});
+})();
 document.getElementById('last-upd').textContent = ts();
   window.addEventListener('beforeunload', e => {
     syncSheets(); // sync ao fechar aba
