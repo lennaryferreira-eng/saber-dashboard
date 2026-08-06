@@ -34,9 +34,12 @@ export default async function handler(req, res) {
     redirect_uri: redirectUri,
     response_type: 'code',
     access_type: 'offline',
-    // "select_account" (não "consent"): a tela completa de permissão só aparece na primeira
-    // vez (ou depois de revogar) — login do dia a dia passa direto, sem pedir de novo.
-    prompt: 'select_account',
+    // "consent" força a tela de permissão em TODO login — necessário porque o Google só
+    // reemite um refresh_token quando mostra essa tela. Com "select_account" (tentativa
+    // anterior), qualquer conta que já tivesse autorizado este client antes (ex.: quem fez o
+    // setup da fila antiga com escopo de Drive) logava normalmente mas sem token novo — o
+    // "quem conectou" ficava vazio pra sempre pra essa pessoa, mesmo logando certinho.
+    prompt: 'consent',
     scope: [
       'openid', 'email', 'profile',
       'https://www.googleapis.com/auth/calendar.readonly',
