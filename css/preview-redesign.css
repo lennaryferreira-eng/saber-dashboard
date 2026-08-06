@@ -22,12 +22,36 @@
 .header-text-btn{border:none;background:none;padding:4px 2px;font-family:var(--sans);font-size:var(--fs-sm);font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-hint);cursor:pointer;transition:color var(--transition-fast);}
 .header-text-btn:hover{color:var(--accent);}
 
-/* ===== Switch SABER/TER — versão leve, sem a faixa preta de largura total.
-   Continua logo acima das 3 abas (Geral/OKRs/Gestão), só que integrado ao
-   fundo da página em vez de cortar a tela num bloco à parte. ===== */
-.coord-switch{background:transparent;padding:0 2rem 10px;justify-content:center;position:static;box-shadow:none;}
-.coord-btn{color:var(--text-hint);background:var(--surface);border:1px solid var(--border);}
-.coord-btn:hover{color:var(--text);background:var(--surface2);}
+/* ===== Sidebar — substitui a barra de abas horizontal (Geral/OKRs/Gestão) por um
+   menu lateral fixo, com ícone + nome por extenso em cada item. Escala melhor que
+   abas horizontais (não tem limite de largura pra caber mais seções depois) e deixa
+   a hierarquia Geral/OKRs/Gestão mais legível empilhada do que espremida numa linha. ===== */
+.app-shell{display:flex;align-items:flex-start;}
+.sidebar{width:240px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);position:sticky;top:0;height:100vh;overflow-y:auto;box-sizing:border-box;padding-bottom:1.6rem;}
+.sidebar-coord{display:flex;gap:6px;padding:14px 14px 10px;border-bottom:1px solid var(--border);margin-bottom:6px;}
+.sidebar-coord .coord-btn{flex:1;text-align:center;border-radius:var(--r-sm);padding:8px 4px;font-size:10px;}
+/* Sobrescreve o seletor de tag `nav{}` de styles.css (barra horizontal sticky/scroll-x) —
+   dentro da sidebar o <nav> é só um container de bloco normal, o scroll é do .sidebar. */
+.sidebar-nav{display:block;position:static;background:none;border-bottom:none;padding:0;box-shadow:none;overflow:visible;z-index:auto;}
+.sidebar-nav .nav-group{display:flex;flex-direction:column;align-items:stretch;margin-top:14px;}
+.sidebar-nav .nav-group-label{margin:0 14px 6px;text-align:left;width:fit-content;}
+.sidebar-nav .nav-group-tabs{display:flex;flex-direction:column;}
+.sidebar-link{display:flex;align-items:center;gap:10px;padding:8px 14px;border:none;border-left:3px solid transparent;border-radius:0;background:none;text-align:left;width:100%;white-space:normal;}
+.sidebar-link:hover{background:var(--surface2);color:var(--text);}
+.sidebar-link.active{background:var(--accent-dim);border-left-color:var(--accent);}
+.sidebar-link.tab-base.active{background:rgba(47,111,237,.08);border-left-color:var(--blue);}
+.sidebar-link svg{opacity:.7;}
+.sidebar-link.active svg{opacity:1;}
+main{margin:0;flex:1;min-width:0;max-width:1400px;}
+@media(max-width:900px){
+  .app-shell{flex-direction:column;}
+  .sidebar{position:static;width:100%;height:auto;border-right:none;border-bottom:1px solid var(--border);}
+}
+
+/* Switch SABER/TER dentro da sidebar — pill compacta de 2 segmentos, sem a faixa
+   preta de largura total que a versão de topo usava. */
+.coord-btn{color:var(--text-hint);background:var(--surface2);border:1px solid var(--border);}
+.coord-btn:hover{color:var(--text);background:var(--surface3);}
 .coord-btn.active{color:#fff;background:var(--accent);border-color:var(--accent);}
 
 /* ===== Menu "Dados" (substitui os 4 botões soltos: Planilha/Exportar/Importar/Backup) ===== */
