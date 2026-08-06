@@ -72,23 +72,7 @@
       <p class="sec-desc">Todos os indicadores consolidados — 2026.</p>
     </div>
 
-    <div class="filter-bar">
-      <span class="filter-label">Visualizar:</span>
-      <button class="filter-btn year active">Ano completo</button>
-      <button class="filter-btn">Jan</button>
-      <button class="filter-btn">Fev</button>
-      <button class="filter-btn">Mar</button>
-      <button class="filter-btn">Abr</button>
-      <button class="filter-btn">Mai</button>
-      <button class="filter-btn">Jun</button>
-      <span class="filter-sep"></span>
-      <button class="filter-btn">Jul</button>
-      <button class="filter-btn">Ago</button>
-      <button class="filter-btn">Set</button>
-      <button class="filter-btn">Out</button>
-      <button class="filter-btn">Nov</button>
-      <button class="filter-btn">Dez</button>
-    </div>
+    <div id="filter-bar-visao" class="filter-bar"></div>
 
     <div class="card" style="background:var(--accent);color:#fff;border:none;padding:2rem 2.2rem;">
       <div class="mlabel" style="color:rgba(255,255,255,.8);" id="visao-mon-label">Movimentado pelo Squad · carregando…</div>
@@ -99,7 +83,7 @@
       </div>
     </div>
 
-    <div class="mgrid mg4">
+    <div class="mgrid mg3">
       <div class="mcard c-accent">
         <span class="mcard-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 4.5a1 1 0 011-1h3l1.2 1.6H13a1 1 0 011 1V12a1 1 0 01-1 1H3a1 1 0 01-1-1V4.5z"/></svg></span>
         <div class="mlabel">Taxa CSP</div>
@@ -127,6 +111,37 @@
         <div class="mval" id="kpi-nps-val">—</div>
         <div class="prog-bg"><div class="prog-fill" id="kpi-nps-bar" style="width:0%;background:var(--purple);"></div></div>
         <div class="mmeta">Meta: 50</div>
+      </div>
+      <div class="mcard c-gray">
+        <span class="mcard-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="10" r="4"/><path d="M6 6.5L4 2M10 6.5l2-4.5"/></svg></span>
+        <div class="mlabel">PDI do Time</div>
+        <div class="mval" id="kpi-pdi-val">—</div>
+        <div class="prog-bg"><div class="prog-fill" id="kpi-pdi-bar" style="width:0%;background:var(--text-hint);"></div></div>
+        <div class="mmeta">Meta: 80%</div>
+      </div>
+      <!-- Monetização/AQL dividem o mesmo slot (troca pelas bolinhas), igual à página real —
+           evita um 7º card só pra caber os dois. -->
+      <div id="ov-kpi-swipe-wrap" style="position:relative;">
+        <div id="ov-mon-card" class="mcard c-gray" style="margin:0;display:none;">
+          <span class="mcard-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5v7M6 6.2c0-.9.9-1.5 2-1.5s2 .5 2 1.3-1 1-2 1.2-2 .4-2 1.3.9 1.3 2 1.3 2-.6 2-1.5"/></svg></span>
+          <div class="mlabel">Monetização</div>
+          <div class="mval" id="ov-mon-val" style="font-size:var(--fs-2xl);">R$ 0</div>
+          <div id="ov-mon-sub" style="font-size:var(--fs-xs);color:var(--text-hint);margin-top:2px;"></div>
+          <div class="mmeta">Meta: <span id="ov-mon-meta-lbl">a definir</span></div>
+          <div class="prog-bg"><div class="prog-fill" id="ov-mon-bar" style="width:0%;background:var(--text-hint);"></div></div>
+        </div>
+        <div id="ov-aql-card" class="mcard c-blue" style="margin:0;">
+          <span class="mcard-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="7" r="5"/><path d="M11 11l4 4"/></svg></span>
+          <div class="mlabel">AQL</div>
+          <div class="mval" id="ov-aql-val" style="font-size:var(--fs-2xl);">—</div>
+          <div id="ov-aql-sub" style="font-size:var(--fs-xs);color:var(--text-hint);margin-top:2px;"></div>
+          <div class="mmeta">Meta: <span id="ov-aql-meta-lbl">a definir</span></div>
+          <div class="prog-bg"><div class="prog-fill" id="ov-aql-bar" style="width:0%;background:var(--blue);"></div></div>
+        </div>
+        <div style="position:absolute;top:1.2rem;right:1.2rem;display:flex;gap:5px;z-index:2;">
+          <button onclick="ovShowKpiSwipe('mon')" id="ov-kpi-dot-mon" title="Monetização" style="width:7px;height:7px;border-radius:50%;border:none;padding:0;cursor:pointer;background:var(--border);"></button>
+          <button onclick="ovShowKpiSwipe('aql')" id="ov-kpi-dot-aql" title="AQL" style="width:7px;height:7px;border-radius:50%;border:none;padding:0;cursor:pointer;background:var(--blue);"></button>
+        </div>
       </div>
     </div>
 
@@ -304,6 +319,7 @@
       <h2 class="sec-title">Taxa de Conversão</h2>
       <p class="sec-desc">Funil comercial — do projeto mapeado até o follow de monetização.</p>
     </div>
+    <div id="filter-bar-conv" class="filter-bar"></div>
     <div class="mgrid mg2" style="margin-bottom:1.6rem;">
       <div class="mcard c-green">
         <div class="mlabel">Taxa de conversão</div>
@@ -329,6 +345,7 @@
       <h2 class="sec-title">Projetos no Prazo</h2>
       <p class="sec-desc">Semanas ativas no mês — meta de 80% de entregas no prazo.</p>
     </div>
+    <div id="filter-bar-prazo" class="filter-bar"></div>
     <div class="mgrid mg3" style="margin-bottom:1.6rem;">
       <div class="mcard c-blue"><div class="mlabel">No prazo</div><div class="mval" id="prazo-kpi-val">—</div><div class="prog-bg"><div class="prog-fill" id="prazo-kpi-bar" style="width:0%;background:var(--blue);"></div></div><div class="mmeta">Meta: 80%</div></div>
       <div class="mcard c-green"><div class="mlabel">No prazo</div><div class="mval" id="prazo-ok-count">—</div><div class="mmeta">projetos avaliados</div></div>
@@ -423,6 +440,7 @@
       <h2 class="sec-title">Monetização</h2>
       <p class="sec-desc">Valores de venda por projeto e mês — one-time (OT) e recorrente (Rec).</p>
     </div>
+    <div id="filter-bar-mon" class="filter-bar"></div>
     <div class="tbl-wrap" style="border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-sm);">
       <table>
         <thead><tr><th>Consultor</th><th>Projeto</th><th>Mês</th><th>Valores (OT / Rec)</th><th>Escopo</th><th>Status</th><th>Dossiê</th><th>Alinhamento Interno</th><th>Passagem de Bastão</th></tr></thead>
@@ -577,6 +595,36 @@ const AQL_FALLBACK = ['#2f6fed','#1f9d55','#c8102e','#8E5BC4','#c07a10','#0d9488
 let projects = [], npsData = {}, cspManual = {}, monMetas = {}, aqlMetas = {}, auditorias = [], sinaisCulturais = [];
 let CONS_MON = ['Caio','Leonam','Loma','Camila','Cleiton'];
 let dotColors = {'Caio':'var(--blue)','Leonam':'var(--green)','Loma':'var(--accent)','Camila':'var(--purple)','Cleiton':'var(--amber)'};
+
+// ── Filtro de mês por aba (portado de index.html) — cada aba com filtro abre já no mês
+// atual (não "Ano completo"), igual à página real; "Ano completo" é uma opção, não o padrão.
+// Chaves começam sem valor (não `null`) de propósito: `null` já é o valor real de "Ano
+// completo" depois que o usuário clica nele — usar o mesmo valor pra "ainda não escolheu
+// nada" faz o auto-init abaixo desfazer a escolha a cada re-render (bug real que existia
+// na página de produção também, corrigido nas duas ao mesmo tempo).
+const filters = {};
+function buildFilterBar(containerId, filterKey, onChangeFn) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const fnName = onChangeFn.name;
+  if (filters[filterKey] === undefined) {
+    const hoje = new Date();
+    const mesAtual = ALL_MESES.find(m => m.idx === hoje.getMonth() && m.ano === hoje.getFullYear());
+    if (mesAtual) filters[filterKey] = mesAtual.key;
+  }
+  const cur = filters[filterKey];
+  el.innerHTML = '<span class="filter-label">Visualizar:</span>'
+    + '<button class="filter-btn year ' + (!cur ? 'active' : '') + '" onclick="setFilter(\'' + filterKey + '\',null,\'' + fnName + '\')">Ano completo</button>'
+    + '<span class="filter-sep"></span>'
+    + QUARTERS.map(q => '<span style="display:inline-flex;gap:4px;align-items:center;">'
+      + '<span style="font-size:var(--fs-xs);font-weight:500;color:var(--text-hint);padding:0 2px;">' + q.label.slice(0,2) + '</span>'
+      + q.meses.map(m => '<button class="filter-btn ' + (cur === m.key ? 'active' : '') + '" onclick="setFilter(\'' + filterKey + '\',\'' + m.key + '\',\'' + fnName + '\')">' + m.label.slice(0,3) + '</button>').join('')
+      + '</span>').join('<span class="filter-sep"></span>');
+}
+function setFilter(filterKey, mesKey, fnName) {
+  filters[filterKey] = mesKey;
+  window[fnName]();
+}
 
 // ── Constantes reais de DRO/DRX/Auditoria (portadas de index.html) ──────
 const DRO_TRAVAS = [
@@ -1073,12 +1121,16 @@ function pipeEventosDoMes(label, ano) {
 }
 
 // ── Compute NPS ──────────────────────────────────────────────────
-function computeNPS() {
+function computeNPS(mesFiltro) {
   const base = projects.filter(p => calcStatus2(p) === 'Finalizado' && (!p.modelo || p.modelo !== 'DRO'));
   const notas = []; const respostas = [];
   base.forEach(p => {
     const nd = npsData[String(p.id)];
     if (!nd || nd.nota === '' || nd.nota === undefined || !nd.dataResp) return;
+    if (mesFiltro) {
+      const d = new Date(nd.dataResp);
+      if (d.getMonth() !== mesFiltro.idx || d.getFullYear() !== mesFiltro.ano) return;
+    }
     const n = parseInt(nd.nota);
     if (!isNaN(n)) { notas.push(n); respostas.push({ projeto: p.nome, nota: n, data: nd.dataResp }); }
   });
@@ -1086,16 +1138,17 @@ function computeNPS() {
   return { score, respostas };
 }
 
-function computeCSP() {
+function computeCSP(mesFiltro) {
   const rows = ALL_MESES.map(m => ({ mes: m.label, key: m.key, val: cspManual[m.key] !== undefined ? Number(cspManual[m.key]) : null }));
-  const defined = rows.filter(r => r.val !== null && !isNaN(r.val));
-  const avg = defined.length ? parseFloat((defined.reduce((a,r)=>a+r.val,0)/defined.length).toFixed(1)) : null;
+  const meses = mesFiltro ? [mesFiltro] : ALL_MESES;
+  const defined = meses.map(m => cspManual[m.key]).filter(v => v !== undefined).map(Number).filter(v => !isNaN(v));
+  const avg = defined.length ? parseFloat((defined.reduce((a,b)=>a+b,0)/defined.length).toFixed(1)) : null;
   return { rows, avg };
 }
 
-function computeConversao() {
+function computeConversao(mesFiltro) {
   let convIniciados = 0, convMon = 0;
-  ALL_MESES.forEach(m => {
+  (mesFiltro ? [mesFiltro] : ALL_MESES).forEach(m => {
     convIniciados += projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && p.inicio && parseDate(p.inicio)?.getMonth() === m.idx && parseDate(p.inicio)?.getFullYear() === m.ano).length;
     convMon += projects.filter(p => !isDroFam(p) && projMonetizouNoMes(p, m.label, m.ano)).length;
   });
@@ -1103,9 +1156,9 @@ function computeConversao() {
   return { v, convIniciados, convMon };
 }
 
-function computePrazo() {
+function computePrazo(mesFiltro) {
   let pTotal = 0, pOk = 0;
-  ALL_MESES.forEach(m => {
+  (mesFiltro ? [mesFiltro] : ALL_MESES).forEach(m => {
     const doMes = projects.filter(p => prazoNoMesCard(p, m.idx, m.ano));
     doMes.forEach(p => { const st = prazoStatusNoMes(p, m.idx, m.ano); if (st.ok === true) { pTotal++; pOk++; } else if (st.ok === false) pTotal++; });
   });
@@ -1147,14 +1200,84 @@ function setKpi(prefix, val, meta, lower, fmt) {
   }
 }
 
+// Mês "agora" de verdade, independente de qualquer filtro — usado quando nenhum mês
+// está selecionado no filtro da Visão Geral.
+function _mesAtualIndependente() {
+  const hoje = new Date();
+  const m = ALL_MESES.find(x => x.idx === hoje.getMonth() && x.ano === hoje.getFullYear());
+  return m || ALL_MESES[ALL_MESES.length - 1];
+}
+
+// PDI não é filtrável por mês na página real (é sempre a média dos fechamentos de
+// quarter do ano inteiro) — por isso não depende de `filters['visao']`.
+function computePdiOverview() {
+  const rows = (typeof pdiData !== 'undefined' && pdiData && Array.isArray(pdiData.rows)) ? pdiData.rows : [];
+  const scores = ALL_MESES.map(m => {
+    const vals = rows.map(r => { const v = r.m && r.m[m.idx]; return (v !== undefined && v !== null && v !== '') ? Number(v) : null; }).filter(v => v !== null);
+    return vals.length ? Math.round(vals.reduce((a,b) => a+b, 0) / vals.length) : null;
+  });
+  const valid = scores.filter((v, i) => v !== null && isQuarterClose(ALL_MESES[i].idx));
+  return valid.length ? Math.round(valid.reduce((a,b) => a+b, 0) / valid.length) : null;
+}
+
+// Monetização/AQL dividem o mesmo slot na Visão Geral (troca pelas bolinhas) — só lembra
+// qual das duas estava visível pra não voltar sempre pra "mon" a cada re-render (troca de
+// filtro de mês, por exemplo).
+let ovSwipeCur = 'mon';
+function ovShowKpiSwipe(which) {
+  ovSwipeCur = which;
+  const monCard = document.getElementById('ov-mon-card');
+  const aqlCard = document.getElementById('ov-aql-card');
+  const dotMon = document.getElementById('ov-kpi-dot-mon');
+  const dotAql = document.getElementById('ov-kpi-dot-aql');
+  if (monCard) monCard.style.display = which === 'mon' ? '' : 'none';
+  if (aqlCard) aqlCard.style.display = which === 'aql' ? '' : 'none';
+  if (dotMon) dotMon.style.background = which === 'mon' ? 'var(--text-hint)' : 'var(--border)';
+  if (dotAql) dotAql.style.background = which === 'aql' ? 'var(--blue)' : 'var(--border)';
+}
+function renderOvAqlMonCards(mesInfo) {
+  const meta = aqlMetas[mesInfo.key] || {};
+  const total = meta.total || 0;
+  const realizado = pipeEventosDoMes(mesInfo.label, mesInfo.ano).length;
+  const pctMeta = total > 0 ? Math.round(realizado / total * 100) : null;
+  const corAql = total === 0 ? 'var(--text-hint)' : (realizado >= total ? 'var(--green)' : 'var(--red)');
+  const aqlVal = document.getElementById('ov-aql-val'); if (aqlVal) aqlVal.textContent = realizado;
+  const aqlSub = document.getElementById('ov-aql-sub'); if (aqlSub) aqlSub.textContent = mesInfo.label + '/' + mesInfo.ano + (pctMeta !== null ? ' · ' + pctMeta + '% da meta' : '');
+  const aqlMetaLbl = document.getElementById('ov-aql-meta-lbl'); if (aqlMetaLbl) aqlMetaLbl.textContent = total > 0 ? total + ' AQLs' : 'a definir';
+  const aqlBar = document.getElementById('ov-aql-bar'); if (aqlBar) { aqlBar.style.width = (pctMeta !== null ? Math.min(100, pctMeta) : 0) + '%'; aqlBar.style.background = corAql; }
+
+  const r = monReceitaNoMes(mesInfo.label, mesInfo.ano);
+  const mm = monMetas[mesInfo.key] || {};
+  const metaTotal = (mm.ot || 0) + (mm.rec || 0);
+  const pctTotal = metaTotal > 0 ? Math.round(r.total / metaTotal * 100) : null;
+  const corMon = metaTotal > 0 && pctTotal !== null ? (pctTotal >= 100 ? 'var(--green)' : 'var(--red)') : 'var(--text-hint)';
+  const monVal = document.getElementById('ov-mon-val'); if (monVal) monVal.textContent = BRL(r.total);
+  const monSub = document.getElementById('ov-mon-sub'); if (monSub) monSub.textContent = 'OT: ' + BRL(r.ot) + ' · Rec: ' + BRL(r.rec);
+  const monMetaLbl = document.getElementById('ov-mon-meta-lbl');
+  if (monMetaLbl) monMetaLbl.innerHTML = metaTotal > 0 ? BRL(metaTotal) + (pctTotal !== null ? ' <strong style="color:' + (pctTotal >= 100 ? 'var(--green)' : pctTotal >= 70 ? 'var(--amber)' : 'var(--red)') + '">(' + pctTotal + '%)</strong>' : '') : 'sem meta';
+  const monBar = document.getElementById('ov-mon-bar');
+  if (monBar) { monBar.style.width = (metaTotal > 0 && pctTotal !== null ? Math.min(100, pctTotal) : (r.total > 0 ? 10 : 0)) + '%'; monBar.style.background = corMon; }
+
+  ovShowKpiSwipe(ovSwipeCur);
+}
+
 function renderVisaoGeral() {
-  const csp = computeCSP(), conv = computeConversao(), prazo = computePrazo(), nps = computeNPS();
+  buildFilterBar('filter-bar-visao', 'visao', renderVisaoGeral);
+  // curM = null quando "Ano completo" está selecionado (CSP/Conversão/Prazo/NPS somam o ano
+  // inteiro nesse caso) — diferente de mesAtual (usado só pelo card Monetização/AQL/hero, que
+  // sempre precisa de UM mês específico pra mostrar, mesmo sem filtro nenhum selecionado).
+  const curSel = filters['visao'];
+  const curM = curSel ? ALL_MESES.find(m => m.key === curSel) : null;
+  const mesAtual = curM || _mesAtualIndependente();
+
+  const csp = computeCSP(curM), conv = computeConversao(curM), prazo = computePrazo(curM), nps = computeNPS(curM);
   setKpi('csp', csp.avg, 5, true, v => v.toFixed(1).replace('.',',') + '%');
   setKpi('conv', conv.v, 40, false, v => v + '%');
   setKpi('prazo', prazo.v, 80, false, v => v + '%');
   setKpi('nps', nps.score, 50, false, v => String(v));
+  setKpi('pdi', computePdiOverview(), 80, false, v => v + '%');
 
-  const mesAtual = ALL_MESES.find(m => m.idx === 7 && m.ano === 2026); // Agosto/2026
+  renderOvAqlMonCards(mesAtual);
   const rMes = monReceitaNoMes(mesAtual.label, mesAtual.ano);
   const projComFee = new Set();
   projects.forEach(p => (p.monetizacoes||[]).forEach(m => { if (m && m.mesMon === mesAtual.label+'/'+mesAtual.ano && (monPV(m.valorOT)>0 || monPV(m.valorRec)>0)) projComFee.add(p.id); }));
@@ -1796,14 +1919,16 @@ function renderAuditoriaAgg() {
 }
 
 function renderConversao() {
-  const conv = computeConversao();
+  buildFilterBar('filter-bar-conv', 'conv', renderConversao);
+  const mesFiltro = filters['conv'] ? ALL_MESES.find(m => m.key === filters['conv']) : null;
+  const conv = computeConversao(mesFiltro);
   const valEl = document.getElementById('conv-kpi-val');
   const barEl = document.getElementById('conv-kpi-bar');
   const metaEl = document.getElementById('conv-kpi-meta');
   const totalEl = document.getElementById('conv-total-val');
   if (valEl) valEl.textContent = conv.v !== null ? conv.v + '%' : '—';
   if (barEl) { barEl.style.width = pct(conv.v||0, 100) + '%'; const [cls] = badgeFor(conv.v, 40, false); barEl.style.background = cls==='b-green'?'var(--green)':cls==='b-red'?'var(--red)':'var(--text-hint)'; }
-  if (metaEl) metaEl.textContent = 'Meta: 40% · ' + conv.convMon + ' de ' + conv.convIniciados + ' projetos iniciados converteram';
+  if (metaEl) metaEl.textContent = 'Meta: 40% · ' + conv.convMon + ' de ' + conv.convIniciados + ' projetos iniciados converteram' + (mesFiltro ? (' em ' + mesFiltro.label + '/' + mesFiltro.ano) : '');
   if (totalEl) totalEl.textContent = conv.convIniciados;
 
   const oportGroups = {};
@@ -1817,21 +1942,35 @@ function renderConversao() {
   funnelEl.innerHTML = entries.map(([label, v], i) => '<div class="funnel-row"><span class="funnel-label">' + escapeHtmlPv(label) + '</span><div class="funnel-bar-wrap"><div class="funnel-bar" style="width:' + Math.max(6, Math.round(v/max*100)) + '%;background:' + cores[i%cores.length] + ';">' + v + '</div></div></div>').join('');
 }
 
+let prazoLastFilterKey;
 function renderPrazo() {
-  const prazo = computePrazo();
+  buildFilterBar('filter-bar-prazo', 'prazo', renderPrazo);
+  // A taxa (badge %) é sempre do ano inteiro — referência estável — mas as contagens abaixo
+  // dela respeitam o mês filtrado, igual à página real.
+  const prazoAnual = computePrazo();
+  const mesFiltroP = filters['prazo'] ? ALL_MESES.find(m => m.key === filters['prazo']) : null;
+  const prazoCards = mesFiltroP ? computePrazo(mesFiltroP) : prazoAnual;
   const valEl = document.getElementById('prazo-kpi-val');
   const barEl = document.getElementById('prazo-kpi-bar');
   const okEl = document.getElementById('prazo-ok-count');
   const badEl = document.getElementById('prazo-bad-count');
-  if (valEl) valEl.textContent = prazo.v !== null ? prazo.v + '%' : '—';
-  if (barEl) { barEl.style.width = pct(prazo.v||0,100) + '%'; const [cls] = badgeFor(prazo.v, 80, false); barEl.style.background = cls==='b-green'?'var(--green)':cls==='b-red'?'var(--red)':'var(--text-hint)'; }
-  if (okEl) okEl.textContent = prazo.pOk;
-  if (badEl) badEl.textContent = prazo.pBad;
+  if (valEl) valEl.textContent = prazoAnual.v !== null ? prazoAnual.v + '%' : '—';
+  if (barEl) { barEl.style.width = pct(prazoAnual.v||0,100) + '%'; const [cls] = badgeFor(prazoAnual.v, 80, false); barEl.style.background = cls==='b-green'?'var(--green)':cls==='b-red'?'var(--red)':'var(--text-hint)'; }
+  if (okEl) okEl.textContent = prazoCards.pOk;
+  if (badEl) badEl.textContent = prazoCards.pBad;
 
   const listEl = document.getElementById('prazo-list');
   if (!listEl) return;
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   const mesAtualKey = (ALL_MESES.find(m => m.idx === hoje.getMonth() && m.ano === hoje.getFullYear()) || {}).key;
+  // Troca de mês no filtro (ou "Ano completo") reabre o accordion só nesse mês — mantém
+  // todos os meses visíveis (accordion), só muda qual abre sozinho por padrão.
+  const targetKey = filters['prazo'] || mesAtualKey;
+  if (prazoLastFilterKey !== targetKey) {
+    prazoExpandedState = {};
+    prazoExpandedState[targetKey] = true;
+    prazoLastFilterKey = targetKey;
+  }
 
   // Nenhum mês fica de fora — perder meses foi exatamente o problema do grid de 3 colunas
   // (tabela larga espremida) e da versão "só mês atual" (dado sumindo). Cada mês é um card
@@ -1863,7 +2002,7 @@ function renderPrazo() {
     const total = doMes.length;
     const avaliados = ok + nok;
     const taxa = avaliados > 0 ? Math.round(ok / avaliados * 100) : null;
-    if (prazoExpandedState[m.key] === undefined) prazoExpandedState[m.key] = (m.key === mesAtualKey);
+    if (prazoExpandedState[m.key] === undefined) prazoExpandedState[m.key] = false;
     const exp = prazoExpandedState[m.key];
     return '<div class="month-card' + (exp ? ' expanded' : '') + '" style="margin-bottom:10px;padding:0;">'
       + '<button type="button" onclick="prazoToggleMes(\'' + m.key + '\')" style="all:unset;cursor:pointer;display:block;width:100%;padding:1.1rem;box-sizing:border-box;">'
@@ -2022,15 +2161,22 @@ function renderPipeline() {
 }
 
 function renderMonetizacao() {
+  buildFilterBar('filter-bar-mon', 'mon', renderMonetizacao);
   const tbody = document.getElementById('mon-tbody');
   if (!tbody) return;
+  const mesFiltro = filters['mon'] ? ALL_MESES.find(m => m.key === filters['mon']) : null;
+  const mesMonWanted = mesFiltro ? (mesFiltro.label + '/' + mesFiltro.ano) : null;
   const rows = [];
-  projects.forEach(p => (p.monetizacoes||[]).forEach(m => { if (m && m.mesMon) rows.push({
-    nome: p.nome, mesMon: m.mesMon, consultor: p.consultor,
-    valorOT: m.valorOT, valorRec: m.valorRec, escopos: m.escopos, status: m.status,
-    dossie: m.dossie, alinhamento: m.alinhamento, passagem: m.passagem,
-  }); }));
-  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-hint);">Nenhuma monetização registrada.</td></tr>'; return; }
+  projects.forEach(p => (p.monetizacoes||[]).forEach(m => {
+    if (!m || !m.mesMon) return;
+    if (mesMonWanted && m.mesMon !== mesMonWanted) return;
+    rows.push({
+      nome: p.nome, mesMon: m.mesMon, consultor: p.consultor,
+      valorOT: m.valorOT, valorRec: m.valorRec, escopos: m.escopos, status: m.status,
+      dossie: m.dossie, alinhamento: m.alinhamento, passagem: m.passagem,
+    });
+  }));
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-hint);">Nenhuma monetização registrada' + (mesFiltro ? (' em ' + mesFiltro.label + '/' + mesFiltro.ano) : '') + '.</td></tr>'; return; }
   rows.sort((a,b) => { const ma = ALL_MESES.find(x=>x.label+'/'+x.ano===a.mesMon), mb = ALL_MESES.find(x=>x.label+'/'+x.ano===b.mesMon); return (mb?mb.idx:0) - (ma?ma.idx:0); });
   const chk = v => v ? '<span style="color:var(--green);font-weight:700;">✓</span>' : '<span style="color:var(--text-hint);">—</span>';
   tbody.innerHTML = rows.map(r => {

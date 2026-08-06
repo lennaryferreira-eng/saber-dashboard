@@ -5199,14 +5199,20 @@ function salvarNovoProjTer() {
 //  FILTRO DE MÊS
 // ═══════════════════════════════════
 // activeFilter = null → ano inteiro; {key} → mês específico
-const filters = { visao: null, csp: null, conv: null, prazo: null, nps: null, mon: null, pipeline: null };
+// Chaves começam sem valor (não `null`) de propósito: `null` já é o valor real de "Ano
+// completo" depois que o usuário clica nele, e usar o mesmo valor pra "ainda não escolheu
+// nada" fazia o auto-init abaixo desfazer a escolha de "Ano completo" a cada re-render
+// (setFilter grava null -> a função re-renderiza -> buildFilterBar via de novo null e
+// reinicializa pro mês atual). `undefined` (chave nunca tocada) e `null` (Ano completo
+// escolhido de propósito) precisam ser estados distintos.
+const filters = {};
 
 function buildFilterBar(containerId, filterKey, onChangeFn) {
   const el = document.getElementById(containerId);
   if (!el) return;
   const fnName = onChangeFn.name;
-  // inicializa com mês atual se ainda não há filtro definido
-  if (filters[filterKey] === null) {
+  // inicializa com mês atual só na primeira vez (filtro nunca tocado ainda)
+  if (filters[filterKey] === undefined) {
     const hoje = new Date();
     const mesAtual = ALL_MESES.find(m => m.idx === hoje.getMonth() && m.ano === hoje.getFullYear());
     if (mesAtual) filters[filterKey] = mesAtual.key;
@@ -5780,7 +5786,7 @@ function calcPdi() {
 
   set('pdi-ano',    disp);
   set('pdi-ultimo', last !== undefined ? last + '%' : '—');   // último fechamento de quarter
-  set('ov-pdi',  disp); set('ov2-pdi', disp);
+  set('ov-pdi-val',  disp); set('ov2-pdi', disp);
   setStyle('ov-pdi-bar',  'width', avg !== null ? pct(avg, 100) + '%' : '0%');
   setStyle('ov2-pdi-bar', 'width', avg !== null ? pct(avg, 100) + '%' : '0%');
   if (avg !== null) { const [bc,bt] = badgeFor(avg, 80, false); setBadge('ov2-pdi-badge', bc, bt); }
