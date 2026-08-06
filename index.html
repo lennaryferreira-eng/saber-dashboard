@@ -11222,7 +11222,7 @@ function audRenderCalendarioDrive(files){
       + '<input type="checkbox" class="aud-drive-check" data-idx="'+i+'" style="margin-top:2px;">'
       + '<div style="flex:1;min-width:0;">'
       + (hora?'<div style="font-size:9px;color:var(--text-hint);font-weight:700;">'+hora+'</div>':'')
-      + '<div style="font-size:var(--fs-sm);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+f.nome+'</div>'
+      + '<div style="font-size:var(--fs-sm);font-weight:600;word-break:break-word;overflow-wrap:anywhere;">'+f.nome+'</div>'
       + '</div></div>'
       + '<div style="display:flex;flex-direction:column;gap:4px;margin-top:6px;" onclick="event.stopPropagation()">'
       + '<select class="aud-inp aud-drive-consultor" data-idx="'+i+'" style="font-size:9px;padding:3px 5px;">'+optCons(consultorSugerido)+'</select>'

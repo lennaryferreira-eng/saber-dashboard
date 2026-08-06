@@ -25,6 +25,7 @@ export const PADROES_INTERNOS = [
   /alinhamento/i, // qualquer alinhamento (interno ou não) não entra nessa fila — pedido explícito
   /\b1[:\-]1\b/i, // 1:1
   /nrr day/i,
+  /sales\s*talks?/i, // reunião interna de vendas — pedido explícito
 ];
 
 export function ehReuniaoInterna(nome) {
