@@ -26,6 +26,7 @@ export const PADROES_INTERNOS = [
   /\b1[:\-]1\b/i, // 1:1
   /nrr day/i,
   /sales\s*talks?/i, // reunião interna de vendas — pedido explícito
+  /zyman\s*cast/i, // live interna recorrente — pedido explícito
 ];
 
 export function ehReuniaoInterna(nome) {
