@@ -10828,21 +10828,24 @@ function audParseD9(txt, entrega){
   const ordem=[]; // valores na ordem em que apareceram no texto (pra fallback posicional)
   // Formato real: "1.1 Rótulo qualquer aqui: ✅" — o ID fica no início da linha, seguido de um
   // rótulo livre (que pode variar de texto) até o ":", só então o emoji.
-  const reItem=/^\s*([\dA-Za-z]+\.[\dA-Za-z]+)\s*[^\n:]*:\s*(✅|⚠️|❌)/gm;
+  // 'na' é um valor sentinela pra "não se aplica" — distinto de undefined (item que o parser
+  // não achou no texto). Sem isso, os dois casos ficavam indistinguíveis na tela (ambos "—").
+  const simbolo = s => s==='✅'?1:s==='⚠️'?0.5:s==='❌'?0:'na';
+  const reItem=/^\s*([\dA-Za-z]+\.[\dA-Za-z]+)\s*[^\n:]*:\s*(✅|⚠️|❌|N\/?A)/gmi;
   let m;
-  while((m=reItem.exec(mB[1]))!==null){ const v=m[2]==='✅'?1:m[2]==='⚠️'?0.5:0; itens[m[1]]=v; ordem.push(v); }
+  while((m=reItem.exec(mB[1]))!==null){ const v=simbolo(m[2]); itens[m[1]]=v; ordem.push(v); }
 
   // Itens sem ID numérico (Regras Transversais da D9 — valem pra TODOS os tipos de entrega,
   // não têm código numérico próprio). Casam pelo início do texto do critério, tolerando
   // variações de redação depois do rótulo-base (a skill não fixa o rótulo exato).
   const semId = [
-    { re:/Compromisso de envio[^\n:]*:\s*(✅|⚠️|❌)/i, id:'compromisso_envio_material' },
-    { re:/Feedback[^\n:]*:\s*(✅|⚠️|❌)/i, id:'feedback_solicitado_fim_call' },
-    { re:/(?:Pessoas[-\s]?chave|Decisor(?:es)?[-\s]?(?:chave)?)[^\n:]*:\s*(✅|⚠️|❌)/i, id:'pessoas_chave_decisores' },
+    { re:/Compromisso de envio[^\n:]*:\s*(✅|⚠️|❌|N\/?A)/i, id:'compromisso_envio_material' },
+    { re:/Feedback[^\n:]*:\s*(✅|⚠️|❌|N\/?A)/i, id:'feedback_solicitado_fim_call' },
+    { re:/(?:Pessoas[-\s]?chave|Decisor(?:es)?[-\s]?(?:chave)?)[^\n:]*:\s*(✅|⚠️|❌|N\/?A)/i, id:'pessoas_chave_decisores' },
   ];
   semId.forEach(({re, id}) => {
     const mm = mB[1].match(re);
-    if (mm) { const v = mm[1]==='✅'?1:mm[1]==='⚠️'?0.5:0; itens[id]=v; ordem.push(v); }
+    if (mm) { const v = simbolo(mm[1]); itens[id]=v; ordem.push(v); }
   });
 
   // Se o texto colado numerou tudo sequencialmente (ex: 1.1..1.10) em vez de seguir os blocos
@@ -11469,7 +11472,7 @@ function audRenderD9Checklist(entrega){
     html+='<div style="margin-bottom:8px;"><div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-hint);margin-bottom:3px;">'+b.bloco+'</div>';
     b.items.forEach(it=>{
       const v=audReviewD9[it.id];
-      const icoTxt=v===1?icon('check'):v===0.5?icon('warning'):v===0?icon('x'):'—';
+      const icoTxt=v===1?icon('check'):v===0.5?icon('warning'):v===0?icon('x'):v==='na'?'N/A':'—';
       const icoCor=v===1?'var(--green)':v===0.5?'var(--amber)':v===0?'var(--accent)':'var(--text-hint)';
       html+='<div style="display:flex;gap:8px;align-items:flex-start;font-size:var(--fs-sm);color:var(--text-muted);padding:2px 0;"><span style="width:18px;text-align:center;color:'+icoCor+';">'+icoTxt+'</span><span>'+it.id+' — '+it.label+'</span></div>';
     });
@@ -11726,7 +11729,7 @@ function audDetalheHTML(a){
         + '<div style="font-size:var(--fs-xs);font-weight:700;color:var(--text-muted);margin-bottom:3px;">'+bloco.bloco+'</div>'
         + bloco.items.map(it => {
             const v = itens[it.id];
-            const icoTxt = v===1?icon('check'):v===0.5?icon('warning'):v===0?icon('x'):'—';
+            const icoTxt = v===1?icon('check'):v===0.5?icon('warning'):v===0?icon('x'):v==='na'?'N/A':'—';
             const cor = v===1?'var(--green)':v===0.5?'var(--amber)':v===0?'var(--accent)':'var(--text-hint)';
             return '<div style="display:flex;gap:6px;padding:2px 0;font-size:var(--fs-xs);color:var(--text);align-items:flex-start;">'
               + '<span style="color:'+cor+';flex-shrink:0;">'+icoTxt+'</span>'
