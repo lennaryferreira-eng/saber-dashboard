@@ -359,10 +359,8 @@
       <div class="mcard c-green"><div class="mlabel">No prazo</div><div class="mval" id="prazo-ok-count">—</div><div class="mmeta">projetos avaliados</div></div>
       <div class="mcard c-red"><div class="mlabel">Fora do prazo</div><div class="mval" id="prazo-bad-count">—</div><div class="mmeta">precisam de atenção</div></div>
     </div>
-    <div class="card">
-      <div class="card-title">Status por projeto (regra real: 52 dias da Estruturação Estratégica)</div>
-      <div style="display:flex;flex-direction:column;gap:10px;" id="prazo-list">Carregando…</div>
-    </div>
+    <div class="card-title" style="margin-bottom:1rem;">Status por projeto (regra real: 52 dias da Estruturação Estratégica)</div>
+    <div id="prazo-list">Carregando…</div>
   </section>
 
   <!-- ============ TAXA CSP ============ -->
@@ -452,8 +450,8 @@
     </div>
     <div class="tbl-wrap" style="border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-sm);">
       <table>
-        <thead><tr><th>Projeto</th><th>Mês</th><th>Consultor</th><th>Modelo</th></tr></thead>
-        <tbody id="mon-tbody"><tr><td colspan="4" style="text-align:center;color:var(--text-hint);">Carregando…</td></tr></tbody>
+        <thead><tr><th>Consultor</th><th>Projeto</th><th>Mês</th><th>Valores (OT / Rec)</th><th>Escopo</th><th>Status</th><th>Dossiê</th><th>Alin. Interno</th><th>Pass. Bastão</th></tr></thead>
+        <tbody id="mon-tbody"><tr><td colspan="9" style="text-align:center;color:var(--text-hint);">Carregando…</td></tr></tbody>
       </table>
     </div>
   </section>
@@ -867,6 +865,23 @@ function prazoStatus(p) {
   if (!ok)     return { ok, dias: diasPrev, label: '✗ ' + dec + 'd — fora do prazo', badge:'b-red' };
   if (rest <= 7) return { ok, dias: diasPrev, label: rest + 'd p/ o limite', badge:'b-amber' };
   return { ok, dias: diasPrev, label: rest + 'd p/ o limite', badge:'b-blue' };
+}
+
+function semanaIdx(p) {
+  if (!p.inicio) return -2; // sem data
+  const hoje  = new Date(); hoje.setHours(0,0,0,0);
+  const dIni  = parseDate(p.inicio);
+  const total = p.prevFim ? diffDays(p.inicio, p.prevFim) : 45;
+  const dec   = Math.round((hoje - dIni) / 864e5);
+  if (dec < 0) return -1; // não iniciado
+  if (dec > total) return -3; // extrapolou o prazo previsto
+  const idx   = Math.floor(dec / (total / SEMANAS.length));
+  return Math.min(idx, SEMANAS.length - 1);
+}
+function flagHTML(f) {
+  if (!f || f === '—') return '<span style="color:var(--text-hint)">—</span>';
+  const cls = {Verde:'flag-V',Amarelo:'flag-A',Vermelho:'flag-R'}[f] || '';
+  return '<span style="display:inline-flex;align-items:center;gap:5px;"><span class="flag-dot ' + cls + '"></span>' + f + '</span>';
 }
 
 function semIdxNodia(diaOffset, totalDias) {
@@ -1797,12 +1812,47 @@ function renderPrazo() {
 
   const listEl = document.getElementById('prazo-list');
   if (!listEl) return;
-  const relevantes = projects.filter(p => !isDroFam(p) && p.inicio && calcStatus2(p) !== 'Finalizado' && calcStatus2(p) !== 'Churn' && calcStatus2(p) !== 'Pausado');
-  if (!relevantes.length) { listEl.innerHTML = '<div style="color:var(--text-hint);">Nenhum projeto em aberto.</div>'; return; }
-  listEl.innerHTML = relevantes.map(p => {
-    const ps = prazoStatus(p);
-    return '<div class="ov-row"><span class="ov-name">' + escapeHtmlPv(p.nome) + '</span><span class="badge ' + ps.badge + '" style="margin:0;">' + escapeHtmlPv(ps.label) + '</span></div>';
-  }).join('');
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+
+  // Só o mês atual, tabela cheia — mesma visão padrão da página real (que também abre
+  // filtrada no mês corrente). Uma tabela de 9 colunas não cabe bem 3-a-3 num grid; cheia
+  // e sozinha ela usa a largura toda sem precisar de scroll horizontal por dentro do card.
+  const monthCard = (m) => {
+    const doMes = projects.filter(p => prazoNoMesCard(p, m.idx, m.ano));
+    if (!doMes.length) return '';
+    let ok = 0, nok = 0;
+    const rows = doMes.map(p => {
+      const fim = dataFimReal(p);
+      const st  = prazoStatusNoMes(p, m.idx, m.ano);
+      const idx = fim ? SEMANAS.length : semanaIdx(p);
+      const sNome = fim ? '✓ Concluído' : (idx >= 0 && idx < SEMANAS.length ? SEMANAS[idx] : '—');
+      const dec = p.inicio ? Math.round((hoje - parseDate(p.inicio)) / 864e5) : 0;
+      const diasH = fim ? (st.dias + 'd') : (dec >= 0 ? dec + 'd decorridos' : 'Não iniciado');
+      if (st.ok === true) ok++; else if (st.ok === false) nok++;
+      return '<tr><td><b>' + escapeHtmlPv(p.nome||'—') + '</b></td>'
+        + '<td>' + escapeHtmlPv(p.consultor||'—') + '</td>'
+        + '<td>' + escapeHtmlPv(p.inicio||'—') + '</td>'
+        + '<td>' + escapeHtmlPv(p.prevFim||'—') + '</td>'
+        + '<td>' + escapeHtmlPv(fim||'—') + '</td>'
+        + '<td style="font-size:var(--fs-sm)">' + escapeHtmlPv(sNome) + '</td>'
+        + '<td style="white-space:nowrap">' + escapeHtmlPv(diasH) + '</td>'
+        + '<td><span class="badge ' + st.badge + '">' + escapeHtmlPv(st.label) + '</span></td>'
+        + '<td>' + flagHTML(calcFlagAutomatica(p)) + '</td></tr>';
+    }).join('');
+    const total = doMes.length;
+    const avaliados = ok + nok;
+    const taxa = avaliados > 0 ? Math.round(ok / avaliados * 100) : null;
+    return '<div class="month-card">'
+      + '<div class="month-header"><span class="month-name">' + m.label + '</span>'
+      + '<div class="month-taxa"><span class="month-taxa-val" style="color:' + (taxa !== null && taxa >= 80 ? 'var(--green)' : taxa !== null ? 'var(--red)' : 'var(--text)') + '">' + (taxa !== null ? taxa + '%' : '—') + '</span>'
+      + '<div class="prog-bg" style="width:60px;margin-top:0;"><div class="prog-fill" style="width:' + (taxa !== null ? pct(taxa, 100) : 0) + '%;background:var(--blue)"></div></div></div></div>'
+      + '<div class="month-stats">Projetos: <strong>' + total + '</strong> · <span style="color:var(--green)">✓ ' + ok + '</span> · <span style="color:var(--red)">✗ ' + nok + '</span></div>'
+      + '<div class="tbl-wrap"><table><thead><tr><th>Projeto</th><th>Consultor</th><th>Início</th><th>Prev. Conclusão</th><th>Conclusão Real</th><th>Semana</th><th>Dias</th><th>Status</th><th>Flag</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+      + '</div>';
+  };
+
+  const mAtual = ALL_MESES.find(m => m.idx === hoje.getMonth() && m.ano === hoje.getFullYear()) || ALL_MESES[ALL_MESES.length - 1];
+  listEl.innerHTML = monthCard(mAtual) || '<div style="color:var(--text-hint);">Nenhum projeto em aberto em ' + mAtual.label + '.</div>';
 }
 
 function renderCsp() {
@@ -1867,7 +1917,7 @@ function renderPdi() {
     const defined = vals.filter(v => v !== null);
     const avg = defined.length ? Math.round(defined.reduce((a,b)=>a+b,0)/defined.length) : null;
     const [cls] = badgeFor(avg, 80, false);
-    return '<tr><td><b>' + escapeHtmlPv(r.consultor||'—') + '</b></td>'
+    return '<tr><td><b>' + escapeHtmlPv(r.nome||'—') + '</b></td>'
       + vals.map(v => '<td>' + (v!==null ? v+'%' : '—') + '</td>').join('')
       + '<td>' + (avg!==null ? '<span class="badge ' + cls + '">' + avg + '%</span>' : '—') + '</td></tr>';
   }).join('');
@@ -1940,10 +1990,27 @@ function renderMonetizacao() {
   const tbody = document.getElementById('mon-tbody');
   if (!tbody) return;
   const rows = [];
-  projects.forEach(p => (p.monetizacoes||[]).forEach(m => { if (m && m.mesMon) rows.push({ nome: p.nome, mesMon: m.mesMon, consultor: p.consultor, modelo: p.modelo||'Estruturação Estratégica' }); }));
-  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-hint);">Nenhuma monetização registrada.</td></tr>'; return; }
+  projects.forEach(p => (p.monetizacoes||[]).forEach(m => { if (m && m.mesMon) rows.push({
+    nome: p.nome, mesMon: m.mesMon, consultor: p.consultor,
+    valorOT: m.valorOT, valorRec: m.valorRec, escopos: m.escopos, status: m.status,
+    dossie: m.dossie, alinhamento: m.alinhamento, passagem: m.passagem,
+  }); }));
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-hint);">Nenhuma monetização registrada.</td></tr>'; return; }
   rows.sort((a,b) => { const ma = ALL_MESES.find(x=>x.label+'/'+x.ano===a.mesMon), mb = ALL_MESES.find(x=>x.label+'/'+x.ano===b.mesMon); return (mb?mb.idx:0) - (ma?ma.idx:0); });
-  tbody.innerHTML = rows.map(r => '<tr><td><b>' + escapeHtmlPv(r.nome) + '</b></td><td>' + escapeHtmlPv(r.mesMon) + '</td><td>' + escapeHtmlPv(r.consultor||'—') + '</td><td>' + escapeHtmlPv(r.modelo) + '</td></tr>').join('');
+  const chk = v => v ? '<span style="color:var(--green);font-weight:700;">✓</span>' : '<span style="color:var(--text-hint);">—</span>';
+  tbody.innerHTML = rows.map(r => {
+    const vOT = monPV(r.valorOT), vRec = monPV(r.valorRec);
+    const valores = [vOT > 0 ? BRL(vOT) + ' OT' : '', vRec > 0 ? BRL(vRec) + ' Rec' : ''].filter(Boolean).join(' + ') || '—';
+    return '<tr><td>' + escapeHtmlPv(r.consultor||'—') + '</td>'
+      + '<td><b>' + escapeHtmlPv(r.nome) + '</b></td>'
+      + '<td>' + escapeHtmlPv(r.mesMon) + '</td>'
+      + '<td style="white-space:nowrap;">' + valores + '</td>'
+      + '<td>' + escapeHtmlPv(r.escopos||'—') + '</td>'
+      + '<td>' + (r.status ? '<span class="badge b-blue">' + escapeHtmlPv(r.status) + '</span>' : '<span style="color:var(--text-hint);">—</span>') + '</td>'
+      + '<td style="text-align:center;">' + chk(r.dossie) + '</td>'
+      + '<td style="text-align:center;">' + chk(r.alinhamento) + '</td>'
+      + '<td style="text-align:center;">' + chk(r.passagem) + '</td></tr>';
+  }).join('');
 }
 
 function renderCapacity() {

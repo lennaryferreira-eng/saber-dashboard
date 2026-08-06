@@ -187,7 +187,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
 /* QUARTER BLOCK */
 .q-block{margin-bottom:2.2rem;}
 .q-label{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text-hint);padding-bottom:.7rem;border-bottom:1px solid var(--border);margin-bottom:1.1rem;}
-.q-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+.q-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;}
 
 /* MONTH CARD */
 .month-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.1rem;box-shadow:var(--shadow-sm);}
