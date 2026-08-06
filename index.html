@@ -10742,6 +10742,11 @@ const AUD_D9_SKILLS = {
     {bloco:'Diagnóstico',items:[{id:'2.1',label:'Gargalos de ambiente/comunicação identificados com evidência'},{id:'2.2',label:'Referências/benchmarks visuais trazidos — não só opinião'},{id:'2.3',label:'Alinhamento entre ambiente/criativo e objetivo de negócio explicitado'},{id:'2.4',label:'Recomendações concretas — não "deixar mais bonito"'}]},
     {bloco:'Qualidade da apresentação',items:[{id:'3.1',label:'Cliente entendeu os apontamentos sem defensiva'},{id:'3.2',label:'Cliente saiu sabendo o que ajustar nos ambientes'}]},
     {bloco:'Plano de ação',items:[{id:'6.1',label:'Plano de ação de ambientes — achado conectado a ação'},{id:'6.2',label:'Cliente saiu sabendo o próximo passo prático'}]},
+    // Checklist antigo do painel (pré-sincronização) — sem equivalente no checklist atual da
+    // skill. Mantido só pra não perder o detalhe de auditorias já preenchidas manualmente com
+    // essa versão (jul/2026); só aparece na tela se a auditoria tiver algum desses itens
+    // preenchidos (ver filtro em audDetalheHTML).
+    {bloco:'Checklist antigo (auditorias manuais até jul/2026)',items:[{id:'3.3',label:'Objeções do ICP endereçadas na página'},{id:'3.4',label:'Fugas de conversão identificadas'},{id:'4.1',label:'Teste mobile real realizado'},{id:'4.2',label:'Hierarquia visual avaliada'},{id:'4.3',label:'Sinais de confiança presentes'},{id:'5.1',label:'Ofensores visuais de performance identificados'},{id:'6.3',label:'Wireframe apresentado (se a decisão foi nova LP)'},{id:'7.1',label:'Cliente entendeu o plano sem perguntar "como faço isso?"'},{id:'7.2',label:'Cliente validou o plano ao final'}]},
     AUD_TRANSVERSAIS,
   ],
   'Apresentação Final': [
@@ -11714,7 +11719,9 @@ function audDetalheHTML(a){
   const itens = a.d9_itens || {};
   if (skill) {
     direita += '<div style="font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:6px;">Checklist da entrega</div>';
-    direita += skill.map(bloco => {
+    // Blocos sem nenhum item preenchido nessa auditoria não aparecem — evita telas cheias de
+    // "—" quando o bloco nem se aplica (ex: bloco de checklist antigo, em auditoria nova).
+    direita += skill.filter(bloco => bloco.items.some(it => itens[it.id] !== undefined)).map(bloco => {
       return '<div style="margin-bottom:8px;">'
         + '<div style="font-size:var(--fs-xs);font-weight:700;color:var(--text-muted);margin-bottom:3px;">'+bloco.bloco+'</div>'
         + bloco.items.map(it => {
