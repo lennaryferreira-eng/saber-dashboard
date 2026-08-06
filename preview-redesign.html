@@ -1813,10 +1813,13 @@ function renderPrazo() {
   const listEl = document.getElementById('prazo-list');
   if (!listEl) return;
   const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const mesAtualKey = (ALL_MESES.find(m => m.idx === hoje.getMonth() && m.ano === hoje.getFullYear()) || {}).key;
 
-  // Só o mês atual, tabela cheia — mesma visão padrão da página real (que também abre
-  // filtrada no mês corrente). Uma tabela de 9 colunas não cabe bem 3-a-3 num grid; cheia
-  // e sozinha ela usa a largura toda sem precisar de scroll horizontal por dentro do card.
+  // Nenhum mês fica de fora — perder meses foi exatamente o problema do grid de 3 colunas
+  // (tabela larga espremida) e da versão "só mês atual" (dado sumindo). Cada mês é um card
+  // de largura total (sem espremer 9 colunas num terço da tela) e recolhido por padrão,
+  // menos o mês atual — tudo continua visível e clicável, só não empilha 10 tabelas abertas
+  // de uma vez. Mesmo padrão de accordion já usado nos ciclos de DRO/DRX.
   const monthCard = (m) => {
     const doMes = projects.filter(p => prazoNoMesCard(p, m.idx, m.ano));
     if (!doMes.length) return '';
@@ -1842,17 +1845,31 @@ function renderPrazo() {
     const total = doMes.length;
     const avaliados = ok + nok;
     const taxa = avaliados > 0 ? Math.round(ok / avaliados * 100) : null;
-    return '<div class="month-card">'
-      + '<div class="month-header"><span class="month-name">' + m.label + '</span>'
-      + '<div class="month-taxa"><span class="month-taxa-val" style="color:' + (taxa !== null && taxa >= 80 ? 'var(--green)' : taxa !== null ? 'var(--red)' : 'var(--text)') + '">' + (taxa !== null ? taxa + '%' : '—') + '</span>'
+    if (prazoExpandedState[m.key] === undefined) prazoExpandedState[m.key] = (m.key === mesAtualKey);
+    const exp = prazoExpandedState[m.key];
+    return '<div class="month-card' + (exp ? ' expanded' : '') + '" style="margin-bottom:10px;padding:0;">'
+      + '<button type="button" onclick="prazoToggleMes(\'' + m.key + '\')" style="all:unset;cursor:pointer;display:block;width:100%;padding:1.1rem;box-sizing:border-box;">'
+      + '<div class="month-header" style="margin-bottom:0;">'
+      + '<span class="month-name" style="display:flex;align-items:center;gap:8px;">'
+      + '<svg class="prazo-chevron" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0;color:var(--text-hint);transition:transform .2s;' + (exp ? 'transform:rotate(90deg);' : '') + '"><path d="M6 4l4 4-4 4"/></svg>'
+      + m.label + '</span>'
+      + '<div class="month-taxa">'
+      + '<span style="font-size:var(--fs-xs);color:var(--text-hint);">' + total + ' projetos · <span style="color:var(--green)">✓ ' + ok + '</span> · <span style="color:var(--red)">✗ ' + nok + '</span></span>'
+      + '<span class="month-taxa-val" style="color:' + (taxa !== null && taxa >= 80 ? 'var(--green)' : taxa !== null ? 'var(--red)' : 'var(--text)') + '">' + (taxa !== null ? taxa + '%' : '—') + '</span>'
       + '<div class="prog-bg" style="width:60px;margin-top:0;"><div class="prog-fill" style="width:' + (taxa !== null ? pct(taxa, 100) : 0) + '%;background:var(--blue)"></div></div></div></div>'
-      + '<div class="month-stats">Projetos: <strong>' + total + '</strong> · <span style="color:var(--green)">✓ ' + ok + '</span> · <span style="color:var(--red)">✗ ' + nok + '</span></div>'
-      + '<div class="tbl-wrap"><table><thead><tr><th>Projeto</th><th>Consultor</th><th>Início</th><th>Prev. Conclusão</th><th>Conclusão Real</th><th>Semana</th><th>Dias</th><th>Status</th><th>Flag</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+      + '</button>'
+      + (exp ? '<div style="padding:0 1.1rem 1.1rem;"><div class="tbl-wrap"><table><thead><tr><th>Projeto</th><th>Consultor</th><th>Início</th><th>Prev. Conclusão</th><th>Conclusão Real</th><th>Semana</th><th>Dias</th><th>Status</th><th>Flag</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>' : '')
       + '</div>';
   };
 
-  const mAtual = ALL_MESES.find(m => m.idx === hoje.getMonth() && m.ano === hoje.getFullYear()) || ALL_MESES[ALL_MESES.length - 1];
-  listEl.innerHTML = monthCard(mAtual) || '<div style="color:var(--text-hint);">Nenhum projeto em aberto em ' + mAtual.label + '.</div>';
+  const cards = ALL_MESES.map(monthCard).filter(Boolean);
+  listEl.innerHTML = cards.join('') || '<div style="color:var(--text-hint);">Nenhum projeto em aberto.</div>';
+}
+
+let prazoExpandedState = {};
+function prazoToggleMes(key) {
+  prazoExpandedState[key] = !prazoExpandedState[key];
+  renderPrazo();
 }
 
 function renderCsp() {
