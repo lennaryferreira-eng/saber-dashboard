@@ -1530,6 +1530,24 @@
     <div class="modal-body">
       <div id="modal-drive-selecao">
         <div id="aud-fila-concluida-msg" style="display:none;font-size:var(--fs-md);color:var(--green);font-weight:600;padding:8px 0;"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border);">
+          <div style="display:inline-flex;border:1px solid var(--border);border-radius:20px;overflow:hidden;">
+            <button type="button" id="drive-fonte-btn-compartilhada" class="btn" style="border:none;border-radius:0;" onclick="audTrocarFonteDrive('compartilhada')">Conta compartilhada</button>
+            <button type="button" id="drive-fonte-btn-pessoa" class="btn" style="border:none;border-radius:0;" onclick="audTrocarFonteDrive('pessoa')">Pessoa conectada</button>
+          </div>
+          <select id="drive-cal-pessoa" class="aud-inp" style="display:none;font-size:var(--fs-base);padding:5px 8px;" onchange="audTrocarPessoaDrive(this.value)">
+            <option value="">Selecione a pessoa…</option>
+          </select>
+          <div id="drive-cal-controles" style="display:none;align-items:center;gap:8px;">
+            <div style="display:inline-flex;border:1px solid var(--border);border-radius:20px;overflow:hidden;">
+              <button type="button" id="drive-view-btn-lista" class="btn" style="border:none;border-radius:0;" onclick="audTrocarViewDrive('lista')">Lista</button>
+              <button type="button" id="drive-view-btn-calendario" class="btn" style="border:none;border-radius:0;" onclick="audTrocarViewDrive('calendario')">Calendário</button>
+            </div>
+            <button type="button" class="btn" onclick="audNavSemanaDrive(-1)" title="Semana anterior">‹</button>
+            <span id="drive-cal-semana-label" style="font-size:var(--fs-sm);color:var(--text-hint);min-width:120px;text-align:center;"></span>
+            <button type="button" class="btn" onclick="audNavSemanaDrive(1)" title="Próxima semana">›</button>
+          </div>
+        </div>
         <div id="aud-drive-lista" style="display:flex;flex-direction:column;gap:10px;max-height:60vh;overflow-y:auto;">
           <div style="font-size:var(--fs-base);color:var(--text-hint);padding:8px 0;">Buscando transcrições recentes…</div>
         </div>
@@ -10872,6 +10890,13 @@ let audFilaAtiva = null; // {itens:[{id,nome,donoNome,donoEmail,modificadoEm}], 
 let audFilaDriveFileIdAtual = null; // driveFileId do item da fila em revisão agora, capturado por audSalvar()
 let audFilaNosOriginais = null; // guarda onde #aud-fila-progresso e #aud-review viviam na página, pra devolver quando a fila fecha o popup
 
+// ── Fila do Drive por pessoa (login novo) — Agenda + Drive de quem já conectou ──
+let audDriveFonte = 'compartilhada'; // 'compartilhada' (conta única, comportamento de sempre) | 'pessoa'
+let audDriveView = 'lista'; // 'lista' | 'calendario' — só usado quando fonte==='pessoa'
+let audDrivePessoaEmail = ''; // e-mail da pessoa selecionada (fonte==='pessoa')
+let audDrivePessoas = {}; // {email: nome} — roster de quem já conectou, carregado uma vez por abertura do modal
+let audDriveSemanaOffset = 0; // 0 = semana atual
+
 function audImportar(){
   if(!audIdentOk()) return;
   const txt=(document.getElementById('aud-analise')?.value||'').trim();
@@ -11047,24 +11072,176 @@ async function audAbrirModalDrive(){
   const selecao=document.getElementById('modal-drive-selecao'); if(selecao) selecao.style.display='block';
   const proc=document.getElementById('modal-drive-processando'); if(proc) proc.style.display='none';
   const concluidaMsg=document.getElementById('aud-fila-concluida-msg'); if(concluidaMsg) concluidaMsg.style.display='none';
+  audDriveFonte='compartilhada'; audDriveView='lista'; audDrivePessoaEmail=''; audDriveSemanaOffset=0;
+  audAtualizarFonteDriveUI();
+  audCarregarPessoasConectadas(); // roda em paralelo, não precisa esperar pra mostrar a lista compartilhada
+  audCarregarListaCompartilhada();
+}
+
+// Lista de quem já conectou (login novo) — alimenta o <select> de pessoa. Nomes vêm de
+// PERFIS_POR_EMAIL (mesmo roster do painel "Quem já conectou a Agenda").
+async function audCarregarPessoasConectadas(){
+  const sel=document.getElementById('drive-cal-pessoa'); if(!sel) return;
+  try{
+    const response=await fetch('/api/google/connections-status');
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok) throw new Error(data.error||('erro '+response.status));
+    audDrivePessoas={};
+    (data.connections||[]).forEach(c=>{ audDrivePessoas[c.email]=(PERFIS_POR_EMAIL[c.email]?.nome)||c.email; });
+    sel.innerHTML='<option value="">Selecione a pessoa…</option>'
+      + Object.entries(audDrivePessoas).map(([email,nome])=>'<option value="'+email+'">'+nome+'</option>').join('');
+  }catch(err){
+    sel.innerHTML='<option value="">Não consegui carregar quem conectou</option>';
+  }
+}
+
+function audCarregarListaCompartilhada(){
   const lista=document.getElementById('aud-drive-lista');
   const erro=document.getElementById('aud-drive-erro');
   if(erro){erro.style.display='none';erro.textContent='';}
   if(lista) lista.innerHTML='<div style="font-size:var(--fs-base);color:var(--text-hint);padding:8px 0;">Buscando transcrições recentes…</div>';
-  try{
-    const excludeIds=auditorias.map(a=>a.driveFileId).filter(Boolean);
-    const response=await fetch('/api/google/list-meetings',{
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({excludeIds, days:30})
-    });
+  const excludeIds=auditorias.map(a=>a.driveFileId).filter(Boolean);
+  fetch('/api/google/list-meetings',{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({excludeIds, days:30})
+  }).then(async response=>{
     const data=await response.json().catch(()=>({}));
     if(!response.ok) throw new Error(data.error || ('A API retornou um erro ('+response.status+')'));
     audRenderListaDrive(data.files||[]);
-  }catch(err){
+  }).catch(err=>{
     if(lista) lista.innerHTML='';
     if(erro){erro.textContent='Não consegui buscar as reuniões do Drive: '+err.message;erro.style.display='block';}
+  });
+}
+
+function audAtualizarFonteDriveUI(){
+  const btnCompart=document.getElementById('drive-fonte-btn-compartilhada');
+  const btnPessoa=document.getElementById('drive-fonte-btn-pessoa');
+  const selPessoa=document.getElementById('drive-cal-pessoa');
+  const controles=document.getElementById('drive-cal-controles');
+  const ehPessoa=audDriveFonte==='pessoa';
+  if(btnCompart){ btnCompart.style.background=ehPessoa?'var(--surface2)':'var(--accent)'; btnCompart.style.color=ehPessoa?'var(--text-muted)':'#fff'; }
+  if(btnPessoa){ btnPessoa.style.background=ehPessoa?'var(--accent)':'var(--surface2)'; btnPessoa.style.color=ehPessoa?'#fff':'var(--text-muted)'; }
+  if(selPessoa) selPessoa.style.display=ehPessoa?'inline-block':'none';
+  if(controles) controles.style.display=(ehPessoa && audDrivePessoaEmail)?'inline-flex':'none';
+  const btnLista=document.getElementById('drive-view-btn-lista');
+  const btnCal=document.getElementById('drive-view-btn-calendario');
+  const ehCal=audDriveView==='calendario';
+  if(btnLista){ btnLista.style.background=ehCal?'var(--surface2)':'var(--accent)'; btnLista.style.color=ehCal?'var(--text-muted)':'#fff'; }
+  if(btnCal){ btnCal.style.background=ehCal?'var(--accent)':'var(--surface2)'; btnCal.style.color=ehCal?'#fff':'var(--text-muted)'; }
+  const label=document.getElementById('drive-cal-semana-label');
+  if(label){ const {inicio,fim}=getWeekBounds(audDriveSemanaOffset); const f=d=>d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}); label.textContent=f(inicio)+'–'+f(fim); }
+}
+
+function audTrocarFonteDrive(fonte){
+  audDriveFonte=fonte;
+  audAtualizarFonteDriveUI();
+  if(fonte==='compartilhada') audCarregarListaCompartilhada();
+  else if(audDrivePessoaEmail) audCarregarEventosPessoa();
+  else {
+    const lista=document.getElementById('aud-drive-lista');
+    if(lista) lista.innerHTML='<div style="font-size:var(--fs-base);color:var(--text-hint);padding:8px 0;">Selecione uma pessoa conectada acima.</div>';
   }
 }
+function audTrocarPessoaDrive(email){
+  audDrivePessoaEmail=email;
+  audDriveSemanaOffset=0;
+  audAtualizarFonteDriveUI();
+  if(email) audCarregarEventosPessoa();
+}
+function audTrocarViewDrive(view){
+  audDriveView=view;
+  audAtualizarFonteDriveUI();
+  if(audDrivePessoaEmail) audCarregarEventosPessoa();
+}
+function audNavSemanaDrive(dir){
+  audDriveSemanaOffset+=dir;
+  audAtualizarFonteDriveUI();
+  if(audDrivePessoaEmail) audCarregarEventosPessoa();
+}
+
+// Busca a Agenda da pessoa selecionada na semana atual e mapeia pro mesmo formato que
+// audRenderListaDrive já sabe desenhar (nome/donoNome/donoEmail/modificadoEm) — assim a
+// visão "Lista" reusa o renderer de sempre sem duplicar nada. A visão "Calendário" usa o
+// mesmo formato num grid de 7 dias (audRenderCalendarioDrive).
+async function audCarregarEventosPessoa(){
+  const lista=document.getElementById('aud-drive-lista');
+  const erro=document.getElementById('aud-drive-erro');
+  if(erro){erro.style.display='none';erro.textContent='';}
+  if(lista) lista.innerHTML='<div style="font-size:var(--fs-base);color:var(--text-hint);padding:8px 0;">Buscando a agenda…</div>';
+  try{
+    const weekStartISO=semanaKey(audDriveSemanaOffset);
+    const response=await fetch('/api/google/calendar-events',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email:audDrivePessoaEmail, weekStartISO})
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok) throw new Error(data.error || ('A API retornou um erro ('+response.status+')'));
+    const excludeIds=new Set(auditorias.map(a=>a.driveFileId).filter(Boolean));
+    const nome=audDrivePessoas[audDrivePessoaEmail]||audDrivePessoaEmail;
+    const files=(data.events||[])
+      .filter(ev=>!(ev.driveFileId && excludeIds.has(ev.driveFileId)))
+      .map(ev=>({
+        id: ev.driveFileId || ('evt_'+ev.id),
+        nome: ev.summary,
+        donoNome: nome,
+        donoEmail: audDrivePessoaEmail,
+        modificadoEm: ev.start,
+        driveFileId: ev.driveFileId||null,
+        eventId: ev.id,
+        email: audDrivePessoaEmail,
+      }));
+    if(audDriveView==='calendario') audRenderCalendarioDrive(files);
+    else audRenderListaDrive(files);
+  }catch(err){
+    if(lista) lista.innerHTML='';
+    if(erro){erro.textContent='Não consegui buscar a agenda: '+err.message;erro.style.display='block';}
+  }
+}
+
+// Mesmo grupo de campos por item que audRenderListaDrive (checkbox + consultor/tipo/cliente),
+// só que arrumado num grid de 7 colunas (semana) em vez de lista vertical — audAdicionarSelecaoNaFila
+// não precisa saber a diferença, os dois escrevem em lista.dataset.files do mesmo jeito.
+function audRenderCalendarioDrive(files){
+  const lista=document.getElementById('aud-drive-lista'); if(!lista) return;
+  const {inicio}=getWeekBounds(audDriveSemanaOffset);
+  const dias=Array.from({length:7},(_,i)=>{ const d=new Date(inicio); d.setDate(inicio.getDate()+i); return d; });
+  const diaISO=d=>d.toISOString().slice(0,10);
+  const porDia={}; dias.forEach(d=>{ porDia[diaISO(d)]=[]; });
+  files.forEach((f,i)=>{ const k=(f.modificadoEm||'').slice(0,10); if(porDia[k]) porDia[k].push(i); else if(porDia[diaISO(dias[0])]) porDia[diaISO(dias[0])].push(i); });
+  if(!files.length){ lista.innerHTML='<div style="font-size:var(--fs-base);color:var(--text-hint);padding:8px 0;">Nenhuma reunião nessa semana.</div>'; lista.dataset.files='[]'; return; }
+  const optCons=(sel)=>'<option value="">Consultor…</option>'+audConsultores().map(c=>'<option '+(c===sel?'selected':'')+'>'+c+'</option>').join('');
+  const optTipo=(sel)=>'<option value="">Tipo…</option>'+AUD_TIPOS.map(t=>'<option '+(t===sel?'selected':'')+'>'+t+'</option>').join('');
+  const clienteDatalist='<datalist id="aud-drive-cliente-list">'+audClientes().map(c=>'<option value="'+c.replace(/"/g,'&quot;')+'">').join('')+'</datalist>';
+  const diaCard=(i)=>{
+    const f=files[i];
+    const hora=f.modificadoEm && f.modificadoEm.length>10 ? new Date(f.modificadoEm).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
+    const consultorSugerido=audConsultores().find(c=>(f.donoNome||'').toLowerCase().includes(c.toLowerCase())) || '';
+    return '<label style="display:block;padding:8px;border:1px solid var(--border);border-radius:var(--r-sm);cursor:pointer;margin-bottom:6px;background:var(--surface);">'
+      + '<div style="display:flex;gap:6px;align-items:flex-start;">'
+      + '<input type="checkbox" class="aud-drive-check" data-idx="'+i+'" style="margin-top:2px;">'
+      + '<div style="flex:1;min-width:0;">'
+      + (hora?'<div style="font-size:9px;color:var(--text-hint);font-weight:700;">'+hora+'</div>':'')
+      + '<div style="font-size:var(--fs-sm);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+f.nome+'</div>'
+      + '</div></div>'
+      + '<div style="display:flex;flex-direction:column;gap:4px;margin-top:6px;" onclick="event.stopPropagation()">'
+      + '<select class="aud-inp aud-drive-consultor" data-idx="'+i+'" style="font-size:9px;padding:3px 5px;">'+optCons(consultorSugerido)+'</select>'
+      + '<select class="aud-inp aud-drive-tipo" data-idx="'+i+'" style="font-size:9px;padding:3px 5px;">'+optTipo('')+'</select>'
+      + '<input class="aud-inp aud-drive-cliente" data-idx="'+i+'" list="aud-drive-cliente-list" autocomplete="off" placeholder="Cliente…" style="font-size:9px;padding:3px 5px;">'
+      + '</div></label>';
+  };
+  const diaNomes=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+  lista.innerHTML=clienteDatalist+'<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;min-width:900px;">'
+    + dias.map((d,di)=>{
+        const idxs=porDia[diaISO(d)]||[];
+        return '<div><div style="font-size:9px;font-weight:700;color:var(--text-hint);text-align:center;margin-bottom:6px;text-transform:uppercase;">'+diaNomes[di]+' '+d.getDate()+'</div>'
+          + (idxs.length ? idxs.map(diaCard).join('') : '<div style="font-size:9px;color:var(--text-hint);text-align:center;padding:8px 0;">—</div>')
+          + '</div>';
+      }).join('')
+    + '</div>';
+  lista.dataset.files=JSON.stringify(files);
+}
+
 function audFecharModalDrive(){
   const m=document.getElementById('modal-drive-fila'); if(m) m.style.display='none';
   // Fechar o popup no meio de uma fila cancela o que falta — devolve a barra/revisão pro
@@ -11218,11 +11395,18 @@ async function audProcessarProximoDaFila(){
   const msg=document.getElementById('aud-gerar-msg');
   if(msg){msg.textContent='';msg.style.color='var(--text-hint)';}
   try{
+    // Item veio da agenda de uma pessoa (tem .email): usa o token dela, e se o evento não
+    // tinha o Doc anexado direto, o servidor busca no Drive dela por proximidade de horário.
+    // Item da conta compartilhada de sempre (sem .email): comportamento de sempre.
+    const body=item.email
+      ? {email:item.email, fileId:item.driveFileId||undefined, eventId:item.eventId, eventStart:item.modificadoEm}
+      : {fileId:item.id};
     const response=await fetch('/api/google/fetch-transcript',{
-      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({fileId:item.id})
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
     });
     const data=await response.json().catch(()=>({}));
     if(!response.ok) throw new Error(data.error || ('A API retornou um erro ('+response.status+')'));
+    if(data.fileId) audFilaDriveFileIdAtual=data.fileId; // id real resolvido pelo servidor (útil no fallback por horário)
     audAtualizaProgresso((indice/total)*100, rotulo+' — conectando com Claude…');
     await audGerarEImportar(data.texto||'', (textoAcumulado)=>{
       const {frac, label}=audEstimarProgressoAnalise(textoAcumulado);
