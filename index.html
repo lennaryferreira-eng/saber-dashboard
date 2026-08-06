@@ -11087,7 +11087,7 @@ async function audCarregarPessoasConectadas(){
     const data=await response.json().catch(()=>({}));
     if(!response.ok) throw new Error(data.error||('erro '+response.status));
     audDrivePessoas={};
-    (data.connections||[]).forEach(c=>{ audDrivePessoas[c.email]=(PERFIS_POR_EMAIL[c.email]?.nome)||c.email; });
+    (data.connections||[]).forEach(c=>{ audDrivePessoas[c.email]=nomeExibicaoPorEmail(c.email); });
     sel.innerHTML='<option value="">Selecione a pessoa…</option>'
       + Object.entries(audDrivePessoas).map(([email,nome])=>'<option value="'+email+'">'+nome+'</option>').join('');
   }catch(err){
@@ -11255,6 +11255,17 @@ function audFecharModalDrive(){
 // Painel ADM: quem já autorizou Agenda+Drive no login novo x quem ainda não (roster
 // completo vem de PERFIS_POR_EMAIL, cruzado com o que api/google/connections-status.js
 // devolve — nunca inclui o refresh_token, só e-mail + data).
+// ADM e Visualização apontam pro mesmo objeto de perfil genérico (nome:"ADM"/"Visualização")
+// pra várias pessoas — bom pra permissão, ruim pra exibir "quem é quem" numa lista. Consultor
+// e designer já têm nome próprio no perfil (perfil.consultor/perfil.designer), então só cai no
+// e-mail quando não tem: "leonam.lael@..." vira "Leonam Lael".
+function nomeExibicaoPorEmail(email){
+  const perfil=PERFIS_POR_EMAIL[email];
+  if(perfil && (perfil.consultor||perfil.designer)) return perfil.consultor||perfil.designer;
+  const local=(email.split('@')[0]||'').replace(/[._-]+/g,' ').trim();
+  return local.split(' ').filter(Boolean).map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ') || email;
+}
+
 async function audAbrirPainelConexoes(){
   const mod=document.getElementById('modal-conexoes-google'); if(mod) mod.style.display='flex';
   const lista=document.getElementById('conexoes-google-lista');
@@ -11265,9 +11276,9 @@ async function audAbrirPainelConexoes(){
     if(!response.ok) throw new Error(data.error || ('A API retornou um erro ('+response.status+')'));
     const conectados={};
     (data.connections||[]).forEach(c=>{ conectados[c.email]=c.connectedAt; });
-    const linhas=Object.entries(PERFIS_POR_EMAIL).map(([email,perfil])=>{
+    const linhas=Object.entries(PERFIS_POR_EMAIL).map(([email])=>{
       const conectadoEm=conectados[email];
-      const nome=perfil?.nome || email;
+      const nome=nomeExibicaoPorEmail(email);
       const status=conectadoEm
         ? '<span style="color:var(--green);font-weight:600;">'+icon('check')+' Conectado em '+new Date(conectadoEm).toLocaleDateString('pt-BR')+'</span>'
         : '<span style="color:var(--text-hint);">— Ainda não conectou</span>';
