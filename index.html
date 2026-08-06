@@ -10812,11 +10812,13 @@ function audParseD9(txt, entrega){
   let m;
   while((m=reItem.exec(mB[1]))!==null){ const v=m[2]==='✅'?1:m[2]==='⚠️'?0.5:0; itens[m[1]]=v; ordem.push(v); }
 
-  // Itens sem ID numérico (ex: "Compromisso de envio de material pós-call: ✅") — casa pelo
-  // início do texto do critério, tolerando variações de redação depois do rótulo-base.
+  // Itens sem ID numérico (Regras Transversais da D9 — valem pra TODOS os tipos de entrega,
+  // não têm código numérico próprio). Casam pelo início do texto do critério, tolerando
+  // variações de redação depois do rótulo-base (a skill não fixa o rótulo exato).
   const semId = [
     { re:/Compromisso de envio[^\n:]*:\s*(✅|⚠️|❌)/i, id:'compromisso_envio_material' },
-    { re:/Feedback solicitado[^\n:]*:\s*(✅|⚠️|❌)/i, id:'feedback_solicitado_fim_call' },
+    { re:/Feedback[^\n:]*:\s*(✅|⚠️|❌)/i, id:'feedback_solicitado_fim_call' },
+    { re:/(?:Pessoas[-\s]?chave|Decisor(?:es)?[-\s]?(?:chave)?)[^\n:]*:\s*(✅|⚠️|❌)/i, id:'pessoas_chave_decisores' },
   ];
   semId.forEach(({re, id}) => {
     const mm = mB[1].match(re);
