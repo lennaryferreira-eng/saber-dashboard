@@ -1522,7 +1522,7 @@
 
 <!-- ───────── MODAL: Puxar reuniões do Drive (Auditoria de Entregas) ───────── -->
 <div class="modal-overlay" id="modal-drive-fila" onclick="if(event.target===this)audFecharModalDrive()">
-  <div class="modal-box" id="modal-drive-box" style="max-width:820px;max-height:88vh;overflow-y:auto;" role="dialog" aria-modal="true" aria-labelledby="drive-fila-title">
+  <div class="modal-box" id="modal-drive-box" style="max-width:min(1180px,95vw);max-height:88vh;overflow-y:auto;" role="dialog" aria-modal="true" aria-labelledby="drive-fila-title">
     <div class="modal-header">
       <span class="modal-title" id="drive-fila-title">Puxar reuniões do Drive</span>
       <button class="modal-close" onclick="audFecharModalDrive()" title="Fechar"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
@@ -11209,7 +11209,7 @@ function audRenderCalendarioDrive(files){
   const diaISO=d=>d.toISOString().slice(0,10);
   const porDia={}; dias.forEach(d=>{ porDia[diaISO(d)]=[]; });
   files.forEach((f,i)=>{ const k=(f.modificadoEm||'').slice(0,10); if(porDia[k]) porDia[k].push(i); else if(porDia[diaISO(dias[0])]) porDia[diaISO(dias[0])].push(i); });
-  if(!files.length){ lista.innerHTML='<div style="font-size:var(--fs-base);color:var(--text-hint);padding:8px 0;">Nenhuma reunião nessa semana.</div>'; lista.dataset.files='[]'; return; }
+  if(!files.length){ lista.innerHTML='<div style="font-size:var(--fs-base);color:var(--text-hint);padding:8px 0;">Nenhuma reunião com transcrição pronta nessa semana (só aparece aqui o que o Meet já anexou ao evento).</div>'; lista.dataset.files='[]'; return; }
   const optCons=(sel)=>'<option value="">Consultor…</option>'+audConsultores().map(c=>'<option '+(c===sel?'selected':'')+'>'+c+'</option>').join('');
   const optTipo=(sel)=>'<option value="">Tipo…</option>'+AUD_TIPOS.map(t=>'<option '+(t===sel?'selected':'')+'>'+t+'</option>').join('');
   const clienteDatalist='<datalist id="aud-drive-cliente-list">'+audClientes().map(c=>'<option value="'+c.replace(/"/g,'&quot;')+'">').join('')+'</datalist>';
@@ -11217,7 +11217,7 @@ function audRenderCalendarioDrive(files){
     const f=files[i];
     const hora=f.modificadoEm && f.modificadoEm.length>10 ? new Date(f.modificadoEm).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
     const consultorSugerido=audConsultores().find(c=>(f.donoNome||'').toLowerCase().includes(c.toLowerCase())) || '';
-    return '<label style="display:block;padding:8px;border:1px solid var(--border);border-radius:var(--r-sm);cursor:pointer;margin-bottom:6px;background:var(--surface);">'
+    return '<label style="display:block;padding:6px;border:1px solid var(--border);border-radius:var(--r-sm);cursor:pointer;margin-bottom:5px;background:var(--surface);min-width:0;">'
       + '<div style="display:flex;gap:6px;align-items:flex-start;">'
       + '<input type="checkbox" class="aud-drive-check" data-idx="'+i+'" style="margin-top:2px;">'
       + '<div style="flex:1;min-width:0;">'
@@ -11231,7 +11231,10 @@ function audRenderCalendarioDrive(files){
       + '</div></label>';
   };
   const diaNomes=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
-  lista.innerHTML=clienteDatalist+'<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;min-width:900px;">'
+  // minmax(0,1fr) (não "1fr" sozinho) é o que garante encolher até caber sem scroll
+  // horizontal — sem o minmax(0,...), colunas de grid nunca ficam menores que o conteúdo
+  // mínimo (ex.: um <select> "largo"), e isso força a barra de rolagem lateral no modal.
+  lista.innerHTML=clienteDatalist+'<div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;width:100%;">'
     + dias.map((d,di)=>{
         const idxs=porDia[diaISO(d)]||[];
         return '<div><div style="font-size:9px;font-weight:700;color:var(--text-hint);text-align:center;margin-bottom:6px;text-transform:uppercase;">'+diaNomes[di]+' '+d.getDate()+'</div>'

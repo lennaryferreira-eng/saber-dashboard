@@ -3,6 +3,7 @@
 // no README), excluindo as que já têm avaliação salva (driveFileId já usado em `auditorias`).
 
 import { getAccessToken, listMeetingFiles } from '../_lib/google.js';
+import { ehReuniaoInterna } from '../_lib/meeting-filters.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -21,35 +22,9 @@ export default async function handler(req, res) {
     const files = await listMeetingFiles({ accessToken, sinceISO, folderId: scopeFolderId });
     const excluir = new Set(Array.isArray(excludeIds) ? excludeIds : []);
 
-    // Só reuniões com cliente (entrega, kick-off, plano de decolagem, proposta, etc.) — sem
-    // padrão fixo de nome (cada consultor nomeia do seu jeito), então em vez de exigir uma
-    // palavra específica (o que só pegava quem usava aquele termo exato e escondia por
-    // completo as reuniões de outros consultores) a lista exclui os padrões que são sempre
-    // reunião interna ou título genérico sem informação nenhuma. Prefere mostrar ruído demais
-    // (o ADM ignora/pula na hora de montar a fila) a esconder reunião de cliente de verdade.
-    const PADROES_INTERNOS = [
-      /daily growthunters/i,
-      /comit[eê]/i,
-      /all hands/i,
-      /\bweekly\b/i,
-      /^\s*\[cancelado\]/i,
-      /^\s*reuni[aã]o iniciada [aà]s/i, // título automático do Meet sem evento de calendário — sem nenhuma informação
-      /^\s*anota[cç][oõ]es feitas presencialmente/i, // idem — genérico, sem cliente identificável
-      /treinamentos?\s*\|/i, // "Treinamentos | TF&Co: ..." — formato fixo de treinamento interno
-      /treinamento.*para consultores/i,
-      /treinamento.*copy por ia/i,
-      /guaravita/i, // cliente Guaravita não entra nessa fila — pedido explícito
-      /viton\s?44/i, // idem — outro nome usado pra Guaravita/Viton 44
-      /check[\s-]?in/i, // reunião de check-in (qualquer cliente) não entra nessa fila — pedido explícito
-      /alinhamento/i, // qualquer alinhamento (interno ou não) não entra nessa fila — pedido explícito
-      /\b1[:\-]1\b/i, // 1:1
-      /nrr day/i,
-    ];
-    const ehInterna = (nome) => PADROES_INTERNOS.some((re) => re.test(nome || ''));
-
     const pendentes = files
       .filter((f) => !excluir.has(f.id))
-      .filter((f) => !ehInterna(f.name))
+      .filter((f) => !ehReuniaoInterna(f.name))
       .map((f) => ({
         id: f.id,
         nome: f.name,

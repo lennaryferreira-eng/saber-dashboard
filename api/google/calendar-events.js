@@ -4,6 +4,7 @@
 
 import { getAccessToken, listCalendarEvents } from '../_lib/google.js';
 import { getGoogleConnection } from '../_lib/supabase.js';
+import { ehReuniaoInterna } from '../_lib/meeting-filters.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -44,7 +45,13 @@ export default async function handler(req, res) {
           driveFileId: anexoDoc ? anexoDoc.fileId : null,
           hangoutLink: ev.hangoutLink || null,
         };
-      });
+      })
+      // Só reuniões que já têm a transcrição anexada pelo Meet — a agenda de uma pessoa tem
+      // muito evento pessoal/rotina misturado (ex.: "Leitura", "Ritual+Banho"), então mostrar
+      // só o que já está pronto pra auditar evita ruído. Mesmo filtro de "reunião interna" da
+      // conta compartilhada (Daily/Comitê/Weekly/Alinhamento/Check-in/etc.) por cima.
+      .filter((ev) => !!ev.driveFileId)
+      .filter((ev) => !ehReuniaoInterna(ev.summary));
 
     res.status(200).json({ events });
   } catch (err) {
