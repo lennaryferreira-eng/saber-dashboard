@@ -1531,11 +1531,7 @@
       <div id="modal-drive-selecao">
         <div id="aud-fila-concluida-msg" style="display:none;font-size:var(--fs-md);color:var(--green);font-weight:600;padding:8px 0;"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border);">
-          <div style="display:inline-flex;border:1px solid var(--border);border-radius:20px;overflow:hidden;">
-            <button type="button" id="drive-fonte-btn-compartilhada" class="btn" style="border:none;border-radius:0;" onclick="audTrocarFonteDrive('compartilhada')">Conta compartilhada</button>
-            <button type="button" id="drive-fonte-btn-pessoa" class="btn" style="border:none;border-radius:0;" onclick="audTrocarFonteDrive('pessoa')">Pessoa conectada</button>
-          </div>
-          <select id="drive-cal-pessoa" class="aud-inp" style="display:none;font-size:var(--fs-base);padding:5px 8px;" onchange="audTrocarPessoaDrive(this.value)">
+          <select id="drive-cal-pessoa" class="aud-inp" style="font-size:var(--fs-base);padding:5px 8px;" onchange="audTrocarPessoaDrive(this.value)">
             <option value="">Selecione a pessoa…</option>
           </select>
           <div id="drive-cal-controles" style="display:none;align-items:center;gap:8px;">
@@ -10891,8 +10887,7 @@ let audFilaDriveFileIdAtual = null; // driveFileId do item da fila em revisão a
 let audFilaNosOriginais = null; // guarda onde #aud-fila-progresso e #aud-review viviam na página, pra devolver quando a fila fecha o popup
 
 // ── Fila do Drive por pessoa (login novo) — Agenda + Drive de quem já conectou ──
-let audDriveFonte = 'compartilhada'; // 'compartilhada' (conta única, comportamento de sempre) | 'pessoa'
-let audDriveView = 'lista'; // 'lista' | 'calendario' — só usado quando fonte==='pessoa'
+let audDriveView = 'lista'; // 'lista' | 'calendario'
 let audDrivePessoaEmail = ''; // e-mail da pessoa selecionada (fonte==='pessoa')
 let audDrivePessoas = {}; // {email: nome} — roster de quem já conectou, carregado uma vez por abertura do modal
 let audDriveSemanaOffset = 0; // 0 = semana atual
@@ -11058,24 +11053,19 @@ async function audGerarComClaude(){
 }
 
 // ── FILA DO DRIVE (ADM) ──
-// Abre o modal, busca no Drive as transcrições dos últimos 30 dias que ainda não têm
-// avaliação salva (driveFileId já usado em `auditorias` é excluído no próprio servidor).
-// O servidor já filtra fora o ruído/tipos que não interessam pra essa fila (Daily/Comitê/
-// All Hands/Weekly/Alinhamento/1:1/NRR Day/Check-in/Guaravita-Viton44/títulos genéricos do
-// Meet/treinamento interno) — não dá pra exigir uma palavra fixa tipo "entrega" no nome
-// porque cada consultor nomeia do seu jeito, então a lista prefere mostrar alguma reunião
-// interna a mais (o ADM ignora/pula) a esconder reunião de cliente de outro consultor.
-// A "conta de origem" (dono do arquivo no Drive) aparece em cada item pra diferenciar
-// gravações repetidas puxadas de contas diferentes.
+// Abre o modal, carrega o roster de quem já conectou Agenda+Drive (login novo) e espera a
+// pessoa ser escolhida — puxar reunião é sempre a partir da Agenda de alguém conectado, sem
+// conta compartilhada nem seleção de "fonte".
 async function audAbrirModalDrive(){
   const mod=document.getElementById('modal-drive-fila'); if(mod) mod.style.display='flex';
   const selecao=document.getElementById('modal-drive-selecao'); if(selecao) selecao.style.display='block';
   const proc=document.getElementById('modal-drive-processando'); if(proc) proc.style.display='none';
   const concluidaMsg=document.getElementById('aud-fila-concluida-msg'); if(concluidaMsg) concluidaMsg.style.display='none';
-  audDriveFonte='compartilhada'; audDriveView='lista'; audDrivePessoaEmail=''; audDriveSemanaOffset=0;
-  audAtualizarFonteDriveUI();
-  audCarregarPessoasConectadas(); // roda em paralelo, não precisa esperar pra mostrar a lista compartilhada
-  audCarregarListaCompartilhada();
+  audDriveView='lista'; audDrivePessoaEmail=''; audDriveSemanaOffset=0;
+  audAtualizarDriveUI();
+  const lista=document.getElementById('aud-drive-lista');
+  if(lista) lista.innerHTML='<div style="font-size:var(--fs-base);color:var(--text-hint);padding:8px 0;">Selecione uma pessoa conectada acima.</div>';
+  audCarregarPessoasConectadas();
 }
 
 // Lista de quem já conectou (login novo) — alimenta o <select> de pessoa. Nomes vêm de
@@ -11095,35 +11085,9 @@ async function audCarregarPessoasConectadas(){
   }
 }
 
-function audCarregarListaCompartilhada(){
-  const lista=document.getElementById('aud-drive-lista');
-  const erro=document.getElementById('aud-drive-erro');
-  if(erro){erro.style.display='none';erro.textContent='';}
-  if(lista) lista.innerHTML='<div style="font-size:var(--fs-base);color:var(--text-hint);padding:8px 0;">Buscando transcrições recentes…</div>';
-  const excludeIds=auditorias.map(a=>a.driveFileId).filter(Boolean);
-  fetch('/api/google/list-meetings',{
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({excludeIds, days:30})
-  }).then(async response=>{
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok) throw new Error(data.error || ('A API retornou um erro ('+response.status+')'));
-    audRenderListaDrive(data.files||[]);
-  }).catch(err=>{
-    if(lista) lista.innerHTML='';
-    if(erro){erro.textContent='Não consegui buscar as reuniões do Drive: '+err.message;erro.style.display='block';}
-  });
-}
-
-function audAtualizarFonteDriveUI(){
-  const btnCompart=document.getElementById('drive-fonte-btn-compartilhada');
-  const btnPessoa=document.getElementById('drive-fonte-btn-pessoa');
-  const selPessoa=document.getElementById('drive-cal-pessoa');
+function audAtualizarDriveUI(){
   const controles=document.getElementById('drive-cal-controles');
-  const ehPessoa=audDriveFonte==='pessoa';
-  if(btnCompart){ btnCompart.style.background=ehPessoa?'var(--surface2)':'var(--accent)'; btnCompart.style.color=ehPessoa?'var(--text-muted)':'#fff'; }
-  if(btnPessoa){ btnPessoa.style.background=ehPessoa?'var(--accent)':'var(--surface2)'; btnPessoa.style.color=ehPessoa?'#fff':'var(--text-muted)'; }
-  if(selPessoa) selPessoa.style.display=ehPessoa?'inline-block':'none';
-  if(controles) controles.style.display=(ehPessoa && audDrivePessoaEmail)?'inline-flex':'none';
+  if(controles) controles.style.display=audDrivePessoaEmail?'inline-flex':'none';
   const btnLista=document.getElementById('drive-view-btn-lista');
   const btnCal=document.getElementById('drive-view-btn-calendario');
   const ehCal=audDriveView==='calendario';
@@ -11133,30 +11097,24 @@ function audAtualizarFonteDriveUI(){
   if(label){ const {inicio,fim}=getWeekBounds(audDriveSemanaOffset); const f=d=>d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}); label.textContent=f(inicio)+'–'+f(fim); }
 }
 
-function audTrocarFonteDrive(fonte){
-  audDriveFonte=fonte;
-  audAtualizarFonteDriveUI();
-  if(fonte==='compartilhada') audCarregarListaCompartilhada();
-  else if(audDrivePessoaEmail) audCarregarEventosPessoa();
+function audTrocarPessoaDrive(email){
+  audDrivePessoaEmail=email;
+  audDriveSemanaOffset=0;
+  audAtualizarDriveUI();
+  if(email) audCarregarEventosPessoa();
   else {
     const lista=document.getElementById('aud-drive-lista');
     if(lista) lista.innerHTML='<div style="font-size:var(--fs-base);color:var(--text-hint);padding:8px 0;">Selecione uma pessoa conectada acima.</div>';
   }
 }
-function audTrocarPessoaDrive(email){
-  audDrivePessoaEmail=email;
-  audDriveSemanaOffset=0;
-  audAtualizarFonteDriveUI();
-  if(email) audCarregarEventosPessoa();
-}
 function audTrocarViewDrive(view){
   audDriveView=view;
-  audAtualizarFonteDriveUI();
+  audAtualizarDriveUI();
   if(audDrivePessoaEmail) audCarregarEventosPessoa();
 }
 function audNavSemanaDrive(dir){
   audDriveSemanaOffset+=dir;
-  audAtualizarFonteDriveUI();
+  audAtualizarDriveUI();
   if(audDrivePessoaEmail) audCarregarEventosPessoa();
 }
 
