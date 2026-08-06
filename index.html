@@ -10693,48 +10693,63 @@ const AUD_GRUPOS = {
 };
 const AUD_TIPOS = ['Kickoff','Pesquisa de Mercado','Análise de Ambientes','Diagnóstico de Vendas','Diagnóstico de Mídia Paga','Apresentação Final','Reunião de Negociação','Outra'];
 
+// Espelha, item por item, o apêndice de critérios técnicos da D9 em
+// api/_lib/meeting-eval-skill.js — mantido sincronizado manualmente. Se a skill mudar,
+// atualize aqui também (mesmos IDs, mesma ordem), senão os itens voltam a aparecer com "—".
+const AUD_TRANSVERSAIS = {bloco:'Regras transversais (toda entrega)',items:[
+  {id:'feedback_solicitado_fim_call',label:'Feedback pedido ao cliente ao final da call'},
+  {id:'pessoas_chave_decisores',label:'Pessoas-chave/decisores presentes (quando se aplica)'},
+]};
 const AUD_D9_SKILLS = {
-  'Análise de Ambientes': [
-    {bloco:'Redes sociais',items:[{id:'1.1',label:'Bio otimizada (foto, nome, descrição, link/WhatsApp)'},{id:'1.2',label:'Destaques organizados e relevantes'},{id:'1.3',label:'Posts fixados estratégicos'},{id:'1.4',label:'Benchmarking visual de pelo menos 3 concorrentes'},{id:'1.5',label:'Consistência de identidade visual avaliada'}]},
-    {bloco:'Biblioteca de anúncios',items:[{id:'2.1',label:'Mapeamento de concorrentes na biblioteca de anúncios (nº de anúncios ativos)'},{id:'2.2',label:'Filtro de anúncios ativos há 3+ meses aplicado'},{id:'2.3',label:'Decomposição de estrutura (formato, gancho, ângulo de procedência/qualidade)'},{id:'2.4',label:'Anúncios organizados por objetivo de funil'}]},
-    {bloco:'Landing page — conversão',items:[{id:'3.1',label:'Primeira dobra avaliada (headline, CTA)'},{id:'3.2',label:'Prova social presente e avaliada'},{id:'3.3',label:'Objeções do ICP endereçadas na página'},{id:'3.4',label:'Fugas de conversão identificadas'}]},
-    {bloco:'Landing page — usabilidade',items:[{id:'4.1',label:'Teste mobile real realizado'},{id:'4.2',label:'Hierarquia visual avaliada'},{id:'4.3',label:'Sinais de confiança presentes'}]},
-    {bloco:'Performance',items:[{id:'5.1',label:'Ofensores visuais de performance identificados'}]},
-    {bloco:'Plano de ação',items:[{id:'6.1',label:'Decisão entre otimizar site atual ou criar nova landing page'},{id:'6.2',label:'Plano de ação em 5W2H com prazos e responsáveis'},{id:'6.3',label:'Wireframe apresentado (se a decisão foi nova LP)'}]},
-    {bloco:'Qualidade da apresentação',items:[{id:'7.1',label:'Cliente entendeu o plano sem perguntar "como faço isso?"'},{id:'7.2',label:'Cliente validou o plano ao final'}]},
-    {bloco:'Encerramento',items:[{id:'compromisso_envio_material',label:'Compromisso de envio de material assumido'},{id:'feedback_solicitado_fim_call',label:'Feedback solicitado ao final da call'}]},
-  ],
   'Kickoff': [
-    {bloco:'Entendimento do negócio',items:[{id:'1.1',label:'Modelo de negócio mapeado (como vende, para quem, ticket médio)'},{id:'1.2',label:'Histórico de marketing entendido (o que funcionou e o que não)'},{id:'1.3',label:'Dores e gargalos atuais identificados'}]},
-    {bloco:'Dados e acessos',items:[{id:'2.1',label:'Compromisso do cliente para envio dos acessos necessários'},{id:'2.2',label:'Decisores e pessoas-chave identificados'}]},
-    {bloco:'Cobertura das entregas futuras',items:[{id:'3.1',label:'Insumos para Pesquisa de Mercado'},{id:'3.2',label:'Insumos para Diagnóstico de Mídia Paga'},{id:'3.3',label:'Insumos para Diagnóstico de Criativos'},{id:'3.4',label:'Insumos para Diagnóstico de Vendas'}]},
-    {bloco:'Clareza do produto',items:[{id:'4.1',label:'Cliente sabe onde está no processo e o que vem a seguir'}]},
+    {bloco:'Entendimento do negócio',items:[{id:'1.1',label:'Modelo de negócio mapeado (como vende, para quem, ticket)'},{id:'1.2',label:'Histórico de marketing entendido (o que já fez, o que funcionou)'},{id:'1.3',label:'Dores e gargalos atuais identificados'}]},
+    {bloco:'Dados e acessos',items:[{id:'2.1',label:'Compromisso de envio dos acessos'},{id:'2.2',label:'Decisores/pessoas-chave das próximas entregas identificados'}]},
+    {bloco:'Insumos para as próximas entregas',items:[{id:'3.1',label:'Insumos para Pesquisa de Mercado (mercado, concorrentes, público)'},{id:'3.2',label:'Insumos para Mídia Paga (histórico, verba, objetivos, resultados)'},{id:'3.3',label:'Insumos para Criativos (identidade, tom de voz, referências)'},{id:'3.4',label:'Insumos para Vendas (processo, funil, objeções, time)'}]},
+    {bloco:'Clareza do próximo passo',items:[{id:'4.1',label:'Próximos passos contextualizados — cliente sabe o que vem'}]},
+    AUD_TRANSVERSAIS,
   ],
   'Pesquisa de Mercado': [
-    {bloco:'Sizing de mercado',items:[{id:'1.1',label:'TAM/SAM/SOM apresentado com valores monetários'},{id:'1.2',label:'Fontes dos dados citadas (mínimo 3)'},{id:'1.3',label:'Números coerentes com o porte e capacidade do cliente'},{id:'1.4',label:'Estudo disponibilizado ao cliente para leitura posterior'}]},
-    {bloco:'Estudo de concorrentes',items:[{id:'2.1',label:'3 a 5 concorrentes principais mapeados'},{id:'2.2',label:'Tabela comparativa com Proposta de Valor, Diferenciais e Fraquezas'},{id:'2.3',label:'Oportunidade clara de diferenciação identificada'}]},
-    {bloco:'Persona (B2C)',items:[{id:'3A.1',label:'Persona com nome, dados demográficos e perfil psicográfico'},{id:'3A.2',label:'Motivos de contratação e desistência (emocional e racional)'},{id:'3A.3',label:'Lista de objeções de compra mapeada'}]},
-    {bloco:'ICP + Comitê de Compra (B2B)',items:[{id:'3B.1',label:'ICP com filtros claros (setor, tamanho, localização, dor)'},{id:'3B.2',label:'Comitê de compra mapeado (quem decide, influencia, usa)'},{id:'3B.3',label:'Motivos de contratação e desistência com viés B2B'}]},
-    {bloco:'Jobs To Be Done',items:[{id:'4.1',label:'3 a 5 Jobs na estrutura correta (Quando X, quero Y, para Z)'},{id:'4.2',label:'Jobs cobrem aspectos funcionais E emocionais'},{id:'4.3',label:'Jobs específicos do cliente — não genéricos'}]},
-    {bloco:'Qualidade da apresentação',items:[{id:'5.1',label:'Insights não óbvios — visão externa'},{id:'5.2',label:'Cliente saiu entendendo o mercado e reconhecendo o público'}]},
-  ],
-  'Diagnóstico de Vendas': [
-    {bloco:'Diagnóstico consultivo',items:[{id:'1B.1',label:'Vazamentos de receita mapeados'},{id:'1B.2',label:'Estrutura comercial ideal apresentada para o porte'},{id:'1B.3',label:'Ponto de partida factível definido'},{id:'1B.4',label:'Cliente entendeu o custo da ausência de processo'}]},
-    {bloco:'Cliente Oculto',items:[{id:'2.1',label:'Teste em pelo menos 2 canais'},{id:'2.2',label:'Tempo de resposta registrado com evidência'},{id:'2.3',label:'Qualidade do atendimento avaliada com evidência'}]},
-    {bloco:'Plano de ação comercial',items:[{id:'3.1',label:'Pelo menos 3 ações corretivas de alto impacto'},{id:'3.2',label:'Correção ou implantação de CRM no plano'},{id:'3.3',label:'Ações factíveis para o porte e maturidade'},{id:'3.4',label:'5W2H com métricas de sucesso por ação'}]},
-    {bloco:'Qualidade da apresentação',items:[{id:'4.1',label:'Diagnóstico sem gerar defensiva'},{id:'4.2',label:'Cliente saiu sabendo o que mudar no comercial'}]},
+    {bloco:'Sizing de mercado (TAM/SAM/SOM)',items:[{id:'1.1',label:'TAM/SAM/SOM com valores monetários'},{id:'1.2',label:'Fontes citadas (mínimo 3)'},{id:'1.3',label:'Números coerentes com a realidade/capacidade do cliente'},{id:'1.4',label:'Cliente informado de que receberá o estudo'}]},
+    {bloco:'Concorrentes',items:[{id:'2.1',label:'3 a 5 concorrentes mapeados'},{id:'2.2',label:'Tabela comparativa (proposta de valor, diferenciais, fraquezas)'},{id:'2.3',label:'Oportunidade de diferenciação clara — não genérica'}]},
+    {bloco:'Persona (B2C)',items:[{id:'3A.1',label:'Persona com dados demográficos e psicográficos'},{id:'3A.2',label:'Motivos de contratação e desistência (emocional e racional)'},{id:'3A.3',label:'Objeções de compra mapeadas'}]},
+    {bloco:'ICP + Comitê de Compra (B2B)',items:[{id:'3B.1',label:'ICP com filtros claros (setor, tamanho, local, dor)'},{id:'3B.2',label:'Comitê de compra mapeado (decide, influencia, usa)'},{id:'3B.3',label:'Motivos de contratação/desistência com viés B2B'}]},
+    {bloco:'Jobs To Be Done',items:[{id:'4.1',label:'3 a 5 Jobs "Quando X, quero Y, para Z"'},{id:'4.2',label:'Jobs cobrem funcional E emocional'},{id:'4.3',label:'Jobs específicos do cliente — não genéricos'}]},
+    {bloco:'Qualidade da apresentação',items:[{id:'5.1',label:'Insights não óbvios — visão externa'},{id:'5.2',label:'Cliente saiu entendendo mercado e público'}]},
+    {bloco:'Encaminhamento prático',items:[{id:'6.1',label:'Achado conectado a uma ação concreta'},{id:'6.2',label:'Cliente saiu sabendo o próximo passo prático'}]},
+    AUD_TRANSVERSAIS,
   ],
   'Diagnóstico de Mídia Paga': [
-    {bloco:'Direcionamento consultivo',items:[{id:'1C.1',label:'Benchmarks de mercado apresentados'},{id:'1C.2',label:'Canal recomendado com justificativa clara'},{id:'1C.3',label:'Lógica explicada de forma compreensível'},{id:'1C.4',label:'Estrutura mínima recomendada para começar'}]},
-    {bloco:'Eficiência de investimentos',items:[{id:'2.2',label:'Gargalo principal do funil identificado com evidência'},{id:'2.3',label:'Recomendação clara de alocação de verba por canal'}]},
-    {bloco:'Plano de ação',items:[{id:'3.1',label:'Lista de recomendações táticas e estratégicas'},{id:'3.2',label:'5W2H com pelo menos 5 ações prioritárias'},{id:'3.3',label:'Ações com prazos e responsáveis'},{id:'3.4',label:'Ações específicas — sem genéricos'}]},
-    {bloco:'Qualidade da apresentação',items:[{id:'4.1',label:'Cliente entendeu o diagnóstico'},{id:'4.2',label:'Cliente validou ou aprovou o plano ao final'}]},
+    {bloco:'Meta Ads — acesso completo',items:[{id:'1A.1',label:'Diagnóstico Top Down (Campanha→Conjunto→Anúncio)'},{id:'1A.2',label:'Ofensores de ROI com evidência (gasto alto + CPA alto)'},{id:'1A.3',label:'Oportunidades de escala (CPA baixo + verba limitada)'},{id:'1A.4',label:'Correlações não óbvias (CPM/saturação/frequência)'}]},
+    {bloco:'Google Ads — acesso completo',items:[{id:'1B.1',label:'Estratégia de lance validada por maturidade'},{id:'1B.2',label:'Palavras-chave sanguessugas (alto custo, zero conversão)'},{id:'1B.3',label:'Estrutura de grupos avaliada (SKAG/Hagakure)'},{id:'1B.4',label:'Se conversão <1%, problema de landing page apontado'}]},
+    {bloco:'Acesso comprometido',items:[{id:'1X.1',label:'Problema de acesso mapeado e explicado ao cliente'},{id:'1X.2',label:'Solução concreta para recuperar acesso'},{id:'1X.3',label:'Conduziu consultivo com o que tinha — não encerrou'}]},
+    {bloco:'Canal inexistente',items:[{id:'1C.1',label:'Benchmarks de mercado apresentados'},{id:'1C.2',label:'Canal recomendado com justificativa (Google=intenção, Meta=atenção)'},{id:'1C.3',label:'Lógica explicada — cliente entende por onde começar'},{id:'1C.4',label:'Estrutura mínima recomendada (objetivo, público, verba)'}]},
+    {bloco:'Comparativo entre canais',items:[{id:'2.1',label:'Comparativo de ROI/CPA entre canais'},{id:'2.2',label:'Gargalo principal do funil com evidência'},{id:'2.3',label:'Recomendação de realocação de verba'}]},
+    {bloco:'Plano de ação',items:[{id:'3.1',label:'Lista de recomendações táticas e estratégicas'},{id:'3.2',label:'5W2H com pelo menos 5 ações prioritárias'},{id:'3.3',label:'Ações com prazos e responsáveis'},{id:'3.4',label:'Ações específicas — sem "melhorar o site"'}]},
+    {bloco:'Qualidade da apresentação',items:[{id:'4.1',label:'Cliente entendeu o diagnóstico sem perguntar "como?"'},{id:'4.2',label:'Cliente validou/aprovou o plano ao final'}]},
+    AUD_TRANSVERSAIS,
+  ],
+  'Diagnóstico de Vendas': [
+    {bloco:'Processo estruturado',items:[{id:'1A.1',label:'Gargalos do funil com evidência quantitativa'},{id:'1A.2',label:'Vícios técnicos do time mapeados (ex: preço antes de valor)'},{id:'1A.3',label:'Higiene do CRM (ex: leads sem próximo passo)'},{id:'1A.4',label:'Acessou gravações de calls ou histórico de WhatsApp'}]},
+    {bloco:'Sem processo estruturado',items:[{id:'1B.1',label:'Vazamentos de receita mapeados com o disponível'},{id:'1B.2',label:'Estrutura comercial ideal para o porte do cliente'},{id:'1B.3',label:'Ponto de partida factível — não complexo demais'},{id:'1B.4',label:'Cliente entendeu por que a ausência de processo custa receita'}]},
+    {bloco:'Resistência do cliente',items:[{id:'1C.1',label:'Resistência identificada e nomeada'},{id:'1C.2',label:'Conduziu com o que tinha, sem paralisar'},{id:'1C.3',label:'Alternativas propostas (formulário, acesso parcial, entrevista)'}]},
+    {bloco:'Cliente Oculto',items:[{id:'2.1',label:'Cliente oculto em 2+ canais (N/A se perfil não justifica)'},{id:'2.2',label:'Tempo de resposta registrado com evidência'},{id:'2.3',label:'Qualidade do atendimento/persuasão avaliada com evidência'}]},
+    {bloco:'Plano de ação comercial',items:[{id:'3.1',label:'Pelo menos 3 ações corretivas de alto impacto'},{id:'3.2',label:'Correção ou implantação de CRM (funil, motivos de perda)'},{id:'3.3',label:'Ações factíveis para o tamanho/maturidade do time'},{id:'3.4',label:'5W2H com métricas de sucesso por ação'}]},
+    {bloco:'Qualidade da apresentação',items:[{id:'4.1',label:'Diagnóstico sem gerar defensiva (ajuda, não auditoria punitiva)'},{id:'4.2',label:'Cliente saiu sabendo o que mudar no comercial'}]},
+    AUD_TRANSVERSAIS,
+  ],
+  'Análise de Ambientes': [
+    {bloco:'Ambientes digitais e identidade visual',items:[{id:'1.1',label:'Análise de perfil/redes sociais (bio, destaques, feed, consistência)'},{id:'1.2',label:'Identidade visual auditada (cores, tipografia, padronização)'},{id:'1.3',label:'Tom de voz e linguagem avaliados frente ao público'},{id:'1.4',label:'Benchmarking de anúncios de concorrentes (transparência Meta/Google)'},{id:'1.5',label:'Diagnóstico de site/LP — copy'},{id:'1.6',label:'Diagnóstico de site/LP — design e usabilidade'},{id:'1.7',label:'Diagnóstico de site/LP — CRO (conversão, CTAs, jornada)'}]},
+    {bloco:'Diagnóstico',items:[{id:'2.1',label:'Gargalos de ambiente/comunicação identificados com evidência'},{id:'2.2',label:'Referências/benchmarks visuais trazidos — não só opinião'},{id:'2.3',label:'Alinhamento entre ambiente/criativo e objetivo de negócio explicitado'},{id:'2.4',label:'Recomendações concretas — não "deixar mais bonito"'}]},
+    {bloco:'Qualidade da apresentação',items:[{id:'3.1',label:'Cliente entendeu os apontamentos sem defensiva'},{id:'3.2',label:'Cliente saiu sabendo o que ajustar nos ambientes'}]},
+    {bloco:'Plano de ação',items:[{id:'6.1',label:'Plano de ação de ambientes — achado conectado a ação'},{id:'6.2',label:'Cliente saiu sabendo o próximo passo prático'}]},
+    AUD_TRANSVERSAIS,
   ],
   'Apresentação Final': [
-    {bloco:'Escopo contratual',items:[{id:'1.1',label:'3 criativos para anúncio finalizados'},{id:'1.2',label:'Landing Page (wireframe) com copy real'},{id:'1.3',label:'Manual de copy entregue'},{id:'1.4',label:'Manual de Identidade Visual (MIV) entregue'},{id:'1.5',label:'Plano de ação detalhado apresentado'},{id:'1.6',label:'Forecast 3 meses com cenários'}]},
-    {bloco:'Análises consolidadas',items:[{id:'2.1',label:'Auditoria de mídia paga referenciada'},{id:'2.2',label:'Diagnóstico de criativos referenciado'},{id:'2.3',label:'Diagnóstico de canais digitais referenciado'},{id:'2.4',label:'Processo comercial referenciado'},{id:'2.5',label:'Estudo competitivo referenciado'}]},
-    {bloco:'Qualidade do plano estratégico',items:[{id:'3.1',label:'Mapa estratégico: onde estava → descobertas → para onde vai'},{id:'3.2',label:'Plano cobre os 5 pilares'},{id:'3.3',label:'Plano alinhado à maturidade e orçamento real'},{id:'3.4',label:'Gargalo principal identificado e priorizado'}]},
-    {bloco:'Qualidade da apresentação final',items:[{id:'4.1',label:'Todos os decisores presentes'},{id:'4.2',label:'Forecast validado pelo cliente'},{id:'4.3',label:'Cliente sabe o que será feito na próxima semana'},{id:'4.4',label:'Go Live (data de início) definido'},{id:'4.5',label:'Pasta com arquivos enviada ou comprometida'},{id:'4.6',label:'NPS enviado ao cliente — OBRIGATÓRIO'}]},
+    {bloco:'Escopo contratual (CRÍTICO)',items:[{id:'1.1',label:'3 criativos de anúncio finalizados, sem erro, em mockups'},{id:'1.2',label:'1 Landing Page (wireframe) com copy real — desktop e mobile'},{id:'1.3',label:'1 Manual de copy entregue'},{id:'1.4',label:'1 Manual de Identidade Visual (MIV) entregue'},{id:'1.5',label:'1 plano de ação detalhado apresentado'},{id:'1.6',label:'1 forecast de 3 meses com cenários e premissas'}]},
+    {bloco:'Análises consolidadas referenciadas',items:[{id:'2.1',label:'Auditoria de mídia paga referenciada com achados'},{id:'2.2',label:'Diagnóstico de criativos referenciado'},{id:'2.3',label:'Diagnóstico de canais/CRO referenciado'},{id:'2.4',label:'Diagnóstico de processo comercial referenciado'},{id:'2.5',label:'Estudo competitivo (4Ps, SWOT, concorrentes) referenciado'}]},
+    {bloco:'Qualidade do plano estratégico',items:[{id:'3.1',label:'Mapa estratégico (onde estava→descobertas→para onde vai)'},{id:'3.2',label:'Plano cobre os 5 pilares (aquisição, engajamento, monetização, retenção, conteúdo)'},{id:'3.3',label:'Plano alinhado à maturidade e orçamento real'},{id:'3.4',label:'Gargalo principal identificado e priorizado'}]},
+    {bloco:'Fechamento e validação',items:[{id:'4.1',label:'Todos os decisores presentes'},{id:'4.2',label:'Forecast validado pelo cliente — sem objeção bloqueante'},{id:'4.3',label:'Cliente saiu sabendo o que será feito na próxima semana'},{id:'4.4',label:'Data de início das campanhas (Go Live) definida'},{id:'4.5',label:'Pasta com arquivos enviada ou comprometida com prazo'},{id:'4.6',label:'NPS/pesquisa de satisfação enviado na call (CRÍTICO)'}]},
+    AUD_TRANSVERSAIS,
   ],
 };
 
