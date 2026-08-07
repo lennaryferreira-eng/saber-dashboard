@@ -2937,6 +2937,9 @@ function calcFlagAutomatica(p) {
     const e = ent[ordem[i]] || ent[String(ordem[i])];
     if (e && e.score !== undefined && e.score !== '' && !isNaN(parseFloat(e.score))) { scoreRecente = parseFloat(e.score); break; }
   }
+  // Nota crítica (<55) vira Vermelho automático, mesmo com o prazo em dia — uma entrega
+  // muito ruim não pode ficar mascarada de Amarelo só porque saiu na data certa.
+  if (scoreRecente !== null && scoreRecente < 55) return 'Vermelho';
   const scoreOk = scoreRecente !== null && scoreRecente >= 70;
   const prazoOk = prazoStatus(p).ok === true;
   const atingidos = (scoreOk ? 1 : 0) + (prazoOk ? 1 : 0);
