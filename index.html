@@ -58,49 +58,14 @@
   </div>
 </header>
 
-<div class="coord-switch">
-  <button id="coord-btn-saber" class="coord-btn active" onclick="switchCoord('saber')">Coordenação SABER</button>
-  <button id="coord-btn-ter" class="coord-btn" onclick="switchCoord('ter')">Coordenação TER</button>
-</div>
-
-<nav>
-  <div class="nav-inner">
-  <div class="nav-group">
-    <div class="nav-group-label g-geral">Geral</div>
-    <div class="nav-group-tabs">
-      <button class="nav-tab" onclick="show('visao')">Visão Geral</button>
-      <button class="nav-tab tab-base" onclick="show('base')">Base de Projetos</button>
-    </div>
+<div class="app-shell">
+<aside class="sidebar">
+  <div class="sidebar-coord">
+    <button id="coord-btn-saber" class="coord-btn active" onclick="switchCoord('saber')" title="Coordenação SABER">SABER</button>
+    <button id="coord-btn-ter" class="coord-btn" onclick="switchCoord('ter')" title="Coordenação TER">TER</button>
   </div>
-  <div class="nav-sep"></div>
-  <div class="nav-group">
-    <div class="nav-group-label g-okrs">OKRs</div>
-    <div class="nav-group-tabs">
-      <button class="nav-tab" onclick="show('conversao')">Tx. Conversão</button>
-      <button class="nav-tab" onclick="show('prazo')">Projetos no Prazo</button>
-      <button class="nav-tab" onclick="show('csp')">Taxa CSP</button>
-      <button class="nav-tab" onclick="show('nps')">NPS</button>
-      <button class="nav-tab" onclick="show('pdi')">PDI do Time</button>
-      <button class="nav-tab" onclick="show('aql')">AQL</button>
-    </div>
-  </div>
-  <div class="nav-sep"></div>
-  <div class="nav-group">
-    <div class="nav-group-label g-gestao">Gestão</div>
-    <div class="nav-group-tabs">
-      <button class="nav-tab ter-ok" id="nav-btn-leadtime" onclick="show('leadtime')">Lead Time</button>
-      <button class="nav-tab ter-only" style="display:none;" onclick="show('recorrentes')">Escopos Recorrentes</button>
-      <button class="nav-tab" onclick="show('dro')">DRO/DRX</button>
-      <button class="nav-tab" onclick="show('pipeline')">Pipeline</button>
-      <button class="nav-tab" onclick="show('monetizacao')">Monetização</button>
-      <button class="nav-tab ter-ok" onclick="show('capacity')">Capacity</button>
-      <button class="nav-tab" onclick="show('performance')">Performance</button>
-      <button class="nav-tab" onclick="show('auditoria')">Auditoria de Entregas</button>
-      <button class="nav-tab" id="nav-tab-cultura" onclick="show('cultura')">Termômetro Cultural</button>
-    </div>
-  </div>
-  </div>
-</nav>
+  <nav class="sidebar-nav" id="sidebar-nav"></nav>
+</aside>
 
 <main>
 
@@ -1409,9 +1374,10 @@
     </div>
   </section>
 </main>
+</div>
 
 
-  
+
 </main>
 
 <!-- ───────── MODAL: Nova Monetização (Passo 2) ───────── -->
@@ -2418,7 +2384,54 @@ const ICONS = {
   refresh:'<path d="M13 8a5 5 0 10-1.6 3.7"/><path d="M13 4v4h-4"/>',
   undo:'<path d="M3 8a5 5 0 119 3.5"/><path d="M3 12V8h4"/>',
   cornerLeft:'<path d="M6 3L2 7l4 4"/><path d="M2 7h7a4 4 0 014 4v2"/>',
+  coin:'<circle cx="8" cy="8" r="6.5"/><path d="M8 4.5v7M6 6.2c0-.9.9-1.5 2-1.5s2 .5 2 1.3-1 1-2 1.2-2 .4-2 1.3.9 1.3 2 1.3 2-.6 2-1.5"/>',
 };
+// Sidebar de navegação (substitui a barra de abas horizontal) — ícone + nome por extenso
+// em cada item. Mantém as mesmas classes/ids que updateCoordUI()/updatePerfilNavVisibility()
+// já dependem (ter-ok/ter-only/tab-base, #nav-btn-leadtime, #nav-tab-cultura) — só muda o
+// container visual, não o contrato que o resto do app usa pra ligar/desligar itens.
+const SIDEBAR_NAV = [
+  { group: 'geral', label: 'Geral', items: [
+    { id: 'visao', label: 'Visão Geral', icon: 'chart' },
+    { id: 'base', label: 'Base de Projetos', icon: 'clipboard', extraClass: 'tab-base' },
+  ] },
+  { group: 'okrs', label: 'OKRs', items: [
+    { id: 'conversao', label: 'Tx. Conversão', icon: 'zap' },
+    { id: 'prazo', label: 'Projetos no Prazo', icon: 'clock' },
+    { id: 'csp', label: 'Taxa CSP', icon: 'warning' },
+    { id: 'nps', label: 'NPS', icon: 'star' },
+    { id: 'pdi', label: 'PDI do Time', icon: 'medal' },
+    { id: 'aql', label: 'AQL', icon: 'search' },
+  ] },
+  { group: 'gestao', label: 'Gestão', items: [
+    { id: 'leadtime', label: 'Lead Time', icon: 'calendar', extraClass: 'ter-ok', elId: 'nav-btn-leadtime' },
+    { id: 'recorrentes', label: 'Escopos Recorrentes', icon: 'link', extraClass: 'ter-only', hiddenByDefault: true },
+    { id: 'dro', label: 'DRO/DRX', icon: 'refresh' },
+    { id: 'pipeline', label: 'Pipeline', icon: 'arrowUp' },
+    { id: 'monetizacao', label: 'Monetização', icon: 'coin' },
+    { id: 'capacity', label: 'Capacity', icon: 'users', extraClass: 'ter-ok' },
+    { id: 'performance', label: 'Performance', icon: 'trophy' },
+    { id: 'auditoria', label: 'Auditoria de Entregas', icon: 'eye' },
+    { id: 'cultura', label: 'Termômetro Cultural', icon: 'sparkle', elId: 'nav-tab-cultura' },
+  ] },
+];
+function renderSidebarNav() {
+  const nav = document.getElementById('sidebar-nav');
+  if (!nav) return;
+  nav.innerHTML = SIDEBAR_NAV.map((g, gi) => '<div class="nav-group">'
+    + '<div class="nav-group-label g-' + g.group + '">' + g.label + '</div>'
+    + '<div class="nav-group-tabs">'
+    + g.items.map((it, ii) => '<button class="nav-tab sidebar-link'
+        + (it.extraClass ? ' ' + it.extraClass : '')
+        + (gi === 0 && ii === 0 ? ' active' : '') + '"'
+        + (it.elId ? ' id="' + it.elId + '"' : '')
+        + (it.hiddenByDefault ? ' style="display:none;"' : '')
+        + ' onclick="show(\'' + it.id + '\')">'
+        + icon(it.icon) + '<span class="sidebar-link-label">' + it.label + '</span></button>').join('')
+    + '</div></div>').join('');
+}
+renderSidebarNav();
+
 function icon(name, opts) {
   opts = opts || {};
   const size = opts.size || 14;
@@ -11962,9 +11975,13 @@ function updateCoordUI() {
     btn.style.display = (currentCoord === 'ter') ? '' : 'none';
   });
   // "Lead Time" vira "Escopos One-time" na TER (mesmo botão, rótulo diferente por coordenação)
+  // — troca só o texto do label interno, não o botão inteiro (senão apaga o ícone SVG).
   const btnLT = document.getElementById('nav-btn-leadtime');
-  if (btnLT) btnLT.textContent = (currentCoord === 'ter') ? 'Escopos One-time' : 'Lead Time';
-  document.querySelectorAll('.nav-sep').forEach(s => { s.style.display = (currentCoord === 'ter') ? 'none' : ''; });
+  if (btnLT) {
+    const lbl = btnLT.querySelector('.sidebar-link-label');
+    const texto = (currentCoord === 'ter') ? 'Escopos One-time' : 'Lead Time';
+    if (lbl) lbl.textContent = texto; else btnLT.textContent = texto;
+  }
 }
 
 async function switchCoord(coord) {
