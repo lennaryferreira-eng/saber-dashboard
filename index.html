@@ -2927,10 +2927,14 @@ function calcFlagAutomatica(p) {
     const segundaSemanaAnterior = addDays(segundaDaSemana(hojeISO), -7);
     if (referencia < segundaSemanaAnterior) return 'Vermelho';
   }
-  // score mais recente registrado (da etapa mais avançada com nota)
+  // Score mais recente registrado — percorre na ordem CRONOLÓGICA real (ordemCompleta), não
+  // por índice fixo 6→0. As etapas do meio (2-5) podem acontecer fora da ordem numérica (ex:
+  // a 3 entregue depois da 4 e da 5), então andar por índice pega uma nota antiga e ignora
+  // uma mais recente com índice menor — foi exatamente isso que mascarou o caso do projeto
+  // "Weber Manezes" (nota 79 de uma entrega de 17/07 escondendo a nota 54 de 28/07).
   let scoreRecente = null;
-  for (let i = 6; i >= 0; i--) {
-    const e = ent[i] || ent[String(i)];
+  for (let i = ordem.length - 1; i >= 0; i--) {
+    const e = ent[ordem[i]] || ent[String(ordem[i])];
     if (e && e.score !== undefined && e.score !== '' && !isNaN(parseFloat(e.score))) { scoreRecente = parseFloat(e.score); break; }
   }
   const scoreOk = scoreRecente !== null && scoreRecente >= 70;
