@@ -66,9 +66,21 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:13
 header{padding:2rem 3rem 1.75rem;border-bottom:2px solid var(--accent);display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:1rem;background:var(--surface);}
 .eyebrow{font-size:10px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);}
 .title{font-family:var(--serif);font-size:clamp(24px,4vw,36px);color:var(--text);line-height:1.05;margin:4px 0;}
-.subtitle{font-size:12px;color:var(--text-hint);font-weight:300;}
-.qbadge{background:var(--accent-dim);border:1px solid rgba(196,82,26,.25);color:var(--accent);font-size:11px;font-weight:500;padding:4px 12px;border-radius:20px;}
-#last-upd{font-size:11px;color:var(--text-hint);display:block;margin-top:4px;text-align:right;}
+/* Ações do header, versão "limpa" (sem pill/borda) — só o botão de conta (#perfil-btn,
+   continua .btn) segue com peso de botão, porque aí vira um indicador de estado
+   (logado/deslogado), não uma ação. */
+.header-icon-btn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border:none;background:none;border-radius:50%;color:var(--text-hint);cursor:pointer;transition:background var(--transition-fast),color var(--transition-fast);}
+.header-icon-btn:hover{background:var(--surface2);color:var(--text);}
+.header-text-btn{border:none;background:none;padding:4px 2px;font-family:var(--sans);font-size:var(--fs-sm);font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-hint);cursor:pointer;transition:color var(--transition-fast);}
+.header-text-btn:hover{color:var(--accent);}
+/* Menu "Dados" — consolida Planilha/Exportar/Importar/Backup num só dropdown. */
+.dados-menu{position:relative;display:inline-block;}
+.dados-menu.open .dados-menu-trigger{background:var(--surface2);color:var(--text);}
+.dados-menu-list{position:absolute;top:calc(100% + 6px);left:0;min-width:220px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-md);padding:6px;display:none;z-index:1000;}
+.dados-menu.open .dados-menu-list{display:block;}
+.dados-menu-item{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border:none;background:none;border-radius:var(--r-sm);font-family:var(--sans);font-size:var(--fs-md);color:var(--text);cursor:pointer;text-align:left;}
+.dados-menu-item:hover{background:var(--surface2);}
+.dados-menu-item svg{flex-shrink:0;color:var(--text-hint);}
 
 /* NAV — sidebar lateral fixa (substitui a antiga barra de abas horizontal + a faixa
    preta do coord-switch, que agora vive dentro da sidebar). */
