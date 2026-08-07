@@ -11423,14 +11423,15 @@ async function audFilaSalvarEstadoAgora(){
   const itens=(audFilaAtiva && audFilaAtiva.itens) || [];
   const payload={id:'main', itens:JSON.stringify(itens), updated_at:new Date().toISOString()};
   try{
-    let r=await fetch(SB_URL+'/rest/v1/aud_fila?id=eq.main', {
-      method:'PATCH', headers:{...SB_HEADERS, 'Prefer':'return=minimal'}, body:JSON.stringify(payload)
+    // Upsert de verdade (POST + Prefer: resolution=merge-duplicates) — testado direto contra
+    // o Supabase antes de subir. O padrão PATCH-e-se-404-tenta-POST (copiado de sbSave) NÃO
+    // funciona aqui: o PostgREST responde 204 (sucesso) num PATCH que não bateu com nenhuma
+    // linha, nunca 404 — então a linha 'main' nunca chegava a ser criada, e a fila sumia no F5.
+    await fetch(SB_URL+'/rest/v1/aud_fila', {
+      method:'POST',
+      headers:{...SB_HEADERS, 'Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify(payload)
     });
-    if(r.status===404 || r.status===406){
-      r=await fetch(SB_URL+'/rest/v1/aud_fila', {
-        method:'POST', headers:{...SB_HEADERS, 'Prefer':'return=minimal'}, body:JSON.stringify(payload)
-      });
-    }
   }catch(e){ console.warn('audFilaSalvarEstado falhou (sem internet?):', e); }
 }
 // Roda uma vez no carregamento da página — retoma uma fila que ficou pendente (ex: página
