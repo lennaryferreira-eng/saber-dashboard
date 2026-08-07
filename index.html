@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Coordenação SABER — Painel 2026</title>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;0,900;1,400&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;0,900;1,400&family=Barlow:wght@300;400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
@@ -40,7 +40,7 @@
 <header>
   <div>
     <div class="eyebrow">Painel de Indicadores</div>
-    <h1 class="title">Coordenação SABER</h1>
+    <h1 class="title">Painel Growth Hunters</h1>
   </div>
   <div style="text-align:right;">
     <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap;">
@@ -1670,6 +1670,7 @@
   <div class="modal-box" style="max-width:400px;" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-msg">
     <div class="modal-body">
       <div id="confirm-modal-msg" style="font-size:var(--fs-md);color:var(--text);line-height:1.5;white-space:pre-line;"></div>
+      <input type="text" id="confirm-modal-input" class="aud-inp" style="display:none;width:100%;margin-top:12px;box-sizing:border-box;" onkeydown="if(event.key==='Enter'){event.preventDefault();_confirmModalResponder(true);}">
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
         <button id="confirm-modal-cancel" class="btn btn-ghost" onclick="_confirmModalResponder(false)">Cancelar</button>
         <button id="confirm-modal-ok" class="btn btn-primary" onclick="_confirmModalResponder(true)">OK</button>
@@ -2486,10 +2487,15 @@ function showToast(msg, type) {
   }, 4000);
 }
 
-// Confirmação/alerta em modal — substitui confirm()/alert() nativos (Fase 6). Promise-based:
-// showConfirm resolve true/false; showAlert resolve depois do OK.
+// Confirmação/alerta/prompt em modal — substitui confirm()/alert()/prompt() nativos
+// (Fase 6 + Fase A). Promise-based: showConfirm resolve true/false; showAlert resolve
+// depois do OK; showPrompt resolve com o texto digitado (ou null se cancelado).
 let _confirmResolve = null;
+let _confirmModalMode = 'confirm'; // 'confirm' | 'prompt'
 function _abrirModalConfirm(msg, { confirmLabel, cancelLabel, showCancel }) {
+  _confirmModalMode = 'confirm';
+  const inputEl = document.getElementById('confirm-modal-input');
+  if (inputEl) inputEl.style.display = 'none';
   return new Promise((resolve) => {
     _confirmResolve = resolve;
     document.getElementById('confirm-modal-msg').textContent = msg;
@@ -2510,8 +2516,36 @@ function showConfirm(msg, opts) {
 function showAlert(msg, type) {
   return _abrirModalConfirm(msg, { confirmLabel: 'OK', showCancel: false }).then(() => {});
 }
+function showPrompt(msg, opts) {
+  opts = opts || {};
+  _confirmModalMode = 'prompt';
+  return new Promise((resolve) => {
+    _confirmResolve = resolve;
+    document.getElementById('confirm-modal-msg').textContent = msg;
+    const inputEl = document.getElementById('confirm-modal-input');
+    inputEl.style.display = '';
+    inputEl.value = opts.defaultValue || '';
+    inputEl.placeholder = opts.placeholder || '';
+    const okBtn = document.getElementById('confirm-modal-ok');
+    const cancelBtn = document.getElementById('confirm-modal-cancel');
+    okBtn.textContent = opts.confirmLabel || 'OK';
+    cancelBtn.style.display = '';
+    cancelBtn.textContent = opts.cancelLabel || 'Cancelar';
+    const modal = document.getElementById('modal-confirm');
+    modal.style.display = 'flex';
+    inputEl.focus();
+  });
+}
 function _confirmModalResponder(v) {
   document.getElementById('modal-confirm').style.display = 'none';
+  if (_confirmModalMode === 'prompt') {
+    const inputEl = document.getElementById('confirm-modal-input');
+    const result = v ? (inputEl.value || '').trim() : null;
+    inputEl.style.display = 'none';
+    _confirmModalMode = 'confirm';
+    if (_confirmResolve) { const r = _confirmResolve; _confirmResolve = null; r(result); }
+    return;
+  }
   if (_confirmResolve) { const r = _confirmResolve; _confirmResolve = null; r(v); }
 }
 
@@ -5046,9 +5080,7 @@ function renderBase() {
         >${p.outrosEscopos||''}</div>
       </td>
       <td>
-        <button onclick="removeProject(${p.id})"
-          style="background:none;border:1px solid var(--border);border-radius:var(--r-sm);color:var(--red);cursor:pointer;padding:3px 8px;font-size:var(--fs-sm);"
-          onmouseover="this.style.background='var(--red-dim)'" onmouseout="this.style.background='none'">${icon('x')}</button>
+        <button class="icon-remove-btn" onclick="removeProject(${p.id})">${icon('x')}</button>
       </td>`;
     tbody.appendChild(tr);
   });
@@ -5349,7 +5381,7 @@ function showPerfCelebration(top) {
     + '<div style="font-family:var(--cond);font-size:2.7rem;font-weight:900;color:#fff;margin-top:10px;text-shadow:0 0 30px ' + cor + ';animation:perfNamePop .5s ease .18s both;letter-spacing:.02em;">' + nome + '</div>'
     + '<div style="font-size:var(--fs-base);font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:' + cor + ';margin-top:2px;margin-bottom:18px;animation:perfNamePop .5s ease .26s both;">'+icon('trophy')+' Top Performer do mês</div>'
     + '<div style="display:flex;flex-direction:column;gap:8px;align-items:stretch;">' + kpiRowsHTML + '</div>'
-    + '<button onclick="closePerfCelebration()" title="Fechar" style="position:absolute;top:-14px;right:-14px;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.35);color:#fff;font-size:15px;line-height:1;cursor:pointer;pointer-events:auto;display:flex;align-items:center;justify-content:center;transition:background .15s;" onmouseover="this.style.background=\'rgba(255,255,255,.32)\'" onmouseout="this.style.background=\'rgba(255,255,255,.15)\'">'+icon('x',{size:16})+'</button>'
+    + '<button class="celebration-close-btn" onclick="closePerfCelebration()" title="Fechar">'+icon('x',{size:16})+'</button>'
     + '</div>';
 
   // Sem fechamento automático — fica na tela até o usuário clicar no ✕ (closePerfCelebration).
@@ -5755,9 +5787,9 @@ function normalizePdi(obj) {
   return { rows: defaultPdiRows() };
 }
 // Trocou o nome no seletor; "Outro…" abre prompt para digitar designer/profissional
-function pdiNomeChange(sel) {
+async function pdiNomeChange(sel) {
   if (sel.value === '__outro__') {
-    const nome = (prompt('Nome do profissional (designer, etc.):') || '').trim();
+    const nome = ((await showPrompt('Nome do profissional (designer, etc.):')) || '').trim();
     if (nome) {
       const outroOpt = sel.options[sel.options.length - 1];
       if (![...sel.options].some(o => o.value === nome)) sel.add(new Option(nome, nome), outroOpt);
@@ -9896,7 +9928,7 @@ function buildGantt() {
 
         // DRO tem barra contínua com estilo diferenciado
         const isDRO = isDroFam(p);
-        const barColor = isDRO ? 'var(--purple, #8E5BC4)' : semStatusColor;
+        const barColor = isDRO ? 'var(--dro, #8E5BC4)' : semStatusColor;
         const barStyle = isDRO ? 'background:' + barColor + ';left:' + leftPct + '%;right:' + rightPct + '%;display:flex;align-items:center;justify-content:center;overflow:visible;opacity:0.85;border:1px dashed rgba(255,255,255,0.4);' : 'background:' + semStatusColor + ';left:' + leftPct + '%;right:' + rightPct + '%;display:flex;align-items:center;justify-content:center;overflow:visible;';
         bar = '<div class="gantt-bar" style="' + barStyle + '">'
           + (isDRO ? '<span style="font-size:8px;font-weight:700;color:#fff;white-space:nowrap;padding:0 4px;line-height:1;letter-spacing:.5px;">'+p.modelo+'</span>' : '')

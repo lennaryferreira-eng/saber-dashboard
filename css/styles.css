@@ -48,7 +48,9 @@
   --terracotta:#C2410C; --terracotta-dim:rgba(194,65,12,.10);
   --cyan:#0284C7; --cyan-dim:rgba(2,132,199,.10);
   --r:8px; --r-sm:4px;
-  --sans:'Barlow Condensed','Barlow',system-ui,sans-serif;
+  /* Texto corrido em Inter (títulos/números continuam Barlow Condensed via --serif) —
+     decisão do redesign, já validada no espelho antes de vir pra produção. */
+  --sans:'Inter',system-ui,sans-serif;
   --serif:'Barlow Condensed',Georgia,serif;
 
   /* Escala tipográfica — substitui os 18+ valores soltos (12px/12.5px etc.) que existiam
@@ -395,6 +397,16 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
 .btn-danger{background:none;border-color:var(--red);color:var(--red);}
 .btn-danger:hover{background:var(--red-dim);}
 .btn:disabled{opacity:.55;cursor:not-allowed;}
+/* "+ Novo projeto"/"+ Nova monetização"/etc — mesmo tratamento visual de .btn.btn-primary,
+   classe própria só porque body.viewer já a esconde por seletor direto (ver mais abaixo). */
+.add-project-btn{font-family:var(--sans);font-size:var(--fs-sm);font-weight:600;padding:6px 16px;border-radius:20px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer;transition:background var(--transition-fast),border-color var(--transition-fast);display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
+.add-project-btn:hover{background:#B50016;border-color:#B50016;}
+/* Botão de remover linha (tabelas editáveis) — hover via CSS em vez de onmouseover/onmouseout inline. */
+.icon-remove-btn{background:none;border:1px solid var(--border);border-radius:var(--r-sm);color:var(--red);cursor:pointer;padding:3px 8px;font-size:var(--fs-sm);transition:background var(--transition-fast);}
+.icon-remove-btn:hover{background:var(--red-dim);}
+/* Botão de fechar da celebração de Performance (overlay escuro, fundo translúcido). */
+.celebration-close-btn{position:absolute;top:-14px;right:-14px;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.35);color:#fff;font-size:15px;line-height:1;cursor:pointer;pointer-events:auto;display:flex;align-items:center;justify-content:center;transition:background var(--transition-fast);}
+.celebration-close-btn:hover{background:rgba(255,255,255,.32);}
 
 /* Foco visível — só aparece pra navegação por teclado (:focus-visible), não em clique de
    mouse, então não muda a aparência de clique que já existe em nenhum lugar. */
