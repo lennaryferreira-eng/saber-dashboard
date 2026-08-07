@@ -137,6 +137,11 @@ main{max-width:1400px;margin:0;flex:1;min-width:0;padding:2.4rem 2.2rem 4.5rem;}
 /* CARD */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.7rem 1.8rem;margin-bottom:1.5rem;box-shadow:var(--shadow-sm);}
 .card-title{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-hint);margin-bottom:1.3rem;}
+/* TILE — sub-card leve pra grids densos (CSP mensal, Monetização, DRO): mesmo
+   background/border/raio repetidos como style="" solto em 5 lugares diferentes antes
+   disso existir. Não usa .card (padding grande demais pra grid denso) nem .mcard (implica
+   barra colorida de KPI, não faz sentido pra um cartão de input). */
+.tile{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:1rem;}
 
 /* METRIC GRID */
 .mgrid{display:grid;gap:14px;margin-bottom:1.4rem;}
@@ -169,6 +174,7 @@ main{max-width:1400px;margin:0;flex:1;min-width:0;padding:2.4rem 2.2rem 4.5rem;}
 .b-amber{background:var(--amber-dim);color:var(--amber);}
 .b-blue{background:var(--blue-dim);color:var(--blue);}
 .b-purple{background:var(--purple-dim);color:var(--purple);}
+.b-teal{background:var(--teal-dim);color:var(--teal);}
 .b-accent{background:var(--accent-dim);color:var(--accent);}
 .b-gray{background:var(--surface3);color:var(--text-muted);}
 
