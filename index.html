@@ -7468,7 +7468,7 @@ function buildOvGantt() {
   prjs.forEach(p => {
     const dIp = parseDate(p.inicio);
     if (!dIp) return;
-    const _dFrealP = p.realFim ? parseDate(p.realFim) : null;
+    const _dFrealP = fimRealEfetivo(p);
     let dFp;
     if (_dFrealP) {
       dFp = _dFrealP;
@@ -9373,6 +9373,16 @@ function buildCargaSemanal(prjsAll, semanasExt, campo, elId, titulo, rotuloColun
     + '</tbody></table></div></div>';
 }
 
+// Data de fim "real" efetiva de um projeto — usa realFim se preenchido, senão cai pra data
+// real da Decolagem (etapa 6). A Decolagem já entregue é o sinal de que o projeto terminou
+// de fato, mesmo que ninguém tenha preenchido o campo manual de fim — sem esse fallback, o
+// projeto fica marcado "atrasado" pra sempre no Gantt/Capacity só por causa desse campo vazio
+// (mesmo problema já corrigido em calcFlagAutomatica, só que aqui em 3 lugares duplicados).
+function fimRealEfetivo(p) {
+  if (p.realFim) return parseDate(p.realFim);
+  const e = p.entregas && (p.entregas[6] || p.entregas['6']);
+  return (e && e.real) ? parseDate(e.real) : null;
+}
 function buildGantt() {
   if (perfilRestringeNav(currentPerfil)) applyPerfilFilters();
   const consFilter     = document.getElementById('gantt-cons-filter')?.value || '';
@@ -9547,7 +9557,7 @@ function buildGantt() {
       const _dKickoffP = algumFiltroAtivo
         ? (function() { const d = semDataEtapa(p, 1); const dd = d ? parseDate(d) : null; return dd || dIp; })()
         : dIp;
-      const _dFrealP = p.realFim ? parseDate(p.realFim) : null;
+      const _dFrealP = fimRealEfetivo(p);
       // Se o projeto já concluiu de verdade (realFim preenchido), essa é a data que manda —
       // não estica até a previsão (prevFim), senão um projeto já finalizado continua contando.
       let dFp;
@@ -9663,7 +9673,7 @@ function buildGantt() {
   prjs.forEach(p => {
     const dIp = parseDate(p.inicio);
     if (!dIp) return;
-    const _dFrealP = p.realFim ? parseDate(p.realFim) : null;
+    const _dFrealP = fimRealEfetivo(p);
     // Mesma regra: se já concluiu de verdade, a data real manda — não estica até a previsão.
     let dFp;
     if (_dFrealP) {
@@ -9720,7 +9730,7 @@ function buildGantt() {
     // dF: se já concluiu de verdade (realFim), essa é a data que manda — não estica até a
     // previsão (prevFim). Senão, usa max(prevFim, decolagem calculada) pra garantir que a
     // barra chega até a Decolagem estimada.
-    const _dFreal = p.realFim ? parseDate(p.realFim) : null;
+    const _dFreal = fimRealEfetivo(p);
     let dF;
     if (_dFreal) {
       dF = _dFreal;
@@ -9739,7 +9749,7 @@ function buildGantt() {
       const isHoje = hoje >= s && hoje <= sEnd;
       const active   = dI <= sEnd && dF >= s;
       // semanas após dF mas dentro da janela (projeto atrasado ainda em andamento)
-      const overdue  = !active && dI <= sEnd && hoje >= s && !p.realFim && dF < s;
+      const overdue  = !active && dI <= sEnd && hoje >= s && !_dFreal && dF < s;
       let bar = '';
       if (active || overdue) {
         const leftPct  = dI > s    ? Math.round((dI - s)    / (7 * 864e5) * 100) : 0;
