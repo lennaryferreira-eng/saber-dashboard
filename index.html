@@ -669,13 +669,13 @@
     </div>
 
     <div class="field">
-      <label for="f-data">Data</label>
-      <input type="date" id="f-data">
+      <label class="aud-lbl" for="f-data">Data</label>
+      <input type="date" id="f-data" class="aud-inp">
     </div>
 
     <div class="field">
-      <label for="f-consultor">Consultor(a)</label>
-      <select id="f-consultor">
+      <label class="aud-lbl" for="f-consultor">Consultor(a)</label>
+      <select id="f-consultor" class="aud-inp">
         <option value="Squad geral">Squad geral</option>
         <option value="Alexandre">Alexandre</option>
         <option value="Caio">Caio</option>
@@ -691,15 +691,15 @@
         <option value="Garcês">Garcês</option>
         <option value="__outro__">Outro...</option>
       </select>
-      <input type="text" id="f-consultor-outro" placeholder="Nome" style="display:none;margin-top:8px;">
+      <input type="text" id="f-consultor-outro" class="aud-inp" placeholder="Nome" style="display:none;margin-top:8px;">
     </div>
 
     <div class="field">
-      <label for="f-descricao">Situação</label>
-      <textarea id="f-descricao" placeholder="Descreva o que aconteceu, com o máximo de contexto possível..."></textarea>
+      <label class="aud-lbl" for="f-descricao">Situação</label>
+      <textarea id="f-descricao" class="aud-inp" rows="5" style="resize:vertical;line-height:1.5;" placeholder="Descreva o que aconteceu, com o máximo de contexto possível..."></textarea>
     </div>
 
-    <button class="btn-primary" id="btn-registrar">
+    <button class="btn btn-primary" id="btn-registrar">
       <span class="spinner"></span>
       <span class="btn-label">Analisar sinal</span>
     </button>
@@ -730,7 +730,7 @@
       </div>
       <div style="display:flex;gap:10px;align-items:center;">
         <div class="period-select">
-          <select id="period-filter">
+          <select id="period-filter" class="sel">
             <option value="7">Últimos 7 dias</option>
             <option value="30" selected>Últimos 30 dias</option>
             <option value="90">Últimos 90 dias</option>
@@ -748,13 +748,13 @@
     <!-- FEED -->
     <div class="view active" id="view-feed">
       <div class="filters">
-        <select id="filter-consultor"><option value="">Todos os consultores</option></select>
-        <select id="filter-framework">
+        <select id="filter-consultor" class="sel"><option value="">Todos os consultores</option></select>
+        <select id="filter-framework" class="sel">
           <option value="">Todos os frameworks</option>
           <option value="GROWTH">G.R.O.W.T.H.</option>
           <option value="PIFE">PIFE</option>
         </select>
-        <select id="filter-tipo">
+        <select id="filter-tipo" class="sel">
           <option value="">Todos os tipos</option>
           <option value="alinhado">Alinhado</option>
           <option value="anti_padrao">Anti-padrão</option>
@@ -2043,16 +2043,16 @@ window.saveEdit = saveEdit;
 function editPanelHtml(sig){
   const dimOptions = (fw) => DIMENSOES[fw].map(d => `<option value="${d.code}" ${d.code===sig.dimensao?'selected':''}>${d.code} — ${d.label}</option>`).join('');
   return `<div class="edit-panel" data-edit-wrap="${sig.id}" style="display:none;">
-    <select data-edit-fw="${sig.id}" onchange="this.closest('.edit-panel').querySelector('[data-edit-dim]').innerHTML = window.__dimOptions(this.value, '${sig.id}')">
+    <select class="sel" data-edit-fw="${sig.id}" onchange="this.closest('.edit-panel').querySelector('[data-edit-dim]').innerHTML = window.__dimOptions(this.value, '${sig.id}')">
       <option value="GROWTH" ${sig.framework==='GROWTH'?'selected':''}>G.R.O.W.T.H.</option>
       <option value="PIFE" ${sig.framework==='PIFE'?'selected':''}>PIFE</option>
     </select>
-    <select data-edit-dim="${sig.id}">${dimOptions(sig.framework)}</select>
-    <select data-edit-tipo="${sig.id}">
+    <select class="sel" data-edit-dim="${sig.id}">${dimOptions(sig.framework)}</select>
+    <select class="sel" data-edit-tipo="${sig.id}">
       <option value="alinhado" ${sig.tipo==='alinhado'?'selected':''}>Alinhado</option>
       <option value="anti_padrao" ${sig.tipo==='anti_padrao'?'selected':''}>Anti-padrão</option>
     </select>
-    <select data-edit-grav="${sig.id}">
+    <select class="sel" data-edit-grav="${sig.id}">
       <option value="leve" ${sig.gravidade==='leve'?'selected':''}>Leve</option>
       <option value="moderada" ${(sig.gravidade==='moderada'||!sig.gravidade)?'selected':''}>Moderada</option>
       <option value="critica" ${sig.gravidade==='critica'?'selected':''}>Crítica</option>
