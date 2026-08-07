@@ -1157,7 +1157,7 @@
   <!-- Seção DRO no Capacity -->
   <div style="margin-top:2rem;">
     <div style="font-size:var(--fs-sm);font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);margin-bottom:12px;display:flex;align-items:center;gap:8px;">
-      <span style="width:10px;height:10px;border-radius:50%;background:#8E5BC4;display:inline-block;"></span>
+      <span style="width:10px;height:10px;border-radius:50%;background:var(--dro);display:inline-block;"></span>
       Projetos DRO/DRX
     </div>
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
@@ -4062,8 +4062,8 @@ function buildDRO(){
   });
   const kpi=(v,l,cor)=>`<div class="mcard" style="flex:1;min-width:110px;padding:10px 14px;"><div class="mval" style="color:${cor||'var(--text)'};">${v}</div><div class="mlabel">${l}</div></div>`;
   const resumo=`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;">
-    ${kpi(lista.filter(x=>x.modelo==='DRO').length,'Clientes DRO','var(--dro,#8E5BC4)')}
-    ${kpi(lista.filter(x=>x.modelo==='DRX').length,'Clientes DRX','var(--drx,#0d9488)')}
+    ${kpi(lista.filter(x=>x.modelo==='DRO').length,'Clientes DRO','var(--dro)')}
+    ${kpi(lista.filter(x=>x.modelo==='DRX').length,'Clientes DRX','var(--teal)')}
     ${kpi(comSemana,'Comitês/reuniões esta semana','var(--amber)')}
     ${kpi(comAtras,'Comitês atrasados', comAtras?'var(--red)':'var(--text)')}
     ${kpi(audTot,'Auditorias contratadas','var(--blue)')}
@@ -4091,19 +4091,19 @@ function buildDRO(){
       const cur = i===atualIdx;
       const sel = i===vi;
       const bg = done?'var(--green)': cur?'var(--surface)':'var(--surface)';
-      const bc = done?'var(--green)': cur?'var(--dro,#8E5BC4)':'var(--border)';
-      const col= done?'#fff': cur?'var(--dro,#8E5BC4)':'var(--text-hint)';
+      const bc = done?'var(--green)': cur?'var(--dro)':'var(--border)';
+      const col= done?'#fff': cur?'var(--dro)':'var(--text-hint)';
       const line = i<ciclos.length-1 ? `<div style="flex:1;height:2px;min-width:12px;background:${done?'var(--green)':'var(--border)'};"></div>` : '';
       return `<button type="button" onclick="droSetView(${p.id},${i})" title="Ver ciclo ${c.num}" style="font:inherit;text-align:inherit;padding:0;margin:0;background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:92px;cursor:pointer;">
         <div style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:var(--fs-base);font-weight:700;border:2px solid ${bc};background:${bg};color:${col};${sel?'box-shadow:0 0 0 3px rgba(142,91,196,.15);':''}">${done?'✓':c.num}</div>
-        <div style="font-size:9px;color:var(--text-hint);text-align:center;line-height:1.25;">Ciclo ${c.num}<br>${fmtBR(c.inicio)}–${fmtBR(droAddMonths(c.inicio,2))}<br><b style="color:${c.trava?'var(--dro,#8E5BC4)':'var(--text-hint)'};">${c.trava?droTravaLabel(c.trava).split(' ')[0]:'—'}</b></div>
+        <div style="font-size:9px;color:var(--text-hint);text-align:center;line-height:1.25;">Ciclo ${c.num}<br>${fmtBR(c.inicio)}–${fmtBR(droAddMonths(c.inicio,2))}<br><b style="color:${c.trava?'var(--dro)':'var(--text-hint)'};">${c.trava?droTravaLabel(c.trava).split(' ')[0]:'—'}</b></div>
       </button>${line?'<div style="display:flex;align-items:center;flex:0 0 auto;">'+line+'</div>':''}`;
     }).join('');
 
     // Cadeia de travas T7→T1
     const chain = DRO_TRAVAS.map(([k,n])=>{
       const gov = ciclo.trava===k;
-      return `<div style="flex:1;text-align:center;font-size:9px;font-weight:700;padding:4px 2px;border-radius:4px;background:${gov?'var(--dro,#8E5BC4)':'var(--surface3,#ecebe8)'};color:${gov?'#fff':'var(--text-hint)'};" title="${k} ${n}">${k}</div>`;
+      return `<div style="flex:1;text-align:center;font-size:9px;font-weight:700;padding:4px 2px;border-radius:4px;background:${gov?'var(--dro)':'var(--surface3,#ecebe8)'};color:${gov?'#fff':'var(--text-hint)'};" title="${k} ${n}">${k}</div>`;
     }).join('');
 
     // Ponteiro de semana
@@ -4139,7 +4139,7 @@ function buildDRO(){
       <div onclick="droToggleExpanded(${p.id})" role="button" tabindex="0" aria-expanded="${exp?'true':'false'}" onkeydown="droToggleExpandedKey(event,${p.id})"
         style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;cursor:pointer;${exp?'margin-bottom:12px;':''}">
         <div>
-          <div style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;"><span style="width:9px;height:9px;border-radius:50%;background:var(--dro,#8E5BC4);display:inline-block;"></span>${p.nome} <span class="badge" style="background:rgba(142,91,196,.14);color:var(--dro,#8E5BC4);font-size:var(--fs-xs);margin-top:0;">DRO</span></div>
+          <div style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;"><span style="width:9px;height:9px;border-radius:50%;background:var(--dro);display:inline-block;"></span>${p.nome} <span class="badge" style="background:var(--dro-dim);color:var(--dro);font-size:var(--fs-xs);margin-top:0;">DRO</span></div>
           <div style="font-size:var(--fs-base);color:var(--text-hint);margin-top:2px;">${p.consultor||'—'} · ${p.inicio||'?'} → ${p.prevFim||'?'} · ${ciclos.length} ciclos${p.gmv? ' · GMV '+BRL(p.gmv):''}</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;" onclick="event.stopPropagation()">
@@ -4163,7 +4163,7 @@ function buildDRO(){
         <div style="border:1px solid rgba(142,91,196,.25);border-radius:10px;padding:13px;background:linear-gradient(180deg,rgba(142,91,196,.05),transparent);">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
             <b style="font-size:var(--fs-md);">Ciclo ${ciclo.num} · ${fmtBR(ciclo.inicio)}–${fmtBR(droAddMonths(ciclo.inicio,2))}</b>
-            <span style="font-size:var(--fs-xs);font-weight:700;color:${sem>=1&&sem<=12?'var(--dro,#8E5BC4)':'var(--text-hint)'};">${semTxt}</span>
+            <span style="font-size:var(--fs-xs);font-weight:700;color:${sem>=1&&sem<=12?'var(--dro)':'var(--text-hint)'};">${semTxt}</span>
             <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
               <span style="font-size:var(--fs-xs);color:var(--text-hint);">Trava governante:</span>
               <select class="sel" style="font-size:var(--fs-sm);padding:2px 6px;" onchange="droSetTrava(${p.id},${vi},this.value)">
@@ -4180,7 +4180,7 @@ function buildDRO(){
           <input type="text" class="sel" style="width:100%;font-size:var(--fs-sm);padding:4px 8px;margin-bottom:10px;" placeholder="Foco / injeção do ciclo (ex.: explorar ao máximo antes de elevar)" value="${(ciclo.foco||'').replace(/"/g,'&quot;')}" onblur="droSetFoco(${p.id},${vi},this.value)">
 
           <!-- Ponteiro de semana -->
-          <div style="height:7px;border-radius:5px;background:var(--surface3,#ecebe8);overflow:hidden;"><div style="height:100%;width:${semPct}%;background:var(--dro,#8E5BC4);border-radius:5px;"></div></div>
+          <div style="height:7px;border-radius:5px;background:var(--surface3,#ecebe8);overflow:hidden;"><div style="height:100%;width:${semPct}%;background:var(--dro);border-radius:5px;"></div></div>
           <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-hint);margin-top:2px;"><span>Sem 1</span><span>Sem 12</span></div>
 
           <!-- 3 fases + 3 comitês -->
@@ -4253,8 +4253,8 @@ function drxCard(p, hoje){
 
   const chain = DRO_TRAVAS.map(([k,n])=>{
     const prim=dx.travaPrim===k; const sec=dx.travasSec.includes(k);
-    const bg = prim?'var(--drx,#0d9488)': sec?'rgba(13,148,136,.25)':'var(--surface3,#ecebe8)';
-    const co = prim?'#fff': sec?'var(--drx,#0d9488)':'var(--text-hint)';
+    const bg = prim?'var(--teal)': sec?'rgba(13,148,136,.25)':'var(--surface3,#ecebe8)';
+    const co = prim?'#fff': sec?'var(--teal)':'var(--text-hint)';
     return '<div style="flex:1;text-align:center;font-size:9px;font-weight:700;padding:4px 2px;border-radius:4px;background:'+bg+';color:'+co+';" title="'+k+' '+n+'">'+k+'</div>';
   }).join('');
 
@@ -4287,7 +4287,7 @@ function drxCard(p, hoje){
   return ''
   + '<div class="card" style="margin-bottom:1rem;">'
   +   '<div onclick="droToggleExpanded('+p.id+')" role="button" tabindex="0" aria-expanded="'+(exp?'true':'false')+'" onkeydown="droToggleExpandedKey(event,'+p.id+')" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;cursor:pointer;'+(exp?'margin-bottom:12px;':'')+'">'
-  +     '<div><div style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;"><span style="width:9px;height:9px;border-radius:50%;background:var(--drx,#0d9488);display:inline-block;"></span>'+p.nome+' <span class="badge" style="background:rgba(13,148,136,.14);color:var(--drx,#0d9488);font-size:var(--fs-xs);margin-top:0;">DR-X</span></div>'
+  +     '<div><div style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;"><span style="width:9px;height:9px;border-radius:50%;background:var(--teal);display:inline-block;"></span>'+p.nome+' <span class="badge" style="background:rgba(13,148,136,.14);color:var(--teal);font-size:var(--fs-xs);margin-top:0;">DR-X</span></div>'
   +     '<div style="font-size:var(--fs-base);color:var(--text-hint);margin-top:2px;">'+(p.consultor||'—')+' · '+(p.inicio||'?')+' → '+(p.prevFim||'?')+' · 6 semanas'+(p.gmv? ' · GMV '+BRL(p.gmv):'')+'</div></div>'
   +     '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;" onclick="event.stopPropagation()">'+flagHTML(calcFlagAutomatica(p))
   +       '<select class="sel" style="font-size:var(--fs-sm);padding:2px 6px;" onchange="const pr=projects.find(x=>String(x.id)===String('+p.id+'));pr.oport=this.value;upd();"><option value="" '+(!p.oport?'selected':'')+'>Sem oportunidade</option>'+oportSel('Mapeado (AQL)')+oportSel('Apresentar proposta (SQL)')+oportSel('Proposta apresentada (SAL)')+oportSel('Follow (COMMIT)')+'</select>'
@@ -4296,7 +4296,7 @@ function drxCard(p, hoje){
   +   '</div>'
   +   '<div style="display:'+(exp?'block':'none')+'">'
   +     '<div style="border:1px solid rgba(13,148,136,.25);border-radius:10px;padding:13px;background:linear-gradient(180deg,rgba(13,148,136,.05),transparent);">'
-  +       '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;"><b style="font-size:var(--fs-md);">Diagnóstico DR-X · 6 semanas</b><span style="font-size:var(--fs-xs);font-weight:700;color:'+(sem>=1&&sem<=6?'var(--drx,#0d9488)':'var(--text-hint)')+';">'+semTxt+'</span>'+(qw?'<span style="margin-left:auto;font-size:var(--fs-xs);font-weight:700;color:var(--drx,#0d9488);background:rgba(13,148,136,.1);padding:2px 8px;border-radius:20px;">'+icon('zap')+' Quick Win: '+qw+'</span>':'')+'</div>'
+  +       '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;"><b style="font-size:var(--fs-md);">Diagnóstico DR-X · 6 semanas</b><span style="font-size:var(--fs-xs);font-weight:700;color:'+(sem>=1&&sem<=6?'var(--teal)':'var(--text-hint)')+';">'+semTxt+'</span>'+(qw?'<span style="margin-left:auto;font-size:var(--fs-xs);font-weight:700;color:var(--teal);background:rgba(13,148,136,.1);padding:2px 8px;border-radius:20px;">'+icon('zap')+' Quick Win: '+qw+'</span>':'')+'</div>'
   +       '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;"><span style="font-size:var(--fs-xs);color:var(--text-hint);">Trava primária:</span>'
   +         '<select class="sel" style="font-size:var(--fs-sm);padding:2px 6px;" onchange="drxSetTravaPrim('+p.id+',this.value)"><option value="" '+(!dx.travaPrim?'selected':'')+'>— definir —</option>'+travaOpts(dx.travaPrim)+'</select>'
   +         '<span style="font-size:var(--fs-xs);color:var(--text-hint);">Secundárias:</span>'
@@ -4304,7 +4304,7 @@ function drxCard(p, hoje){
   +         '<select class="sel" style="font-size:var(--fs-sm);padding:2px 6px;" onchange="drxSetTravaSec('+p.id+',1,this.value)"><option value="" '+(!sec1?'selected':'')+'>—</option>'+travaOpts(sec1)+'</select>'
   +       '</div>'
   +       '<div style="display:flex;gap:3px;margin-bottom:8px;">'+chain+'</div>'
-  +       '<div style="height:7px;border-radius:5px;background:var(--surface3,#ecebe8);overflow:hidden;"><div style="height:100%;width:'+semPct+'%;background:var(--drx,#0d9488);border-radius:5px;"></div></div>'
+  +       '<div style="height:7px;border-radius:5px;background:var(--surface3,#ecebe8);overflow:hidden;"><div style="height:100%;width:'+semPct+'%;background:var(--teal);border-radius:5px;"></div></div>'
   +       '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-hint);margin-top:2px;"><span>Sem 1</span><span>Sem 6 · Decolagem</span></div>'
   +       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;margin-top:12px;">'+marcosHTML+'</div>'
   +     '</div>'
@@ -4556,7 +4556,7 @@ function buildGanttDRO(semanasExt) {
       : (parseDate(p.prevFim || p.realFim) || new Date(dI.getTime() + 270 * 864e5));
     const dot = dotColors[p.consultor] || 'var(--text-hint)';
     const nome = p.nome.length > 26 ? p.nome.slice(0,24) + '…' : p.nome;
-    const baseColor = isDrx ? '#0d9488' : '#8E5BC4';
+    const baseColor = isDrx ? 'var(--teal)' : 'var(--dro)';
     const badgeTxt  = isDrx ? 'DR-X' : 'DRO';
 
     // Eventos (marcos/comitês/auditorias) com data efetiva (real > prevista > agendada)
@@ -5363,7 +5363,7 @@ function showPerfCelebration(top) {
 
   overlay.innerHTML = confettiHTML
     + '<div style="text-align:center;position:relative;background:rgba(8,5,5,.78);border:1px solid rgba(255,255,255,.14);border-radius:26px;padding:30px 44px 34px;box-shadow:0 24px 70px rgba(0,0,0,.55);">'
-    + '<div style="color:#F59E0B;animation:perfCrownBounce .7s cubic-bezier(.34,1.56,.64,1);margin-bottom:-8px;">'+icon('crown',{size:52})+'</div>'
+    + '<div style="color:var(--gold);animation:perfCrownBounce .7s cubic-bezier(.34,1.56,.64,1);margin-bottom:-8px;">'+icon('crown',{size:52})+'</div>'
     + fotoHTML
     + '<div style="font-family:var(--cond);font-size:2.7rem;font-weight:900;color:#fff;margin-top:10px;text-shadow:0 0 30px ' + cor + ';animation:perfNamePop .5s ease .18s both;letter-spacing:.02em;">' + nome + '</div>'
     + '<div style="font-size:var(--fs-base);font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:' + cor + ';margin-top:2px;margin-bottom:18px;animation:perfNamePop .5s ease .26s both;">'+icon('trophy')+' Top Performer do mês</div>'
@@ -9453,7 +9453,7 @@ function buildCargaSemanal(prjsAll, semanasExt, campo, elId, titulo, rotuloColun
     return true;
   }
 
-  const CORES = ['var(--accent)','var(--blue)','var(--green)','var(--amber)','#8E5BC4'];
+  const CORES = ['var(--accent)','var(--blue)','var(--green)','var(--amber)','var(--dro)'];
 
   el.innerHTML = '<div style="margin-bottom:.6rem;">'
     + '<div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);margin-bottom:.5rem;">' + titulo + '</div>'
@@ -9915,7 +9915,7 @@ function buildGantt() {
 
         // DRO tem barra contínua com estilo diferenciado
         const isDRO = isDroFam(p);
-        const barColor = isDRO ? 'var(--dro, #8E5BC4)' : semStatusColor;
+        const barColor = isDRO ? 'var(--dro)' : semStatusColor;
         const barStyle = isDRO ? 'background:' + barColor + ';left:' + leftPct + '%;right:' + rightPct + '%;display:flex;align-items:center;justify-content:center;overflow:visible;opacity:0.85;border:1px dashed rgba(255,255,255,0.4);' : 'background:' + semStatusColor + ';left:' + leftPct + '%;right:' + rightPct + '%;display:flex;align-items:center;justify-content:center;overflow:visible;';
         bar = '<div class="gantt-bar" style="' + barStyle + '">'
           + (isDRO ? '<span style="font-size:8px;font-weight:700;color:#fff;white-space:nowrap;padding:0 4px;line-height:1;letter-spacing:.5px;">'+p.modelo+'</span>' : '')
@@ -10185,9 +10185,9 @@ function buildPerformance() {
     const rank   = rankMapParaExibir[idx];
     const isGold = rank === 1;
     const isSilv = rank === 2;
-    const borderColor = isGold ? '#F59E0B' : isSilv ? '#9CA3AF' : 'var(--border)';
+    const borderColor = isGold ? 'var(--gold)' : isSilv ? '#9CA3AF' : 'var(--border)';
     const borderWidth = (isGold || isSilv) ? '2px' : '1px';
-    const crown = isGold ? `<div style="text-align:center;color:#F59E0B;margin-bottom:-6px;margin-top:-4px;">${icon('crown',{size:20})}</div>` : '';
+    const crown = isGold ? `<div style="text-align:center;color:var(--gold);margin-bottom:-6px;margin-top:-4px;">${icon('crown',{size:20})}</div>` : '';
     const foto = perfFotos[c.nome] || localStorage.getItem('perf-foto-' + c.nome) || '';
 
     const scoreCor = c.pctMedio >= 80 ? 'var(--green)' : c.pctMedio >= 50 ? 'var(--amber)' : 'var(--red)';
@@ -10257,7 +10257,7 @@ function buildPerformance() {
         </label>
         <div>
           <div style="font-size:var(--fs-md);font-weight:700;">${c.nome}</div>
-          <div style="font-size:var(--fs-xs);color:var(--text-hint);">${isGold?'<span style="color:#F59E0B">'+icon('medal')+'</span> 1º lugar':isSilv?'<span style="color:#9CA3AF">'+icon('medal')+'</span> 2º lugar':rank+'º lugar'}</div>
+          <div style="font-size:var(--fs-xs);color:var(--text-hint);">${isGold?'<span style="color:var(--gold)">'+icon('medal')+'</span> 1º lugar':isSilv?'<span style="color:#9CA3AF">'+icon('medal')+'</span> 2º lugar':rank+'º lugar'}</div>
         </div>
       </div>
       ${scoreBar}
@@ -10536,7 +10536,7 @@ function perfSelecionaConsultor(nome) {
   // Sinalização DRO/DRX no card de prazo
   const droDrxRows = prjsDroDrx.map(p => {
     const isDrx = p.modelo === 'DRX';
-    const bc = isDrx ? '#0d9488' : '#8E5BC4';
+    const bc = isDrx ? 'var(--teal)' : 'var(--dro)';
     const bl = isDrx ? 'DR-X' : 'DRO';
     let info;
     if (isDrx) { const sm = drxSemana(p); info = sm===0 ? 'não iniciado' : sm>=7 ? 'encerrado' : ('Semana '+sm+'/6'); }
@@ -10547,12 +10547,12 @@ function perfSelecionaConsultor(nome) {
       + '<span style="font-size:var(--fs-xs);font-weight:700;padding:1px 7px;border-radius:10px;background:'+bc+'22;color:'+bc+';">'+bl+'</span>'
       + '<span style="font-size:var(--fs-sm);color:var(--text-hint);">em andamento · '+info+'</span></div>';
   }).join('');
-  const droDrxBadge = prjsDroDrx.length ? ' · <span style="color:#8E5BC4;font-weight:700;">+'+prjsDroDrx.length+' DRO/DRX</span>' : '';
-  const droDrxMini = prjsDroDrx.length ? '<div class="mcard" style="flex:1;padding:10px 14px;border-left:3px solid #8E5BC4;"><div class="mlabel">DRO/DRX ativos</div><div class="mval" style="color:#8E5BC4;">'+prjsDroDrx.length+'</div></div>' : '';
+  const droDrxBadge = prjsDroDrx.length ? ' · <span style="color:var(--dro);font-weight:700;">+'+prjsDroDrx.length+' DRO/DRX</span>' : '';
+  const droDrxMini = prjsDroDrx.length ? '<div class="mcard" style="flex:1;padding:10px 14px;border-left:3px solid var(--dro);"><div class="mlabel">DRO/DRX ativos</div><div class="mval" style="color:var(--dro);">'+prjsDroDrx.length+'</div></div>' : '';
   const droDrxBlock = prjsDroDrx.length ? '<div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--border);"><div style="font-size:var(--fs-sm);font-weight:700;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Também em andamento no período · DRO/DRX <span style="font-weight:400;text-transform:none;">(não contam na taxa de prazo)</span></div><div style="display:flex;flex-direction:column;gap:6px;">'+droDrxRows+'</div></div>' : '';
   document.getElementById('perf-prazo-badge').innerHTML = txPrazo !== null
     ? `<span style="color:${corPrazo};font-weight:700;">${txPrazo}% ${txPrazo>=80?'✓':'✗'} meta 80%</span>${droDrxBadge}`
-    : (prjsDroDrx.length ? `<span style="color:#8E5BC4;font-weight:700;">${prjsDroDrx.length} DRO/DRX em andamento</span>` : '—');
+    : (prjsDroDrx.length ? `<span style="color:var(--dro);font-weight:700;">${prjsDroDrx.length} DRO/DRX em andamento</span>` : '—');
   document.getElementById('perf-prazo-content').innerHTML = `
     <div style="display:flex;gap:12px;margin:12px 0;">
       <div class="mcard c-gray" style="flex:1;padding:10px 14px;"><div class="mlabel">Total</div><div class="mval">${pTotal}</div></div>

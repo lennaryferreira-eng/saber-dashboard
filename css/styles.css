@@ -47,6 +47,12 @@
   --olive:#65A30D; --olive-dim:rgba(101,163,13,.10);
   --terracotta:#C2410C; --terracotta-dim:rgba(194,65,12,.10);
   --cyan:#0284C7; --cyan-dim:rgba(2,132,199,.10);
+  /* --dro é um roxo diferente de --purple (não dá pra reaproveitar) — nasceu solto em hex
+     por todo o DRO/DRX antes de virar token. DRX reaproveita --teal: já é o mesmo valor. */
+  --dro:#8E5BC4; --dro-dim:rgba(142,91,196,.14);
+  /* Dourado da celebração de 1º lugar (Performance) — mais vibrante que --amber de propósito
+     (--amber foi escurecido pra WCAG de texto; aqui é um momento comemorativo, não aviso). */
+  --gold:#F59E0B; --gold-dim:rgba(245,158,11,.14);
   --r:8px; --r-sm:4px;
   /* Texto corrido em Inter (títulos/números continuam Barlow Condensed via --serif) —
      decisão do redesign, já validada no espelho antes de vir pra produção. */
