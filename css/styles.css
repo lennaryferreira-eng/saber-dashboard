@@ -180,6 +180,14 @@ main{max-width:1400px;margin:0;flex:1;min-width:0;padding:2.4rem 2.2rem 4.5rem;}
 .tbl-wrap{overflow-x:auto;}
 .tbl-wrap table{border-collapse:collapse;width:100%;}
 .tbl-wrap thead th{position:sticky;top:0;z-index:10;background:var(--surface2);box-shadow:0 1px 0 var(--border);}
+/* Igual a .tbl-wrap (overflow-x + header fixo), sem o sticky das duas primeiras colunas —
+   aquele é específico da Base de Projetos (tabela larga, precisa fixar Projeto/Modelo
+   rolando). Tabelas mais estreitas (Gantt de Visão Geral/Capacity, drill-down de
+   Performance) usam esta em vez de reaproveitar .tbl-wrap com um comportamento que não
+   fazia sentido pra elas. */
+.tbl-scroll{overflow-x:auto;}
+.tbl-scroll table{border-collapse:collapse;width:100%;}
+.tbl-scroll thead th{position:sticky;top:0;z-index:10;background:var(--surface2);box-shadow:0 1px 0 var(--border);}
 /* Lead Time usa overflow próprio */
 .lt-table thead th{position:sticky;top:0;z-index:20;background:var(--surface2);box-shadow:0 2px 0 var(--border);}
 /* Gantt usa overflow próprio */

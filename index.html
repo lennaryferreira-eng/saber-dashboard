@@ -416,7 +416,7 @@
     </div>
     <div id="ov-insights-semana" style="margin-bottom:1.2rem;"></div>
 
-    <div id="ov-gantt-wrap" style="overflow-x:auto;"></div>
+    <div id="ov-gantt-wrap" class="tbl-scroll"></div>
   </div>
 </section>
 
@@ -9348,7 +9348,7 @@ function buildCargaSemanal(prjsAll, semanasExt, campo, elId, titulo, rotuloColun
 
   el.innerHTML = '<div style="margin-bottom:.6rem;">'
     + '<div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);margin-bottom:.5rem;">' + titulo + '</div>'
-    + '<div style="overflow-x:auto;">'
+    + '<div class="tbl-scroll">'
     + '<table style="border-collapse:collapse;font-size:var(--fs-xs);min-width:100%;">'
     + '<thead><tr>'
     + '<th style="padding:4px 8px;text-align:left;background:var(--surface2);border-bottom:1px solid var(--border);position:sticky;left:0;z-index:2;min-width:80px;">' + rotuloColuna + '</th>'
@@ -10348,11 +10348,11 @@ function perfSelecionaConsultor(nome) {
     </tr>`).join('');
     const contentEl = document.getElementById('perf-scoreentrega-content');
     if (contentEl) contentEl.innerHTML = entregasDesigner.length
-      ? `<table style="width:100%;border-collapse:collapse;margin-top:8px;"><thead><tr>
+      ? `<div class="tbl-scroll"><table style="width:100%;border-collapse:collapse;margin-top:8px;"><thead><tr>
           <th style="text-align:left;padding:6px 8px;font-size:var(--fs-xs);color:var(--text-hint);text-transform:uppercase;">Projeto</th>
           <th style="text-align:left;padding:6px 8px;font-size:var(--fs-xs);color:var(--text-hint);text-transform:uppercase;">Data</th>
           <th style="text-align:left;padding:6px 8px;font-size:var(--fs-xs);color:var(--text-hint);text-transform:uppercase;">Nota</th>
-        </tr></thead><tbody>${rowsScore}</tbody></table>`
+        </tr></thead><tbody>${rowsScore}</tbody></table></div>`
       : '<div style="font-size:var(--fs-base);color:var(--text-hint);padding:12px 0;">Nenhuma entrega de Análise de Ambientes no período.</div>';
   }
 
@@ -10388,7 +10388,7 @@ function perfSelecionaConsultor(nome) {
       <div class="mcard c-${txConv>=40?'green':'red'}" style="flex:1;padding:10px 14px;">
         <div class="mlabel">Taxa</div><div class="mval">${txConv}%</div></div>
     </div>
-    <table style="width:100%;border-collapse:collapse;">
+    <div class="tbl-scroll"><table style="width:100%;border-collapse:collapse;">
       <thead><tr style="background:var(--surface2);">
         <th style="padding:6px 8px;font-size:var(--fs-xs);text-align:left;">Projeto</th>
         <th style="padding:6px 8px;font-size:var(--fs-xs);text-align:left;">Início</th>
@@ -10396,7 +10396,7 @@ function perfSelecionaConsultor(nome) {
         <th style="padding:6px 8px;font-size:var(--fs-xs);text-align:left;">Mês mon.</th>
       </tr></thead>
       <tbody>${convRows || '<tr><td colspan="4" style="padding:12px;text-align:center;color:var(--text-hint);font-size:var(--fs-base);">Nenhum projeto iniciado no período</td></tr>'}</tbody>
-    </table>`;
+    </table></div>`;
 
   // ── PRAZO ─────────────────────────────────────────────────
   let pTotal = 0, pOk = 0, prazoRows = '';
@@ -10449,7 +10449,7 @@ function perfSelecionaConsultor(nome) {
       <div class="mcard c-${txPrazo===null?'gray':txPrazo>=80?'green':'red'}" style="flex:1;padding:10px 14px;"><div class="mlabel">Taxa</div><div class="mval">${txPrazo !== null ? txPrazo+'%' : '—'}</div></div>
       ${droDrxMini}
     </div>
-    <table style="width:100%;border-collapse:collapse;">
+    <div class="tbl-scroll"><table style="width:100%;border-collapse:collapse;">
       <thead><tr style="background:var(--surface2);">
         <th style="padding:6px 8px;font-size:var(--fs-xs);text-align:left;">Projeto</th>
         <th style="padding:6px 8px;font-size:var(--fs-xs);text-align:left;">Início</th>
@@ -10457,7 +10457,7 @@ function perfSelecionaConsultor(nome) {
         <th style="padding:6px 8px;font-size:var(--fs-xs);text-align:left;">Status</th>
       </tr></thead>
       <tbody>${prazoRows || '<tr><td colspan="4" style="padding:12px;text-align:center;color:var(--text-hint);font-size:var(--fs-base);">Nenhum projeto no período</td></tr>'}</tbody>
-    </table>${droDrxBlock}`;
+    </table></div>${droDrxBlock}`;
 
   // ── NPS ───────────────────────────────────────────────────
   // Finalizados no período (filtra pelo realFim ou prevFim)
@@ -10512,7 +10512,7 @@ function perfSelecionaConsultor(nome) {
       <div class="mcard c-amber" style="flex:1;padding:10px 14px;"><div class="mlabel">Neutros</div><div class="mval">${neut}</div></div>
       <div class="mcard c-red" style="flex:1;padding:10px 14px;"><div class="mlabel">Detratores</div><div class="mval">${detr}</div></div>
     </div>
-    <table style="width:100%;border-collapse:collapse;">
+    <div class="tbl-scroll"><table style="width:100%;border-collapse:collapse;">
       <thead><tr style="background:var(--surface2);">
         <th style="padding:6px 8px;font-size:var(--fs-xs);text-align:left;">Projeto</th>
         <th style="padding:6px 8px;font-size:var(--fs-xs);text-align:left;">Data resposta</th>
@@ -10521,7 +10521,7 @@ function perfSelecionaConsultor(nome) {
         <th style="padding:6px 8px;font-size:var(--fs-xs);text-align:left;">Obs.</th>
       </tr></thead>
       <tbody>${npsRows || '<tr><td colspan="5" style="padding:12px;text-align:center;color:var(--text-hint);font-size:var(--fs-base);">Nenhuma resposta no período</td></tr>'}</tbody>
-    </table>`;
+    </table></div>`;
 
   // ── PDI ───────────────────────────────────────────────────
   const pdiRows2 = [...document.querySelectorAll('#pdi-tbody tr')];
@@ -10546,7 +10546,7 @@ function perfSelecionaConsultor(nome) {
         <div class="mcard c-${pct===null?'gray':pct>=80?'green':'red'}" style="flex:1;padding:10px 14px;"><div class="mlabel">PDI médio (fechamentos)</div><div class="mval">${pct !== null ? pct+'%' : '—'}</div></div>
         <div class="mcard c-purple" style="flex:1;padding:10px 14px;"><div class="mlabel">Meta</div><div class="mval">80%</div></div>
       </div>
-      <table style="width:100%;border-collapse:collapse;">
+      <div class="tbl-scroll"><table style="width:100%;border-collapse:collapse;">
         <thead><tr style="background:var(--surface2);">
           ${mesesCols.map(m => `<th style="padding:6px 8px;font-size:var(--fs-xs);text-align:center;">${m.label}</th>`).join('')}
         </tr></thead>
@@ -10557,7 +10557,7 @@ function perfSelecionaConsultor(nome) {
             return `<td style="padding:6px 8px;font-size:var(--fs-sm);text-align:center;font-weight:600;color:${cor};">${v === null ? '—' : v+'%'}</td>`;
           }).join('')}
         </tr></tbody>
-      </table>`;
+      </table></div>`;
     }
   } else {
     document.getElementById('perf-pdi-badge').innerHTML = '—';
