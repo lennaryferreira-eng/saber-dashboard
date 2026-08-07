@@ -61,6 +61,11 @@
 
   /* Escala tipográfica — substitui os 18+ valores soltos (12px/12.5px etc.) que existiam
      espalhados pelo arquivo antes do redesign. */
+  /* --fs-2xs/--fs-3xs cobrem os usos legítimos abaixo de --fs-xs (Gantt, DRO, Performance
+     — densos de propósito, não é engano usar fonte pequena ali). Dois tokens, não um só:
+     8px e 9px já conviviam lado a lado no app com propósitos distintos; forçar os dois pro
+     mesmo valor teria mudado tamanho de tela em dezenas de lugares sem necessidade. */
+  --fs-3xs:8px; --fs-2xs:9px;
   --fs-xs:10px; --fs-sm:11px; --fs-base:12px; --fs-md:13px; --fs-lg:14px;
   --fs-xl:16px; --fs-2xl:18px; --fs-3xl:20px; --fs-4xl:24px; --fs-5xl:28px; --fs-6xl:36px;
 

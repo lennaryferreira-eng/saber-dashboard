@@ -384,7 +384,7 @@
       <span><span style="color:var(--amber);font-size:var(--fs-base);"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="true"><path d="M3 14V2M3 3h9l-2 3 2 3H3"/></svg></span> Amarelo — bateu só 1 dos 2</span>
       <span><span style="color:var(--accent);font-size:var(--fs-base);"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="true"><path d="M3 14V2M3 3h9l-2 3 2 3H3"/></svg></span> Vermelho — nenhum dos 2, ou 8+ dias sem entrega</span>
       <span style="display:inline-flex;align-items:center;gap:5px;">
-        <span style="display:inline-flex;border-radius:4px;overflow:hidden;"><span style="background:var(--green);color:#fff;font-size:8px;font-weight:700;padding:2px 5px;">Etapa</span><span style="background:var(--amber);color:#fff;font-size:8px;font-weight:700;padding:2px 5px;">75</span></span>
+        <span style="display:inline-flex;border-radius:var(--r-sm);overflow:hidden;"><span style="background:var(--green);color:#fff;font-size:var(--fs-3xs);font-weight:700;padding:2px 5px;">Etapa</span><span style="background:var(--amber);color:#fff;font-size:var(--fs-3xs);font-weight:700;padding:2px 5px;">75</span></span>
         = prazo (esq.) + score (dir.)
       </span>
       <span>Sem preenchimento = estimativa, ainda não entregue</span>
@@ -1290,7 +1290,7 @@
             <input id="np-inicio" type="date" class="sel" style="width:100%;" onchange="npAutoFim()">
           </div>
           <div>
-            <label for="np-prevFim" style="display:block;font-size:var(--fs-xs);font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">Data prevista <span id="np-prev-tag" style="color:var(--text-hint);font-weight:400;font-size:9px;">(auto)</span></label>
+            <label for="np-prevFim" style="display:block;font-size:var(--fs-xs);font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">Data prevista <span id="np-prev-tag" style="color:var(--text-hint);font-weight:400;font-size:var(--fs-2xs);">(auto)</span></label>
             <input id="np-prevFim" type="date" class="sel" style="width:100%;" onchange="npPrevManual()">
             <div id="np-prevFim-hint" style="display:none;font-size:var(--fs-xs);color:var(--red);margin-top:3px;">⚠ Obrigatório para DRO (fim do contrato)</div>
           </div>
@@ -3272,7 +3272,7 @@ function buildPipeline() {
   const tabela = _pipeListaRecolhida ? '' : '<div style="margin-top:8px;overflow-x:auto;">'
     + '<table style="width:100%;border-collapse:collapse;font-size:var(--fs-sm);">'
     + '<thead><tr>'
-    + ['Projeto','Consultor','Etapa','Escopo','Valor'].map(h => '<th style="text-align:left;padding:4px 8px;border-bottom:1px solid var(--border);font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">'+h+'</th>').join('')
+    + ['Projeto','Consultor','Etapa','Escopo','Valor'].map(h => '<th style="text-align:left;padding:4px 8px;border-bottom:1px solid var(--border);font-size:var(--fs-2xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">'+h+'</th>').join('')
     + '</tr></thead><tbody>'
     + (rows.length ? rows.map(p => {
         const oc = oColors[p.oport] || 'var(--text-hint)';
@@ -3280,9 +3280,9 @@ function buildPipeline() {
         const v = parseVal(p.valorOport), vr = parseVal(p.valorOportRec);
         const valTxt = [v>0?('OT '+BRL(v)):'', vr>0?('Rec '+BRL(vr)):''].filter(Boolean).join(' · ') || '—';
         return '<tr style="border-bottom:1px solid var(--border);">'
-          + '<td style="padding:5px 8px;color:var(--text);">' + (p.nome||'—') + (p.conv==="Monetizado"?' <span style="font-size:8px;font-weight:700;padding:1px 5px;border-radius:10px;background:rgba(31,157,85,.15);color:var(--green);">monetizado</span>':'') + '</td>'
+          + '<td style="padding:5px 8px;color:var(--text);">' + (p.nome||'—') + (p.conv==="Monetizado"?' <span style="font-size:var(--fs-3xs);font-weight:700;padding:1px 5px;border-radius:10px;background:rgba(31,157,85,.15);color:var(--green);">monetizado</span>':'') + '</td>'
           + '<td style="padding:5px 8px;color:var(--text-muted);">' + (p.consultor||'—') + '</td>'
-          + '<td style="padding:5px 8px;"><span style="font-size:9px;font-weight:600;padding:1px 6px;border-radius:20px;background:rgba(0,0,0,.06);color:' + oc + ';">' + p.oport + '</span></td>'
+          + '<td style="padding:5px 8px;"><span style="font-size:var(--fs-2xs);font-weight:600;padding:1px 6px;border-radius:20px;background:rgba(0,0,0,.06);color:' + oc + ';">' + p.oport + '</span></td>'
           + '<td style="padding:5px 8px;color:var(--text-muted);font-size:var(--fs-xs);">' + esc + '</td>'
           + '<td style="padding:5px 8px;font-weight:600;color:var(--text);">' + valTxt + '</td>'
           + '</tr>';
@@ -3748,14 +3748,14 @@ function buildPipeSemanaCal() {
         const bg    = card.comercial ? '#FEF3C7' : 'var(--surface)';
         const borda = card.comercial ? '#CA8A04' : '#64748b';
         const tagsHtml = card.tags.map(t => `<div style="font-size:var(--fs-sm);color:${t.cor};margin-top:2px;line-height:1.2;font-weight:${card.comercial?'600':'400'};">${t.label}</div>`).join('');
-        return `<div style="background:${bg};border-left:3px solid ${borda};border-radius:4px;padding:8px 10px;margin-bottom:8px;box-shadow:0 1px 2px rgba(0,0,0,.04);">
+        return `<div style="background:${bg};border-left:3px solid ${borda};border-radius:var(--r-sm);padding:8px 10px;margin-bottom:8px;box-shadow:0 1px 2px rgba(0,0,0,.04);">
           <div style="font-size:var(--fs-base);font-weight:600;color:var(--text);line-height:1.25;">${card.nome||'—'}</div>
           ${tagsHtml}
         </div>`;
       }).join('');
     }
 
-    cols += `<div style="flex:1;min-width:148px;background:${isHoje?'var(--accent-dim)':'var(--surface2)'};border:1px solid ${isHoje?'var(--accent)':'var(--border)'};border-radius:8px;padding:10px;">
+    cols += `<div style="flex:1;min-width:148px;background:${isHoje?'var(--accent-dim)':'var(--surface2)'};border:1px solid ${isHoje?'var(--accent)':'var(--border)'};border-radius:var(--r);padding:10px;">
       <div style="font-size:var(--fs-sm);font-weight:700;letter-spacing:.05em;margin-bottom:10px;color:${isHoje?'var(--accent)':'var(--text-hint)'};">${DIAS[d]} <span style="font-weight:400;">${ddmm}</span></div>
       ${cardsHtml}
     </div>`;
@@ -4094,14 +4094,14 @@ function buildDRO(){
       const line = i<ciclos.length-1 ? `<div style="flex:1;height:2px;min-width:12px;background:${done?'var(--green)':'var(--border)'};"></div>` : '';
       return `<button type="button" onclick="droSetView(${p.id},${i})" title="Ver ciclo ${c.num}" style="font:inherit;text-align:inherit;padding:0;margin:0;background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:92px;cursor:pointer;">
         <div style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:var(--fs-base);font-weight:700;border:2px solid ${bc};background:${bg};color:${col};${sel?'box-shadow:0 0 0 3px rgba(142,91,196,.15);':''}">${done?icon('check',{size:14}):c.num}</div>
-        <div style="font-size:9px;color:var(--text-hint);text-align:center;line-height:1.25;">Ciclo ${c.num}<br>${fmtBR(c.inicio)}–${fmtBR(droAddMonths(c.inicio,2))}<br><b style="color:${c.trava?'var(--dro)':'var(--text-hint)'};">${c.trava?droTravaLabel(c.trava).split(' ')[0]:'—'}</b></div>
+        <div style="font-size:var(--fs-2xs);color:var(--text-hint);text-align:center;line-height:1.25;">Ciclo ${c.num}<br>${fmtBR(c.inicio)}–${fmtBR(droAddMonths(c.inicio,2))}<br><b style="color:${c.trava?'var(--dro)':'var(--text-hint)'};">${c.trava?droTravaLabel(c.trava).split(' ')[0]:'—'}</b></div>
       </button>${line?'<div style="display:flex;align-items:center;flex:0 0 auto;">'+line+'</div>':''}`;
     }).join('');
 
     // Cadeia de travas T7→T1
     const chain = DRO_TRAVAS.map(([k,n])=>{
       const gov = ciclo.trava===k;
-      return `<div style="flex:1;text-align:center;font-size:9px;font-weight:700;padding:4px 2px;border-radius:4px;background:${gov?'var(--dro)':'var(--surface3,#ecebe8)'};color:${gov?'#fff':'var(--text-hint)'};" title="${k} ${n}">${k}</div>`;
+      return `<div style="flex:1;text-align:center;font-size:var(--fs-2xs);font-weight:700;padding:4px 2px;border-radius:var(--r-sm);background:${gov?'var(--dro)':'var(--surface3,#ecebe8)'};color:${gov?'#fff':'var(--text-hint)'};" title="${k} ${n}">${k}</div>`;
     }).join('');
 
     // Ponteiro de semana
@@ -4122,8 +4122,8 @@ function buildDRO(){
           <div style="margin-top:7px;border-top:1px dashed var(--border);padding-top:7px;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;"><b style="font-size:var(--fs-xs);">${icon('flag')} ${f.cnome}</b><span style="font-size:var(--fs-xs);font-weight:700;color:${scor};">${stxt}</span></div>
             <div style="display:flex;gap:5px;">
-              <label style="flex:1;font-size:9px;color:var(--text-hint);">prev<input type="date" class="sel" style="width:100%;font-size:var(--fs-xs);padding:1px 3px;" value="${dv(com.prev)}" onchange="droSetComite(${p.id},${vi},'${f.ck}','prev',this.value)"></label>
-              <label style="flex:1;font-size:9px;color:var(--text-hint);">real<input type="date" class="sel" style="width:100%;font-size:var(--fs-xs);padding:1px 3px;" value="${dv(com.real)}" onchange="droSetComite(${p.id},${vi},'${f.ck}','real',this.value)"></label>
+              <label style="flex:1;font-size:var(--fs-2xs);color:var(--text-hint);">prev<input type="date" class="sel" style="width:100%;font-size:var(--fs-xs);padding:1px 3px;" value="${dv(com.prev)}" onchange="droSetComite(${p.id},${vi},'${f.ck}','prev',this.value)"></label>
+              <label style="flex:1;font-size:var(--fs-2xs);color:var(--text-hint);">real<input type="date" class="sel" style="width:100%;font-size:var(--fs-xs);padding:1px 3px;" value="${dv(com.real)}" onchange="droSetComite(${p.id},${vi},'${f.ck}','real',this.value)"></label>
             </div>
           </div>
         </div>
@@ -4179,7 +4179,7 @@ function buildDRO(){
 
           <!-- Ponteiro de semana -->
           <div style="height:7px;border-radius:5px;background:var(--surface3,#ecebe8);overflow:hidden;"><div style="height:100%;width:${semPct}%;background:var(--dro);border-radius:5px;"></div></div>
-          <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-hint);margin-top:2px;"><span>Sem 1</span><span>Sem 12</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:var(--fs-2xs);color:var(--text-hint);margin-top:2px;"><span>Sem 1</span><span>Sem 12</span></div>
 
           <!-- 3 fases + 3 comitês -->
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-top:12px;">${fasesHTML}${audCardsHTML}</div>
@@ -4253,7 +4253,7 @@ function drxCard(p, hoje){
     const prim=dx.travaPrim===k; const sec=dx.travasSec.includes(k);
     const bg = prim?'var(--teal)': sec?'rgba(13,148,136,.25)':'var(--surface3,#ecebe8)';
     const co = prim?'#fff': sec?'var(--teal)':'var(--text-hint)';
-    return '<div style="flex:1;text-align:center;font-size:9px;font-weight:700;padding:4px 2px;border-radius:4px;background:'+bg+';color:'+co+';" title="'+k+' '+n+'">'+k+'</div>';
+    return '<div style="flex:1;text-align:center;font-size:var(--fs-2xs);font-weight:700;padding:4px 2px;border-radius:var(--r-sm);background:'+bg+';color:'+co+';" title="'+k+' '+n+'">'+k+'</div>';
   }).join('');
 
   const dI = parseDate(p.inicio);
@@ -4265,10 +4265,10 @@ function drxCard(p, hoje){
     const d = mo.real?parseDate(mo.real): mo.prev?parseDate(mo.prev): (dI? new Date(dI.getTime()+(m.sem-1)*7*864e5):null);
     const html='<div style="border:1px solid var(--border);border-radius:9px;padding:9px 10px;">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;"><b style="font-size:var(--fs-sm);">'+icon('flag')+' '+m.nome+'</b><span style="font-size:var(--fs-xs);font-weight:700;color:'+cor+';">'+txt+'</span></div>'
-      + '<div style="font-size:9px;color:var(--text-hint);margin-bottom:6px;">'+m.fase+'</div>'
+      + '<div style="font-size:var(--fs-2xs);color:var(--text-hint);margin-bottom:6px;">'+m.fase+'</div>'
       + '<div style="display:flex;gap:6px;">'
-      + '<label style="flex:1;font-size:9px;color:var(--text-hint);">prev<input type="date" class="sel" style="width:100%;font-size:var(--fs-xs);padding:1px 3px;" value="'+dv(mo.prev)+'" onchange="drxSetMarco('+p.id+',\''+m.k+'\',\'prev\',this.value)"></label>'
-      + '<label style="flex:1;font-size:9px;color:var(--text-hint);">real<input type="date" class="sel" style="width:100%;font-size:var(--fs-xs);padding:1px 3px;" value="'+dv(mo.real)+'" onchange="drxSetMarco('+p.id+',\''+m.k+'\',\'real\',this.value)"></label>'
+      + '<label style="flex:1;font-size:var(--fs-2xs);color:var(--text-hint);">prev<input type="date" class="sel" style="width:100%;font-size:var(--fs-xs);padding:1px 3px;" value="'+dv(mo.prev)+'" onchange="drxSetMarco('+p.id+',\''+m.k+'\',\'prev\',this.value)"></label>'
+      + '<label style="flex:1;font-size:var(--fs-2xs);color:var(--text-hint);">real<input type="date" class="sel" style="width:100%;font-size:var(--fs-xs);padding:1px 3px;" value="'+dv(mo.real)+'" onchange="drxSetMarco('+p.id+',\''+m.k+'\',\'real\',this.value)"></label>'
       + '</div></div>';
     return {d, html};
   });
@@ -4303,7 +4303,7 @@ function drxCard(p, hoje){
   +       '</div>'
   +       '<div style="display:flex;gap:3px;margin-bottom:8px;">'+chain+'</div>'
   +       '<div style="height:7px;border-radius:5px;background:var(--surface3,#ecebe8);overflow:hidden;"><div style="height:100%;width:'+semPct+'%;background:var(--teal);border-radius:5px;"></div></div>'
-  +       '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-hint);margin-top:2px;"><span>Sem 1</span><span>Sem 6 · Decolagem</span></div>'
+  +       '<div style="display:flex;justify-content:space-between;font-size:var(--fs-2xs);color:var(--text-hint);margin-top:2px;"><span>Sem 1</span><span>Sem 6 · Decolagem</span></div>'
   +       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;margin-top:12px;">'+marcosHTML+'</div>'
   +     '</div>'
   +     droAudBlock(p, hoje)
@@ -4322,7 +4322,7 @@ function droAudMini(a, hoje){
   const datas=a.dataPrev?('prev '+fmt(a.dataPrev)):'sem data';
   return '<div style="border:1px solid '+cor+';border-radius:9px;padding:9px 10px;background:'+corDim+';">'
     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;gap:6px;"><b style="font-size:var(--fs-sm);">'+icon('search')+' '+a.nome+'</b><span style="font-size:var(--fs-xs);font-weight:700;color:'+cor+';white-space:nowrap;">'+txt+'</span></div>'
-    + '<div style="font-size:9px;color:var(--text-hint);">Auditoria · '+datas+'</div>'
+    + '<div style="font-size:var(--fs-2xs);color:var(--text-hint);">Auditoria · '+datas+'</div>'
     + '</div>';
 }
 // Bloco de auditorias compartilhado (DRO e DRX)
@@ -4541,7 +4541,7 @@ function buildGanttDRO(semanasExt) {
         const sEnd = new Date(s.getTime() + 6 * 864e5);
         const isHoje = hoje >= s && hoje <= sEnd;
         const label = s.getDate().toString().padStart(2,'0') + '/' + (s.getMonth()+1).toString().padStart(2,'0');
-        return '<th style="font-size:9px;min-width:52px;padding:3px 2px;text-align:center;'
+        return '<th style="font-size:var(--fs-2xs);min-width:52px;padding:3px 2px;text-align:center;'
           + (isHoje ? 'background:rgba(212,0,26,.08);color:var(--accent);font-weight:700;' : '')
           + '">' + label + '</th>';
       }).join('');
@@ -4597,7 +4597,7 @@ function buildGanttDRO(semanasExt) {
       if (here.length) {
         const txt = here.map(e => (e.feito ? icon('check',{size:8})+' ' : '') + e.label).join('<br>');
         barContent = '<div class="gantt-bar" style="background:' + baseColor + ';left:' + leftPct + '%;right:' + rightPct + '%;display:flex;align-items:center;justify-content:center;overflow:visible;">'
-          + '<span style="font-size:8px;font-weight:600;color:#fff;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.4);padding:0 2px;line-height:1.25;">' + txt + '</span>'
+          + '<span style="font-size:var(--fs-3xs);font-weight:600;color:#fff;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.4);padding:0 2px;line-height:1.25;">' + txt + '</span>'
           + '</div>';
       } else {
         barContent = '<div class="gantt-bar" style="background:' + baseColor + ';left:' + leftPct + '%;right:' + rightPct + '%;opacity:.28;"></div>';
@@ -4609,7 +4609,7 @@ function buildGanttDRO(semanasExt) {
       + '<div style="display:flex;align-items:center;gap:6px;">'
       + '<span style="width:8px;height:8px;border-radius:50%;background:' + dot + ';flex-shrink:0;"></span>'
       + '<span style="font-size:var(--fs-sm);font-weight:500;">' + nome + '</span>'
-      + '<span style="font-size:9px;background:' + baseColor + ';color:#fff;padding:1px 5px;border-radius:10px;margin-left:2px;">' + badgeTxt + '</span>'
+      + '<span style="font-size:var(--fs-2xs);background:' + baseColor + ';color:#fff;padding:1px 5px;border-radius:10px;margin-left:2px;">' + badgeTxt + '</span>'
       + '</div>'
       + '<div style="font-size:var(--fs-xs);color:var(--text-hint);padding-left:14px;">' + (p.consultor||'') + '</div>'
       + '</td>';
@@ -5041,7 +5041,7 @@ function renderBase() {
       <td>
         <input type="date" class="sel" value="${dv(p.prevFim)}" data-f="prevFim" data-id="${p.id}" onchange="setFieldPrev(this)"
           style="border-color:${p.prevManual?'rgba(196,82,26,.4)':'var(--border)'}">
-        <span style="font-size:9px;color:${p.prevManual?'var(--accent)':'var(--text-hint)'};display:block;margin-top:1px;">${p.prevManual?'editado':'auto'}</span>
+        <span style="font-size:var(--fs-2xs);color:${p.prevManual?'var(--accent)':'var(--text-hint)'};display:block;margin-top:1px;">${p.prevManual?'editado':'auto'}</span>
       </td>
       <td><input type="date" class="sel" value="${dv(p.realFim)}" data-f="realFim" data-id="${p.id}" onchange="setField(this)"></td>
       <td>${prazoInline(p)}</td>
@@ -5058,7 +5058,7 @@ function renderBase() {
 
 
       <td>
-        <div contenteditable="true" style="font-size:var(--fs-base);min-width:120px;outline:none;padding:2px 4px;border-radius:4px;border:1px solid transparent;" 
+        <div contenteditable="true" style="font-size:var(--fs-base);min-width:120px;outline:none;padding:2px 4px;border-radius:var(--r-sm);border:1px solid transparent;" 
           onblur="const pr=projects.find(x=>String(x.id)===String(${p.id}));if(pr){pr.outrosEscopos=this.innerText.trim();upd();}" 
           onfocus="this.style.border='1px solid var(--border)'" 
           onblur2="this.style.border='1px solid transparent'"
@@ -5503,9 +5503,9 @@ function buildFunil(consFilter) {
           + (valorTot > 0 ? '<span style="font-size:var(--fs-sm);font-weight:600;color:' + e.color + ';margin-left:auto;">' + BRL(valorTot) + '</span>' : '')
           + (i > 0 ? '<span style="font-size:var(--fs-xs);color:var(--text-hint);">' + Math.round(e.prjs.length/(etapas[i-1].prjs.length||1)*100) + '% do anterior</span>' : '')
           + '</div>'
-          + '<div style="background:var(--surface3);border-radius:4px;height:32px;overflow:hidden;">'
-          + '<div style="height:100%;width:' + pct + '%;background:' + e.color + ';border-radius:4px;opacity:.85;display:flex;align-items:center;padding:0 12px;transition:width .5s;">'
-          + '<span style="font-size:9px;font-weight:700;color:#fff;">' + e.prjs.length + (pct > 20 ? ' — ' + e.label : '') + '</span>'
+          + '<div style="background:var(--surface3);border-radius:var(--r-sm);height:32px;overflow:hidden;">'
+          + '<div style="height:100%;width:' + pct + '%;background:' + e.color + ';border-radius:var(--r-sm);opacity:.85;display:flex;align-items:center;padding:0 12px;transition:width .5s;">'
+          + '<span style="font-size:var(--fs-2xs);font-weight:700;color:#fff;">' + e.prjs.length + (pct > 20 ? ' — ' + e.label : '') + '</span>'
           + '</div></div></div>';
       }).join('')
     + '</div>';
@@ -5552,7 +5552,7 @@ function buildConvListas(consFilter, curM) {
     return '<div style="padding:7px 0;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:2px;">'
       + '<div style="display:flex;align-items:center;gap:6px;">'
       + '<span style="font-size:var(--fs-sm);font-weight:600;flex:1;">' + (p.nome||'—') + '</span>'
-      + '<span style="font-size:9px;font-weight:600;padding:1px 6px;border-radius:20px;border:1px solid ' + statusCor + ';color:' + statusCor + ';">' + status + '</span>'
+      + '<span style="font-size:var(--fs-2xs);font-weight:600;padding:1px 6px;border-radius:20px;border:1px solid ' + statusCor + ';color:' + statusCor + ';">' + status + '</span>'
       + '</div>'
       + '<div style="font-size:var(--fs-xs);color:var(--text-hint);">' + (p.consultor||'—') + (_mesesMonProj(p) ? ' · ' + _mesesMonProj(p) : '') + '</div>'
       + (val ? '<div>' + val + '</div>' : '')
@@ -5734,7 +5734,7 @@ function buildPdi() {
   if (!thead || !tbody) return;
   thead.innerHTML = '<tr><th>#</th><th>Nome</th><th>Cargo</th>' +
     ALL_MESES.map(m => isQuarterClose(m.idx)
-      ? `<th style="font-size:9px;white-space:nowrap;color:var(--purple);font-weight:800;" title="Fechamento de quarter — mês que conta no PDI">${m.label.slice(0,3)} ${icon('star',{size:9})}</th>`
+      ? `<th style="font-size:var(--fs-2xs);white-space:nowrap;color:var(--purple);font-weight:800;" title="Fechamento de quarter — mês que conta no PDI">${m.label.slice(0,3)} ${icon('star',{size:9})}</th>`
       : `<th style="display:none"></th>`).join('') +
     '<th>Obs</th><th></th></tr>';
   const squad = squadList();
@@ -6369,7 +6369,7 @@ function buildAqlConsolidado() {
   if (porDia !== null && faltam > 0) html += '<div style="font-size:var(--fs-sm);color:var(--text-hint);">Faltam <b style="color:var(--text);">' + faltam + '</b> AQLs em <b style="color:var(--text);">' + ritmoInfo.diasUteisRest + '</b> dias uteis (~<b style="color:var(--text);">' + porDia + '</b>/dia)</div>';
   html += '</div>';
   if (total > 0) {
-    html += '<div style="margin-top:14px;height:8px;background:var(--surface3);border-radius:4px;overflow:hidden;"><div style="height:100%;width:' + Math.min(100, pctMeta) + '%;background:' + barCor + ';"></div></div>';
+    html += '<div style="margin-top:14px;height:8px;background:var(--surface3);border-radius:var(--r-sm);overflow:hidden;"><div style="height:100%;width:' + Math.min(100, pctMeta) + '%;background:' + barCor + ';"></div></div>';
   }
   box.innerHTML = html;
 }
@@ -6406,7 +6406,7 @@ function buildAqlMetas() {
     const cor = v => v === null ? 'var(--text-hint)' : v >= 100 ? 'var(--green)' : v >= 70 ? 'var(--amber)' : 'var(--red)';
     const dot = dotColors[nome] || 'var(--accent-dim)';
     const status = ritmoInfo ? _aqlRitmoStatus(pctAtg, ritmoInfo.pctTempo) : null;
-    return '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;min-width:150px;flex:1;">'
+    return '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;min-width:150px;flex:1;">'
       + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
       + '<div style="width:24px;height:24px;border-radius:50%;background:' + dot + ';opacity:.15;display:flex;align-items:center;justify-content:center;font-size:var(--fs-sm);font-weight:700;color:var(--text);flex-shrink:0;">' + nome[0] + '</div>'
       + '<div style="font-size:var(--fs-base);font-weight:700;">' + nome + '</div>'
@@ -6663,7 +6663,7 @@ function buildPipeEventosMatriz(label, ano, consF) {
   }
 
   let head = '<th style="text-align:left;">Consultor</th>';
-  semanas.forEach(s => { head += `<th style="text-align:center;white-space:nowrap;">${s.label}<br><span style="font-size:9px;font-weight:400;color:var(--text-hint);">${s.range}</span></th>`; });
+  semanas.forEach(s => { head += `<th style="text-align:center;white-space:nowrap;">${s.label}<br><span style="font-size:var(--fs-2xs);font-weight:400;color:var(--text-hint);">${s.range}</span></th>`; });
   head += '<th style="text-align:center;">Total</th>';
 
   let rows = '';
@@ -6914,7 +6914,7 @@ function calcMon() {
       }
       const primeira = i === 0, nEv = eventos.length;
       const consCell = primeira ? `<td rowspan="${nEv}" style="vertical-align:top;">${p.consultor||'—'}</td>` : '';
-      const nomeCell = primeira ? `<td rowspan="${nEv}" style="vertical-align:top;">${p.nome||'—'}${nEv>1?` <span class="badge b-gray" style="font-size:8px;">${nEv} vendas</span>`:''}</td>` : '';
+      const nomeCell = primeira ? `<td rowspan="${nEv}" style="vertical-align:top;">${p.nome||'—'}${nEv>1?` <span class="badge b-gray" style="font-size:var(--fs-3xs);">${nEv} vendas</span>`:''}</td>` : '';
       const mesSel = `<select class="sel" style="font-size:var(--fs-xs);width:118px;" onchange="updMon('${p.id}','${m.id}','mesMon',this.value)">`
         + MESES_OPTS.map(o => `<option value="${dv(o)}" ${(m.mesMon||'')===o?'selected':''}>${o||'—'}</option>`).join('') + '</select>';
       const otInput  = `<input class="sel" style="font-size:var(--fs-xs);width:84px;" value="${dv(m.valorOT)}" placeholder="OT" onblur="updMon('${p.id}','${m.id}','valorOT',this.value)">`;
@@ -6979,7 +6979,7 @@ function calcMon() {
         : '';
       const bloco = (label, colorLabel, pctField, pctFieldKey, metaVal, realVal, pctAtg, tick) =>
         '<div style="padding:8px 0;border-bottom:1px solid var(--border)">'
-        + '<div style="font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:' + colorLabel + ';margin-bottom:6px;">' + label + '</div>'
+        + '<div style="font-size:var(--fs-2xs);font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:' + colorLabel + ';margin-bottom:6px;">' + label + '</div>'
         + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">'
         + '<span style="font-size:var(--fs-xs);color:var(--text-hint);white-space:nowrap;">% meta:</span>'
         + '<input type="number" min="0" max="100" step="1" class="sel" style="width:52px;font-size:var(--fs-sm);text-align:center;" placeholder="0" value="' + (pctField||'') + '" onchange="saveMonMetaConsKey(\'' + mesKey + '\',\'' + pctFieldKey + '\',this)">'
@@ -6990,7 +6990,7 @@ function calcMon() {
         + '<div style="font-size:var(--fs-xs);color:var(--text-hint);margin-bottom:2px;">Ticket médio: <b style="color:var(--text-muted);">' + tick + '</b></div>'
         + prog(pctAtg)
         + '</div>';
-      return '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;min-width:210px;flex-shrink:0;">'
+      return '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;min-width:210px;flex-shrink:0;">'
         + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">'
         + '<div style="width:28px;height:28px;border-radius:50%;background:' + dot + ';opacity:.15;display:flex;align-items:center;justify-content:center;font-size:var(--fs-base);font-weight:700;color:var(--text);flex-shrink:0;">' + nome[0] + '</div>'
         + '<div><div style="font-size:var(--fs-md);font-weight:700;">' + nome + '</div><div style="font-size:var(--fs-xs);color:var(--text-hint);">' + nProj + ' proj.</div></div>'
@@ -6999,7 +6999,7 @@ function calcMon() {
         + bloco('Recorrente','var(--blue)',pctRec,'cons_'+nome+'_pct_rec',metaRec,realRec,pctAtgRec,tickRec)
         + '<div style="padding-top:8px;">'
         + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">'
-        + '<span style="font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Total</span>'
+        + '<span style="font-size:var(--fs-2xs);font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Total</span>'
         + '<span style="font-size:var(--fs-base);font-weight:700;color:' + cor(pctAtgTot) + ';">' + BRL(realTot) + '</span>'
         + '</div>'
         + '<div style="font-size:var(--fs-xs);color:var(--text-hint);margin-bottom:2px;">Meta: <b style="color:var(--text);">' + (metaTot > 0 ? BRL(metaTot) : '—') + '</b></div>'
@@ -7299,20 +7299,20 @@ function buildOvInsightsSemana() {
   const quadradoGrande = (valor, pctVal, cor, label, filtroVal) => '<button type="button" onclick="toggleOvFlagFiltro(\''+filtroVal+'\')" title="Clique pra filtrar a tabela abaixo só com projetos '+label+'" aria-pressed="'+(ovFlagFiltro===filtroVal?'true':'false')+'" style="font:inherit;text-align:center;flex:1;min-width:76px;background:var(--surface);border:1px solid '+(ovFlagFiltro===filtroVal?cor:'var(--border)')+';border-top:3px solid '+cor+';border-radius:6px;padding:10px 6px;cursor:pointer;'+(ovFlagFiltro===filtroVal?'box-shadow:0 0 0 1.5px '+cor+';':'')+'">'
     + '<div style="font-size:22px;font-weight:800;color:'+cor+';line-height:1;">'+valor+'</div>'
     + '<div style="font-size:var(--fs-xs);font-weight:700;color:'+cor+';margin-top:3px;">'+pctVal+'%</div>'
-    + '<div style="font-size:9px;color:var(--text-hint);margin-top:2px;text-transform:uppercase;letter-spacing:.03em;">'+label+'</div>'
+    + '<div style="font-size:var(--fs-2xs);color:var(--text-hint);margin-top:2px;text-transform:uppercase;letter-spacing:.03em;">'+label+'</div>'
     + '</button>';
   // Quadradinho pequeno — usado nos destrinchamentos (card da direita), pra caber mais lado a lado
   const quadradoPeq = (valor, pctVal, cor, label) => '<div style="flex:1;min-width:58px;background:var(--surface);border:1px solid var(--border);border-top:2px solid '+cor+';border-radius:5px;padding:6px 4px;text-align:center;">'
     + '<div style="font-size:15px;font-weight:800;color:'+cor+';line-height:1;">'+valor+'</div>'
-    + '<div style="font-size:9px;font-weight:700;color:'+cor+';margin-top:2px;">'+pctVal+'%</div>'
-    + '<div style="font-size:8px;color:var(--text-hint);margin-top:1px;text-transform:uppercase;letter-spacing:.02em;">'+label+'</div>'
+    + '<div style="font-size:var(--fs-2xs);font-weight:700;color:'+cor+';margin-top:2px;">'+pctVal+'%</div>'
+    + '<div style="font-size:var(--fs-3xs);color:var(--text-hint);margin-top:1px;text-transform:uppercase;letter-spacing:.02em;">'+label+'</div>'
     + '</div>';
 
   // Card principal: a flag da semana — o mais importante, fica sozinho à esquerda
   const cardFlags = '<div style="flex:1;min-width:260px;background:var(--surface2);border-radius:var(--r-sm);padding:14px 16px;">'
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
     + '<div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);">Flags dos projetos ativos agora</div>'
-    + (ovFlagFiltro ? '<button onclick="toggleOvFlagFiltro(\''+ovFlagFiltro+'\')" style="font-size:9px;color:var(--accent);background:none;border:none;cursor:pointer;text-decoration:underline;">'+icon('x',{size:10})+' limpar filtro</button>' : '')
+    + (ovFlagFiltro ? '<button onclick="toggleOvFlagFiltro(\''+ovFlagFiltro+'\')" style="font-size:var(--fs-2xs);color:var(--accent);background:none;border:none;cursor:pointer;text-decoration:underline;">'+icon('x',{size:10})+' limpar filtro</button>' : '')
     + '</div>'
     + '<div style="display:flex;gap:8px;">'
     + quadradoGrande(flags.Verde, pct(flags.Verde, totalFlags), 'var(--green)', 'Verde', 'Verde')
@@ -7339,7 +7339,7 @@ function buildOvInsightsSemana() {
     + quadradoPeq(scoreAcima, pct(scoreAcima, totalScore), 'var(--green)', 'Acima padrão')
     + '</div>'
     + (entregasDaSemana.length===0 ? '<div style="font-size:var(--fs-sm);color:var(--text-hint);margin-top:10px;">Nenhuma entrega registrada nessa semana.</div>'
-        : '<div style="font-size:9px;color:var(--text-hint);margin-top:10px;">'
+        : '<div style="font-size:var(--fs-2xs);color:var(--text-hint);margin-top:10px;">'
           + (semRef>0 ? semRef+' sem etapa anterior pra comparar prazo. ' : '')
           + ((entregasDaSemana.length - totalScore)>0 ? (entregasDaSemana.length - totalScore)+' ainda sem avaliação de score.' : '')
           + '</div>')
@@ -7450,11 +7450,11 @@ function buildOvGantt() {
           const d = s.getDate().toString().padStart(2,'0') + '/' + (s.getMonth()+1).toString().padStart(2,'0');
           const color = isHoje ? 'var(--accent)' : 'var(--blue)';
           return '<div style="text-align:center;min-width:38px;">'
-            + '<div style="font-size:9px;color:' + (isHoje ? 'var(--accent)' : 'var(--text-hint)') + ';margin-bottom:3px;font-weight:' + (isHoje ? 600 : 400) + ';">' + d + '</div>'
+            + '<div style="font-size:var(--fs-2xs);color:' + (isHoje ? 'var(--accent)' : 'var(--text-hint)') + ';margin-bottom:3px;font-weight:' + (isHoje ? 600 : 400) + ';">' + d + '</div>'
             + '<div style="height:48px;display:flex;align-items:flex-end;">'
             + '<div style="width:100%;height:' + pctH + '%;min-height:2px;background:' + color + ';border-radius:2px 2px 0 0;opacity:.85;"></div>'
             + '</div>'
-            + '<div style="font-size:9px;color:' + (isHoje ? 'var(--accent)' : 'var(--text-hint)') + ';margin-top:2px;font-weight:' + (isHoje ? 600 : 400) + ';">' + cnt + '</div>'
+            + '<div style="font-size:var(--fs-2xs);color:' + (isHoje ? 'var(--accent)' : 'var(--text-hint)') + ';margin-top:2px;font-weight:' + (isHoje ? 600 : 400) + ';">' + cnt + '</div>'
             + '</div>';
         }).join('')
       + '</div></div>';
@@ -7559,9 +7559,9 @@ function buildOvGantt() {
       : 'Flag automática';
     return '<tr style="border-bottom:1px solid var(--border);">'
       + '<td style="padding:6px 10px;color:var(--text);font-weight:600;background:var(--surface);position:sticky;left:0;white-space:nowrap;">'
-      + '<button type="button" onclick="abrirModalFlag(' + p.id + ',\'healthscore\')" title="' + flagTitle.replace(/"/g,'&quot;') + '" style="font:inherit;padding:0;background:none;border:none;color:' + flagCor + ';font-size:var(--fs-md);margin-right:5px;cursor:pointer;">'+icon('flag')+(temAnotacao ? '<sup style="font-size:8px;">'+icon('edit',{size:8})+'</sup>' : '') + '</button>'
+      + '<button type="button" onclick="abrirModalFlag(' + p.id + ',\'healthscore\')" title="' + flagTitle.replace(/"/g,'&quot;') + '" style="font:inherit;padding:0;background:none;border:none;color:' + flagCor + ';font-size:var(--fs-md);margin-right:5px;cursor:pointer;">'+icon('flag')+(temAnotacao ? '<sup style="font-size:var(--fs-3xs);">'+icon('edit',{size:8})+'</sup>' : '') + '</button>'
       + (p.nome||'—')
-      + (temAnotacao ? '<div style="font-size:9px;font-weight:400;color:var(--text-hint);white-space:normal;max-width:190px;line-height:1.3;margin-top:1px;">' + (p.flagManualMotivo || 'sem motivo informado').replace(/</g,'&lt;') + '</div>' : '')
+      + (temAnotacao ? '<div style="font-size:var(--fs-2xs);font-weight:400;color:var(--text-hint);white-space:normal;max-width:190px;line-height:1.3;margin-top:1px;">' + (p.flagManualMotivo || 'sem motivo informado').replace(/</g,'&lt;') + '</div>' : '')
       + '</td>'
       + '<td style="padding:6px 10px;color:var(--text-muted);">' + (p.consultor||'—') + '</td>'
       + semanas.map(s => {
@@ -7575,9 +7575,9 @@ function buildOvGantt() {
           const scoreHTML = scoresArr.length
             ? scoresArr.map(s => {
                 const cor = s === null ? 'var(--text-hint)' : s >= 70 ? 'var(--green)' : s >= 55 ? 'var(--amber)' : 'var(--accent)';
-                return '<span style="display:block;background:' + cor + ';color:#fff;font-size:8px;font-weight:700;padding:3px 6px;white-space:nowrap;">' + (s === null ? '—' : s) + '</span>';
+                return '<span style="display:block;background:' + cor + ';color:#fff;font-size:var(--fs-3xs);font-weight:700;padding:3px 6px;white-space:nowrap;">' + (s === null ? '—' : s) + '</span>';
               }).join('')
-            : '<span style="display:block;background:var(--text-hint);color:#fff;font-size:8px;font-weight:700;padding:3px 6px;white-space:nowrap;">—</span>';
+            : '<span style="display:block;background:var(--text-hint);color:#fff;font-size:var(--fs-3xs);font-weight:700;padding:3px 6px;white-space:nowrap;">—</span>';
           // Mostra o badge sempre que tiver PELO MENOS um dos dois sinais (prazo OU score) —
           // uma reunião pode já ter sido avaliada mesmo sem a data real ter sido registrada
           // no Lead Time ainda, então o score não pode ficar refém da data.
@@ -7585,7 +7585,7 @@ function buildOvGantt() {
           const conteudo = cel.text
             ? (temSinal
                 ? '<div style="display:inline-flex;border-radius:5px;overflow:hidden;vertical-align:middle;' + (scoreDourado?'box-shadow:0 0 0 1.5px #D4AF37;':'') + '">'
-                  + '<span title="Prazo da entrega' + (bgCor===null?' — ainda sem data real registrada no Lead Time':'') + '" style="background:' + (bgCor || 'var(--text-hint)') + ';color:#fff;font-size:8px;font-weight:700;padding:3px 6px;white-space:nowrap;">' + cel.text + '</span>'
+                  + '<span title="Prazo da entrega' + (bgCor===null?' — ainda sem data real registrada no Lead Time':'') + '" style="background:' + (bgCor || 'var(--text-hint)') + ';color:#fff;font-size:var(--fs-3xs);font-weight:700;padding:3px 6px;white-space:nowrap;">' + cel.text + '</span>'
                   + '<span title="Score da entrega' + (scoreDourado?' — acima do padrão da squad':'') + '" style="border-left:2px solid #fff;">' + scoreHTML + '</span>'
                   + '</div>'
                 : '<span style="font-size:var(--fs-xs);font-weight:600;color:var(--text);white-space:nowrap;">' + cel.text + '</span>')
@@ -7660,7 +7660,7 @@ function buildOvAnalises(curM) {
       const pct = Math.max(4, Math.round(x.n/max*100));
       return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px;">'
         + '<div style="flex:0 0 160px;font-size:var(--fs-sm);color:var(--text);text-align:right;line-height:1.2;">'+x.motivo+'</div>'
-        + '<div style="flex:1;background:var(--surface3);border-radius:4px;height:18px;overflow:hidden;"><div style="width:'+pct+'%;height:100%;background:var(--accent);border-radius:4px;"></div></div>'
+        + '<div style="flex:1;background:var(--surface3);border-radius:var(--r-sm);height:18px;overflow:hidden;"><div style="width:'+pct+'%;height:100%;background:var(--accent);border-radius:var(--r-sm);"></div></div>'
         + '<div style="flex:0 0 28px;font-size:var(--fs-base);font-weight:700;color:var(--text);text-align:right;">'+x.n+'</div>'
         + '</div>';
     }).join('');
@@ -7740,7 +7740,7 @@ function buildOvAnalises(curM) {
       const c = TIER_COLORS[t] || 'var(--text-hint)';
       return '<div style="text-align:center;padding:6px 10px;border:1px solid ' + c + ';border-radius:6px;min-width:60px;">'
         + '<div style="font-size:var(--fs-xl);font-weight:700;color:' + c + ';">' + tierMap[t] + '</div>'
-        + '<div style="font-size:9px;font-weight:700;color:' + c + ';text-transform:uppercase;letter-spacing:.06em;">' + t + '</div>'
+        + '<div style="font-size:var(--fs-2xs);font-weight:700;color:' + c + ';text-transform:uppercase;letter-spacing:.06em;">' + t + '</div>'
         + '</div>';
     }).join('');
   }
@@ -7774,7 +7774,7 @@ function buildOvAnalises(curM) {
     consEl.innerHTML = Object.entries(consMap).sort((a,b)=>b[1].total-a[1].total).map(([nome,d]) => {
       const pct = Math.round(d.total / maxTotal * 100);
       const pipePct2 = d.total > 0 ? Math.round(d.pipe / d.total * 100) : 0;
-      return '<div style="flex:1;min-width:150px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;">'
+      return '<div style="flex:1;min-width:150px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;">'
         + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">'
         + '<span style="font-size:var(--fs-base);font-weight:600;">' + nome + '</span>'
         + (d.vermelho > 0 ? '<span style="margin-left:auto;font-size:var(--fs-xs);color:var(--red);font-weight:700;">'+icon('warning')+' ' + d.vermelho + '</span>' : '')
@@ -8020,7 +8020,7 @@ function _ltScoreBlocksHTML(p){
     const cor = has ? _scoreColor(s) : 'var(--text-hint)';
     const dourado = has && _scoreDourado(s);
     return '<div title="'+nomeEtapa(p, i)+(has?': '+s+(dourado?' (acima do padrão da squad)':''):' — sem avaliação da Auditoria ainda')+'" style="flex:1;min-width:38px;height:42px;border-radius:6px;background:'+(has?_scoreBg(s):'var(--surface3)')+';border:1.5px solid '+(has?cor:'var(--border)')+';'+(dourado?'box-shadow:0 0 0 2px #D4AF37;':'')+'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;">'
-      + '<span style="font-size:8px;font-weight:700;letter-spacing:.02em;color:'+cor+';white-space:nowrap;">'+nomeEtapaCurto(p, i)+'</span>'
+      + '<span style="font-size:var(--fs-3xs);font-weight:700;letter-spacing:.02em;color:'+cor+';white-space:nowrap;">'+nomeEtapaCurto(p, i)+'</span>'
       + '<span style="font-size:var(--fs-md);font-weight:800;color:'+cor+';">'+(has?s:'—')+'</span>'
       + '</div>';
   }).join('');
@@ -8276,7 +8276,7 @@ function updateLtBlock(id, si, atrasoIgnored) {
   let bg, labelHtml, tooltip;
   if (atrasoBarra === null) {
     bg = 'var(--surface3)';
-    labelHtml = '<span style="color:var(--text-hint);font-size:8px;">' + nomeEtapaCurto(p, si).slice(0,5) + '</span>';
+    labelHtml = '<span style="color:var(--text-hint);font-size:var(--fs-3xs);">' + nomeEtapaCurto(p, si).slice(0,5) + '</span>';
     tooltip = nomeEtapaCurto(p, si) + (prazo7 ? ' · prazo: ' + prazo7Fmt : ' · aguardando etapa anterior');
   } else if (atrasoBarra <= 0) {
     bg = 'var(--green)';
@@ -8285,7 +8285,7 @@ function updateLtBlock(id, si, atrasoIgnored) {
     tooltip = nomeEtapaCurto(p, si) + ' ✓ ' + txt + ' · ' + realFmt;
   } else {
     bg = 'var(--red)';
-    labelHtml = '<span style="color:#fff;font-size:8px;font-weight:700;">+' + atrasoBarra + 'd</span>';
+    labelHtml = '<span style="color:#fff;font-size:var(--fs-3xs);font-weight:700;">+' + atrasoBarra + 'd</span>';
     tooltip = nomeEtapaCurto(p, si) + ' ⚠ +' + atrasoBarra + 'd · ' + realFmt;
   }
   blk.style.background = bg;
@@ -8456,7 +8456,7 @@ function buildLeadTime() {
           let bg, label, tooltip;
           if (atrasoBarra === null) {
             bg = 'var(--surface3)';
-            label = '<span style="color:var(--text-hint);font-size:8px;">' + nomeEtapaCurto(p, si).slice(0,5) + '</span>';
+            label = '<span style="color:var(--text-hint);font-size:var(--fs-3xs);">' + nomeEtapaCurto(p, si).slice(0,5) + '</span>';
             tooltip = nomeEtapaCurto(p, si) + (prazo7 ? ' · prazo: ' + fmtD(prazo7) : ' · aguardando etapa anterior');
           } else if (atrasoBarra <= 0) {
             bg = 'var(--green)';
@@ -8465,7 +8465,7 @@ function buildLeadTime() {
             tooltip = nomeEtapaCurto(p, si) + ' ✓ ' + txt + ' · realizado: ' + realFmt;
           } else {
             bg = 'var(--red)';
-            label = '<span style="color:#fff;font-size:8px;font-weight:700;">+' + atrasoBarra + 'd</span>';
+            label = '<span style="color:#fff;font-size:var(--fs-3xs);font-weight:700;">+' + atrasoBarra + 'd</span>';
             tooltip = nomeEtapaCurto(p, si) + ' ⚠ +' + atrasoBarra + 'd · realizado: ' + realFmt;
           }
 
@@ -8485,7 +8485,7 @@ function buildLeadTime() {
           + '<td style="padding:6px 8px;font-size:var(--fs-sm);color:var(--text-muted);white-space:nowrap;">' + (p.gmv || '—') + '</td>'
           + '<td style="padding:6px 8px;">' + tierBadge(p.gmv) + '</td>'
           + '<td style="padding:4px 6px;min-width:110px;">'
-          + '<div style="font-size:9px;color:var(--text-hint);margin-bottom:2px;">Base: ' + fmtD(p.inicio) + '</div>'
+          + '<div style="font-size:var(--fs-2xs);color:var(--text-hint);margin-bottom:2px;">Base: ' + fmtD(p.inicio) + '</div>'
           + '<input type="date" class="sel" style="font-size:var(--fs-sm);width:100%;" '
           + 'value="' + (p.inicioLT || p.inicio || '') + '" '
           + 'title="Deixe igual ao início ou ajuste para o Lead Time" '
@@ -8555,7 +8555,7 @@ function buildLeadTime() {
           + '<input type="text" class="sel" style="font-size:var(--fs-sm);width:100%;" placeholder="Motivo" '
           + 'value="' + (p.motivo||'') + '" '
           + 'onchange="ltSetField(' + p.id + ',\'motivo\',this.value)">'
-          + '<div style="font-size:9px;color:var(--text-hint);margin:4px 0 1px;">Pedido de reembolso</div>'
+          + '<div style="font-size:var(--fs-2xs);color:var(--text-hint);margin:4px 0 1px;">Pedido de reembolso</div>'
           + '<input type="date" class="sel" style="font-size:var(--fs-xs);width:100%;" '
           + 'value="' + dv(p.dataReembolso) + '" '
           + 'onchange="ltSetField(' + p.id + ',\'dataReembolso\',this.value)">'
@@ -8785,17 +8785,17 @@ function buildLeadTimeTer() {
           } else if (atrasoBarra <= 0) {
             bg = 'var(--green)'; borderCor = 'var(--green)'; nomeCor = '#fff';
             const txt = atrasoBarra === 0 ? 'no prazo' : Math.abs(atrasoBarra) + 'd antes';
-            selo = '<div style="font-size:8px;color:rgba(255,255,255,.85);font-weight:700;">'+icon('check',{size:8})+' ' + txt + '</div>';
+            selo = '<div style="font-size:var(--fs-3xs);color:rgba(255,255,255,.85);font-weight:700;">'+icon('check',{size:8})+' ' + txt + '</div>';
             tooltip = nomeCompleto(si) + ' ✓ ' + txt + ' · realizado: ' + realFmt;
           } else {
             bg = 'var(--red)'; borderCor = 'var(--red)'; nomeCor = '#fff';
-            selo = '<div style="font-size:8px;color:rgba(255,255,255,.85);font-weight:700;">+' + atrasoBarra + 'd</div>';
+            selo = '<div style="font-size:var(--fs-3xs);color:rgba(255,255,255,.85);font-weight:700;">+' + atrasoBarra + 'd</div>';
             tooltip = nomeCompleto(si) + ' ⚠ +' + atrasoBarra + 'd · realizado: ' + realFmt;
           }
           const nomeExib = nomeCurto(si);
-          const labelHTML = '<div style="font-size:9px;font-weight:700;color:' + nomeCor + ';line-height:1.15;padding:0 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;" title="' + nomeExib.replace(/"/g,'&quot;') + '">' + nomeExib + '</div>' + selo
-            + (ehPontual ? '<button type="button" onclick="ltRemoveEntregaPontual(' + p.id + ',' + si + ')" title="Remover essa entrega" style="font:inherit;padding:0;margin-top:1px;background:none;border:none;font-size:8px;color:' + nomeCor + ';opacity:.7;cursor:pointer;">'+icon('x',{size:8})+'</button>' : '');
-          return '<div title="' + tooltip + '" style="flex:1;min-height:30px;background:' + bg + ';border:1px solid ' + borderCor + ';border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;transition:background .25s;cursor:default;padding:3px 0;">' + labelHTML + '</div>';
+          const labelHTML = '<div style="font-size:var(--fs-2xs);font-weight:700;color:' + nomeCor + ';line-height:1.15;padding:0 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;" title="' + nomeExib.replace(/"/g,'&quot;') + '">' + nomeExib + '</div>' + selo
+            + (ehPontual ? '<button type="button" onclick="ltRemoveEntregaPontual(' + p.id + ',' + si + ')" title="Remover essa entrega" style="font:inherit;padding:0;margin-top:1px;background:none;border:none;font-size:var(--fs-3xs);color:' + nomeCor + ';opacity:.7;cursor:pointer;">'+icon('x',{size:8})+'</button>' : '');
+          return '<div title="' + tooltip + '" style="flex:1;min-height:30px;background:' + bg + ';border:1px solid ' + borderCor + ';border-radius:var(--r-sm);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;transition:background .25s;cursor:default;padding:3px 0;">' + labelHTML + '</div>';
         }).join('');
 
         // "Registrar entrega": dropdown normal pros modelos com template fixo, ou um
@@ -9206,11 +9206,11 @@ function buildGanttTer() {
           const d = s.getDate().toString().padStart(2,'0') + '/' + (s.getMonth()+1).toString().padStart(2,'0');
           const color = isHoje ? 'var(--accent)' : 'var(--blue)';
           return '<div style="text-align:center;min-width:38px;">'
-            + '<div style="font-size:9px;color:' + (isHoje?'var(--accent)':'var(--text-hint)') + ';margin-bottom:3px;font-weight:' + (isHoje?600:400) + ';">' + d + '</div>'
+            + '<div style="font-size:var(--fs-2xs);color:' + (isHoje?'var(--accent)':'var(--text-hint)') + ';margin-bottom:3px;font-weight:' + (isHoje?600:400) + ';">' + d + '</div>'
             + '<div style="height:48px;display:flex;align-items:flex-end;">'
             + '<div style="width:100%;height:' + pctH + '%;min-height:2px;background:' + color + ';border-radius:2px 2px 0 0;opacity:.85;"></div>'
             + '</div>'
-            + '<div style="font-size:9px;color:' + (isHoje?'var(--accent)':'var(--text-hint)') + ';margin-top:2px;font-weight:' + (isHoje?600:400) + ';">' + cnt + '</div>'
+            + '<div style="font-size:var(--fs-2xs);color:' + (isHoje?'var(--accent)':'var(--text-hint)') + ';margin-top:2px;font-weight:' + (isHoje?600:400) + ';">' + cnt + '</div>'
             + '</div>';
         }).join('')
       + '</div></div>';
@@ -9288,7 +9288,7 @@ function buildGanttTer() {
           badgeCor = 'var(--blue)'; // ainda não aconteceu — planejada
           tooltip = nomeCompl + ' · previsto: ' + fmtD(plan);
         }
-        badge = '<div title="' + tooltip + '" style="background:' + badgeCor + ';color:#fff;font-size:8px;font-weight:700;padding:3px 3px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + nome + '</div>';
+        badge = '<div title="' + tooltip + '" style="background:' + badgeCor + ';color:#fff;font-size:var(--fs-3xs);font-weight:700;padding:3px 3px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + nome + '</div>';
         break;
       }
       return '<td style="text-align:center;padding:4px 2px;">'
@@ -9603,11 +9603,11 @@ function buildGantt() {
           const d = s.getDate().toString().padStart(2,'0') + '/' + (s.getMonth()+1).toString().padStart(2,'0');
           const color = isHoje ? 'var(--accent)' : 'var(--blue)';
           return '<div style="text-align:center;min-width:38px;">'
-            + '<div style="font-size:9px;color:' + (isHoje ? 'var(--accent)' : 'var(--text-hint)') + ';margin-bottom:3px;font-weight:' + (isHoje ? 600 : 400) + ';">' + d + '</div>'
+            + '<div style="font-size:var(--fs-2xs);color:' + (isHoje ? 'var(--accent)' : 'var(--text-hint)') + ';margin-bottom:3px;font-weight:' + (isHoje ? 600 : 400) + ';">' + d + '</div>'
             + '<div style="height:48px;display:flex;align-items:flex-end;">'
             + '<div style="width:100%;height:' + pctH + '%;min-height:2px;background:' + color + ';border-radius:2px 2px 0 0;opacity:.85;"></div>'
             + '</div>'
-            + '<div style="font-size:9px;color:' + (isHoje ? 'var(--accent)' : 'var(--text-hint)') + ';margin-top:2px;font-weight:' + (isHoje ? 600 : 400) + ';">' + cnt + '</div>'
+            + '<div style="font-size:var(--fs-2xs);color:' + (isHoje ? 'var(--accent)' : 'var(--text-hint)') + ';margin-top:2px;font-weight:' + (isHoje ? 600 : 400) + ';">' + cnt + '</div>'
             + '</div>';
         }).join('')
       + '</div></div>';
@@ -9748,7 +9748,7 @@ function buildGantt() {
         if (overdue) {
           // barra de atraso: vermelha, ocupa a semana inteira
           bar = '<div class="gantt-bar" style="background:var(--red);left:0%;right:0%;opacity:.7;display:flex;align-items:center;justify-content:center;overflow:visible;">'
-            + '<span style="font-size:8px;font-weight:700;color:#fff;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.4);padding:0 2px;position:relative;z-index:2;">'+icon('warning',{size:8})+' Atraso</span>'
+            + '<span style="font-size:var(--fs-3xs);font-weight:700;color:#fff;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.4);padding:0 2px;position:relative;z-index:2;">'+icon('warning',{size:8})+' Atraso</span>'
             + '</div>';
         } else {
         const diasDec = Math.max(0, Math.round((sMid - dI) / 864e5));
@@ -9808,8 +9808,8 @@ function buildGantt() {
         const barColor = isDRO ? 'var(--dro)' : semStatusColor;
         const barStyle = isDRO ? 'background:' + barColor + ';left:' + leftPct + '%;right:' + rightPct + '%;display:flex;align-items:center;justify-content:center;overflow:visible;opacity:0.85;border:1px dashed rgba(255,255,255,0.4);' : 'background:' + semStatusColor + ';left:' + leftPct + '%;right:' + rightPct + '%;display:flex;align-items:center;justify-content:center;overflow:visible;';
         bar = '<div class="gantt-bar" style="' + barStyle + '">'
-          + (isDRO ? '<span style="font-size:8px;font-weight:700;color:#fff;white-space:nowrap;padding:0 4px;line-height:1;letter-spacing:.5px;">'+p.modelo+'</span>' : '')
-          + '<span style="font-size:8px;font-weight:600;color:#fff;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.4);padding:0 2px;line-height:1;position:relative;z-index:2;">' + semLabel + '</span>'
+          + (isDRO ? '<span style="font-size:var(--fs-3xs);font-weight:700;color:#fff;white-space:nowrap;padding:0 4px;line-height:1;letter-spacing:.5px;">'+p.modelo+'</span>' : '')
+          + '<span style="font-size:var(--fs-3xs);font-weight:600;color:#fff;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.4);padding:0 2px;line-height:1;position:relative;z-index:2;">' + semLabel + '</span>'
           + markers
           + '</div>';
         } // fecha else (overdue)
@@ -10093,7 +10093,7 @@ function buildPerformance() {
     const scoreBar = c.pctMedio !== null
       ? `<div style="margin:10px 0 8px;padding:8px 10px;border-radius:9px;background:linear-gradient(180deg,rgba(245,158,11,${panelA}),rgba(245,158,11,${(panelA*0.35).toFixed(3)}));border:1px solid ${borderCor};">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-            <span style="font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:${labelCor};display:flex;align-items:center;gap:4px;">${icon('star',{size:10})}Score geral</span>
+            <span style="font-size:var(--fs-2xs);font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:${labelCor};display:flex;align-items:center;gap:4px;">${icon('star',{size:10})}Score geral</span>
             <span style="font-size:var(--fs-md);font-weight:800;color:${scoreCor};">${c.atingidos}/${c.totalComDado} KPIs · ${c.pctMedio}%</span>
           </div>
           <div style="height:10px;border-radius:7px;background:rgba(120,120,120,.16);box-shadow:inset 0 1px 2px rgba(0,0,0,.18);overflow:hidden;position:relative;">
@@ -10122,7 +10122,7 @@ function buildPerformance() {
           </div>
           <div style="display:flex;align-items:center;gap:6px;">
             <div class="prog-bg" style="flex:1;height:3px;"><div class="prog-fill" style="width:${Math.min(100,pctAtg)}%;background:${corKpi};height:3px;"></div></div>
-            <span style="font-size:9px;color:var(--text-hint);white-space:nowrap;">meta ${k.meta}${k.suffix}</span>
+            <span style="font-size:var(--fs-2xs);color:var(--text-hint);white-space:nowrap;">meta ${k.meta}${k.suffix}</span>
           </div>
         </div>`;
     }).join('');
@@ -10227,8 +10227,8 @@ function buildPerfMetaMon() {
     const pctAtg = metaVal > 0 ? Math.round(realVal / metaVal * 100) : null;
     return '<div style="padding:7px 0;border-bottom:1px solid var(--border);">'
       + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">'
-      + '<span style="font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:' + corLabel + ';">' + label + '</span>'
-      + (pctConfig !== null ? '<span style="font-size:9px;color:var(--text-hint);">meta: ' + pctConfig + '%</span>' : '')
+      + '<span style="font-size:var(--fs-2xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:' + corLabel + ';">' + label + '</span>'
+      + (pctConfig !== null ? '<span style="font-size:var(--fs-2xs);color:var(--text-hint);">meta: ' + pctConfig + '%</span>' : '')
       + '</div>'
       + '<div style="font-size:var(--fs-xs);color:var(--text-hint);">Meta: <b style="color:var(--text);">' + (metaVal > 0 ? BRL(metaVal) : '—') + '</b></div>'
       + '<div style="font-size:var(--fs-base);font-weight:700;color:' + corAtg(pctAtg) + ';">Realizado: ' + BRL(realVal) + (pctAtg !== null ? (' · ' + pctAtg + '%') : '') + '</div>'
@@ -10255,7 +10255,7 @@ function buildPerfMetaMon() {
           + segmento('Recorrente', 'var(--blue)', pctRecAtual, metaRec, real.rec)
           + '<div style="padding-top:8px;">'
           + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">'
-          + '<span style="font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Total</span>'
+          + '<span style="font-size:var(--fs-2xs);font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Total</span>'
           + '<span style="font-size:var(--fs-base);font-weight:700;color:' + cor + ';">' + BRL(realTot) + (pct !== null ? (' · ' + pct + '%') : '') + '</span>'
           + '</div>'
           + '<div style="font-size:var(--fs-xs);color:var(--text-hint);margin-bottom:4px;">Meta: <b style="color:var(--text);">' + (metaTot > 0 ? BRL(metaTot) : '—') + '</b></div>'
@@ -10429,7 +10429,7 @@ function perfSelecionaConsultor(nome) {
     let info;
     if (isDrx) { const sm = drxSemana(p); info = sm===0 ? 'não iniciado' : sm>=7 ? 'encerrado' : ('Semana '+sm+'/6'); }
     else { const cs = droGetCiclos(p); const ci = droCicloAtualIdx(cs); const sm = cs[ci]?droSemana(cs[ci]):0; info = 'Ciclo '+(cs[ci]?cs[ci].num:1) + (sm>=1&&sm<=12?(' · sem '+sm+'/12'):''); }
-    return '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;">'
+    return '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--r);">'
       + '<span style="width:8px;height:8px;border-radius:50%;background:'+bc+';flex-shrink:0;"></span>'
       + '<span style="font-size:var(--fs-base);font-weight:600;flex:1;">'+p.nome+'</span>'
       + '<span style="font-size:var(--fs-xs);font-weight:700;padding:1px 7px;border-radius:10px;background:'+bcDim+';color:'+bc+';">'+bl+'</span>'
@@ -10832,7 +10832,7 @@ function audFormHTML(){
     + '<div id="aud-fila-progresso" style="display:none;align-items:center;gap:12px;margin-bottom:14px;background:var(--surface2);border-radius:var(--r-sm);padding:10px 14px;">'
     + '<div style="flex:1;">'
     + '<div class="aud-fila-texto" style="font-size:var(--fs-base);color:var(--text-muted);margin-bottom:6px;"></div>'
-    + '<div style="background:var(--surface3);border-radius:8px;height:6px;overflow:hidden;"><div class="aud-fila-barra-fill" style="background:var(--accent);height:100%;width:0%;transition:width .3s;"></div></div>'
+    + '<div style="background:var(--surface3);border-radius:var(--r);height:6px;overflow:hidden;"><div class="aud-fila-barra-fill" style="background:var(--accent);height:100%;width:0%;transition:width .3s;"></div></div>'
     + '</div>'
     + '<button class="btn btn-ghost" onclick="audPularItemDaFila()" style="white-space:nowrap;">Pular esta</button>'
     + '</div>'
@@ -11159,13 +11159,13 @@ function audRenderCalendarioDrive(files){
       + '<div style="display:flex;gap:6px;align-items:flex-start;">'
       + '<input type="checkbox" class="aud-drive-check" data-idx="'+i+'" style="margin-top:2px;">'
       + '<div style="flex:1;min-width:0;">'
-      + (hora?'<div style="font-size:9px;color:var(--text-hint);font-weight:700;">'+hora+'</div>':'')
+      + (hora?'<div style="font-size:var(--fs-2xs);color:var(--text-hint);font-weight:700;">'+hora+'</div>':'')
       + '<div style="font-size:var(--fs-sm);font-weight:600;word-break:break-word;overflow-wrap:anywhere;">'+f.nome+'</div>'
       + '</div></div>'
       + '<div style="display:flex;flex-direction:column;gap:4px;margin-top:6px;" onclick="event.stopPropagation()">'
-      + '<select class="aud-inp aud-drive-consultor" data-idx="'+i+'" style="font-size:9px;padding:3px 5px;">'+optCons(consultorSugerido)+'</select>'
-      + '<select class="aud-inp aud-drive-tipo" data-idx="'+i+'" style="font-size:9px;padding:3px 5px;">'+optTipo('')+'</select>'
-      + '<input class="aud-inp aud-drive-cliente" data-idx="'+i+'" list="aud-drive-cliente-list" autocomplete="off" placeholder="Cliente…" style="font-size:9px;padding:3px 5px;">'
+      + '<select class="aud-inp aud-drive-consultor" data-idx="'+i+'" style="font-size:var(--fs-2xs);padding:3px 5px;">'+optCons(consultorSugerido)+'</select>'
+      + '<select class="aud-inp aud-drive-tipo" data-idx="'+i+'" style="font-size:var(--fs-2xs);padding:3px 5px;">'+optTipo('')+'</select>'
+      + '<input class="aud-inp aud-drive-cliente" data-idx="'+i+'" list="aud-drive-cliente-list" autocomplete="off" placeholder="Cliente…" style="font-size:var(--fs-2xs);padding:3px 5px;">'
       + '</div></label>';
   };
   const diaNomes=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
@@ -11175,8 +11175,8 @@ function audRenderCalendarioDrive(files){
   lista.innerHTML=clienteDatalist+'<div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;width:100%;">'
     + dias.map((d,di)=>{
         const idxs=porDia[diaISO(d)]||[];
-        return '<div><div style="font-size:9px;font-weight:700;color:var(--text-hint);text-align:center;margin-bottom:6px;text-transform:uppercase;">'+diaNomes[di]+' '+d.getDate()+'</div>'
-          + (idxs.length ? idxs.map(diaCard).join('') : '<div style="font-size:9px;color:var(--text-hint);text-align:center;padding:8px 0;">—</div>')
+        return '<div><div style="font-size:var(--fs-2xs);font-weight:700;color:var(--text-hint);text-align:center;margin-bottom:6px;text-transform:uppercase;">'+diaNomes[di]+' '+d.getDate()+'</div>'
+          + (idxs.length ? idxs.map(diaCard).join('') : '<div style="font-size:var(--fs-2xs);color:var(--text-hint);text-align:center;padding:8px 0;">—</div>')
           + '</div>';
       }).join('')
     + '</div>';
@@ -11603,7 +11603,7 @@ function audRenderAgg(){
     const cl=audClassif(row.media), w=Math.max(2,row.media||0);
     return '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">'
       +'<div style="width:150px;font-size:var(--fs-base);color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+row.nome+'</div>'
-      +'<div style="flex:1;background:var(--surface3);border-radius:4px;height:22px;overflow:hidden;min-width:120px;"><div style="height:100%;width:'+w+'%;background:'+cl.cor+';opacity:.85;border-radius:4px;display:flex;align-items:center;padding:0 8px;"><span style="font-size:var(--fs-sm);font-weight:700;color:#fff;">'+(row.media!==null?row.media:'—')+'</span></div></div>'
+      +'<div style="flex:1;background:var(--surface3);border-radius:var(--r-sm);height:22px;overflow:hidden;min-width:120px;"><div style="height:100%;width:'+w+'%;background:'+cl.cor+';opacity:.85;border-radius:var(--r-sm);display:flex;align-items:center;padding:0 8px;"><span style="font-size:var(--fs-sm);font-weight:700;color:#fff;">'+(row.media!==null?row.media:'—')+'</span></div></div>'
       +'<div style="width:96px;font-size:var(--fs-xs);color:var(--text-hint);text-align:right;">'+row.count+' aval. · '+cl.txt+'</div>'
       +'</div>';
   }).join('');
@@ -11627,9 +11627,9 @@ function audRenderHeat(){
   const data=audAggData(audHeat,audFiltradas());
   if(!data.length){ body.innerHTML='<div style="font-size:var(--fs-base);color:var(--text-hint);padding:12px 0;">Sem dados no filtro atual.</div>'; return; }
   let html='<table style="border-collapse:collapse;font-size:var(--fs-sm);min-width:100%;">';
-  html+='<thead><tr><th style="text-align:left;padding:5px 8px;color:var(--text-hint);font-size:9px;text-transform:uppercase;letter-spacing:.05em;position:sticky;left:0;background:var(--surface);z-index:1;">'+(audHeat==='consultor'?'Consultor':'Entrega')+'</th>';
-  AUD_DIMS.forEach(d=>{ html+='<th title="'+d.nome+'" style="padding:5px 6px;color:var(--text-hint);font-size:9px;font-weight:600;text-align:center;">'+d.id.toUpperCase()+'</th>'; });
-  html+='<th style="padding:5px 8px;color:var(--text-hint);font-size:9px;text-align:center;">Geral</th></tr></thead><tbody>';
+  html+='<thead><tr><th style="text-align:left;padding:5px 8px;color:var(--text-hint);font-size:var(--fs-2xs);text-transform:uppercase;letter-spacing:.05em;position:sticky;left:0;background:var(--surface);z-index:1;">'+(audHeat==='consultor'?'Consultor':'Entrega')+'</th>';
+  AUD_DIMS.forEach(d=>{ html+='<th title="'+d.nome+'" style="padding:5px 6px;color:var(--text-hint);font-size:var(--fs-2xs);font-weight:600;text-align:center;">'+d.id.toUpperCase()+'</th>'; });
+  html+='<th style="padding:5px 8px;color:var(--text-hint);font-size:var(--fs-2xs);text-align:center;">Geral</th></tr></thead><tbody>';
   data.forEach(row=>{
     html+='<tr><td style="padding:5px 8px;color:var(--text);white-space:nowrap;position:sticky;left:0;background:var(--surface);max-width:160px;overflow:hidden;text-overflow:ellipsis;">'+row.nome+'</td>';
     AUD_DIMS.forEach(d=>{ const v=row.dims[d.id]; html+='<td style="padding:7px 6px;text-align:center;font-weight:600;'+audHeatColor(v)+'border:1px solid #fff;">'+(v!==null?v:'—')+'</td>'; });
@@ -11676,7 +11676,7 @@ function audDetalheHTML(a){
   const skill = AUD_D9_SKILLS[a.entrega];
   const itens = a.d9_itens || {};
   if (skill) {
-    direita += '<div style="font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:6px;">Checklist da entrega</div>';
+    direita += '<div style="font-size:var(--fs-2xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:6px;">Checklist da entrega</div>';
     // Blocos sem nenhum item preenchido nessa auditoria não aparecem — evita telas cheias de
     // "—" quando o bloco nem se aplica (ex: bloco de checklist antigo, em auditoria nova).
     direita += skill.filter(bloco => bloco.items.some(it => itens[it.id] !== undefined)).map(bloco => {
@@ -11768,7 +11768,7 @@ function audRenderLista(){
   }
   const rows=list.slice().sort((a,b)=>(b.data||'').localeCompare(a.data||''));
   box.innerHTML='<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:var(--fs-base);">'
-    + '<thead><tr>'+['Consultor','Entrega','Cliente','Data','Nota','Gaps',''].map(h=>'<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">'+h+'</th>').join('')+'</tr></thead><tbody>'
+    + '<thead><tr>'+['Consultor','Entrega','Cliente','Data','Nota','Gaps',''].map(h=>'<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);font-size:var(--fs-2xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">'+h+'</th>').join('')+'</tr></thead><tbody>'
     + rows.map(a=>{
         const ng=audNotaGeral(a), cl=audClassif(ng), gaps=audGaps(a);
         const dataFmt=a.data?((parseDate(a.data)||{}).toLocaleDateString?parseDate(a.data).toLocaleDateString('pt-BR'):a.data):'—';
@@ -11777,7 +11777,7 @@ function audRenderLista(){
           + '<td style="padding:6px 8px;color:var(--text-muted);">'+(a.entrega||'—')+'</td>'
           + '<td style="padding:6px 8px;color:var(--text-muted);">'+(a.cliente||'—')+'</td>'
           + '<td style="padding:6px 8px;color:var(--text-muted);">'+dataFmt+'</td>'
-          + '<td style="padding:6px 8px;"><span style="font-weight:700;color:'+cl.cor+';'+(cl.dourado?'padding:1px 6px;border-radius:4px;box-shadow:0 0 0 1.5px #D4AF37;':'')+'">'+(ng!==null?ng:'—')+'</span> <span style="font-size:var(--fs-xs);color:var(--text-hint);">'+cl.txt+'</span></td>'
+          + '<td style="padding:6px 8px;"><span style="font-weight:700;color:'+cl.cor+';'+(cl.dourado?'padding:1px 6px;border-radius:var(--r-sm);box-shadow:0 0 0 1.5px #D4AF37;':'')+'">'+(ng!==null?ng:'—')+'</span> <span style="font-size:var(--fs-xs);color:var(--text-hint);">'+cl.txt+'</span></td>'
           + '<td style="padding:6px 8px;color:var(--text-muted);font-size:var(--fs-xs);">'+(gaps.length?gaps.map(g=>g.nome).join(' · '):'—')+'</td>'
           + '<td style="padding:6px 8px;text-align:right;white-space:nowrap;"><button onclick="event.stopPropagation();audEditar(\''+a.id+'\')" title="Editar" style="background:none;border:none;cursor:pointer;color:var(--text-hint);font-size:var(--fs-md);margin-right:6px;">'+icon('edit')+'</button><button onclick="event.stopPropagation();audRemover(\''+a.id+'\')" title="Excluir" style="background:none;border:none;cursor:pointer;color:var(--text-hint);font-size:var(--fs-md);">'+icon('x')+'</button></td>'
           + '</tr>'
