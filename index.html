@@ -10844,8 +10844,8 @@ function audFormHTML(){
     + '<div class="aud-fila-texto" style="font-size:var(--fs-base);color:var(--text-muted);margin-bottom:6px;"></div>'
     + '<div style="background:var(--surface3);border-radius:var(--r);height:6px;overflow:hidden;"><div class="aud-fila-barra-fill" style="background:var(--accent);height:100%;width:0%;transition:width .3s;"></div></div>'
     + '</div>'
-    + '<button class="btn btn-ghost" onclick="audPularItemDaFila()" style="white-space:nowrap;">Pular esta</button>'
     + '</div>'
+    + '<div id="aud-fila-lista" style="margin-bottom:14px;"></div>'
     + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px;">'
     + '<div><label for="aud-f-consultor" class="aud-lbl">Consultor</label><select id="aud-f-consultor" class="aud-inp"><option value="">Selecione…</option>'+opt(audConsultores())+'</select></div>'
     + '<div><label for="aud-f-tipo" class="aud-lbl">Tipo de entrega</label><select id="aud-f-tipo" class="aud-inp"><option value="">Selecione…</option>'+opt(AUD_TIPOS)+'</select></div>'
@@ -10872,9 +10872,14 @@ function audIdentOk(){
   return true;
 }
 let audEditandoId = null; // null = criando avaliação nova; com valor = editando uma já salva
-let audFilaAtiva = null; // {itens:[{id,nome,donoNome,donoEmail,modificadoEm}], indice:number} — fila do Drive em processamento
-let audFilaDriveFileIdAtual = null; // driveFileId do item da fila em revisão agora, capturado por audSalvar()
-let audFilaNosOriginais = null; // guarda onde #aud-fila-progresso e #aud-review viviam na página, pra devolver quando a fila fecha o popup
+// Fila de geração em background — cada item ganha status: 'pendente' | 'gerando' | 'pronta' |
+// 'erro' | 'revisada'. resultado = {texto,scores,obs,rec,d9Itens} depois de pronta. Persiste
+// na tabela aud_fila (separada de saber_data/ter_data, pra não disparar o save geral do painel
+// a cada progresso) — sobrevive a recarregar a página e a trocar de aba.
+let audFilaAtiva = null; // {itens:[...]}
+let audFilaProcessando = false; // trava contra dois loops de geração rodando ao mesmo tempo
+let audFilaRevisandoId = null; // id do item da fila carregado agora na tela de revisão (null = não veio da fila)
+let audFilaSaveTimer = null;
 
 // ── Fila do Drive por pessoa (login novo) — Agenda + Drive de quem já conectou ──
 let audDriveView = 'lista'; // 'lista' | 'calendario'
@@ -10991,15 +10996,13 @@ function audEstimarProgressoAnalise(texto){
   return { frac:Math.min(0.9, 0.05+(ultimaDim/9)*0.85), label:'Analisando dimensão D'+ultimaDim+' de 9…' };
 }
 
-// Mostra/atualiza a barra de progresso compartilhada (#aud-fila-progresso) — usada tanto na
-// geração avulsa (upload de arquivo) quanto na fila do Drive, onde ela já é movida pra dentro
-// do modal por audEntrarModoProcessamento(). pct=null esconde a barra.
+// Mostra/atualiza a barra de progresso da geração avulsa (upload manual de arquivo). A fila
+// do Drive tem seu próprio indicador por item, em #aud-fila-lista (ver audRenderFilaLista).
+// pct=null esconde a barra.
 function audAtualizaProgresso(pct, label){
   const bar=document.getElementById('aud-fila-progresso'); if(!bar) return;
   if(pct==null){ bar.style.display='none'; return; }
   bar.style.display='flex';
-  const skipBtn=bar.querySelector('button');
-  if(skipBtn) skipBtn.style.display=audFilaAtiva?'inline-block':'none';
   const texto=bar.querySelector('.aud-fila-texto'); if(texto) texto.textContent=label;
   const fill=bar.querySelector('.aud-fila-barra-fill'); if(fill) fill.style.width=Math.round(pct)+'%';
 }
@@ -11195,9 +11198,9 @@ function audRenderCalendarioDrive(files){
 
 function audFecharModalDrive(){
   const m=document.getElementById('modal-drive-fila'); if(m) m.style.display='none';
-  // Fechar o popup no meio de uma fila cancela o que falta — devolve a barra/revisão pro
-  // lugar de origem na página em vez de deixar tudo preso dentro do modal escondido.
-  if(audFilaAtiva){ audFilaAtiva=null; audFilaDriveFileIdAtual=null; audSairDoModoProcessamento(); }
+  // Fechar o popup NÃO cancela mais a fila — a geração em background continua rodando
+  // (audFilaProcessarBackground) independente do modal estar aberto ou de qual aba do painel
+  // está visível. O que já tiver ficado pronto aparece em #aud-fila-lista quando ela voltar.
 }
 
 // Painel ADM: quem já autorizou Agenda+Drive no login novo x quem ainda não (roster
@@ -11244,40 +11247,6 @@ function closeConexoesGoogle(){
   const m=document.getElementById('modal-conexoes-google'); if(m) m.style.display='none';
 }
 
-// Move a barra de progresso e a tela de revisão pra dentro do popup e mantém ele aberto —
-// audRenderReview()/audAtualizaProgresso() continuam escrevendo nos mesmos ids de sempre,
-// só que agora esses elementos moraram temporariamente dentro do modal.
-function audEntrarModoProcessamento(){
-  const selecao=document.getElementById('modal-drive-selecao');
-  const proc=document.getElementById('modal-drive-processando');
-  if(selecao) selecao.style.display='none';
-  if(proc) proc.style.display='block';
-  const progresso=document.getElementById('aud-fila-progresso');
-  const review=document.getElementById('aud-review');
-  audFilaNosOriginais={
-    progresso: progresso ? {pai:progresso.parentNode, antes:progresso.nextSibling} : null,
-    review: review ? {pai:review.parentNode, antes:review.nextSibling} : null,
-  };
-  if(proc && progresso) proc.appendChild(progresso);
-  if(proc && review) proc.appendChild(review);
-}
-
-// Devolve os elementos pro lugar original na página (dentro do card "Nova avaliação").
-function audSairDoModoProcessamento(){
-  const selecao=document.getElementById('modal-drive-selecao');
-  const proc=document.getElementById('modal-drive-processando');
-  if(audFilaNosOriginais){
-    const {progresso, review}=audFilaNosOriginais;
-    const elProgresso=document.getElementById('aud-fila-progresso');
-    const elReview=document.getElementById('aud-review');
-    if(progresso && progresso.pai && elProgresso) progresso.pai.insertBefore(elProgresso, progresso.antes);
-    if(review && review.pai && elReview) review.pai.insertBefore(elReview, review.antes);
-    audFilaNosOriginais=null;
-  }
-  if(proc) proc.style.display='none';
-  if(selecao) selecao.style.display='block';
-}
-
 function audRenderListaDrive(files){
   const lista=document.getElementById('aud-drive-lista'); if(!lista) return;
   if(!files.length){ lista.innerHTML='<div style="font-size:var(--fs-base);color:var(--text-hint);padding:8px 0;">Nenhuma reunião nova nos últimos 30 dias — tudo que existe já foi avaliado.</div>'; return; }
@@ -11300,9 +11269,9 @@ function audRenderListaDrive(files){
   lista.dataset.files=JSON.stringify(files);
 }
 
-// Monta a fila em memória com os itens marcados e fecha o modal — o processamento roda
-// sozinho a partir daí (busca a transcrição e já avalia, sem precisar de nenhum clique
-// extra), reaproveitando audGerarEImportar/audImportar/audRenderReview sem duplicar nada.
+// Monta a fila em memória com os itens marcados (status 'pendente'), fecha o modal e dispara
+// a geração de TODAS em background — sem esperar revisão entre uma e outra. Quem já estava
+// na fila (adicionar uma segunda leva enquanto a primeira ainda roda) é preservado.
 function audAdicionarSelecaoNaFila(){
   const lista=document.getElementById('aud-drive-lista'); if(!lista) return;
   const files=JSON.parse(lista.dataset.files||'[]');
@@ -11316,78 +11285,173 @@ function audAdicionarSelecaoNaFila(){
     const tipo=lista.querySelector('.aud-drive-tipo[data-idx="'+idx+'"]')?.value||'';
     const cliente=(lista.querySelector('.aud-drive-cliente[data-idx="'+idx+'"]')?.value||'').trim();
     if(!cliente) faltouCliente=true;
-    itens.push({...files[idx], consultorSugerido:consultor, tipoSugerido:tipo, clienteSugerido:cliente});
+    itens.push({...files[idx], consultorSugerido:consultor, tipoSugerido:tipo, clienteSugerido:cliente, status:'pendente', resultado:null, erroMsg:null});
   });
   if(!itens.length){ if(erro){erro.textContent='Selecione ao menos uma reunião.';erro.style.display='block';} return; }
   if(faltouCliente){ if(erro){erro.textContent='Preencha o cliente de cada reunião selecionada.';erro.style.display='block';} return; }
-  audEntrarModoProcessamento();
-  audFilaAtiva={itens, indice:-1};
-  audProcessarProximoDaFila();
+  if(!audFilaAtiva) audFilaAtiva={itens:[]};
+  audFilaAtiva.itens.push(...itens);
+  audFecharModalDrive();
+  audRenderFilaLista();
+  audFilaSalvarEstado();
+  audFilaProcessarBackground();
+  if(typeof showToast==='function') showToast(itens.length+' reunião(ões) adicionada(s) à fila — gerando em segundo plano. Pode continuar usando o painel.', 'info');
 }
 
-// Busca a transcrição do item atual da fila no Drive e já avalia direto com o Claude — sem
-// mostrar a transcrição em textarea nenhuma e sem exigir clique manual. Só para na tela de
-// revisão de sempre, esperando o "Salvar avaliação" (a fila avança sozinha depois do save).
-// A barra combina o progresso de fila (item N de M) com o progresso real da chamada ao
-// Claude pro item atual, então ela anda continuamente em vez de pular só quando um item
-// termina — evita ficar presa em 0% ou 100% o tempo todo.
-async function audProcessarProximoDaFila(){
-  if(!audFilaAtiva) return;
-  audFilaAtiva.indice++;
-  if(audFilaAtiva.indice>=audFilaAtiva.itens.length){
-    const total=audFilaAtiva.itens.length;
-    audFilaAtiva=null; audFilaDriveFileIdAtual=null; audAtualizaProgresso(null);
-    audSairDoModoProcessamento();
-    const concluidaMsg=document.getElementById('aud-fila-concluida-msg');
-    if(concluidaMsg){ concluidaMsg.textContent='✓ Fila concluída — '+total+' reunião(ões) processada(s).'; concluidaMsg.style.display='block'; }
-    const lista=document.getElementById('aud-drive-lista'); if(lista) lista.innerHTML='';
-    return;
+// Percorre a fila inteira, um item de cada vez (respeita o ritmo da API da Anthropic —
+// não dispara em paralelo), gerando e já deixando PARSEADO (scores/obs/rec/d9Itens) dentro
+// do próprio item — sem tocar no formulário de revisão. Roda sozinho, mesmo com o modal
+// fechado ou em outra aba do painel; audFilaProcessando trava contra rodar duas vezes.
+async function audFilaProcessarBackground(){
+  if(audFilaProcessando || !audFilaAtiva) return;
+  audFilaProcessando=true;
+  try{
+    for(const item of audFilaAtiva.itens){
+      if(item.status!=='pendente') continue;
+      item.status='gerando'; item.progressoLabel='Baixando transcrição…';
+      audRenderFilaLista(); audFilaSalvarEstado();
+      try{
+        // Item veio da agenda de uma pessoa (tem .email): usa o token dela, e se o evento não
+        // tinha o Doc anexado direto, o servidor busca no Drive dela por proximidade de horário.
+        // Item da conta compartilhada de sempre (sem .email): comportamento de sempre.
+        const body=item.email
+          ? {email:item.email, fileId:item.driveFileId||undefined, eventId:item.eventId, eventStart:item.modificadoEm}
+          : {fileId:item.id};
+        const response=await fetch('/api/google/fetch-transcript',{
+          method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
+        });
+        const data=await response.json().catch(()=>({}));
+        if(!response.ok) throw new Error(data.error || ('A API retornou um erro ('+response.status+')'));
+        if(data.fileId) item.driveFileIdResolvido=data.fileId; // id real resolvido pelo servidor
+        item.progressoLabel='Conectando com Claude…'; audRenderFilaLista();
+        const texto=await audChamarClaude(data.texto||'', (textoAcumulado)=>{
+          const {label}=audEstimarProgressoAnalise(textoAcumulado);
+          item.progressoLabel=label; audRenderFilaLista();
+        });
+        item.resultado={
+          texto,
+          scores: audParseScores(texto),
+          obs: audParseObs(texto),
+          rec: audParseRec(texto),
+          d9Itens: audParseD9(texto, item.tipoSugerido||''),
+        };
+        item.status='pronta'; item.progressoLabel=null;
+      }catch(err){
+        item.status='erro'; item.erroMsg=err.message; item.progressoLabel=null;
+      }
+      audRenderFilaLista(); audFilaSalvarEstado();
+    }
+  } finally {
+    audFilaProcessando=false;
   }
-  const {itens, indice}=audFilaAtiva;
-  const total=itens.length;
-  const item=itens[indice];
-  const rotulo='Reunião '+(indice+1)+' de '+total+' — '+item.nome;
-  audFilaDriveFileIdAtual=item.id;
+}
+
+// Reconstrói a lista de status da fila em #aud-fila-lista — chamada depois de qualquer
+// mudança de status (pendente/gerando/pronta/erro/revisada). Itens 'revisada' somem da lista
+// (já viraram avaliação salva de verdade, aparecem na tabela normal de avaliações).
+function audRenderFilaLista(){
+  const box=document.getElementById('aud-fila-lista'); if(!box) return;
+  if(!audFilaAtiva || !audFilaAtiva.itens.length){ box.innerHTML=''; return; }
+  const visiveis=audFilaAtiva.itens.filter(it=>it.status!=='revisada');
+  if(!visiveis.length){ box.innerHTML=''; audFilaAtiva=null; audFilaSalvarEstado(); return; }
+  const ICO_NOME={pendente:'clock',gerando:'refresh',pronta:'check',erro:'warning'};
+  const ICO_COR={pendente:'var(--text-hint)',gerando:'var(--blue)',pronta:'var(--green)',erro:'var(--accent)'};
+  const linhas=visiveis.map(it=>{
+    const sub = it.status==='gerando' ? (it.progressoLabel||'Processando…')
+      : it.status==='erro' ? ('Erro: '+(it.erroMsg||'desconhecido'))
+      : (it.consultorSugerido||'—')+' · '+(it.tipoSugerido||'—')+' · '+(it.clienteSugerido||'—');
+    const acoes = it.status==='pronta'
+      ? '<button class="btn btn-primary" style="padding:4px 10px;font-size:var(--fs-xs);" onclick="audAbrirRevisaoDoItem(\''+it.id+'\')">Revisar</button>'
+      : it.status==='erro'
+        ? '<button class="btn btn-ghost" style="padding:4px 10px;font-size:var(--fs-xs);" onclick="audFilaTentarNovamente(\''+it.id+'\')">Tentar de novo</button>'
+        : '';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--border);">'
+      + '<span style="flex-shrink:0;color:'+(ICO_COR[it.status]||'var(--text-hint)')+';display:flex;">'+icon(ICO_NOME[it.status]||'clock')+'</span>'
+      + '<div style="flex:1;min-width:0;"><div style="font-size:var(--fs-sm);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(it.nome||'—')+'</div>'
+      + '<div style="font-size:var(--fs-xs);color:var(--text-hint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+sub+'</div></div>'
+      + acoes
+      + '<button class="btn btn-ghost" style="padding:4px 8px;font-size:var(--fs-xs);" title="Remover da fila" onclick="audFilaRemoverItem(\''+it.id+'\')">'+icon('x',{size:11})+'</button>'
+      + '</div>';
+  }).join('');
+  const prontas=visiveis.filter(it=>it.status==='pronta').length;
+  const total=visiveis.length;
+  box.innerHTML='<div style="background:var(--surface2);border-radius:var(--r-sm);overflow:hidden;">'
+    + '<div style="padding:8px 10px;font-size:var(--fs-xs);font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-hint);border-bottom:1px solid var(--border);">Fila de auditoria — '+prontas+' de '+total+' prontas pra revisar</div>'
+    + linhas + '</div>';
+}
+
+// Carrega o resultado já gerado (sem chamar a IA de novo) na tela de revisão de sempre —
+// mesmo caminho que audEditar() usa pra reabrir uma avaliação já salva.
+function audAbrirRevisaoDoItem(itemId){
+  if(!audFilaAtiva) return;
+  const item=audFilaAtiva.itens.find(it=>it.id===itemId);
+  if(!item || item.status!=='pronta' || !item.resultado) return;
+  audFilaRevisandoId=itemId;
+  audEditandoId=null;
   const setVal=(id,val)=>{const el=document.getElementById(id); if(el) el.value=val||'';};
   setVal('aud-f-consultor', item.consultorSugerido);
   setVal('aud-f-tipo', item.tipoSugerido);
   setVal('aud-f-cliente', item.clienteSugerido);
   setVal('aud-f-data', (item.modificadoEm||'').slice(0,10));
-  audAtualizaProgresso((indice/total)*100, rotulo+' — baixando transcrição…');
-  const msg=document.getElementById('aud-gerar-msg');
-  if(msg){msg.textContent='';msg.style.color='var(--text-hint)';}
-  try{
-    // Item veio da agenda de uma pessoa (tem .email): usa o token dela, e se o evento não
-    // tinha o Doc anexado direto, o servidor busca no Drive dela por proximidade de horário.
-    // Item da conta compartilhada de sempre (sem .email): comportamento de sempre.
-    const body=item.email
-      ? {email:item.email, fileId:item.driveFileId||undefined, eventId:item.eventId, eventStart:item.modificadoEm}
-      : {fileId:item.id};
-    const response=await fetch('/api/google/fetch-transcript',{
-      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
-    });
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok) throw new Error(data.error || ('A API retornou um erro ('+response.status+')'));
-    if(data.fileId) audFilaDriveFileIdAtual=data.fileId; // id real resolvido pelo servidor (útil no fallback por horário)
-    audAtualizaProgresso((indice/total)*100, rotulo+' — conectando com Claude…');
-    await audGerarEImportar(data.texto||'', (textoAcumulado)=>{
-      const {frac, label}=audEstimarProgressoAnalise(textoAcumulado);
-      audAtualizaProgresso(((indice+frac)/total)*100, rotulo+' — '+label);
-    });
-    audAtualizaProgresso(((indice+1)/total)*100, rotulo+' — concluída');
-    if(msg){msg.textContent='✓ Gerado — revise e salve.';msg.style.color='var(--green)';}
-  }catch(err){
-    audAtualizaProgresso(null);
-    if(msg){msg.textContent='Não consegui avaliar essa reunião: '+err.message+'. Pulando pra próxima.';msg.style.color='var(--accent)';}
-    audProcessarProximoDaFila();
-  }
+  audReviewD9=item.resultado.d9Itens||{};
+  audRenderReview(item.resultado.scores, item.resultado.obs, item.resultado.rec);
+  document.getElementById('aud-review')?.scrollIntoView({behavior:'smooth', block:'start'});
 }
 
-// "Pular esta" na barra de progresso — sai do item atual sem salvar avaliação nenhuma.
-function audPularItemDaFila(){
+function audFilaTentarNovamente(itemId){
   if(!audFilaAtiva) return;
-  audFilaDriveFileIdAtual=null;
-  audProcessarProximoDaFila();
+  const item=audFilaAtiva.itens.find(it=>it.id===itemId);
+  if(!item) return;
+  item.status='pendente'; item.erroMsg=null;
+  audRenderFilaLista(); audFilaSalvarEstado();
+  audFilaProcessarBackground();
+}
+
+function audFilaRemoverItem(itemId){
+  if(!audFilaAtiva) return;
+  audFilaAtiva.itens=audFilaAtiva.itens.filter(it=>it.id!==itemId);
+  if(audFilaRevisandoId===itemId){ audFilaRevisandoId=null; audCancelar(); }
+  audRenderFilaLista(); audFilaSalvarEstado();
+}
+
+// ── Persistência da fila (tabela aud_fila, separada do save geral do painel) ──
+function audFilaSalvarEstado(){
+  clearTimeout(audFilaSaveTimer);
+  audFilaSaveTimer=setTimeout(audFilaSalvarEstadoAgora, 800);
+}
+async function audFilaSalvarEstadoAgora(){
+  const itens=(audFilaAtiva && audFilaAtiva.itens) || [];
+  const payload={id:'main', itens:JSON.stringify(itens), updated_at:new Date().toISOString()};
+  try{
+    let r=await fetch(SB_URL+'/rest/v1/aud_fila?id=eq.main', {
+      method:'PATCH', headers:{...SB_HEADERS, 'Prefer':'return=minimal'}, body:JSON.stringify(payload)
+    });
+    if(r.status===404 || r.status===406){
+      r=await fetch(SB_URL+'/rest/v1/aud_fila', {
+        method:'POST', headers:{...SB_HEADERS, 'Prefer':'return=minimal'}, body:JSON.stringify(payload)
+      });
+    }
+  }catch(e){ console.warn('audFilaSalvarEstado falhou (sem internet?):', e); }
+}
+// Roda uma vez no carregamento da página — retoma uma fila que ficou pendente (ex: página
+// recarregou no meio). Item que estava 'gerando' na hora do reload perdeu a chamada em
+// andamento (não tem como retomar uma requisição já em voo) — volta pra 'pendente' e
+// reinicia do zero, sem afetar os itens que já tinham ficado prontos.
+async function audFilaCarregarEstado(){
+  try{
+    const r=await fetch(SB_URL+'/rest/v1/aud_fila?id=eq.main&select=itens', {headers:SB_HEADERS});
+    if(!r.ok) return;
+    const rows=await r.json();
+    if(!rows.length) return;
+    const itens=_parseMaybe(rows[0].itens, []);
+    if(!Array.isArray(itens) || !itens.length) return;
+    itens.forEach(it=>{ if(it.status==='gerando') it.status='pendente'; });
+    const pendentesRestantes=itens.filter(it=>it.status!=='revisada');
+    if(!pendentesRestantes.length) return;
+    audFilaAtiva={itens};
+    audRenderFilaLista();
+    audFilaProcessarBackground();
+  }catch(e){ console.warn('audFilaCarregarEstado falhou:', e); }
 }
 
 function audRenderReview(scores,obs,rec){
@@ -11452,7 +11516,7 @@ function audSyncDim(id,from){
 }
 function audGetScores(){ const s={}; AUD_DIMS.forEach(d=>{ const el=document.getElementById('aud-num-'+d.id); s[d.id]=el?Math.min(100,Math.max(0,parseInt(el.value)||0)):70; }); return s; }
 function audAtualizarMedia(){ const s=audGetScores(); const entrega=document.getElementById('aud-f-tipo')?.value||''; const m=audNotaPonderada(s, entrega); const el=document.getElementById('aud-media'); if(el){ el.textContent=m; el.style.color=audClassif(m).cor; } }
-function audCancelar(){ const rv=document.getElementById('aud-review'); if(rv){rv.style.display='none';rv.innerHTML='';} audEditandoId=null; }
+function audCancelar(){ const rv=document.getElementById('aud-review'); if(rv){rv.style.display='none';rv.innerHTML='';} audEditandoId=null; audFilaRevisandoId=null; }
 
 // Reabre uma avaliação já salva pra edição — reaproveita a mesma tela de revisão usada
 // pra avaliações novas, só pré-preenchida com os dados que já existem.
@@ -11483,11 +11547,12 @@ function audSalvar(){
   const ordemEntrega = ordemDaEntregaPeloTipo(entregaTipo); // deriva do tipo, sem campo extra
   const cliente = g('aud-f-cliente');
   const dadosAtualizados = { consultor:g('aud-f-consultor'), entrega:entregaTipo, cliente, data:g('aud-f-data'), scores, observacoes:obs, recomendacao:g('aud-rec'), nota, d9_itens:audReviewD9, ordemEntrega };
-  // Só grava driveFileId quando a avaliação nasceu da fila do Drive (audFilaDriveFileIdAtual
-  // setado por audProcessarProximoDaFila) — em qualquer outro caso (manual, colar, editar uma
+  // Só grava driveFileId quando a avaliação nasceu de um item da fila (audFilaRevisandoId
+  // setado por audAbrirRevisaoDoItem) — em qualquer outro caso (manual, colar, editar uma
   // avaliação existente) a chave nem entra no objeto, então o merge abaixo preserva o que já
   // estava salvo em vez de apagar um driveFileId anterior com `undefined`.
-  if (audFilaDriveFileIdAtual) dadosAtualizados.driveFileId = audFilaDriveFileIdAtual;
+  const itemDaFila = audFilaRevisandoId && audFilaAtiva ? audFilaAtiva.itens.find(it=>it.id===audFilaRevisandoId) : null;
+  if (itemDaFila) dadosAtualizados.driveFileId = itemDaFila.driveFileIdResolvido || itemDaFila.id;
   const estavaEditando = !!audEditandoId;
   if (estavaEditando) {
     const idx = auditorias.findIndex(x => x.id === audEditandoId);
@@ -11518,9 +11583,11 @@ function audSalvar(){
   if(typeof upd==='function') upd();
   audRenderLista();
   const m=document.getElementById('aud-form-msg'); if(m){m.textContent=(estavaEditando?'✓ Alterações salvas.':'✓ Avaliação salva.')+msgExtra;m.style.color='var(--green)';}
-  // Se essa avaliação veio da fila do Drive, avança pro próximo item automaticamente.
-  audFilaDriveFileIdAtual = null;
-  if (audFilaAtiva && typeof audProcessarProximoDaFila === 'function') audProcessarProximoDaFila();
+  // Se essa avaliação veio de um item da fila, marca 'revisada' — a lista de fila reaparece
+  // sem esse item (as outras que já estejam prontas continuam esperando, sem gerar de novo).
+  if (itemDaFila) itemDaFila.status='revisada';
+  audFilaRevisandoId = null;
+  audRenderFilaLista(); audFilaSalvarEstado();
 }
 
 async function audRemover(id){
@@ -11732,6 +11799,7 @@ function buildAuditoria(){
   const f=document.getElementById('aud-form');
   if(f && !f.dataset.ready){ f.innerHTML=audFormHTML(); f.dataset.ready='1'; }
   audRenderLista();
+  audRenderFilaLista(); // pega o estado atual da fila (ex: carregado do Supabase antes do #aud-fila-lista existir)
   // #aud-drive-bar só existe a partir daqui (criado lazy acima) — reaplica a visibilidade
   // ADM-only agora, já que updatePerfilNavVisibility() já pode ter rodado antes dele existir.
   if(typeof updatePerfilNavVisibility==='function') updatePerfilNavVisibility();
@@ -12542,6 +12610,7 @@ projects = []; // dados carregados do Supabase
   refreshAll();
   buildLeadTime();
   sbStartPolling();
+  audFilaCarregarEstado(); // retoma fila de auditoria pendente, se sobrou alguma de antes de recarregar
 })();
 { const _elUpd = document.getElementById('last-upd'); if (_elUpd) _elUpd.textContent = ts(); }
   window.addEventListener('beforeunload', e => {
