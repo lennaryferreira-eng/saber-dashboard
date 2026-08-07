@@ -2732,6 +2732,16 @@ function diffDays(a, b) {
   if (!da || !db) return null;
   return Math.round((db - da) / 864e5);
 }
+// Segunda-feira (ISO) da semana que contém a data dada — usado na regra de estagnação
+// semanal do Healthscore (ver calcFlagAutomatica).
+function segundaDaSemana(dataISO) {
+  const d = parseDate(dataISO);
+  if (!d) return null;
+  const dow = d.getDay(); // 0=domingo, 1=segunda, ..., 6=sábado
+  const voltar = dow === 0 ? 6 : dow - 1;
+  d.setDate(d.getDate() - voltar);
+  return d.toISOString().slice(0,10);
+}
 
 function calcStatus2(p) {
   if (p.status2 === 'Churn' || p.status2 === 'Pausado') return p.status2;
@@ -2929,64 +2939,41 @@ function calcFlagAutomatica(p) {
   if (isDroFam(p)) return p.flag || '—'; // DRO/DRX não entram nesse cálculo, mantém manual
   const ent = p.entregas || {};
   const hojeISO = new Date().toISOString().slice(0,10);
-  // Projeto estagnado: já se passou mais de uma semana desde a ÚLTIMA entrega que REALMENTE
-  // conta como "aconteceu de verdade" — vira vermelho automático, independente de
-  // score/prazo geral. A Decolagem entra nessa MESMA checagem, não é um atalho à parte —
-  // uma Decolagem que "nasceu atrasada" e sem nota não conta como projeto finalizado.
-  //
-  // O que conta como "aconteceu de verdade":
-  // - Growthclass (posição 0): não é avaliada, uma data real (já passada) já basta.
-  // - Qualquer outra etapa (Kickoff até Decolagem): só conta se JÁ TEM NOTA da Auditoria, OU
-  //   se saiu NO PRAZO (até a data esperada) e ainda está dentro de 8 dias dela — um respiro
-  //   pra dar tempo de avaliar. Quem já nasceu atrasada e não tem nota não ganha margem
-  //   nenhuma. Passado isso, trata como se a entrega não tivesse acontecido de verdade, e
-  //   volta pra etapa anterior genuína.
-  // - Datas FUTURAS (ainda não chegaram) nunca contam como atividade recente.
+  // Projeto estagnado = regra semanal, alinhada ao ritmo real de upload de auditoria
+  // (auditorias sobem ao longo da semana, normalmente até sexta). Pega a data da entrega
+  // mais recente já realizada (ou o início do projeto, se nenhuma aconteceu ainda) e
+  // verifica se ela é anterior à segunda-feira da semana passada — ou seja, se a última
+  // semana de trabalho já encerrada (segunda a sexta) não teve NENHUMA entrega registrada,
+  // o projeto já é Vermelho a partir da segunda seguinte, independente de score/prazo geral.
+  // A Decolagem entra na mesma checagem, sem atalho à parte.
   const ordem = ordemCompleta(p);
-  const candidatos = [];
-  ordem.forEach((si, pos) => {
-    const e = ent[si] || ent[String(si)];
-    if (!e || !e.real || e.real > hojeISO) return; // sem data, ou data ainda não chegou
-    let refAnterior = null;
-    if (pos === 0 || pos === 1) refAnterior = p.inicio || null;
-    else { const siAnt = ordem[pos - 1]; refAnterior = ((ent[siAnt] || ent[String(siAnt)]) || {}).real || null; }
-    const esperado = refAnterior ? addDays(refAnterior, 7) : null;
-    candidatos.push({ si, real: e.real, score: e.score, esperado });
-  });
-  candidatos.sort((a, b) => a.real < b.real ? 1 : -1); // mais recente primeiro
-
+  // Projeto que já chegou na Decolagem (última etapa) está concluído — não tem mais "semana
+  // de trabalho" esperada depois disso, então a regra de estagnação não se aplica mais nele.
+  const decolagem = ent[6] || ent['6'];
+  const decolagemAconteceu = !!(decolagem && decolagem.real && decolagem.real <= hojeISO);
   let referencia = null;
-  let decolagemGenuina = false;
-  for (const c of candidatos) {
-    const scorable = c.si >= 1; // Growthclass (0) não é avaliada
-    const temScore = c.score !== undefined && c.score !== '' && !isNaN(parseFloat(c.score));
-    if (!scorable || temScore) { referencia = c.real; if (c.si === 6) decolagemGenuina = true; break; }
-    // Sem nota — se já nasceu ATRASADA (aconteceu depois do prazo esperado), não ganha
-    // nenhuma margem extra: não conta como genuína, tenta o candidato anterior direto.
-    // Só quem entregou NO PRAZO ganha alguns dias de respiro pra dar tempo de avaliar.
-    if (c.esperado && c.real > c.esperado) {
-      // nasceu atrasada e sem nota -> não conta, continua pro candidato anterior
-    } else if (c.esperado) {
-      const diasDesdeEntrega = diffDays(c.real, hojeISO);
-      if (diasDesdeEntrega < 8) { referencia = c.real; if (c.si === 6) decolagemGenuina = true; break; } // no prazo, só falta avaliar
-      // no prazo mas demorou demais pra ser avaliada -> também não conta mais, tenta a anterior
-    } else {
-      referencia = c.real; if (c.si === 6) decolagemGenuina = true; break;
-    }
+  ordem.forEach(si => {
+    const e = ent[si] || ent[String(si)];
+    if (e && e.real && e.real <= hojeISO && (!referencia || e.real > referencia)) referencia = e.real;
+  });
+  referencia = referencia || p.inicio; // nenhuma entrega ainda -> conta a partir do início
+  if (!decolagemAconteceu && referencia) {
+    const segundaSemanaAnterior = addDays(segundaDaSemana(hojeISO), -7);
+    if (referencia < segundaSemanaAnterior) return 'Vermelho';
   }
-  if (!decolagemGenuina) {
-    referencia = referencia || p.inicio; // nenhuma entrega genuína ainda -> conta a partir do início
-    if (referencia) {
-      const diasParado = diffDays(referencia, hojeISO);
-      if (diasParado > 8) return 'Vermelho';
-    }
-  }
-  // score mais recente registrado (da etapa mais avançada com nota)
+  // Score mais recente registrado — percorre na ordem CRONOLÓGICA real (ordemCompleta), não
+  // por índice fixo 6→0. As etapas do meio (2-5) podem acontecer fora da ordem numérica (ex:
+  // a 3 entregue depois da 4 e da 5), então andar por índice pega uma nota antiga e ignora
+  // uma mais recente com índice menor — foi exatamente isso que mascarou o caso do projeto
+  // "Weber Manezes" (nota 79 de uma entrega de 17/07 escondendo a nota 54 de 28/07).
   let scoreRecente = null;
-  for (let i = 6; i >= 0; i--) {
-    const e = ent[i] || ent[String(i)];
+  for (let i = ordem.length - 1; i >= 0; i--) {
+    const e = ent[ordem[i]] || ent[String(ordem[i])];
     if (e && e.score !== undefined && e.score !== '' && !isNaN(parseFloat(e.score))) { scoreRecente = parseFloat(e.score); break; }
   }
+  // Nota crítica (<55) vira Vermelho automático, mesmo com o prazo em dia — uma entrega
+  // muito ruim não pode ficar mascarada de Amarelo só porque saiu na data certa.
+  if (scoreRecente !== null && scoreRecente < 55) return 'Vermelho';
   const scoreOk = scoreRecente !== null && scoreRecente >= 70;
   const prazoOk = prazoStatus(p).ok === true;
   const atingidos = (scoreOk ? 1 : 0) + (prazoOk ? 1 : 0);
