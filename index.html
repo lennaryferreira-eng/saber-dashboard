@@ -11153,6 +11153,25 @@ async function audCarregarEventosPessoa(){
 // Mesmo grupo de campos por item que audRenderListaDrive (checkbox + consultor/tipo/cliente),
 // só que arrumado num grid de 7 colunas (semana) em vez de lista vertical — audAdicionarSelecaoNaFila
 // não precisa saber a diferença, os dois escrevem em lista.dataset.files do mesmo jeito.
+// Sugere cliente/tipo de entrega comparando o título da reunião contra as listas que já
+// existem no painel — NÃO tenta "interpretar" a estrutura do título (não tem padrão fixo,
+// cada consultor nomeia do seu jeito, ver comentário em api/_lib/meeting-filters.js), só
+// reconhece quando o nome de um cliente ou tipo já cadastrado aparece literalmente ali.
+// Sempre fica editável depois — é sugestão, não é autoridade.
+function audSugerirClienteETipo(nomeReuniao){
+  const nomeLower=(nomeReuniao||'').toLowerCase();
+  const cliente=audClientes().find(c=>nomeLower.includes(c.toLowerCase())) || '';
+  let tipo=AUD_TIPOS.find(t=>nomeLower.includes(t.toLowerCase())) || '';
+  if(!tipo){
+    // sinônimos reais já vistos em títulos/skill — "Plano de Decolagem" e "Diagnóstico de
+    // Ambientes" são usados no dia a dia pra se referir a "Apresentação Final"/"Análise de
+    // Ambientes" (nome oficial no painel), então valem como reconhecimento também.
+    const SINONIMOS=[['Apresentação Final',['plano de decolagem']],['Análise de Ambientes',['diagnóstico de ambientes','diagnostico de ambientes']]];
+    const par=SINONIMOS.find(([,alts])=>alts.some(a=>nomeLower.includes(a)));
+    if(par) tipo=par[0];
+  }
+  return {cliente, tipo};
+}
 function audRenderCalendarioDrive(files){
   const lista=document.getElementById('aud-drive-lista'); if(!lista) return;
   const {inicio}=getWeekBounds(audDriveSemanaOffset);
@@ -11168,6 +11187,7 @@ function audRenderCalendarioDrive(files){
     const f=files[i];
     const hora=f.modificadoEm && f.modificadoEm.length>10 ? new Date(f.modificadoEm).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
     const consultorSugerido=audConsultores().find(c=>(f.donoNome||'').toLowerCase().includes(c.toLowerCase())) || '';
+    const {cliente:clienteSugerido, tipo:tipoSugerido}=audSugerirClienteETipo(f.nome);
     return '<label style="display:block;padding:6px;border:1px solid var(--border);border-radius:var(--r-sm);cursor:pointer;margin-bottom:5px;background:var(--surface);min-width:0;">'
       + '<div style="display:flex;gap:6px;align-items:flex-start;">'
       + '<input type="checkbox" class="aud-drive-check" data-idx="'+i+'" style="margin-top:2px;">'
@@ -11177,8 +11197,8 @@ function audRenderCalendarioDrive(files){
       + '</div></div>'
       + '<div style="display:flex;flex-direction:column;gap:4px;margin-top:6px;" onclick="event.stopPropagation()">'
       + '<select class="aud-inp aud-drive-consultor" data-idx="'+i+'" style="font-size:var(--fs-2xs);padding:3px 5px;">'+optCons(consultorSugerido)+'</select>'
-      + '<select class="aud-inp aud-drive-tipo" data-idx="'+i+'" style="font-size:var(--fs-2xs);padding:3px 5px;">'+optTipo('')+'</select>'
-      + '<input class="aud-inp aud-drive-cliente" data-idx="'+i+'" list="aud-drive-cliente-list" autocomplete="off" placeholder="Cliente…" style="font-size:var(--fs-2xs);padding:3px 5px;">'
+      + '<select class="aud-inp aud-drive-tipo" data-idx="'+i+'" style="font-size:var(--fs-2xs);padding:3px 5px;">'+optTipo(tipoSugerido)+'</select>'
+      + '<input class="aud-inp aud-drive-cliente" data-idx="'+i+'" list="aud-drive-cliente-list" autocomplete="off" placeholder="Cliente…" value="'+clienteSugerido.replace(/"/g,'&quot;')+'" style="font-size:var(--fs-2xs);padding:3px 5px;">'
       + '</div></label>';
   };
   const diaNomes=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
@@ -11255,6 +11275,7 @@ function audRenderListaDrive(files){
   const clienteDatalist='<datalist id="aud-drive-cliente-list">'+audClientes().map(c=>'<option value="'+c.replace(/"/g,'&quot;')+'">').join('')+'</datalist>';
   lista.innerHTML=clienteDatalist+files.map((f,i)=>{
     const consultorSugerido=audConsultores().find(c=>(f.donoNome||'').toLowerCase().includes(c.toLowerCase()) || (f.donoEmail||'').toLowerCase().includes(c.toLowerCase())) || '';
+    const {cliente:clienteSugerido, tipo:tipoSugerido}=audSugerirClienteETipo(f.nome);
     return '<label style="display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--border);border-radius:var(--r-sm);cursor:pointer;">'
       + '<input type="checkbox" class="aud-drive-check" data-idx="'+i+'" style="margin-top:3px;">'
       + '<div style="flex:1;min-width:0;">'
@@ -11262,8 +11283,8 @@ function audRenderListaDrive(files){
       + '<div style="font-size:var(--fs-sm);color:var(--text-hint);margin-bottom:6px;">Conta de origem: <strong>'+(f.donoNome||f.donoEmail||'desconhecida')+'</strong>'+(f.donoNome&&f.donoEmail?' ('+f.donoEmail+')':'')+' · '+(f.modificadoEm?new Date(f.modificadoEm).toLocaleDateString('pt-BR'):'—')+'</div>'
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
       + '<select class="aud-inp aud-drive-consultor" data-idx="'+i+'" style="font-size:var(--fs-base);padding:5px 8px;" onclick="event.stopPropagation()">'+optCons(consultorSugerido)+'</select>'
-      + '<select class="aud-inp aud-drive-tipo" data-idx="'+i+'" style="font-size:var(--fs-base);padding:5px 8px;" onclick="event.stopPropagation()">'+optTipo('')+'</select>'
-      + '<input class="aud-inp aud-drive-cliente" data-idx="'+i+'" list="aud-drive-cliente-list" autocomplete="off" placeholder="Cliente…" style="font-size:var(--fs-base);padding:5px 8px;width:160px;" onclick="event.stopPropagation()">'
+      + '<select class="aud-inp aud-drive-tipo" data-idx="'+i+'" style="font-size:var(--fs-base);padding:5px 8px;" onclick="event.stopPropagation()">'+optTipo(tipoSugerido)+'</select>'
+      + '<input class="aud-inp aud-drive-cliente" data-idx="'+i+'" list="aud-drive-cliente-list" autocomplete="off" placeholder="Cliente…" value="'+clienteSugerido.replace(/"/g,'&quot;')+'" style="font-size:var(--fs-base);padding:5px 8px;width:160px;" onclick="event.stopPropagation()">'
       + '</div></div></label>';
   }).join('');
   lista.dataset.files=JSON.stringify(files);
