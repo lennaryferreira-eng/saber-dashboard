@@ -12003,16 +12003,19 @@ let sbRetryCount = 0;
 
 // ── GOOGLE SHEETS SYNC ─────────────────────────────────────
 
+// Botão manual "Atualizar Planilha" — reaproveita exatamente o mesmo payload e o mesmo
+// endpoint do sync automático (syncSheets). Antes disso, esse botão mandava só
+// {action:'atualizar'} sem dado nenhum, e o Apps Script do outro lado tinha que ir buscar
+// tudo direto no Supabase (select=* — ~1,3MB, com os 952KB de auditorias inclusos) toda vez
+// que rodava. Um gatilho por tempo relacionado a essa ação (configurado direto no editor do
+// Apps Script, fora deste código) rodava isso a cada ~60s, 24h/dia — sozinho respondia por
+// dezenas de GB de saída do banco por mês. Agora o Apps Script recebe os dados prontos no
+// corpo da requisição e nunca mais precisa chamar o Supabase.
 async function atualizarPlanilha() {
   const btn = document.querySelector('button[onclick="atualizarPlanilha()"]');
   if (btn) btn.innerHTML = icon('chart') + ' Atualizando...';
   try {
-    await fetch('https://script.google.com/a/macros/v4company.com/s/AKfycbzy462VGOLbHKckALmznzaBvZwrRMMBTSr9J3CZEt2xj_hF2pWWzHvU1BZXzNw-1HKG/exec?action=atualizar', {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: {'Content-Type': 'text/plain'},
-      body: JSON.stringify({action: 'atualizarPlanilha'})
-    });
+    await syncSheets();
     if (btn) btn.innerHTML = icon('chart') + ' Planilha';
     await showAlert('✅ Planilha atualizada com os dados do Supabase!\nVerifique a aba Projetos na planilha.');
   } catch(e) {
