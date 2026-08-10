@@ -1,10 +1,10 @@
 // api/classify-signal.js
 // Função serverless do Vercel — roda no servidor, nunca no navegador.
-// A chave da Anthropic fica só aqui, lida de uma variável de ambiente
-// (Vercel > Project Settings > Environment Variables > ANTHROPIC_API_KEY),
+// A chave do Gemini fica só aqui, lida de uma variável de ambiente
+// (Vercel > Project Settings > Environment Variables > GEMINI_API_KEY),
 // nunca aparece no código nem no HTML entregue ao navegador.
 
-import { callClaude } from './_lib/anthropic.js';
+import { callGemini } from './_lib/gemini.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -12,9 +12,9 @@ export default async function handler(req, res) {
     return;
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    res.status(500).json({ error: 'ANTHROPIC_API_KEY não configurada no Vercel (Settings > Environment Variables)' });
+    res.status(500).json({ error: 'GEMINI_API_KEY não configurada no Vercel (Settings > Environment Variables)' });
     return;
   }
 
@@ -29,7 +29,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { ok, status, data } = await callClaude({
+    const { ok, status, data } = await callGemini({
       apiKey,
       system: rubric,
       userText: `Situação observada no squad:\n"""${descricao}"""\n\nClassifique conforme instruído.`,
@@ -37,12 +37,15 @@ export default async function handler(req, res) {
     });
 
     if (!ok) {
-      res.status(status).json({ error: 'Erro da API da Anthropic', details: data });
+      res.status(status).json({ error: 'Erro da API do Gemini', details: data });
       return;
     }
 
-    res.status(200).json(data);
+    // Traduz a resposta da Interactions API do Gemini pro mesmo formato que a Anthropic
+    // devolvia ({content:[{type:'text', text:...}]}) — classificarSituacao() (index.html)
+    // já sabe ler essa forma, então não precisa mudar nada no cliente.
+    res.status(200).json({ content: [{ type: 'text', text: data.output_text || '' }] });
   } catch (err) {
-    res.status(500).json({ error: 'Falha ao chamar a Anthropic: ' + err.message });
+    res.status(500).json({ error: 'Falha ao chamar o Gemini: ' + err.message });
   }
 }
