@@ -24,17 +24,26 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { transcricao } = req.body || {};
+  const { transcricao, tipoFoco } = req.body || {};
   if (!transcricao || typeof transcricao !== 'string') {
     res.status(400).json({ error: 'Campo "transcricao" é obrigatório' });
     return;
   }
 
+  // Quando a mesma call cobre duas entregas diferentes (ex: Diagnóstico de Vendas +
+  // Diagnóstico de Mídia Paga na mesma reunião), o painel manda a mesma transcrição duas
+  // vezes, uma pra cada tipo — tipoFoco diz qual das duas avaliar aqui. Sem isso, a skill
+  // (Passo 2) tentaria identificar sozinha o tipo, sem saber que precisa escolher uma das
+  // duas partes e ignorar a outra.
+  const userText = tipoFoco
+    ? `ATENÇÃO: esta transcrição cobre duas entregas diferentes na mesma call. Avalie SOMENTE a parte conduzida como "${tipoFoco}" (é esse o tipo de entrega desta avaliação — não precisa identificá-lo sozinho no Passo 2, use este). Trate o trecho conduzido para a outra entrega/tipo como fora de escopo desta avaliação — não conta a favor nem contra em nenhuma das 9 dimensões, mesma lógica da regra de ignorar apresentação comercial do time de Expansão.\n\n${transcricao}`
+    : transcricao;
+
   try {
     const geminiRes = await callGeminiStream({
       apiKey,
       system: MEETING_EVAL_SKILL,
-      userText: transcricao,
+      userText,
       // 16000 dá espaço de sobra pra saída completa das 9 dimensões (texto real fica em
       // ~2500-3000 tokens) sem risco de truncar.
       maxTokens: 16000,

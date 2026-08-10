@@ -10667,7 +10667,7 @@ const AUD_TRANSVERSAIS = {bloco:'Regras transversais (toda entrega)',items:[
 ]};
 const AUD_D9_SKILLS = {
   'Kickoff': [
-    {bloco:'Entendimento do negócio',items:[{id:'1.1',label:'Modelo de negócio mapeado (como vende, para quem, ticket)'},{id:'1.2',label:'Histórico de marketing entendido (o que já fez, o que funcionou)'},{id:'1.3',label:'Dores e gargalos atuais identificados'}]},
+    {bloco:'Entendimento do negócio',items:[{id:'1.1',label:'Modelo de negócio mapeado (como vende, para quem, ticket)'},{id:'1.2',label:'Histórico de marketing entendido (o que já fez, o que funcionou)'},{id:'1.3',label:'Dores e gargalos atuais identificados'},{id:'1.4',label:'Pré-diagnóstico preliminar apresentado — leitura inicial com direção clara de como seguir'}]},
     {bloco:'Dados e acessos',items:[{id:'2.1',label:'Compromisso de envio dos acessos'},{id:'2.2',label:'Decisores/pessoas-chave das próximas entregas identificados'}]},
     {bloco:'Insumos para as próximas entregas',items:[{id:'3.1',label:'Insumos para Pesquisa de Mercado (mercado, concorrentes, público)'},{id:'3.2',label:'Insumos para Mídia Paga (histórico, verba, objetivos, resultados)'},{id:'3.3',label:'Insumos para Criativos (identidade, tom de voz, referências)'},{id:'3.4',label:'Insumos para Vendas (processo, funil, objeções, time)'}]},
     {bloco:'Clareza do próximo passo',items:[{id:'4.1',label:'Próximos passos contextualizados — cliente sabe o que vem'}]},
@@ -10930,11 +10930,13 @@ async function audExtrairTextoArquivo(file){
 // lógica de chamada/erro. O endpoint responde em streaming (SSE); onProgress(textoAcumulado)
 // é chamado a cada pedaço de texto que chega, pra dar feedback real de progresso em vez de
 // deixar a tela travada entre 0% e 100% esperando a resposta inteira.
-async function audChamarClaude(transcricao, onProgress){
+// tipoFoco: só usado quando a mesma call cobre duas entregas diferentes (ver
+// audAdicionarSelecaoNaFila) — diz pro servidor qual das duas avaliar, ignorando a outra.
+async function audChamarClaude(transcricao, onProgress, tipoFoco){
   const response=await fetch('/api/evaluate-meeting',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({transcricao})
+    body:JSON.stringify(tipoFoco ? {transcricao, tipoFoco} : {transcricao})
   });
   if(!response.ok){
     const errBody=await response.json().catch(()=>({}));
@@ -11182,6 +11184,11 @@ function audRenderCalendarioDrive(files){
   if(!files.length){ lista.innerHTML='<div style="font-size:var(--fs-base);color:var(--text-hint);padding:8px 0;">Nenhuma reunião com transcrição pronta nessa semana (só aparece aqui o que o Meet já anexou ao evento).</div>'; lista.dataset.files='[]'; return; }
   const optCons=(sel)=>'<option value="">Consultor…</option>'+audConsultores().map(c=>'<option '+(c===sel?'selected':'')+'>'+c+'</option>').join('');
   const optTipo=(sel)=>'<option value="">Tipo…</option>'+AUD_TIPOS.map(t=>'<option '+(t===sel?'selected':'')+'>'+t+'</option>').join('');
+  // Segundo tipo, opcional — pra quando a mesma call cobre 2 entregas (ex: Diagnóstico de
+  // Vendas + Mídia Paga juntos). Marcar aqui gera DUAS auditorias separadas da mesma
+  // transcrição, cada uma avisada (tipoFoco) pra focar só na parte dela — ver
+  // audAdicionarSelecaoNaFila.
+  const optTipo2='<option value="">+ outro tipo (2 entregas na mesma call)…</option>'+AUD_TIPOS.map(t=>'<option>'+t+'</option>').join('');
   const clienteDatalist='<datalist id="aud-drive-cliente-list">'+audClientes().map(c=>'<option value="'+c.replace(/"/g,'&quot;')+'">').join('')+'</datalist>';
   const diaCard=(i)=>{
     const f=files[i];
@@ -11198,6 +11205,7 @@ function audRenderCalendarioDrive(files){
       + '<div style="display:flex;flex-direction:column;gap:4px;margin-top:6px;" onclick="event.stopPropagation()">'
       + '<select class="aud-inp aud-drive-consultor" data-idx="'+i+'" style="font-size:var(--fs-2xs);padding:3px 5px;">'+optCons(consultorSugerido)+'</select>'
       + '<select class="aud-inp aud-drive-tipo" data-idx="'+i+'" style="font-size:var(--fs-2xs);padding:3px 5px;">'+optTipo(tipoSugerido)+'</select>'
+      + '<select class="aud-inp aud-drive-tipo2" data-idx="'+i+'" style="font-size:var(--fs-2xs);padding:3px 5px;">'+optTipo2+'</select>'
       + '<input class="aud-inp aud-drive-cliente" data-idx="'+i+'" list="aud-drive-cliente-list" autocomplete="off" placeholder="Cliente…" value="'+clienteSugerido.replace(/"/g,'&quot;')+'" style="font-size:var(--fs-2xs);padding:3px 5px;">'
       + '</div></label>';
   };
@@ -11272,6 +11280,11 @@ function audRenderListaDrive(files){
   if(!files.length){ lista.innerHTML='<div style="font-size:var(--fs-base);color:var(--text-hint);padding:8px 0;">Nenhuma reunião nova nos últimos 30 dias — tudo que existe já foi avaliado.</div>'; return; }
   const optCons=(sel)=>'<option value="">Consultor…</option>'+audConsultores().map(c=>'<option '+(c===sel?'selected':'')+'>'+c+'</option>').join('');
   const optTipo=(sel)=>'<option value="">Tipo…</option>'+AUD_TIPOS.map(t=>'<option '+(t===sel?'selected':'')+'>'+t+'</option>').join('');
+  // Segundo tipo, opcional — pra quando a mesma call cobre 2 entregas (ex: Diagnóstico de
+  // Vendas + Mídia Paga juntos). Marcar aqui gera DUAS auditorias separadas da mesma
+  // transcrição, cada uma avisada (tipoFoco) pra focar só na parte dela — ver
+  // audAdicionarSelecaoNaFila.
+  const optTipo2='<option value="">+ outro tipo (2 entregas na mesma call)…</option>'+AUD_TIPOS.map(t=>'<option>'+t+'</option>').join('');
   const clienteDatalist='<datalist id="aud-drive-cliente-list">'+audClientes().map(c=>'<option value="'+c.replace(/"/g,'&quot;')+'">').join('')+'</datalist>';
   lista.innerHTML=clienteDatalist+files.map((f,i)=>{
     const consultorSugerido=audConsultores().find(c=>(f.donoNome||'').toLowerCase().includes(c.toLowerCase()) || (f.donoEmail||'').toLowerCase().includes(c.toLowerCase())) || '';
@@ -11284,6 +11297,7 @@ function audRenderListaDrive(files){
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
       + '<select class="aud-inp aud-drive-consultor" data-idx="'+i+'" style="font-size:var(--fs-base);padding:5px 8px;" onclick="event.stopPropagation()">'+optCons(consultorSugerido)+'</select>'
       + '<select class="aud-inp aud-drive-tipo" data-idx="'+i+'" style="font-size:var(--fs-base);padding:5px 8px;" onclick="event.stopPropagation()">'+optTipo(tipoSugerido)+'</select>'
+      + '<select class="aud-inp aud-drive-tipo2" data-idx="'+i+'" style="font-size:var(--fs-base);padding:5px 8px;" onclick="event.stopPropagation()">'+optTipo2+'</select>'
       + '<input class="aud-inp aud-drive-cliente" data-idx="'+i+'" list="aud-drive-cliente-list" autocomplete="off" placeholder="Cliente…" value="'+clienteSugerido.replace(/"/g,'&quot;')+'" style="font-size:var(--fs-base);padding:5px 8px;width:160px;" onclick="event.stopPropagation()">'
       + '</div></div></label>';
   }).join('');
@@ -11298,18 +11312,34 @@ function audAdicionarSelecaoNaFila(){
   const files=JSON.parse(lista.dataset.files||'[]');
   const itens=[];
   const erro=document.getElementById('aud-drive-erro');
-  let faltouCliente=false;
+  let faltouCliente=false, faltouTipoDivisao=false;
   lista.querySelectorAll('.aud-drive-check').forEach(chk=>{
     if(!chk.checked) return;
     const idx=chk.dataset.idx;
     const consultor=lista.querySelector('.aud-drive-consultor[data-idx="'+idx+'"]')?.value||'';
     const tipo=lista.querySelector('.aud-drive-tipo[data-idx="'+idx+'"]')?.value||'';
+    const tipo2=lista.querySelector('.aud-drive-tipo2[data-idx="'+idx+'"]')?.value||'';
     const cliente=(lista.querySelector('.aud-drive-cliente[data-idx="'+idx+'"]')?.value||'').trim();
     if(!cliente) faltouCliente=true;
-    itens.push({...files[idx], consultorSugerido:consultor, tipoSugerido:tipo, clienteSugerido:cliente, status:'pendente', resultado:null, erroMsg:null});
+    // driveFileIdBusca guarda o id de busca de verdade (Drive file id da conta compartilhada)
+    // separado do .id do item da fila — o segundo item de uma divisão ganha um .id próprio
+    // (pra poder revisar/remover cada um independente), mas os dois têm que buscar a MESMA
+    // transcrição original.
+    const base={...files[idx], driveFileIdBusca:files[idx].id, consultorSugerido:consultor, clienteSugerido:cliente, status:'pendente', resultado:null, erroMsg:null};
+    if(tipo2 && tipo2!==tipo){
+      if(!tipo){ faltouTipoDivisao=true; return; }
+      // Mesma call cobre 2 entregas — gera DUAS auditorias separadas da mesma transcrição,
+      // cada uma avisada (tipoFoco) pra focar só na parte dela e ignorar o trecho da outra
+      // entrega (mesmo mecanismo da regra de excluir o time de Expansão).
+      itens.push({...base, tipoSugerido:tipo, tipoFoco:tipo});
+      itens.push({...base, id:base.id+'__2', tipoSugerido:tipo2, tipoFoco:tipo2});
+    } else {
+      itens.push({...base, tipoSugerido:tipo});
+    }
   });
   if(!itens.length){ if(erro){erro.textContent='Selecione ao menos uma reunião.';erro.style.display='block';} return; }
   if(faltouCliente){ if(erro){erro.textContent='Preencha o cliente de cada reunião selecionada.';erro.style.display='block';} return; }
+  if(faltouTipoDivisao){ if(erro){erro.textContent='Selecione o primeiro tipo de entrega antes de marcar o segundo (reunião com 2 entregas).';erro.style.display='block';} return; }
   if(!audFilaAtiva) audFilaAtiva={itens:[]};
   audFilaAtiva.itens.push(...itens);
   audFecharModalDrive();
@@ -11337,7 +11367,7 @@ async function audFilaProcessarBackground(){
         // Item da conta compartilhada de sempre (sem .email): comportamento de sempre.
         const body=item.email
           ? {email:item.email, fileId:item.driveFileId||undefined, eventId:item.eventId, eventStart:item.modificadoEm}
-          : {fileId:item.id};
+          : {fileId:item.driveFileIdBusca||item.id};
         const response=await fetch('/api/google/fetch-transcript',{
           method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
         });
@@ -11348,7 +11378,7 @@ async function audFilaProcessarBackground(){
         const texto=await audChamarClaude(data.texto||'', (textoAcumulado)=>{
           const {label}=audEstimarProgressoAnalise(textoAcumulado);
           item.progressoLabel=label; audRenderFilaLista();
-        });
+        }, item.tipoFoco);
         item.resultado={
           texto,
           scores: audParseScores(texto),
@@ -11574,7 +11604,7 @@ function audSalvar(){
   // avaliação existente) a chave nem entra no objeto, então o merge abaixo preserva o que já
   // estava salvo em vez de apagar um driveFileId anterior com `undefined`.
   const itemDaFila = audFilaRevisandoId && audFilaAtiva ? audFilaAtiva.itens.find(it=>it.id===audFilaRevisandoId) : null;
-  if (itemDaFila) dadosAtualizados.driveFileId = itemDaFila.driveFileIdResolvido || itemDaFila.id;
+  if (itemDaFila) dadosAtualizados.driveFileId = itemDaFila.driveFileIdResolvido || itemDaFila.driveFileIdBusca || itemDaFila.id;
   const estavaEditando = !!audEditandoId;
   if (estavaEditando) {
     const idx = auditorias.findIndex(x => x.id === audEditandoId);
