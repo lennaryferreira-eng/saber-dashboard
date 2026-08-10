@@ -1,0 +1,10 @@
+# O plano Hobby do Vercel permite no máximo 12 funções serverless por deploy, e o projeto
+# bateu nesse teto ao ganhar api/snapshot.js (o modo offline). Em vez de apagar código, os
+# arquivos abaixo ficam no repositório mas fora do build.
+#
+# api/google/list-meetings.js: fluxo antigo de "conta única" pra listar gravações do Drive.
+# Foi substituído por api/google/calendar-events.js (agenda por pessoa, com o token de cada
+# um) na Fase 2 do login por pessoa. Não tem nenhum chamador — conferido por busca no
+# index.html e no repositório inteiro. Se um dia voltar a fazer sentido, é só tirar daqui
+# (e aí alguma outra função precisa sair, ou o plano precisa subir).
+api/google/list-meetings.js
