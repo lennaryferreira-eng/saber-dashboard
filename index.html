@@ -24,6 +24,12 @@
   <button onclick="sbForcarSaveApesarQueda=true;document.getElementById('queda-brusca-banner').style.display='none';sbSave();" title="Só use se essa queda for MESMO intencional (ex: você apagou vários projetos de propósito)" style="margin-left:8px;background:none;color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:20px;padding:6px 12px;font-size:var(--fs-md);cursor:pointer;">Confirmar e salvar mesmo assim</button>
 </div>
 
+<div id="offline-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9998;background:var(--amber);color:#1a1200;padding:12px 20px;text-align:center;font-size:var(--fs-lg);font-weight:700;box-shadow:0 2px 12px rgba(0,0,0,.3);">
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="true"><path d="M8 2L1 14h14L8 2z"/><path d="M8 6.5v3.5M8 12h.01"/></svg>
+  <span id="offline-banner-msg">Modo offline — somente leitura.</span>
+  <button onclick="location.reload()" style="margin-left:14px;background:#1a1200;color:var(--amber);border:none;border-radius:20px;padding:6px 18px;font-size:var(--fs-md);font-weight:700;cursor:pointer;">Tentar reconectar</button>
+</div>
+
 <div id="login-gate" style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:#0A0606;">
   <div style="width:100%;max-width:380px;padding:0 24px;text-align:center;">
     <div style="font-family:var(--cond);font-size:1.1rem;font-weight:700;letter-spacing:.08em;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:6px;">Growthunters</div>
@@ -67,6 +73,10 @@
           <button class="dados-menu-item" onclick="restoreBackup()" title="Restaurar último backup local">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3L2 7l4 4"/><path d="M2 7h7a4 4 0 014 4v2"/></svg>
             Restaurar backup
+          </button>
+          <button id="btn-reinjetar" class="dados-menu-item" style="display:none;" onclick="sbReinjetarSnapshot()" title="Depois que o Supabase voltar do ar: grava no banco o que foi trabalhado na planilha durante a queda">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3l4 4-4 4"/><path d="M14 7H7a4 4 0 00-4 4v2"/></svg>
+            Reinjetar da planilha
           </button>
         </div>
       </div>
@@ -2227,6 +2237,12 @@ var _carregandoInicial = false; // flag de carga inicial (declarada no topo para
 
 // ── MODO VISUALIZAÇÃO (link com ?view) — somente leitura, nunca salva ──
 let VIEWER = new URLSearchParams(location.search).has('view'); // também vira true pra qualquer perfil não-ADM ao logar
+// false | 'sheets' | 'local' — ver sbEntrarModoOffline(). Sobe quando o Supabase não responde
+// (queda, 402 de cota estourada, sem internet).
+let MODO_OFFLINE = false;
+// true quando existe na planilha um snapshot MAIS NOVO que o banco, ou seja: teve trabalho
+// feito durante uma queda que ainda não voltou pro Supabase. Libera o botão "Reinjetar".
+let _snapshotPendente = false;
 function _initViewerMode(){
   if(!VIEWER) return;
   document.body.classList.add('viewer');
@@ -2316,6 +2332,8 @@ let auditorias = [];         // [{id, consultor, tipoEntrega, cliente, data, n:{
 // a coluna auditorias no PATCH — sem essa trava, qualquer save disparado antes de abrir a
 // aba (ex: editar um projeto na Base) mandaria auditorias:"[]" e apagaria tudo no Supabase.
 let _auditoriasLoaded = false;
+// Mesma ideia pra `fotos` (~80KB de dataURL base64, só usada na aba Performance).
+let _fotosLoaded = false;
 let sinaisCulturais = [];    // Termômetro Cultural — [{id, created_at, consultor, framework, dimensao, tipo, gravidade, descricao, justificativa}]
 let npsChart = null;
 
@@ -3403,7 +3421,7 @@ async function restoreBackup() {
     if (data.cap_manual) Object.assign(capManual, data.cap_manual);
     if (data.pdi_data) { pdiData = normalizePdi(data.pdi_data); buildPdi(); }
     if (data.conv_base && typeof data.conv_base === 'object') Object.assign(convBaseManual, data.conv_base);
-    if (data.fotos && typeof data.fotos === 'object') Object.assign(perfFotos, data.fotos);
+    if (data.fotos && typeof data.fotos === 'object') { Object.assign(perfFotos, data.fotos); _fotosLoaded = true; }
     if (data.auditorias && Array.isArray(data.auditorias)) { auditorias = data.auditorias; _auditoriasLoaded = true; }
     if (data.consultores) { if (Array.isArray(data.consultores.list) && data.consultores.list.length) window.CONS_MON = data.consultores.list; if (data.consultores.colors) window.dotColors = Object.assign({}, window.dotColors||{}, data.consultores.colors); }
     refreshAll();
@@ -3555,6 +3573,13 @@ function updatePerfilNavVisibility() {
   // Cultural — só ADM.
   const barDrive = document.getElementById('aud-drive-bar');
   if (barDrive) barDrive.style.display = (currentPerfil && (currentPerfil.consultor || currentPerfil.designer || currentPerfil.viewer)) ? 'none' : '';
+  // "Reinjetar da planilha": mesmo critério de ADM, e só aparece quando existe snapshot de um
+  // período offline esperando pra voltar pro banco (ver sbChecarSnapshotPendente).
+  const btnReinj = document.getElementById('btn-reinjetar');
+  if (btnReinj) {
+    const ehAdm = !(currentPerfil && (currentPerfil.consultor || currentPerfil.designer || currentPerfil.viewer));
+    btnReinj.style.display = (ehAdm && _snapshotPendente) ? '' : 'none';
+  }
   document.querySelectorAll('nav .nav-tab').forEach(btn => {
     const m = (btn.getAttribute('onclick') || '').match(/show\('([a-z]+)'\)/);
     if (!m) return;
@@ -7821,7 +7846,8 @@ function show(sec) {
     else if (sec === 'nps')         buildNpsTable();
     else if (sec === 'pdi')         calcPdi();
     else if (sec === 'capacity')    buildCapacity();
-    else if (sec === 'performance') buildPerformance();
+    // fotos não vem no carregamento padrão (ver _sbColsPadrao) — busca antes de desenhar.
+    else if (sec === 'performance') sbLoadFotos().then(buildPerformance);
     else if (sec === 'auditoria')   buildAuditoria();
     else if (sec === 'aql')         buildAql();
     else if (sec === 'cultura')     buildCultura();
@@ -11854,7 +11880,7 @@ function audToggleDet(id){
 }
 
 async function buildAuditoria(){
-  // auditorias não vem no carregamento padrão (ver _sbColsSemAuditorias) — busca aqui, na
+  // auditorias não vem no carregamento padrão (ver _sbColsPadrao) — busca aqui, na
   // primeira vez que a aba abre. Mostra um placeholder só nessa primeira espera; depois de
   // carregado uma vez fica em memória (sbLoadAuditorias() é idempotente).
   if (!_auditoriasLoaded) {
@@ -12024,6 +12050,8 @@ function _resetCoordState() {
   pdiData = { rows: [] };
   auditorias = [];
   _auditoriasLoaded = false;
+  Object.keys(perfFotos).forEach(k => delete perfFotos[k]);
+  _fotosLoaded = false;
   Object.keys(cspManual).forEach(k => delete cspManual[k]);
   Object.keys(monMetas).forEach(k => delete monMetas[k]);
   Object.keys(aqlMetas).forEach(k => delete aqlMetas[k]);
@@ -12216,6 +12244,7 @@ async function sbSave() {
     perfFotos: perfFotos,
     auditorias: auditorias,
     auditoriasLoaded: _auditoriasLoaded, // trava junto com o resto — ver payload.auditorias abaixo
+    fotosLoaded: _fotosLoaded,
     sinaisCulturais: sinaisCulturais,
     consList: window.CONS_MON || [],
     consColors: window.dotColors || {},
@@ -12237,6 +12266,25 @@ async function sbSave() {
     return;
   }
   sbForcarSaveApesarQueda = false; // usa só uma vez, depois volta a exigir confirmação de novo
+  // MODO OFFLINE (Supabase fora do ar): o save vai pra planilha, não pro banco. As travas de
+  // acima (vazio / queda brusca) já rodaram e valem igual; as de concorrência abaixo não,
+  // porque dependem de perguntar ao Supabase — que é justamente quem não responde.
+  if (MODO_OFFLINE === 'sheets') {
+    sbPendingChanges = true;
+    setSyncStatus('Salvando na planilha…', 'var(--amber)');
+    try {
+      await sbSalvarSnapshot({ forcar: true });
+      sbLastSaved = new Date();
+      sbLastSavedCount = _snap.projects.length;
+      sbPendingChanges = false;
+      sbRetryCount = 0;
+      setSyncStatus('✓ Salvo na planilha às ' + sbLastSaved.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) + ' (' + _snap.projects.length + ' proj.)', 'var(--green)');
+    } catch (e) {
+      console.error('sbSave offline (planilha) falhou:', e);
+      setSyncStatus('⚠ Falha ao salvar na planilha: ' + e.message, 'var(--accent)');
+    }
+    return;
+  }
   // TRAVA DE CONCORRÊNCIA: se já sabemos que outra aba/dispositivo salvou depois da nossa
   // última sincronização, não sobrescreve — precisa recarregar a página primeiro.
   if (sbConflito) {
@@ -12299,15 +12347,15 @@ async function sbSave() {
       aql_metas:  JSON.stringify(_snap.aqlMetas),
       pdi_data:   JSON.stringify(_snap.pdiData),
       conv_base:  JSON.stringify(_snap.convBaseManual),
-      fotos:      JSON.stringify(_snap.perfFotos),
       sinais_culturais: JSON.stringify(_snap.sinaisCulturais),
       consultores: JSON.stringify({list:_snap.consList, colors:_snap.consColors}),
     };
-    // Só manda auditorias se essa aba realmente carregou o valor de verdade (abriu a aba
-    // Auditoria em algum momento) — sem essa trava, o primeiro save depois de só editar a
-    // Base de Projetos (sem nunca abrir Auditoria) mandaria auditorias:"[]" e apagaria todas
-    // as avaliações já salvas no Supabase.
+    // Só manda auditorias/fotos se essa aba realmente carregou o valor de verdade (abriu a
+    // aba correspondente em algum momento) — sem essa trava, o primeiro save depois de só
+    // editar a Base de Projetos mandaria auditorias:"[]" / fotos:"{}" e apagaria tudo que já
+    // estava salvo no Supabase.
     if (_snap.auditoriasLoaded) payload.auditorias = JSON.stringify(_snap.auditorias);
+    if (_snap.fotosLoaded) payload.fotos = JSON.stringify(_snap.perfFotos);
     const sendPayload = async (pl) => {
       let r = await fetch(SB_URL + '/rest/v1/' + _snap.table + '?id=eq.main', {
         method: 'PATCH',
@@ -12352,19 +12400,26 @@ async function sbSave() {
     console.log(`sbSave: confirmado ${_snap.projects.length} projetos salvos às ${sbLastSaved.toLocaleTimeString()}`);
     setSyncStatus('✓ Salvo às ' + sbLastSaved.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) + ' (' + _snap.projects.length + ' proj.)', 'var(--green)');
     syncSheets().catch(e => console.warn('Sheets sync error:', e)); // sync automático com planilha após salvar no Supabase
+    // Espelho completo na planilha (throttle interno de 2min). É o que permite o painel
+    // continuar funcionando, com escrita, se o Supabase cair — sem isso o modo offline só
+    // teria o backup do localStorage de cada máquina, que não serve pra quem nunca abriu
+    // o painel ali e não deixa ninguém gravar. Roda em segundo plano: se falhar, o save no
+    // Supabase (que já deu certo aqui) continua valendo.
+    sbSalvarSnapshot().catch(e => console.warn('snapshot da planilha falhou:', e));
     // Mantém 3 backups locais rotativos
     try {
       const backup = {
         projects: _snap.projects, nps_data: _snap.npsData, csp_manual: _snap.cspManual,
         mon_metas: _snap.monMetas, aql_metas: _snap.aqlMetas, cap_data: _snap.capData, cap_manual: _snap.capManual,
-        pdi_data: _snap.pdiData, conv_base: _snap.convBaseManual, fotos: _snap.perfFotos,
+        pdi_data: _snap.pdiData, conv_base: _snap.convBaseManual,
         sinais_culturais: _snap.sinaisCulturais,
         consultores: {list:_snap.consList, colors:_snap.consColors},
         saved_at: sbLastSaved.toISOString(), total: _snap.projects.length, table: _snap.table
       };
-      // Só entra se já carregado nesta sessão — omitir (em vez de gravar "[]") evita que um
-      // restore desse backup apague auditorias reais que só não foram lidas ainda aqui.
+      // Só entram se já carregados nesta sessão — omitir (em vez de gravar "[]"/"{}") evita
+      // que um restore desse backup apague dados reais que só não foram lidos ainda aqui.
       if (_snap.auditoriasLoaded) backup.auditorias = _snap.auditorias;
+      if (_snap.fotosLoaded) backup.fotos = _snap.perfFotos;
       const backupStr = JSON.stringify(backup);
       const b2 = localStorage.getItem('saber_backup_1') || null;
       const b3 = localStorage.getItem('saber_backup_2') || null;
@@ -12388,11 +12443,12 @@ async function sbSave() {
         const emergency = {
           projects, nps_data: npsData, csp_manual: cspManual,
           mon_metas: monMetas, aql_metas: aqlMetas, cap_data: capData, cap_manual: capManual,
-          pdi_data: pdiData, conv_base: convBaseManual, fotos: perfFotos,
+          pdi_data: pdiData, conv_base: convBaseManual,
         consultores: {list:window.CONS_MON||[], colors:window.dotColors||{}},
           saved_at: new Date().toISOString()
         };
         if (_auditoriasLoaded) emergency.auditorias = auditorias;
+        if (_fotosLoaded) emergency.fotos = perfFotos;
         localStorage.setItem('saber_emergency', JSON.stringify(emergency));
         localStorage.setItem('saber_emergency_at', new Date().toISOString());
         console.warn('Dados salvos no localStorage como emergência');
@@ -12403,7 +12459,9 @@ async function sbSave() {
 }
 
 async function sbExport() {
-  await sbLoadAuditorias(); // exportação manual sempre completa, mesmo se a aba Auditoria nunca abriu
+  // exportação manual sempre completa, mesmo se as abas Auditoria/Performance nunca abriram
+  await sbLoadAuditorias();
+  await sbLoadFotos();
   const data = {
     version: 1,
     exported_at: new Date().toISOString(),
@@ -12444,8 +12502,7 @@ function sbImport(input) {
       if (data.aql_metas)   Object.assign(aqlMetas,  data.aql_metas);
       if (data.pdi_data) pdiData = normalizePdi(data.pdi_data);
       if (data.conv_base && typeof data.conv_base === 'object') Object.assign(convBaseManual, data.conv_base);
-    if (data.fotos && typeof data.fotos === 'object') Object.assign(perfFotos, data.fotos);
-      if (data.fotos && typeof data.fotos === 'object') Object.assign(perfFotos, data.fotos);
+      if (data.fotos && typeof data.fotos === 'object') { Object.assign(perfFotos, data.fotos); _fotosLoaded = true; }
       if (data.auditorias && Array.isArray(data.auditorias)) { auditorias = data.auditorias; _auditoriasLoaded = true; }
     if (data.consultores) { if (Array.isArray(data.consultores.list) && data.consultores.list.length) window.CONS_MON = data.consultores.list; if (data.consultores.colors) window.dotColors = Object.assign({}, window.dotColors||{}, data.consultores.colors); }
 
@@ -12476,20 +12533,21 @@ function _parseMaybe(val, fallback) {
   }
   return val; // já veio como objeto/array — não precisa (e não pode) rodar JSON.parse de novo
 }
-// Colunas do carregamento padrão, sem `auditorias` — de longe a maior coluna (~950KB, ~70%
-// da linha inteira), lida à parte, sob demanda, só quando a aba Auditoria abre (ver
-// sbLoadAuditorias()). `sinais_culturais` só existe em saber_data (ter_data não tem Cultura),
-// por isso entra condicionalmente — nomear uma coluna que não existe faz o PostgREST
-// devolver erro em vez de simplesmente omitir, diferente de select=*.
-function _sbColsSemAuditorias() {
-  const base = 'id,projects,nps_data,csp_manual,cap_data,cap_manual,updated_at,mon_metas,pdi_data,conv_base,fotos,consultores,aql_metas';
+// Colunas do carregamento padrão. Ficam de fora as duas colunas grandes que só interessam a
+// uma aba específica, ambas lidas sob demanda: `auditorias` (~950KB, ~70% da linha inteira —
+// só na aba Auditoria, ver sbLoadAuditorias()) e `fotos` (~80KB de dataURL base64 — só na aba
+// Performance, ver sbLoadFotos()). `sinais_culturais` só existe em saber_data (ter_data não
+// tem Cultura), por isso entra condicionalmente — nomear uma coluna que não existe faz o
+// PostgREST devolver erro em vez de simplesmente omitir, diferente de select=*.
+function _sbColsPadrao() {
+  const base = 'id,projects,nps_data,csp_manual,cap_data,cap_manual,updated_at,mon_metas,pdi_data,conv_base,consultores,aql_metas';
   return SB_TABLE === 'saber_data' ? base + ',sinais_culturais' : base;
 }
 
 async function sbLoad() {
   try {
     setSyncStatus('Carregando…', 'var(--text-hint)');
-    let res = await fetch(SB_URL + '/rest/v1/' + SB_TABLE + '?id=eq.main&select=' + _sbColsSemAuditorias(), {
+    let res = await fetch(SB_URL + '/rest/v1/' + SB_TABLE + '?id=eq.main&select=' + _sbColsPadrao(), {
       headers: SB_HEADERS
     });
     // Rede de segurança: se a lista de colunas acima ficar desatualizada (ex: coluna nova
@@ -12600,10 +12658,11 @@ async function sbLoad() {
       if (row.conv_base) {
         try { const cb = _parseMaybe(row.conv_base, {}); if (cb && typeof cb === 'object') Object.assign(convBaseManual, cb); } catch(e){}
       }
+      // Igual auditorias: só vem preenchido se o select caiu no fallback select=*.
       if (row.fotos) {
-        try { const ft = _parseMaybe(row.fotos, {}); if (ft && typeof ft === 'object') Object.assign(perfFotos, ft); } catch(e){}
+        try { const ft = _parseMaybe(row.fotos, {}); if (ft && typeof ft === 'object') { Object.assign(perfFotos, ft); _fotosLoaded = true; } } catch(e){}
       }
-      // Só vem preenchido se o select caiu no fallback select=* (ver _sbColsSemAuditorias) —
+      // Só vem preenchido se o select caiu no fallback select=* (ver _sbColsPadrao) —
       // no caminho normal, auditorias é carregado à parte por sbLoadAuditorias().
       if (row.auditorias) {
         try { const av = _parseMaybe(row.auditorias, []); if (Array.isArray(av)) { auditorias = av; _auditoriasLoaded = true; } } catch(e){}
@@ -12625,11 +12684,265 @@ async function sbLoad() {
     const loadTime = sbLastSaved ? sbLastSaved.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) : '';
     setSyncStatus('✓ ' + totalProjs + ' proj. carregados às ' + loadTime, 'var(--green)');
     setTimeout(() => setSyncStatus('● Online', 'var(--green)'), 3000);
+    sbChecarSnapshotPendente(); // em segundo plano — avisa se sobrou trabalho offline pra reinjetar
   } catch (e) {
-    // Supabase offline — mantém dados do HTML e avisa
-    setSyncStatus('⚠ Offline — dados locais', 'var(--amber)');
     console.error('sbLoad error:', e);
-    // Não tenta salvar no Supabase agora — vai tentar quando o usuário editar
+    // Supabase fora do ar (queda, 402 de restrição de cota, sem internet…): em vez de deixar
+    // o painel vazio, sobe o último backup local completo e entra em modo somente-leitura.
+    // Ver sbEntrarModoOffline().
+    if (!await sbEntrarModoOffline()) {
+      setSyncStatus('⚠ Offline — nenhum backup disponível', 'var(--amber)');
+    }
+  }
+}
+
+// ── MODO OFFLINE ────────────────────────────────────────────────────────────────────
+// Sobe quando o Supabase não responde (queda, 402 de cota estourada, sem internet). Duas
+// fontes, nesta ordem de preferência:
+//
+//   'sheets' — snapshot completo guardado na Planilha Google (api/snapshot.js, via conta de
+//              serviço). Funciona em QUALQUER navegador, mesmo quem nunca abriu o painel
+//              nesta máquina, e permite LER E GRAVAR: os saves passam a ir pra planilha, e
+//              depois voltam pro banco pelo botão "Reinjetar" (sbReinjetarSnapshot).
+//   'local'  — último backup do localStorage desta máquina. Só leitura: não tem como
+//              propagar a edição pra mais ninguém, então trava com VIEWER pra ninguém editar
+//              achando que salvou.
+function _aplicarSnapshot(d) {
+  if (Array.isArray(d.projects) && d.projects.length) {
+    projects = d.projects;
+    sbLastSavedCount = d.projects.length;
+  }
+  if (d.nps_data)   Object.assign(npsData, d.nps_data);
+  if (d.csp_manual) Object.assign(cspManual, d.csp_manual);
+  if (d.cap_data)   Object.assign(capData, d.cap_data);
+  if (d.cap_manual) Object.assign(capManual, d.cap_manual);
+  if (d.mon_metas)  Object.assign(monMetas, d.mon_metas);
+  if (d.aql_metas)  Object.assign(aqlMetas, d.aql_metas);
+  if (d.conv_base)  Object.assign(convBaseManual, d.conv_base);
+  if (d.pdi_data)   { try { pdiData = normalizePdi(d.pdi_data); } catch(err){} }
+  if (Array.isArray(d.sinais_culturais)) sinaisCulturais = d.sinais_culturais;
+  // auditorias/fotos podem faltar (backup local de uma sessão que não abriu aquelas abas).
+  // Marca como carregado de qualquer jeito: buscar no Supabase agora não é opção, ele caiu.
+  if (Array.isArray(d.auditorias)) auditorias = d.auditorias;
+  _auditoriasLoaded = true;
+  if (d.fotos && typeof d.fotos === 'object') Object.assign(perfFotos, d.fotos);
+  _fotosLoaded = true;
+  if (d.consultores) {
+    if (Array.isArray(d.consultores.list) && d.consultores.list.length) window.CONS_MON = d.consultores.list;
+    if (d.consultores.colors) window.dotColors = Object.assign({}, window.dotColors || {}, d.consultores.colors);
+  }
+}
+
+function _redesenharTudo() {
+  refreshAll();
+  buildPdi();
+  buildLeadTime();
+  renderBase();
+}
+
+async function sbEntrarModoOffline() {
+  // 1ª opção: snapshot no servidor (planilha). É o único caminho que permite gravar.
+  try {
+    const r = await fetch('/api/snapshot?table=' + encodeURIComponent(SB_TABLE));
+    if (r.ok) {
+      const { meta, dados } = await r.json();
+      if (dados && Array.isArray(dados.projects) && dados.projects.length) {
+        _aplicarSnapshot(dados);
+        MODO_OFFLINE = 'sheets';
+        _redesenharTudo();
+        const q = _fmtQuando(meta && meta.updated_at);
+        mostrarOfflineBanner('Supabase fora do ar — trabalhando pela planilha (dados de ' + q + '). Suas edições SÃO salvas e voltam pro banco depois.', false);
+        setSyncStatus('⚠ Offline (planilha) — edição liberada', 'var(--amber)');
+        console.warn('sbEntrarModoOffline: snapshot da planilha carregado (' + projects.length + ' projetos, de ' + q + '). Leitura e escrita.');
+        return true;
+      }
+    }
+  } catch (e) { console.warn('snapshot do servidor indisponível:', e); }
+
+  // 2ª opção: backup local desta máquina. Só leitura.
+  let backup = null;
+  for (const k of ['saber_backup_1', 'saber_backup_2', 'saber_backup_3']) {
+    try {
+      const raw = localStorage.getItem(k);
+      if (!raw) continue;
+      const b = JSON.parse(raw);
+      // Só serve backup da MESMA coordenação — senão a SABER carregaria dados da TER.
+      if (b && Array.isArray(b.projects) && b.projects.length && (!b.table || b.table === SB_TABLE)) { backup = b; break; }
+    } catch (err) { /* backup corrompido — tenta o próximo */ }
+  }
+  if (!backup) return false;
+
+  _aplicarSnapshot(backup);
+  MODO_OFFLINE = 'local';
+  VIEWER = true;              // trava sbSave/sbScheduleSave e todo campo editável
+  applyViewerLockdown();
+  _redesenharTudo();
+
+  const q = _fmtQuando(backup.saved_at);
+  mostrarOfflineBanner('Supabase fora do ar e sem conexão com a planilha — mostrando o backup local desta máquina (' + q + '). SOMENTE LEITURA: nada que você editar aqui será salvo.', true);
+  setSyncStatus('⚠ Offline (backup local de ' + q + ') — somente leitura', 'var(--amber)');
+  console.warn('sbEntrarModoOffline: backup local de ' + q + ' com ' + projects.length + ' projetos. Somente leitura.');
+  return true;
+}
+
+// Roda depois de um carregamento normal (Supabase respondeu). Se o snapshot da planilha for
+// MAIS NOVO que a linha do banco, é porque alguém trabalhou durante uma queda e esse trabalho
+// ainda não voltou — libera o botão "Reinjetar da planilha" e avisa. Lê só os metadados.
+async function sbChecarSnapshotPendente() {
+  try {
+    const r = await fetch('/api/snapshot?meta=1&table=' + encodeURIComponent(SB_TABLE));
+    if (!r.ok) return; // 404 = nunca teve snapshot; qualquer outro erro também não é crítico aqui
+    const { meta } = await r.json();
+    if (!meta || !meta.updated_at || !sbServerVersion) return;
+    const tSnap = new Date(meta.updated_at).getTime();
+    const tBanco = new Date(sbServerVersion).getTime();
+    // 60s de tolerância: no fluxo normal o snapshot é gravado logo DEPOIS do save no banco,
+    // então ele é sempre alguns segundos mais novo — isso não é trabalho offline pendente.
+    if (!(tSnap > tBanco + 60000)) return;
+    _snapshotPendente = true;
+    updatePerfilNavVisibility(); // revela o botão pra quem é ADM
+    setSyncStatus('⚠ Há trabalho offline na planilha ainda não gravado no banco — menu Dados > Reinjetar', 'var(--amber)');
+    console.warn('sbChecarSnapshotPendente: snapshot (' + meta.updated_at + ') mais novo que o banco (' + sbServerVersion + '), ' + meta.projects + ' projetos aguardando reinjeção.');
+  } catch (e) { /* silencioso — é só um aviso, não pode atrapalhar o load */ }
+}
+
+function _fmtQuando(iso) {
+  if (!iso) return 'data desconhecida';
+  const d = new Date(iso);
+  return isNaN(d) ? 'data desconhecida' : d.toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+}
+
+function mostrarOfflineBanner(msg, somenteLeitura) {
+  const el = document.getElementById('offline-banner');
+  const m = document.getElementById('offline-banner-msg');
+  if (m) m.textContent = msg;
+  if (el) {
+    el.style.display = 'block';
+    // Vermelho quando é só leitura (perda de trabalho é risco real), âmbar quando dá pra gravar.
+    el.style.background = somenteLeitura ? 'var(--accent)' : 'var(--amber)';
+    el.style.color = somenteLeitura ? '#fff' : '#1a1200';
+  }
+}
+
+// Monta o pacote completo do estado atual — mesma fidelidade do "Exportar dados" (todos os
+// 41 campos de cada projeto e todas as colunas), que é o que faz esse snapshot valer como
+// backup de verdade, diferente da aba "Projetos" (resumo de 15 colunas).
+function _montarSnapshot() {
+  return {
+    table: SB_TABLE,
+    projects,
+    nps_data: npsData,
+    csp_manual: cspManual,
+    cap_data: capData,
+    cap_manual: capManual,
+    mon_metas: monMetas,
+    aql_metas: aqlMetas,
+    pdi_data: pdiData,
+    conv_base: convBaseManual,
+    fotos: perfFotos,
+    auditorias,
+    sinais_culturais: sinaisCulturais,
+    consultores: { list: window.CONS_MON || [], colors: window.dotColors || {} },
+    saved_at: new Date().toISOString(),
+  };
+}
+
+let _ultimoSnapshotEm = 0;
+// Grava o estado atual na planilha. `forcar` ignora o intervalo mínimo — usado quando o
+// snapshot É o save (modo offline); no modo normal ele é só um espelho de segurança e roda
+// no máximo a cada 2min pra não martelar a API do Sheets a cada tecla digitada.
+async function sbSalvarSnapshot({ forcar = false } = {}) {
+  if (!forcar && Date.now() - _ultimoSnapshotEm < 120000) return { pulado: true };
+  // Sem isso o snapshot sairia com auditorias:[] / fotos:{} nas sessões que não abriram
+  // aquelas abas (elas são lazy — ver _sbColsPadrao) e o "backup" nasceria mutilado.
+  // As duas são idempotentes e ficam em memória: custo é uma leitura extra por sessão.
+  if (!MODO_OFFLINE) { await sbLoadAuditorias(); await sbLoadFotos(); }
+  const res = await fetch('/api/snapshot', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ table: SB_TABLE, dados: _montarSnapshot() }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+  _ultimoSnapshotEm = Date.now();
+  return data;
+}
+
+// Pega o snapshot da planilha (que virou fonte de verdade enquanto o Supabase esteve fora) e
+// grava de volta no banco. É a volta do modo offline — roda UMA vez, depois que o Supabase
+// voltar. Deliberadamente manual e com confirmação mostrando os números dos dois lados: é uma
+// sobrescrita total da linha, então é melhor alguém olhar "227 -> 231" e confirmar do que
+// deixar isso acontecer sozinho e descobrir o estrago depois.
+async function sbReinjetarSnapshot() {
+  try {
+    setSyncStatus('Lendo snapshot da planilha…', 'var(--amber)');
+    const r = await fetch('/api/snapshot?table=' + encodeURIComponent(SB_TABLE));
+    const snap = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(snap.error || ('HTTP ' + r.status));
+    const dados = snap.dados;
+    if (!dados || !Array.isArray(dados.projects) || !dados.projects.length) {
+      throw new Error('snapshot sem projetos');
+    }
+
+    // Quantos o banco tem AGORA — sem isso a confirmação seria às cegas.
+    let noBanco = '?';
+    try {
+      const rb = await fetch(SB_URL + '/rest/v1/' + SB_TABLE + '?id=eq.main&select=projects', { headers: SB_HEADERS });
+      if (rb.ok) {
+        const rows = await rb.json();
+        const p = rows.length ? _parseMaybe(rows[0].projects, []) : [];
+        noBanco = Array.isArray(p) ? p.length : '?';
+      } else if (rb.status === 402) {
+        throw new Error('O Supabase ainda está restrito (402). Espere a cota liberar antes de reinjetar.');
+      }
+    } catch (e) {
+      if (String(e.message).includes('402')) throw e;
+      /* não conseguiu contar — segue e mostra '?' na confirmação */
+    }
+
+    const ok = await showConfirm(
+      'Reinjetar no Supabase (' + SB_TABLE + ')?\n\n' +
+      'Planilha (o que foi trabalhado no modo offline): ' + dados.projects.length + ' projetos, de ' + _fmtQuando(snap.meta && snap.meta.updated_at) + '\n' +
+      'Supabase agora: ' + noBanco + ' projetos\n\n' +
+      'Isso SOBRESCREVE a linha inteira do banco com o conteúdo da planilha. Confira os números acima antes de confirmar.'
+    );
+    if (!ok) { setSyncStatus('● Online', 'var(--green)'); return; }
+
+    setSyncStatus('Reinjetando no Supabase…', 'var(--amber)');
+    const agoraISO = new Date().toISOString();
+    const payload = {
+      id: 'main',
+      updated_at: agoraISO,
+      projects:   JSON.stringify(dados.projects),
+      nps_data:   JSON.stringify(dados.nps_data || {}),
+      csp_manual: JSON.stringify(dados.csp_manual || {}),
+      cap_data:   JSON.stringify(dados.cap_data || {}),
+      cap_manual: JSON.stringify(dados.cap_manual || {}),
+      mon_metas:  JSON.stringify(dados.mon_metas || {}),
+      aql_metas:  JSON.stringify(dados.aql_metas || {}),
+      pdi_data:   JSON.stringify(dados.pdi_data || {rows:[]}),
+      conv_base:  JSON.stringify(dados.conv_base || {}),
+      consultores: JSON.stringify(dados.consultores || {list:[],colors:{}}),
+    };
+    // Só entram se o snapshot realmente tem o dado — mandar "[]"/"{}" aqui apagaria as
+    // avaliações e as fotos que estão sãs no banco. Mesma trava do sbSave.
+    if (Array.isArray(dados.auditorias)) payload.auditorias = JSON.stringify(dados.auditorias);
+    if (dados.fotos && typeof dados.fotos === 'object') payload.fotos = JSON.stringify(dados.fotos);
+    if (Array.isArray(dados.sinais_culturais) && SB_TABLE === 'saber_data') payload.sinais_culturais = JSON.stringify(dados.sinais_culturais);
+
+    const res = await fetch(SB_URL + '/rest/v1/' + SB_TABLE + '?id=eq.main', {
+      method: 'PATCH',
+      headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status + ': ' + (await res.text()));
+
+    await showAlert('✅ Reinjetado: ' + dados.projects.length + ' projetos gravados no Supabase.\n\nA página vai recarregar pra voltar ao modo normal.');
+    location.reload();
+  } catch (e) {
+    console.error('sbReinjetarSnapshot:', e);
+    setSyncStatus('⚠ Falha ao reinjetar', 'var(--accent)');
+    await showAlert('❌ Não deu pra reinjetar: ' + e.message);
   }
 }
 
@@ -12653,6 +12966,25 @@ async function sbLoadAuditorias() {
   } catch (e) {
     console.warn('sbLoadAuditorias error:', e);
     // não marca _auditoriasLoaded — próxima chamada tenta de novo
+  }
+}
+
+// Mesma coisa pra `fotos` (dataURL base64 dos consultores, ~80KB) — só a aba Performance usa.
+async function sbLoadFotos() {
+  if (_fotosLoaded) return;
+  try {
+    const res = await fetch(SB_URL + '/rest/v1/' + SB_TABLE + '?id=eq.main&select=fotos', {
+      headers: SB_HEADERS
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    if (rows.length && rows[0].fotos) {
+      const ft = _parseMaybe(rows[0].fotos, {});
+      if (ft && typeof ft === 'object') Object.assign(perfFotos, ft);
+    }
+    _fotosLoaded = true;
+  } catch (e) {
+    console.warn('sbLoadFotos error:', e);
   }
 }
 

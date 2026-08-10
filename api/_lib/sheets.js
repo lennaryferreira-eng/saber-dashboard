@@ -103,3 +103,16 @@ export async function writeSheetValues({ accessToken, spreadsheetId, title, valu
     throw new Error('Falha ao escrever na aba "' + title + '": ' + (err.error?.message || updateRes.status));
   }
 }
+
+// Lê um intervalo inteiro de uma aba. Devolve [] se a aba não existir (em vez de erro) —
+// quem chama trata "ainda não tem snapshot" como estado normal, não como falha.
+export async function readSheetValues({ accessToken, spreadsheetId, title }) {
+  const res = await fetch(
+    `${SHEETS_API}/${spreadsheetId}/values/${encodeURIComponent(title)}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (res.status === 400 || res.status === 404) return []; // aba inexistente
+  const data = await res.json();
+  if (!res.ok) throw new Error('Falha ao ler a aba "' + title + '": ' + (data.error?.message || res.status));
+  return data.values || [];
+}
