@@ -26,11 +26,16 @@ function credenciais(res) {
   const clientEmail = process.env.GOOGLE_SHEETS_CLIENT_EMAIL;
   const privateKey = process.env.GOOGLE_SHEETS_PRIVATE_KEY;
   const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
+  // Planilha-espelho opcional (GOOGLE_SHEETS_MIRROR_ID): toda gravação vai pras duas, e a
+  // leitura cai na segunda se a primeira falhar. Serve pro caso de a planilha principal ser
+  // apagada, corrompida (alguém editando a aba _snapshot na mão) ou ficar indisponível.
+  // Precisa estar compartilhada como Editor com a MESMA conta de serviço.
+  const mirrorId = process.env.GOOGLE_SHEETS_MIRROR_ID || null;
   if (!clientEmail || !privateKey || !spreadsheetId) {
     res.status(500).json({ error: 'Conta de serviço da planilha não configurada no Vercel' });
     return null;
   }
-  return { clientEmail, privateKey, spreadsheetId };
+  return { clientEmail, privateKey, spreadsheetId, mirrorId };
 }
 
 export default async function handler(req, res) {
@@ -53,42 +58,43 @@ export default async function handler(req, res) {
       // ?meta=1 lê só a linha 1 (metadados). Usado no carregamento normal do painel pra saber
       // se existe snapshot mais novo que o banco esperando reinjeção — sem baixar o 1,4MB
       // inteiro só pra comparar uma data.
+      // Lê da principal e, se ela falhar/vier vazia/corrompida, tenta a espelho. É a razão de
+      // existir da segunda planilha: uma cobre a outra sem ninguém precisar intervir.
+      const fontes = [
+        { id: cred.spreadsheetId, nome: 'principal' },
+        ...(cred.mirrorId ? [{ id: cred.mirrorId, nome: 'espelho' }] : []),
+      ];
+
       if (req.query?.meta) {
-        const so = await readSheetValues({
-          accessToken,
-          spreadsheetId: cred.spreadsheetId,
-          title: tabName(table) + '!A1',
-        });
-        if (!so.length) { res.status(404).json({ error: 'sem snapshot' }); return; }
-        let meta = {};
-        try { meta = JSON.parse(so[0][0] || '{}'); } catch { /* ilegível */ }
-        res.status(200).json({ meta });
+        for (const f of fontes) {
+          try {
+            const so = await readSheetValues({ accessToken, spreadsheetId: f.id, title: tabName(table) + '!A1' });
+            if (!so.length) continue;
+            res.status(200).json({ meta: JSON.parse(so[0][0] || '{}'), fonte: f.nome });
+            return;
+          } catch { /* tenta a próxima fonte */ }
+        }
+        res.status(404).json({ error: 'sem snapshot' });
         return;
       }
-      const linhas = await readSheetValues({
-        accessToken,
-        spreadsheetId: cred.spreadsheetId,
-        title: tabName(table),
-      });
-      if (!linhas.length) {
-        res.status(404).json({ error: 'Nenhum snapshot gravado para ' + table });
-        return;
+
+      const problemas = [];
+      for (const f of fontes) {
+        try {
+          const linhas = await readSheetValues({ accessToken, spreadsheetId: f.id, title: tabName(table) });
+          if (!linhas.length) { problemas.push(f.nome + ': vazia'); continue; }
+          let meta = {};
+          try { meta = JSON.parse(linhas[0][0] || '{}'); } catch { /* metadados ilegíveis, segue */ }
+          const payloadStr = linhas.slice(1).map(l => (l && l[0]) || '').join('');
+          if (!payloadStr) { problemas.push(f.nome + ': sem conteúdo'); continue; }
+          const dados = JSON.parse(payloadStr); // se estiver corrompida, cai no catch e tenta a outra
+          res.status(200).json({ meta, dados, fonte: f.nome });
+          return;
+        } catch (err) {
+          problemas.push(f.nome + ': ' + err.message);
+        }
       }
-      let meta = {};
-      try { meta = JSON.parse(linhas[0][0] || '{}'); } catch { /* metadados ilegíveis */ }
-      const payloadStr = linhas.slice(1).map(l => (l && l[0]) || '').join('');
-      if (!payloadStr) {
-        res.status(404).json({ error: 'Snapshot vazio para ' + table });
-        return;
-      }
-      let dados;
-      try {
-        dados = JSON.parse(payloadStr);
-      } catch (err) {
-        res.status(500).json({ error: 'Snapshot corrompido (JSON inválido) — ' + err.message });
-        return;
-      }
-      res.status(200).json({ meta, dados });
+      res.status(404).json({ error: 'Nenhum snapshot legível para ' + table + ' (' + problemas.join(' | ') + ')' });
       return;
     }
 
@@ -117,13 +123,23 @@ export default async function handler(req, res) {
         projects: qtd,
         table,
       };
-      await writeSheetValues({
-        accessToken,
-        spreadsheetId: cred.spreadsheetId,
-        title: tabName(table),
-        values: [[JSON.stringify(meta)], ...pedacos],
-      });
-      res.status(200).json({ ok: true, ...meta, bytes: payloadStr.length });
+      const values = [[JSON.stringify(meta)], ...pedacos];
+
+      // A principal é obrigatória: se ela falhar, a requisição falha e o painel avisa.
+      await writeSheetValues({ accessToken, spreadsheetId: cred.spreadsheetId, title: tabName(table), values });
+
+      // O espelho é redundância: uma falha nele não pode derrubar um save que já foi gravado
+      // com sucesso na principal. Reporta no retorno pra não falhar em silêncio.
+      let espelho = cred.mirrorId ? 'ok' : 'nao-configurado';
+      if (cred.mirrorId) {
+        try {
+          await writeSheetValues({ accessToken, spreadsheetId: cred.mirrorId, title: tabName(table), values });
+        } catch (err) {
+          espelho = 'FALHOU: ' + err.message;
+          console.error('snapshot: espelho falhou —', err.message);
+        }
+      }
+      res.status(200).json({ ok: true, ...meta, bytes: payloadStr.length, espelho });
       return;
     }
 
