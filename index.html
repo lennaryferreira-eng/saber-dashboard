@@ -2311,6 +2311,11 @@ let npsData  = {}; // id -> {nota, comentario}
 let pdiData  = { rows: [] }; // { rows:[{nome,cargo,obs,m:{monthIdx:pct}}] }
 let perfFotos = {};          // nome -> dataURL (foto comprimida, sincronizada)
 let auditorias = [];         // [{id, consultor, tipoEntrega, cliente, data, n:{d1..d9}, obs:{d1..d9}, rec}]
+// true só depois que sbLoadAuditorias() carregou os dados de verdade (lazy — só quando a
+// aba Auditoria abre, não no carregamento geral). Enquanto for false, sbSave() NUNCA manda
+// a coluna auditorias no PATCH — sem essa trava, qualquer save disparado antes de abrir a
+// aba (ex: editar um projeto na Base) mandaria auditorias:"[]" e apagaria tudo no Supabase.
+let _auditoriasLoaded = false;
 let sinaisCulturais = [];    // Termômetro Cultural — [{id, created_at, consultor, framework, dimensao, tipo, gravidade, descricao, justificativa}]
 let npsChart = null;
 
@@ -3399,7 +3404,7 @@ async function restoreBackup() {
     if (data.pdi_data) { pdiData = normalizePdi(data.pdi_data); buildPdi(); }
     if (data.conv_base && typeof data.conv_base === 'object') Object.assign(convBaseManual, data.conv_base);
     if (data.fotos && typeof data.fotos === 'object') Object.assign(perfFotos, data.fotos);
-    if (data.auditorias && Array.isArray(data.auditorias)) auditorias = data.auditorias;
+    if (data.auditorias && Array.isArray(data.auditorias)) { auditorias = data.auditorias; _auditoriasLoaded = true; }
     if (data.consultores) { if (Array.isArray(data.consultores.list) && data.consultores.list.length) window.CONS_MON = data.consultores.list; if (data.consultores.colors) window.dotColors = Object.assign({}, window.dotColors||{}, data.consultores.colors); }
     refreshAll();
     buildLeadTime();
@@ -11130,6 +11135,7 @@ async function audCarregarEventosPessoa(){
     });
     const data=await response.json().catch(()=>({}));
     if(!response.ok) throw new Error(data.error || ('A API retornou um erro ('+response.status+')'));
+    await sbLoadAuditorias(); // sempre já carregado (só chega aqui via aba Auditoria), mas garante
     const excludeIds=new Set(auditorias.map(a=>a.driveFileId).filter(Boolean));
     const nome=audDrivePessoas[audDrivePessoaEmail]||audDrivePessoaEmail;
     const files=(data.events||[])
@@ -11847,7 +11853,15 @@ function audToggleDet(id){
   const ch=document.getElementById('audchev-'+id); if(ch) ch.style.transform=open?'rotate(90deg)':'';
 }
 
-function buildAuditoria(){
+async function buildAuditoria(){
+  // auditorias não vem no carregamento padrão (ver _sbColsSemAuditorias) — busca aqui, na
+  // primeira vez que a aba abre. Mostra um placeholder só nessa primeira espera; depois de
+  // carregado uma vez fica em memória (sbLoadAuditorias() é idempotente).
+  if (!_auditoriasLoaded) {
+    const box = document.getElementById('aud-lista');
+    if (box) box.innerHTML = '<div style="padding:18px 0;color:var(--text-hint);">Carregando avaliações…</div>';
+  }
+  await sbLoadAuditorias();
   const f=document.getElementById('aud-form');
   if(f && !f.dataset.ready){ f.innerHTML=audFormHTML(); f.dataset.ready='1'; }
   audRenderLista();
@@ -12009,6 +12023,7 @@ function _resetCoordState() {
   npsData = {};
   pdiData = { rows: [] };
   auditorias = [];
+  _auditoriasLoaded = false;
   Object.keys(cspManual).forEach(k => delete cspManual[k]);
   Object.keys(monMetas).forEach(k => delete monMetas[k]);
   Object.keys(aqlMetas).forEach(k => delete aqlMetas[k]);
@@ -12159,17 +12174,11 @@ async function atualizarPlanilha() {
 }
 
 async function syncSheets() {
+  // api/sync-sheets.js só lê projects e consultores (escreve as abas Projetos/Resumo) —
+  // o resto nunca foi usado do lado do servidor, não faz sentido mandar.
   const payload = {
     tipo:       'full',
     projects:   JSON.stringify(projects),
-    nps_data:   JSON.stringify(npsData),
-    csp_manual: JSON.stringify(cspManual),
-    mon_metas:  JSON.stringify(monMetas),
-    aql_metas:  JSON.stringify(aqlMetas),
-    cap_data:   JSON.stringify(capData),
-    cap_manual: JSON.stringify(capManual),
-    pdi_data:   JSON.stringify(typeof pdiData !== 'undefined' ? pdiData : {}),
-    auditorias: JSON.stringify(auditorias),
     consultores: JSON.stringify({list:window.CONS_MON||[], colors:window.dotColors||{}}),
   };
   const res = await fetch('/api/sync-sheets', {
@@ -12206,6 +12215,7 @@ async function sbSave() {
     convBaseManual: convBaseManual,
     perfFotos: perfFotos,
     auditorias: auditorias,
+    auditoriasLoaded: _auditoriasLoaded, // trava junto com o resto — ver payload.auditorias abaixo
     sinaisCulturais: sinaisCulturais,
     consList: window.CONS_MON || [],
     consColors: window.dotColors || {},
@@ -12290,10 +12300,14 @@ async function sbSave() {
       pdi_data:   JSON.stringify(_snap.pdiData),
       conv_base:  JSON.stringify(_snap.convBaseManual),
       fotos:      JSON.stringify(_snap.perfFotos),
-      auditorias: JSON.stringify(_snap.auditorias),
       sinais_culturais: JSON.stringify(_snap.sinaisCulturais),
       consultores: JSON.stringify({list:_snap.consList, colors:_snap.consColors}),
     };
+    // Só manda auditorias se essa aba realmente carregou o valor de verdade (abriu a aba
+    // Auditoria em algum momento) — sem essa trava, o primeiro save depois de só editar a
+    // Base de Projetos (sem nunca abrir Auditoria) mandaria auditorias:"[]" e apagaria todas
+    // as avaliações já salvas no Supabase.
+    if (_snap.auditoriasLoaded) payload.auditorias = JSON.stringify(_snap.auditorias);
     const sendPayload = async (pl) => {
       let r = await fetch(SB_URL + '/rest/v1/' + _snap.table + '?id=eq.main', {
         method: 'PATCH',
@@ -12344,11 +12358,13 @@ async function sbSave() {
         projects: _snap.projects, nps_data: _snap.npsData, csp_manual: _snap.cspManual,
         mon_metas: _snap.monMetas, aql_metas: _snap.aqlMetas, cap_data: _snap.capData, cap_manual: _snap.capManual,
         pdi_data: _snap.pdiData, conv_base: _snap.convBaseManual, fotos: _snap.perfFotos,
-        auditorias: _snap.auditorias,
         sinais_culturais: _snap.sinaisCulturais,
         consultores: {list:_snap.consList, colors:_snap.consColors},
         saved_at: sbLastSaved.toISOString(), total: _snap.projects.length, table: _snap.table
       };
+      // Só entra se já carregado nesta sessão — omitir (em vez de gravar "[]") evita que um
+      // restore desse backup apague auditorias reais que só não foram lidas ainda aqui.
+      if (_snap.auditoriasLoaded) backup.auditorias = _snap.auditorias;
       const backupStr = JSON.stringify(backup);
       const b2 = localStorage.getItem('saber_backup_1') || null;
       const b3 = localStorage.getItem('saber_backup_2') || null;
@@ -12373,10 +12389,10 @@ async function sbSave() {
           projects, nps_data: npsData, csp_manual: cspManual,
           mon_metas: monMetas, aql_metas: aqlMetas, cap_data: capData, cap_manual: capManual,
           pdi_data: pdiData, conv_base: convBaseManual, fotos: perfFotos,
-        auditorias,
         consultores: {list:window.CONS_MON||[], colors:window.dotColors||{}},
           saved_at: new Date().toISOString()
         };
+        if (_auditoriasLoaded) emergency.auditorias = auditorias;
         localStorage.setItem('saber_emergency', JSON.stringify(emergency));
         localStorage.setItem('saber_emergency_at', new Date().toISOString());
         console.warn('Dados salvos no localStorage como emergência');
@@ -12386,7 +12402,8 @@ async function sbSave() {
   }
 }
 
-function sbExport() {
+async function sbExport() {
+  await sbLoadAuditorias(); // exportação manual sempre completa, mesmo se a aba Auditoria nunca abriu
   const data = {
     version: 1,
     exported_at: new Date().toISOString(),
@@ -12429,7 +12446,7 @@ function sbImport(input) {
       if (data.conv_base && typeof data.conv_base === 'object') Object.assign(convBaseManual, data.conv_base);
     if (data.fotos && typeof data.fotos === 'object') Object.assign(perfFotos, data.fotos);
       if (data.fotos && typeof data.fotos === 'object') Object.assign(perfFotos, data.fotos);
-      if (data.auditorias && Array.isArray(data.auditorias)) auditorias = data.auditorias;
+      if (data.auditorias && Array.isArray(data.auditorias)) { auditorias = data.auditorias; _auditoriasLoaded = true; }
     if (data.consultores) { if (Array.isArray(data.consultores.list) && data.consultores.list.length) window.CONS_MON = data.consultores.list; if (data.consultores.colors) window.dotColors = Object.assign({}, window.dotColors||{}, data.consultores.colors); }
 
       buildCspManual();
@@ -12459,12 +12476,29 @@ function _parseMaybe(val, fallback) {
   }
   return val; // já veio como objeto/array — não precisa (e não pode) rodar JSON.parse de novo
 }
+// Colunas do carregamento padrão, sem `auditorias` — de longe a maior coluna (~950KB, ~70%
+// da linha inteira), lida à parte, sob demanda, só quando a aba Auditoria abre (ver
+// sbLoadAuditorias()). `sinais_culturais` só existe em saber_data (ter_data não tem Cultura),
+// por isso entra condicionalmente — nomear uma coluna que não existe faz o PostgREST
+// devolver erro em vez de simplesmente omitir, diferente de select=*.
+function _sbColsSemAuditorias() {
+  const base = 'id,projects,nps_data,csp_manual,cap_data,cap_manual,updated_at,mon_metas,pdi_data,conv_base,fotos,consultores,aql_metas';
+  return SB_TABLE === 'saber_data' ? base + ',sinais_culturais' : base;
+}
+
 async function sbLoad() {
   try {
     setSyncStatus('Carregando…', 'var(--text-hint)');
-    const res = await fetch(SB_URL + '/rest/v1/' + SB_TABLE + '?id=eq.main&select=*', {
+    let res = await fetch(SB_URL + '/rest/v1/' + SB_TABLE + '?id=eq.main&select=' + _sbColsSemAuditorias(), {
       headers: SB_HEADERS
     });
+    // Rede de segurança: se a lista de colunas acima ficar desatualizada (ex: coluna nova
+    // criada e esquecida aqui), cai pro select=* de sempre em vez de quebrar o carregamento —
+    // só perde a otimização de bandwidth nesse load específico, não o app inteiro.
+    if (!res.ok && res.status === 400) {
+      console.warn('sbLoad: select por coluna falhou (' + res.status + '), tentando select=* como fallback');
+      res = await fetch(SB_URL + '/rest/v1/' + SB_TABLE + '?id=eq.main&select=*', { headers: SB_HEADERS });
+    }
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const rows = await res.json();
     if (!rows.length) {
@@ -12569,8 +12603,10 @@ async function sbLoad() {
       if (row.fotos) {
         try { const ft = _parseMaybe(row.fotos, {}); if (ft && typeof ft === 'object') Object.assign(perfFotos, ft); } catch(e){}
       }
+      // Só vem preenchido se o select caiu no fallback select=* (ver _sbColsSemAuditorias) —
+      // no caminho normal, auditorias é carregado à parte por sbLoadAuditorias().
       if (row.auditorias) {
-        try { const av = _parseMaybe(row.auditorias, []); if (Array.isArray(av)) auditorias = av; } catch(e){}
+        try { const av = _parseMaybe(row.auditorias, []); if (Array.isArray(av)) { auditorias = av; _auditoriasLoaded = true; } } catch(e){}
       }
       if (row.sinais_culturais) {
         try { const sc = _parseMaybe(row.sinais_culturais, []); if (Array.isArray(sc)) sinaisCulturais = sc; } catch(e){}
@@ -12594,6 +12630,29 @@ async function sbLoad() {
     setSyncStatus('⚠ Offline — dados locais', 'var(--amber)');
     console.error('sbLoad error:', e);
     // Não tenta salvar no Supabase agora — vai tentar quando o usuário editar
+  }
+}
+
+// Busca só a coluna auditorias (~950KB) — chamada sob demanda quando a aba Auditoria abre
+// (buildAuditoria()) ou quando algo precisa ler auditorias fora dela (ex: excluir da fila do
+// Drive reuniões já avaliadas). Idempotente: se já carregou nesta coordenação, não busca de
+// novo — quem quiser forçar recarregar chama sbLoad()/switchCoord() normalmente.
+async function sbLoadAuditorias() {
+  if (_auditoriasLoaded) return;
+  try {
+    const res = await fetch(SB_URL + '/rest/v1/' + SB_TABLE + '?id=eq.main&select=auditorias', {
+      headers: SB_HEADERS
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    if (rows.length && rows[0].auditorias) {
+      const av = _parseMaybe(rows[0].auditorias, []);
+      if (Array.isArray(av)) auditorias = av;
+    }
+    _auditoriasLoaded = true; // marca carregado mesmo se a coluna veio vazia/ausente — já é o estado real
+  } catch (e) {
+    console.warn('sbLoadAuditorias error:', e);
+    // não marca _auditoriasLoaded — próxima chamada tenta de novo
   }
 }
 
