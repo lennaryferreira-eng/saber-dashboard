@@ -390,9 +390,9 @@
     <div class="card-title" style="margin:0 0 1rem;">Healthscore</div>
     <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:var(--fs-xs);color:var(--text-hint);background:var(--surface2);border-radius:var(--r-sm);padding:8px 12px;margin-bottom:.8rem;">
       <span style="font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Como a flag é calculada:</span>
-      <span><span style="color:var(--green);font-size:var(--fs-base);"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="true"><path d="M3 14V2M3 3h9l-2 3 2 3H3"/></svg></span> Verde — score ≥70 e no prazo</span>
+      <span><span style="color:var(--green);font-size:var(--fs-base);"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="true"><path d="M3 14V2M3 3h9l-2 3 2 3H3"/></svg></span> Verde — score ≥70 da própria etapa mais recente e no prazo</span>
       <span><span style="color:var(--amber);font-size:var(--fs-base);"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="true"><path d="M3 14V2M3 3h9l-2 3 2 3H3"/></svg></span> Amarelo — bateu só 1 dos 2</span>
-      <span><span style="color:var(--accent);font-size:var(--fs-base);"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="true"><path d="M3 14V2M3 3h9l-2 3 2 3H3"/></svg></span> Vermelho — nenhum dos 2, score &lt;55 mesmo no prazo, ou sem entrega desde a semana passada</span>
+      <span><span style="color:var(--accent);font-size:var(--fs-base);"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="true"><path d="M3 14V2M3 3h9l-2 3 2 3H3"/></svg></span> Vermelho — nenhum dos 2, score &lt;55 mesmo no prazo, etapa de semana anterior ainda sem nota, ou sem entrega desde a semana passada</span>
       <span style="display:inline-flex;align-items:center;gap:5px;">
         <span style="display:inline-flex;border-radius:var(--r-sm);overflow:hidden;"><span style="background:var(--green);color:#fff;font-size:var(--fs-3xs);font-weight:700;padding:2px 5px;">Etapa</span><span style="background:var(--amber);color:#fff;font-size:var(--fs-3xs);font-weight:700;padding:2px 5px;">75</span></span>
         = prazo (esq.) + score (dir.)
@@ -2995,19 +2995,46 @@ function calcFlagAutomatica(p) {
     if (referencia < segundaSemanaAnterior) return 'Vermelho';
   }
   // Score mais recente registrado — percorre na ordem CRONOLÓGICA real (ordemCompleta), não
-  // por índice fixo 6→0. As etapas do meio (2-5) podem acontecer fora da ordem numérica (ex:
-  // a 3 entregue depois da 4 e da 5), então andar por índice pega uma nota antiga e ignora
-  // uma mais recente com índice menor — foi exatamente isso que mascarou o caso do projeto
-  // "Weber Manezes" (nota 79 de uma entrega de 17/07 escondendo a nota 54 de 28/07).
+  // por índice fixo 6→0, de trás pra frente. As etapas do meio (2-5) podem acontecer fora da
+  // ordem numérica (ex: a 3 entregue depois da 4 e da 5), então andar por índice pega uma nota
+  // antiga e ignora uma mais recente com índice menor — foi exatamente isso que mascarou o
+  // caso do projeto "Weber Manezes" (nota 79 de uma entrega de 17/07 escondendo a nota 54 de
+  // 28/07). No mesmo passe, marca se alguma etapa auditável (Kick off a Decolagem — Growth/
+  // si=0 é só logística, nunca passa pela D1-D9) SEM nota ainda é de semana ANTERIOR à atual:
+  // se a etapa mais recente foi entregue hoje/nesta semana e ainda não tem nota, tudo bem
+  // (tolerância até a segunda atual, mesma folga da regra de estagnação) — mas se ENQUANTO ISSO
+  // uma etapa anterior a ela também segue sem nota há mais de uma semana, isso não pode ficar
+  // escondido só porque não é a mais recente (caso real: "AEC espetinhos" — Vendas entregue
+  // hoje sem nota mascarava Pesquisa de Mercado de 03/08 também sem nota).
+  // Nota de etapa ANTIGA só serve pra evitar alarme falso (não força Vermelho enquanto a
+  // etapa mais recente ainda está na tolerância) — ela nunca pode CONCEDER Verde. Verde afirma
+  // "score ok" da entrega mais recente; usar a nota de uma etapa anterior pra isso faria a flag
+  // alegar ter avaliado um trabalho que na verdade ainda nem foi auditado (caso real:
+  // "Frenecar" — Decolagem de hoje sem nota não pode "passar" com a nota da 4ª Entrega, de
+  // 31/07: ninguém sabe ainda se a Decolagem foi boa).
+  const segundaEstaSemana = segundaDaSemana(hojeISO);
   let scoreRecente = null;
+  let notaEhDaEtapaMaisRecente = false;
+  let etapaAnteriorSemNotaVencida = false;
+  let ehAPrimeiraAuditavel = true;
   for (let i = ordem.length - 1; i >= 0; i--) {
-    const e = ent[ordem[i]] || ent[String(ordem[i])];
-    if (e && e.score !== undefined && e.score !== '' && !isNaN(parseFloat(e.score))) { scoreRecente = parseFloat(e.score); break; }
+    const si = ordem[i];
+    if (si === 0 || si === '0') continue; // Growth nunca conta (nunca passa pela D1-D9)
+    const e = ent[si] || ent[String(si)];
+    if (!e || !e.real || e.real > hojeISO) continue;
+    if (e.score !== undefined && e.score !== '' && !isNaN(parseFloat(e.score))) {
+      scoreRecente = parseFloat(e.score);
+      notaEhDaEtapaMaisRecente = ehAPrimeiraAuditavel;
+      break;
+    }
+    if (e.real < segundaEstaSemana) etapaAnteriorSemNotaVencida = true;
+    ehAPrimeiraAuditavel = false;
   }
+  if (etapaAnteriorSemNotaVencida) return 'Vermelho';
   // Nota crítica (<55) vira Vermelho automático, mesmo com o prazo em dia — uma entrega
   // muito ruim não pode ficar mascarada de Amarelo só porque saiu na data certa.
   if (scoreRecente !== null && scoreRecente < 55) return 'Vermelho';
-  const scoreOk = scoreRecente !== null && scoreRecente >= 70;
+  const scoreOk = notaEhDaEtapaMaisRecente && scoreRecente !== null && scoreRecente >= 70;
   const prazoOk = prazoStatus(p).ok === true;
   const atingidos = (scoreOk ? 1 : 0) + (prazoOk ? 1 : 0);
   if (atingidos === 2) return 'Verde';
