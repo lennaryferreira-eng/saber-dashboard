@@ -2995,35 +2995,28 @@ function calcFlagAutomatica(p) {
     if (referencia < segundaSemanaAnterior) return 'Vermelho';
   }
   // Score mais recente registrado — percorre na ordem CRONOLÓGICA real (ordemCompleta), não
-  // por índice fixo 6→0. As etapas do meio (2-5) podem acontecer fora da ordem numérica (ex:
-  // a 3 entregue depois da 4 e da 5), então andar por índice pega uma nota antiga e ignora
-  // uma mais recente com índice menor — foi exatamente isso que mascarou o caso do projeto
-  // "Weber Manezes" (nota 79 de uma entrega de 17/07 escondendo a nota 54 de 28/07).
-  let scoreRecente = null;
-  for (let i = ordem.length - 1; i >= 0; i--) {
-    const e = ent[ordem[i]] || ent[String(ordem[i])];
-    if (e && e.score !== undefined && e.score !== '' && !isNaN(parseFloat(e.score))) { scoreRecente = parseFloat(e.score); break; }
-  }
-  // Etapa auditável (Kick off a Decolagem — Growth/si=0 é só logística, nunca passa pela
-  // auditoria D1-D9) mais recente já entregue: se ela é de uma semana ANTERIOR à atual e ainda
-  // não tem nota lançada, o projeto vai pra Vermelho direto, mesmo que uma etapa anterior já
-  // tenha nota boa — sem essa trava, scoreRecente (acima) pula a etapa sem nota e herda a nota
-  // antiga, escondendo que o trabalho mais recente ainda nem foi auditado. A tolerância até a
-  // segunda da semana atual dá a mesma folga da regra de estagnação — a etapa entregue NESTA
-  // semana ainda pode estar na fila normal de auditoria, sem virar alarme falso.
+  // por índice fixo 6→0, de trás pra frente. As etapas do meio (2-5) podem acontecer fora da
+  // ordem numérica (ex: a 3 entregue depois da 4 e da 5), então andar por índice pega uma nota
+  // antiga e ignora uma mais recente com índice menor — foi exatamente isso que mascarou o
+  // caso do projeto "Weber Manezes" (nota 79 de uma entrega de 17/07 escondendo a nota 54 de
+  // 28/07). No mesmo passe, marca se alguma etapa auditável (Kick off a Decolagem — Growth/
+  // si=0 é só logística, nunca passa pela D1-D9) SEM nota ainda é de semana ANTERIOR à atual:
+  // se a etapa mais recente foi entregue hoje/nesta semana e ainda não tem nota, tudo bem
+  // (tolerância até a segunda atual, mesma folga da regra de estagnação) — mas se ENQUANTO ISSO
+  // uma etapa anterior a ela também segue sem nota há mais de uma semana, isso não pode ficar
+  // escondido só porque não é a mais recente (caso real: "AEC espetinhos" — Vendas entregue
+  // hoje sem nota mascarava Pesquisa de Mercado de 03/08 também sem nota).
   const segundaEstaSemana = segundaDaSemana(hojeISO);
-  let ultimaAuditavel = null, ultimaAuditavelData = null;
-  ordem.forEach(si => {
-    if (si === 0 || si === '0') return;
+  let scoreRecente = null;
+  let etapaAnteriorSemNotaVencida = false;
+  for (let i = ordem.length - 1; i >= 0; i--) {
+    const si = ordem[i];
     const e = ent[si] || ent[String(si)];
-    if (e && e.real && e.real <= hojeISO && (!ultimaAuditavelData || e.real > ultimaAuditavelData)) {
-      ultimaAuditavel = e; ultimaAuditavelData = e.real;
-    }
-  });
-  if (ultimaAuditavel && ultimaAuditavelData < segundaEstaSemana
-    && !(ultimaAuditavel.score !== undefined && ultimaAuditavel.score !== '' && !isNaN(parseFloat(ultimaAuditavel.score)))) {
-    return 'Vermelho';
+    if (!e || !e.real || e.real > hojeISO) continue;
+    if (e.score !== undefined && e.score !== '' && !isNaN(parseFloat(e.score))) { scoreRecente = parseFloat(e.score); break; }
+    if (si !== 0 && si !== '0' && e.real < segundaEstaSemana) etapaAnteriorSemNotaVencida = true;
   }
+  if (etapaAnteriorSemNotaVencida) return 'Vermelho';
   // Nota crítica (<55) vira Vermelho automático, mesmo com o prazo em dia — uma entrega
   // muito ruim não pode ficar mascarada de Amarelo só porque saiu na data certa.
   if (scoreRecente !== null && scoreRecente < 55) return 'Vermelho';
