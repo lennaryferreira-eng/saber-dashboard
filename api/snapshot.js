@@ -13,13 +13,29 @@
 //   linha 1  -> metadados: {"updated_at","chunks","projects","table"}
 //   linha 2+ -> pedaços do JSON (o Sheets trava em 50 mil caracteres por célula)
 
-import { getServiceAccountToken, writeSheetValues, readSheetValues } from './_lib/sheets.js';
+import {
+  getServiceAccountToken, writeSheetValues, readSheetValues,
+  garantirAbas, escreverVariasAbas, lerVariasAbas, listarAbas,
+} from './_lib/sheets.js';
+import { paraTabela, deTabela } from './_lib/linear.js';
 
 const CHUNK = 40000; // folga confortável abaixo do limite de 50k por célula
 const TABELAS_OK = ['saber_data', 'ter_data'];
 
+// Colunas do painel que viram uma aba cada no formato linear. `sinais_culturais` só existe
+// na SABER, mas gravar uma aba vazia na TER não atrapalha — a reconstrução ignora ausente.
+const COLUNAS = [
+  'projects', 'nps_data', 'csp_manual', 'cap_data', 'cap_manual', 'mon_metas', 'aql_metas',
+  'pdi_data', 'conv_base', 'fotos', 'auditorias', 'sinais_culturais', 'consultores',
+];
+
 function tabName(table) {
   return '_snapshot_' + table;
+}
+
+// Uma aba por coluna: L_saber_data_projects, L_saber_data_auditorias, ...
+function tabLinear(table, coluna) {
+  return 'L_' + table + '_' + coluna;
 }
 
 function credenciais(res) {
@@ -79,6 +95,49 @@ export default async function handler(req, res) {
       }
 
       const problemas = [];
+
+      // ?formato=linear reconstrói a partir das abas-tabela em vez do JSON fatiado. Tenta em
+      // cada planilha, e só depois cai pro JSON — que continua ali como segunda linha de
+      // defesa (os dois formatos são gravados sempre, do mesmo dado).
+      if (req.query?.formato === 'linear') {
+        for (const f of fontes) {
+          try {
+            const existentes = new Set(await listarAbas({ accessToken, spreadsheetId: f.id }));
+            const querer = COLUNAS.map(c => tabLinear(table, c)).filter(t => existentes.has(t));
+            if (!querer.length) { problemas.push(f.nome + ': sem abas lineares'); continue; }
+            const mapa = await lerVariasAbas({ accessToken, spreadsheetId: f.id, titulos: querer });
+            const dados = {};
+            let updatedAt = null;
+            const ruins = [];
+            for (const c of COLUNAS) {
+              const linhas = mapa.get(tabLinear(table, c));
+              if (!linhas || !linhas.length) continue;
+              try {
+                dados[c] = deTabela(linhas);
+                if (!updatedAt && linhas[0] && linhas[0][2]) updatedAt = linhas[0][2];
+              } catch (err) {
+                // Isolamento de falha — a razão de ser do formato linear: uma coluna
+                // corrompida não impede as outras de carregar.
+                ruins.push(c + ' (' + err.message + ')');
+              }
+            }
+            if (!Array.isArray(dados.projects) || !dados.projects.length) {
+              problemas.push(f.nome + ': projects vazio/ilegível');
+              continue;
+            }
+            res.status(200).json({
+              meta: { updated_at: updatedAt, projects: dados.projects.length, table, formato: 'linear' },
+              dados, fonte: f.nome,
+              ...(ruins.length ? { colunas_com_problema: ruins } : {}),
+            });
+            return;
+          } catch (err) {
+            problemas.push(f.nome + ' (linear): ' + err.message);
+          }
+        }
+        // nenhuma planilha entregou o linear — segue pro JSON abaixo
+      }
+
       for (const f of fontes) {
         try {
           const linhas = await readSheetValues({ accessToken, spreadsheetId: f.id, title: tabName(table) });
@@ -125,8 +184,22 @@ export default async function handler(req, res) {
       };
       const values = [[JSON.stringify(meta)], ...pedacos];
 
+      // Formato linear: uma aba por coluna, uma linha por registro (ver api/_lib/linear.js).
+      // Vai junto com o JSON fatiado de propósito — são dois formatos independentes do mesmo
+      // dado, então uma corrupção que derrube um ainda deixa o outro de pé.
+      const blocos = COLUNAS
+        .filter(c => dados[c] !== undefined)
+        .map(c => ({ title: tabLinear(table, c), values: paraTabela(dados[c], meta.updated_at) }));
+      const specs = blocos.map(b => ({
+        title: b.title,
+        rows: b.values.length + 10,
+        cols: Math.max(...b.values.map(l => l.length), 1) + 2,
+      }));
+
       // A principal é obrigatória: se ela falhar, a requisição falha e o painel avisa.
       await writeSheetValues({ accessToken, spreadsheetId: cred.spreadsheetId, title: tabName(table), values });
+      await garantirAbas({ accessToken, spreadsheetId: cred.spreadsheetId, specs });
+      await escreverVariasAbas({ accessToken, spreadsheetId: cred.spreadsheetId, blocos });
 
       // O espelho é redundância: uma falha nele não pode derrubar um save que já foi gravado
       // com sucesso na principal. Reporta no retorno pra não falhar em silêncio.
@@ -134,12 +207,17 @@ export default async function handler(req, res) {
       if (cred.mirrorId) {
         try {
           await writeSheetValues({ accessToken, spreadsheetId: cred.mirrorId, title: tabName(table), values });
+          await garantirAbas({ accessToken, spreadsheetId: cred.mirrorId, specs });
+          await escreverVariasAbas({ accessToken, spreadsheetId: cred.mirrorId, blocos });
         } catch (err) {
           espelho = 'FALHOU: ' + err.message;
           console.error('snapshot: espelho falhou —', err.message);
         }
       }
-      res.status(200).json({ ok: true, ...meta, bytes: payloadStr.length, espelho });
+      res.status(200).json({
+        ok: true, ...meta, bytes: payloadStr.length, espelho,
+        linear: { abas: blocos.length, linhas: blocos.reduce((s, b) => s + Math.max(0, b.values.length - 2), 0) },
+      });
       return;
     }
 

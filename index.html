@@ -12772,15 +12772,32 @@ function _redesenharTudo() {
 
 async function sbEntrarModoOffline() {
   // 1ª opção: snapshot no servidor (planilha). É o único caminho que permite gravar.
+  // formato=linear: uma aba por coluna, uma linha por registro. O endpoint cai sozinho pro
+  // JSON fatiado se as abas lineares não estiverem lá.
   try {
-    const r = await fetch('/api/snapshot?table=' + encodeURIComponent(SB_TABLE));
+    const r = await fetch('/api/snapshot?formato=linear&table=' + encodeURIComponent(SB_TABLE));
     if (r.ok) {
-      const { meta, dados } = await r.json();
+      const { meta, dados, colunas_com_problema } = await r.json();
       if (dados && Array.isArray(dados.projects) && dados.projects.length) {
         _aplicarSnapshot(dados);
-        MODO_OFFLINE = 'sheets';
         _redesenharTudo();
         const q = _fmtQuando(meta && meta.updated_at);
+
+        // CARGA PARCIAL = SÓ LEITURA. Se alguma coluna não pôde ser lida (aba corrompida), o
+        // painel está com aquele dado vazio em memória. Deixar gravar aqui faria o save
+        // seguinte escrever o vazio por cima da única cópia que ainda existe — o mesmo tipo
+        // de perda que a trava de auditorias/fotos evita no fluxo normal.
+        if (colunas_com_problema && colunas_com_problema.length) {
+          MODO_OFFLINE = 'local'; // reusa o modo travado
+          VIEWER = true;
+          applyViewerLockdown();
+          mostrarOfflineBanner('Supabase fora do ar E a planilha veio incompleta (' + colunas_com_problema.join(', ') + '). SOMENTE LEITURA, pra não sobrescrever o que sobrou. Chame o suporte técnico.', true);
+          setSyncStatus('⚠ Offline com dados incompletos — somente leitura', 'var(--accent)');
+          console.error('sbEntrarModoOffline: colunas ilegíveis —', colunas_com_problema);
+          return true;
+        }
+
+        MODO_OFFLINE = 'sheets';
         mostrarOfflineBanner('Supabase fora do ar — trabalhando pela planilha (dados de ' + q + '). Suas edições SÃO salvas e voltam pro banco depois.', false);
         setSyncStatus('⚠ Offline (planilha) — edição liberada', 'var(--amber)');
         console.warn('sbEntrarModoOffline: snapshot da planilha carregado (' + projects.length + ' projetos, de ' + q + '). Leitura e escrita.');
@@ -12906,12 +12923,16 @@ async function sbSalvarSnapshot({ forcar = false } = {}) {
 async function sbReinjetarSnapshot() {
   try {
     setSyncStatus('Lendo snapshot da planilha…', 'var(--amber)');
-    const r = await fetch('/api/snapshot?table=' + encodeURIComponent(SB_TABLE));
+    const r = await fetch('/api/snapshot?formato=linear&table=' + encodeURIComponent(SB_TABLE));
     const snap = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(snap.error || ('HTTP ' + r.status));
     const dados = snap.dados;
     if (!dados || !Array.isArray(dados.projects) || !dados.projects.length) {
       throw new Error('snapshot sem projetos');
+    }
+    // Reinjetar com coluna faltando gravaria vazio por cima do que está são no banco.
+    if (snap.colunas_com_problema && snap.colunas_com_problema.length) {
+      throw new Error('a planilha veio incompleta (' + snap.colunas_com_problema.join(', ') + '). Reinjetar assim apagaria essas colunas no banco.');
     }
 
     // Quantos o banco tem AGORA — sem isso a confirmação seria às cegas.
