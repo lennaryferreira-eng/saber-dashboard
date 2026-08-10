@@ -10,6 +10,22 @@
 const INTERACTIONS_URL = 'https://generativelanguage.googleapis.com/v1beta/interactions';
 const MODEL = 'gemini-3.6-flash';
 
+// A REST crua da Interactions API NÃO devolve o campo `output_text` (isso é uma
+// propriedade de conveniência calculada só pelos SDKs oficiais) — o texto de verdade vem
+// dentro de `steps[]`, num step `type:"model_output"` com `content:[{type:"text",text}]`.
+// Confirmado batendo direto na API antes de escrever isto (a doc não deixava claro).
+function extractOutputText(data) {
+  if (!Array.isArray(data.steps)) return '';
+  let out = '';
+  for (const step of data.steps) {
+    if (step.type !== 'model_output' || !Array.isArray(step.content)) continue;
+    for (const block of step.content) {
+      if (block.type === 'text' && typeof block.text === 'string') out += block.text;
+    }
+  }
+  return out;
+}
+
 export async function callGemini({ apiKey, system, userText, maxTokens }) {
   const body = {
     model: MODEL,
@@ -33,7 +49,7 @@ export async function callGemini({ apiKey, system, userText, maxTokens }) {
   });
 
   const data = await geminiRes.json();
-  return { ok: geminiRes.ok, status: geminiRes.status, data };
+  return { ok: geminiRes.ok, status: geminiRes.status, data, outputText: geminiRes.ok ? extractOutputText(data) : '' };
 }
 
 // Mesma chamada, em modo streaming (stream:true, SSE via ?alt=sse) — devolve o fetch

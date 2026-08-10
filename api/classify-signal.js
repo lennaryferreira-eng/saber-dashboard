@@ -29,7 +29,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { ok, status, data } = await callGemini({
+    const { ok, status, data, outputText } = await callGemini({
       apiKey,
       system: rubric,
       userText: `Situação observada no squad:\n"""${descricao}"""\n\nClassifique conforme instruído.`,
@@ -44,7 +44,7 @@ export default async function handler(req, res) {
     // Traduz a resposta da Interactions API do Gemini pro mesmo formato que a Anthropic
     // devolvia ({content:[{type:'text', text:...}]}) — classificarSituacao() (index.html)
     // já sabe ler essa forma, então não precisa mudar nada no cliente.
-    res.status(200).json({ content: [{ type: 'text', text: data.output_text || '' }] });
+    res.status(200).json({ content: [{ type: 'text', text: outputText }] });
   } catch (err) {
     res.status(500).json({ error: 'Falha ao chamar o Gemini: ' + err.message });
   }
