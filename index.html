@@ -12130,6 +12130,11 @@ let sbRetryCount = 0;
 
 
 // ── GOOGLE SHEETS SYNC ─────────────────────────────────────
+// A planilha é só um backup do Supabase — não um destino de sync recorrente. Por isso
+// syncSheets() só roda em dois momentos: bifurcado logo após um sbSave() bem-sucedido (o
+// mesmo registro que foi pro Supabase vai pra planilha), e como fallback quando o Supabase
+// falha (pra não perder o dado). Nada de timer/refresh periódico nem sync ao fechar aba —
+// isso já existiu (a cada 5min + beforeunload) e foi removido de propósito.
 // Escreve direto na Planilha Google via /api/sync-sheets (conta de serviço + Sheets API),
 // same-origin — sem Apps Script no meio. Antes disso, essa sincronização passava por um
 // Web App do Apps Script (script.google.com); um gatilho por tempo relacionado a essa
@@ -12664,15 +12669,11 @@ projects = []; // dados carregados do Supabase
 })();
 { const _elUpd = document.getElementById('last-upd'); if (_elUpd) _elUpd.textContent = ts(); }
   window.addEventListener('beforeunload', e => {
-    syncSheets().catch(() => {}); // sync ao fechar aba
     if (sbPendingChanges) {
       e.preventDefault();
       e.returnValue = 'Há alterações não salvas. Exporte os dados antes de sair.';
     }
   });
-
-// Auto-sync com Google Sheets a cada 5 minutos
-setInterval(() => { if (projects.length > 0) syncSheets().catch(e => console.warn('Sheets sync error:', e)); }, 5 * 60 * 1000); // sync automático a cada 5 min
 
 // Sincroniza barra de rolagem do topo com a tabela
 (function() {
