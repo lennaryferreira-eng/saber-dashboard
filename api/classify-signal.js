@@ -33,7 +33,11 @@ export default async function handler(req, res) {
       apiKey,
       system: rubric,
       userText: `Situação observada no squad:\n"""${descricao}"""\n\nClassifique conforme instruído.`,
-      maxTokens: 1000,
+      // A saída é um JSON de ~100 tokens, mas no gemini-2.5-pro o RACIOCÍNIO sai deste mesmo
+      // orçamento (não dá pra desligar: o nível mínimo aceito é 'low'). Com 1000 o risco é o
+      // modelo gastar tudo pensando e devolver vazio — foi o que aconteceu num teste com
+      // limite baixo. Teto alto não custa: só se paga o que é gerado de fato.
+      maxTokens: 4000,
     });
 
     if (!ok) {

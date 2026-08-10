@@ -8,7 +8,13 @@
 // de build/instalação que não existe hoje em nenhuma outra função serverless daqui).
 
 const INTERACTIONS_URL = 'https://generativelanguage.googleapis.com/v1beta/interactions';
-const MODEL = 'gemini-3.6-flash';
+const MODEL = 'gemini-2.5-pro';
+// CUIDADO ao trocar de modelo: `thinking_level` não aceita os mesmos valores em todos.
+// O gemini-2.5-pro aceita só 'low' e 'high' (rejeita 'minimal' com invalid_request); os da
+// linha flash aceitam 'minimal' também. E o raciocínio SAI DO MESMO orçamento de
+// max_output_tokens — num teste com 50 tokens, o 2.5-pro gastou 47 pensando e devolveu
+// resposta vazia (status "incomplete"). Por isso os limites em quem chama são folgados.
+const THINKING_LEVEL = 'low';
 
 // A REST crua da Interactions API NÃO devolve o campo `output_text` (isso é uma
 // propriedade de conveniência calculada só pelos SDKs oficiais) — o texto de verdade vem
@@ -49,9 +55,7 @@ export async function callGemini({ apiKey, system, userText, maxTokens, temperat
       max_output_tokens: maxTokens,
       temperature,
       seed: SEED_ANALISE,
-      // "minimal" é o nível mais baixo de raciocínio da Interactions API — equivalente
-      // mais próximo do thinking:{type:'disabled'} que a chamada à Anthropic usava.
-      thinking_level: 'minimal',
+      thinking_level: THINKING_LEVEL,
     },
   };
 
@@ -81,7 +85,7 @@ export async function callGeminiStream({ apiKey, system, userText, maxTokens, te
       max_output_tokens: maxTokens,
       temperature,
       seed: SEED_ANALISE,
-      thinking_level: 'minimal',
+      thinking_level: THINKING_LEVEL,
     },
   };
 
