@@ -24,17 +24,26 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { transcricao } = req.body || {};
+  const { transcricao, tipoFoco } = req.body || {};
   if (!transcricao || typeof transcricao !== 'string') {
     res.status(400).json({ error: 'Campo "transcricao" é obrigatório' });
     return;
   }
 
+  // Quando a mesma call cobre duas entregas diferentes (ex: Diagnóstico de Vendas +
+  // Diagnóstico de Mídia Paga na mesma reunião), o painel manda a mesma transcrição duas
+  // vezes, uma pra cada tipo — tipoFoco diz qual das duas avaliar aqui. Sem isso, a skill
+  // (Passo 2) tentaria identificar sozinha o tipo, sem saber que precisa escolher uma das
+  // duas partes e ignorar a outra.
+  const userText = tipoFoco
+    ? `ATENÇÃO: esta transcrição cobre duas entregas diferentes na mesma call. Avalie SOMENTE a parte conduzida como "${tipoFoco}" (é esse o tipo de entrega desta avaliação — não precisa identificá-lo sozinho no Passo 2, use este). Trate o trecho conduzido para a outra entrega/tipo como fora de escopo desta avaliação — não conta a favor nem contra em nenhuma das 9 dimensões, mesma lógica da regra de ignorar apresentação comercial do time de Expansão.\n\n${transcricao}`
+    : transcricao;
+
   try {
     const anthropicRes = await callClaudeStream({
       apiKey,
       system: MEETING_EVAL_SKILL,
-      userText: transcricao,
+      userText,
       // `temperature` é parâmetro descontinuado pro claude-sonnet-5 (API rejeita com
       // invalid_request_error) — não dá pra reduzir variância por aí. Testei thinking:adaptive
       // pra dar espaço de raciocínio ao procedimento de pontuação mecânico da skill (3
@@ -42,7 +51,8 @@ export default async function handler(req, res) {
       // deixou a chamada ~3x mais lenta (110-180s vs ~50s) sem reduzir a variância de forma
       // clara — mantém thinking desativado, que já é mais rápido/barato, e deixa a redução de
       // variância por conta do procedimento mecânico da skill (menos espaço de números
-      // possíveis + arredondamento pra múltiplo de 5 + resolver empate pro valor mais baixo).
+      // possíveis + arredondamento pra múltiplo de 5 + decisão de empate ancorada só na
+      // evidência citável, sem viés automático pro mais baixo).
       thinking: { type: 'disabled' },
       // 16000 dá espaço de sobra pra saída completa das 9 dimensões (texto real fica em
       // ~2500-3000 tokens) sem risco de truncar (bug antigo era com 4096 + thinking ligado).
