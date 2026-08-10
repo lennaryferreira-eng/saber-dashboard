@@ -12,6 +12,8 @@ Avalia a transcrição de uma reunião de entrega de consultor na estrutura de 9
 ### 1. Receber a transcrição
 Pode chegar como texto colado no chat ou arquivo .txt/.pdf — leia o arquivo antes de avaliar. Se nenhuma transcrição foi fornecida, peça antes de prosseguir. Se a entrada for resumo automático (não transcrição literal), **declare isso no início** e seja mais conservador nos critérios que exigem evidência de diálogo ao vivo (D2, D3, D7).
 
+**Trecho de apresentação comercial do time de Expansão nunca entra na avaliação.** Se a transcrição tiver um bloco onde outra pessoa (não o consultor da Squad Saber responsável pela entrega) assume a call para oferecer/vender um produto adicional (upsell, renovação, outro serviço, ampliação de escopo), identifique esse trecho e **ignore-o completamente** ao avaliar as 9 dimensões — nem soma nem desconta nota, pra nenhuma dimensão. Ele não é a entrega sendo auditada. Avalie só o conteúdo conduzido pelo consultor responsável pela entrega em questão.
+
 ### 2. Identificar o tipo de entrega
 Identifique antes de avaliar: Kickoff, Pesquisa de Mercado, Diagnóstico de Mídia Paga, Diagnóstico de Vendas, Diagnóstico de Ambientes ou Apresentação Final/Plano de Decolagem. Há skill técnica própria para todos esses tipos. **Esta skill é autossuficiente**: os critérios técnicos da D9 de cada tipo estão embutidos no APÊNDICE ao final deste arquivo — use-os diretamente, não dependa de abrir a skill técnica separada. **Não existe "Diagnóstico de Criativos" como reunião separada**: a análise criativa/visual (identidade, redes sociais, anúncios, site) faz parte do **Diagnóstico de Ambientes** — use o bloco de Ambientes do apêndice, que já cobre essa camada.
 
