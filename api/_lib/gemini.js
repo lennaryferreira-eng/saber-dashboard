@@ -14,7 +14,7 @@ const MODEL = 'gemini-2.5-pro';
 // linha flash aceitam 'minimal' também. E o raciocínio SAI DO MESMO orçamento de
 // max_output_tokens — num teste com 50 tokens, o 2.5-pro gastou 47 pensando e devolveu
 // resposta vazia (status "incomplete"). Por isso os limites em quem chama são folgados.
-const THINKING_LEVEL = 'low';
+const THINKING_LEVEL = 'high';
 
 // A REST crua da Interactions API NÃO devolve o campo `output_text` (isso é uma
 // propriedade de conveniência calculada só pelos SDKs oficiais) — o texto de verdade vem
