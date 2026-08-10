@@ -11994,8 +11994,6 @@ function consSalvar(){
 }
 
 const SB_URL = 'https://riawjqvezolgyldldyzi.supabase.co';
-// URL do Google Apps Script (cole aqui após publicar)
-const SHEETS_URL = 'https://script.google.com/a/macros/v4company.com/s/AKfycbzy462VGOLbHKckALmznzaBvZwrRMMBTSr9J3CZEt2xj_hF2pWWzHvU1BZXzNw-1HKG/exec';
 
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJpYXdqcXZlem9sZ3lsZGxkeXppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyMDM3NDUsImV4cCI6MjA5MTc3OTc0NX0.1hmeQ7YCM0LvekZc7aNYy-D4jyVwxC6jK_W3kn5PVwA';
 const SB_HEADERS = { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY };
@@ -12132,15 +12130,16 @@ let sbRetryCount = 0;
 
 
 // ── GOOGLE SHEETS SYNC ─────────────────────────────────────
+// Escreve direto na Planilha Google via /api/sync-sheets (conta de serviço + Sheets API),
+// same-origin — sem Apps Script no meio. Antes disso, essa sincronização passava por um
+// Web App do Apps Script (script.google.com); um gatilho por tempo relacionado a essa
+// integração (configurado direto no editor do Apps Script, fora deste código) rodava a
+// cada ~60s, 24h/dia, buscando os dados inteiros direto no Supabase (select=* — ~1,3MB,
+// com os 952KB de auditorias inclusos) — sozinho respondia por dezenas de GB de saída do
+// banco por mês.
 
 // Botão manual "Atualizar Planilha" — reaproveita exatamente o mesmo payload e o mesmo
-// endpoint do sync automático (syncSheets). Antes disso, esse botão mandava só
-// {action:'atualizar'} sem dado nenhum, e o Apps Script do outro lado tinha que ir buscar
-// tudo direto no Supabase (select=* — ~1,3MB, com os 952KB de auditorias inclusos) toda vez
-// que rodava. Um gatilho por tempo relacionado a essa ação (configurado direto no editor do
-// Apps Script, fora deste código) rodava isso a cada ~60s, 24h/dia — sozinho respondia por
-// dezenas de GB de saída do banco por mês. Agora o Apps Script recebe os dados prontos no
-// corpo da requisição e nunca mais precisa chamar o Supabase.
+// endpoint do sync automático (syncSheets).
 async function atualizarPlanilha() {
   const btn = document.querySelector('button[onclick="atualizarPlanilha()"]');
   if (btn) btn.innerHTML = icon('chart') + ' Atualizando...';
@@ -12155,33 +12154,29 @@ async function atualizarPlanilha() {
 }
 
 async function syncSheets() {
-  if (!SHEETS_URL) return;
-  try {
-    const payload = {
-      tipo:       'full',
-      projects:   JSON.stringify(projects),
-      nps_data:   JSON.stringify(npsData),
-      csp_manual: JSON.stringify(cspManual),
-      mon_metas:  JSON.stringify(monMetas),
-      aql_metas:  JSON.stringify(aqlMetas),
-      cap_data:   JSON.stringify(capData),
-      cap_manual: JSON.stringify(capManual),
-      pdi_data:   JSON.stringify(typeof pdiData !== 'undefined' ? pdiData : {}),
-      auditorias: JSON.stringify(auditorias),
-      consultores: JSON.stringify({list:window.CONS_MON||[], colors:window.dotColors||{}}),
-    };
-    // Envia como text/plain para bypassar CORS preflight
-    const body = JSON.stringify(payload);
-    await fetch(SHEETS_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: body
-    });
-    console.log('Sheets sync enviado');
-  } catch(e) {
-    console.warn('Sheets sync error:', e);
+  const payload = {
+    tipo:       'full',
+    projects:   JSON.stringify(projects),
+    nps_data:   JSON.stringify(npsData),
+    csp_manual: JSON.stringify(cspManual),
+    mon_metas:  JSON.stringify(monMetas),
+    aql_metas:  JSON.stringify(aqlMetas),
+    cap_data:   JSON.stringify(capData),
+    cap_manual: JSON.stringify(capManual),
+    pdi_data:   JSON.stringify(typeof pdiData !== 'undefined' ? pdiData : {}),
+    auditorias: JSON.stringify(auditorias),
+    consultores: JSON.stringify({list:window.CONS_MON||[], colors:window.dotColors||{}}),
+  };
+  const res = await fetch('/api/sync-sheets', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || ('HTTP ' + res.status));
   }
+  console.log('Sheets sync enviado');
 }
 
 async function sbSave() {
@@ -12337,7 +12332,7 @@ async function sbSave() {
     sbRetryCount = 0;
     console.log(`sbSave: confirmado ${_snap.projects.length} projetos salvos às ${sbLastSaved.toLocaleTimeString()}`);
     setSyncStatus('✓ Salvo às ' + sbLastSaved.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) + ' (' + _snap.projects.length + ' proj.)', 'var(--green)');
-    syncSheets(); // sync automático com planilha após salvar no Supabase
+    syncSheets().catch(e => console.warn('Sheets sync error:', e)); // sync automático com planilha após salvar no Supabase
     // Mantém 3 backups locais rotativos
     try {
       const backup = {
@@ -12381,7 +12376,7 @@ async function sbSave() {
         localStorage.setItem('saber_emergency_at', new Date().toISOString());
         console.warn('Dados salvos no localStorage como emergência');
       } catch(le) { console.warn('localStorage cheio:', le); }
-      syncSheets(); // fallback: tenta planilha quando Supabase falha
+      syncSheets().catch(e => console.warn('Sheets sync error:', e)); // fallback: tenta planilha quando Supabase falha
     }
   }
 }
@@ -12669,7 +12664,7 @@ projects = []; // dados carregados do Supabase
 })();
 { const _elUpd = document.getElementById('last-upd'); if (_elUpd) _elUpd.textContent = ts(); }
   window.addEventListener('beforeunload', e => {
-    syncSheets(); // sync ao fechar aba
+    syncSheets().catch(() => {}); // sync ao fechar aba
     if (sbPendingChanges) {
       e.preventDefault();
       e.returnValue = 'Há alterações não salvas. Exporte os dados antes de sair.';
@@ -12677,7 +12672,7 @@ projects = []; // dados carregados do Supabase
   });
 
 // Auto-sync com Google Sheets a cada 5 minutos
-setInterval(() => { if (projects.length > 0) syncSheets(); }, 5 * 60 * 1000); // sync automático a cada 5 min
+setInterval(() => { if (projects.length > 0) syncSheets().catch(e => console.warn('Sheets sync error:', e)); }, 5 * 60 * 1000); // sync automático a cada 5 min
 
 // Sincroniza barra de rolagem do topo com a tabela
 (function() {
