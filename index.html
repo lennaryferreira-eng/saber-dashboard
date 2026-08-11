@@ -10919,13 +10919,17 @@ function audFormHTML(){
     + '<div><label for="aud-f-tipo" class="aud-lbl">Tipo de entrega</label><select id="aud-f-tipo" class="aud-inp"><option value="">Selecione…</option>'+opt(AUD_TIPOS)+'</select></div>'
     + '<div><label for="aud-f-cliente" class="aud-lbl">Cliente</label><input id="aud-f-cliente" class="aud-inp" list="aud-f-cliente-list" autocomplete="off" placeholder="Digite pra buscar…"><datalist id="aud-f-cliente-list">'+optDatalist(audClientes())+'</datalist></div>'
     + '<div><label for="aud-f-data" class="aud-lbl">Data da reunião</label><input id="aud-f-data" type="date" class="aud-inp"></div>'
+    + '<div><label for="aud-f-modelo" class="aud-lbl">IA que vai avaliar</label><select id="aud-f-modelo" class="aud-inp">'
+    +   '<option value="gemini" selected>Gemini 2.5 Pro</option>'
+    +   '<option value="claude">Claude Sonnet 4.6</option>'
+    + '</select></div>'
     + '</div>'
     + '<textarea id="aud-analise" style="display:none;"></textarea>'
     + '<div style="background:var(--surface2);border:1px dashed var(--border);border-radius:var(--r-sm);padding:14px;">'
-    + '<label for="aud-arquivo" class="aud-lbl">Envie o arquivo da reunião (.pdf, .txt ou .md) — a ferramenta gera a análise com Claude</label>'
+    + '<label for="aud-arquivo" class="aud-lbl">Envie o arquivo da reunião (.pdf, .txt ou .md) — a ferramenta gera a análise com a IA selecionada acima</label>'
     + '<input type="file" id="aud-arquivo" accept=".pdf,.txt,.md" class="aud-inp">'
     + '<div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center;">'
-    + '<button id="aud-btn-gerar-claude" class="btn btn-primary" onclick="audGerarComClaude()">'+icon('sparkle')+' Gerar avaliação com Claude</button>'
+    + '<button id="aud-btn-gerar-claude" class="btn btn-primary" onclick="audGerarComClaude()">'+icon('sparkle')+' Gerar avaliação com IA</button>'
     + '<button class="btn btn-ghost" onclick="audManual()">Preencher manual</button>'
     + '<span id="aud-gerar-msg" style="font-size:var(--fs-base);color:var(--text-hint);"></span>'
     + '<span id="aud-form-msg" style="font-size:var(--fs-base);color:var(--text-hint);"></span>'
@@ -11000,11 +11004,20 @@ async function audExtrairTextoArquivo(file){
 // deixar a tela travada entre 0% e 100% esperando a resposta inteira.
 // tipoFoco: só usado quando a mesma call cobre duas entregas diferentes (ver
 // audAdicionarSelecaoNaFila) — diz pro servidor qual das duas avaliar, ignorando a outra.
+// Qual IA avalia a reunião. Vem do seletor no formulário da Auditoria e vale pra avaliação
+// avulsa e pra fila do Drive. O formato do texto de saída é o mesmo nos dois — quem muda é
+// só quem escreve (ver api/evaluate-meeting.js).
+function audModeloEscolhido(){
+  return document.getElementById('aud-f-modelo')?.value || 'gemini';
+}
+
 async function audChamarClaude(transcricao, onProgress, tipoFoco){
+  const body={transcricao, modelo: audModeloEscolhido()};
+  if(tipoFoco) body.tipoFoco=tipoFoco;
   const response=await fetch('/api/evaluate-meeting',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(tipoFoco ? {transcricao, tipoFoco} : {transcricao})
+    body:JSON.stringify(body)
   });
   if(!response.ok){
     const errBody=await response.json().catch(()=>({}));
@@ -11098,8 +11111,8 @@ async function audGerarComClaude(){
   try{
     const transcricao=(await audExtrairTextoArquivo(arquivo)).trim();
     if(transcricao.length<100) throw new Error('O arquivo parece vazio ou curto demais pra ser uma transcrição.');
-    btn.textContent='Avaliando com Claude...';
-    audAtualizaProgresso(5,'Conectando com Claude…');
+    btn.textContent='Avaliando…';
+    audAtualizaProgresso(5,'Conectando com a IA…');
     await audGerarEImportar(transcricao, (textoAcumulado)=>{
       const {frac, label}=audEstimarProgressoAnalise(textoAcumulado);
       audAtualizaProgresso(frac*100, label);
@@ -11111,7 +11124,7 @@ async function audGerarComClaude(){
     if(msg){msg.textContent='Não consegui gerar a avaliação: '+err.message;msg.style.color='var(--accent)';}
   }finally{
     btn.disabled=false;
-    btn.innerHTML=icon('sparkle')+' Gerar avaliação com Claude';
+    btn.innerHTML=icon('sparkle')+' Gerar avaliação com IA';
   }
 }
 
@@ -11443,7 +11456,7 @@ async function audFilaProcessarBackground(){
         const data=await response.json().catch(()=>({}));
         if(!response.ok) throw new Error(data.error || ('A API retornou um erro ('+response.status+')'));
         if(data.fileId) item.driveFileIdResolvido=data.fileId; // id real resolvido pelo servidor
-        item.progressoLabel='Conectando com Claude…'; audRenderFilaLista();
+        item.progressoLabel='Conectando com a IA…'; audRenderFilaLista();
         const texto=await audChamarClaude(data.texto||'', (textoAcumulado)=>{
           const {label}=audEstimarProgressoAnalise(textoAcumulado);
           item.progressoLabel=label; audRenderFilaLista();

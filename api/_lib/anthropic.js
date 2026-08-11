@@ -33,9 +33,11 @@ export async function callClaude({ apiKey, system, userText, maxTokens, temperat
 // Mesma chamada, mas em modo streaming (stream:true) — devolve o fetch Response cru pra quem
 // chamou repassar os bytes SSE direto pro cliente. Usado onde o frontend precisa de feedback
 // de progresso real (ex.: avaliação de reunião), em vez de esperar a resposta inteira.
-export async function callClaudeStream({ apiKey, system, userText, maxTokens, thinking }) {
+// `model` é parâmetro porque a Auditoria deixa a coordenadora escolher entre Claude e Gemini
+// por avaliação (ver api/evaluate-meeting.js). Default no Sonnet 4.6, que é o que a aba oferece.
+export async function callClaudeStream({ apiKey, system, userText, maxTokens, thinking, model = 'claude-sonnet-4-6' }) {
   const body = {
-    model: 'claude-sonnet-5',
+    model,
     max_tokens: maxTokens,
     system,
     stream: true,
