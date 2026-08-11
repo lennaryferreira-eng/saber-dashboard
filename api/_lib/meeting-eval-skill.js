@@ -33,6 +33,63 @@ Cada dimensão recebe nota 0–100, uma "Análise:" em prosa otimizada (direta a
 - **d8 — Domínio do negócio do cliente:** leitura do modelo, calibração ao setor, linguagem do cliente. *(Linguagem do cliente só é Pleno quando o consultor fala no vocabulário que o PRÓPRIO cliente usaria pro negócio dele — jargão técnico explicado antes de usar (ex: "SVG", "ICP", "funil") ainda é jargão traduzido, não linguagem do cliente; é no máximo Parcial. Pleno exige trocar de registro de verdade pro vocabulário do setor do cliente, não só tornar o próprio jargão mais palatável.)*
 - **d9 — Qualidade técnica da entrega:** critérios específicos da skill daquele tipo de entrega. Na linha \`d9: NN\`, liste em seguida cada item no formato \`1.1: ✅\` (✅ entregue / ⚠️ parcial / ❌ ausente / N/A não se aplica), um por linha, **ANTES** da Análise em texto corrido. A D9 não tem "Plano de ação:" próprio — o encaminhamento técnico vai dentro da Análise.
 
+## Referência de calibração — D1 (Controle Narrativo)
+Use este bloco como critério de referência pra julgar D1. D1 mede a capacidade do consultor de **conduzir a narrativa da reunião**, não apenas apresentar informação.
+
+### 1. Tese central
+
+**Boa entrega**
+- Nos primeiros minutos, fica claro qual é a ideia que vai guiar a reunião inteira (ex.: "o problema não é geração de leads, é conversão — e é isso que vamos provar hoje").
+- Cada bloco da reunião é amarrado de volta a essa tese, explicitamente ("isso confirma o que eu disse no início...").
+- No fechamento, a tese é retomada e reforçada com o que foi mostrado.
+
+**Má entrega**
+- A reunião é uma lista de tópicos apresentados em sequência, sem uma ideia central que os conecte.
+- O consultor não sinaliza qual é o fio condutor; cada achado é tratado como independente.
+- Se perguntado "qual é a mensagem principal desta reunião?", a resposta não estaria clara para quem assistiu.
+
+### 2. Progressão lógica
+
+**Boa entrega**
+- Cada tópico prepara o próximo — há transições explícitas ("agora que vimos X, isso nos leva a Y").
+- A ordem dos assuntos tem propósito: constrói-se um raciocínio, não se despeja informação.
+- O consultor recupera o controle quando o cliente desvia do fio, sem cortar bruscamente ("ótimo ponto, eu volto nisso daqui a pouco, mas deixa eu fechar esse raciocínio primeiro").
+
+**Má entrega**
+- Saltos entre assuntos sem transição ("mudando de assunto...", ou silêncio e troca de tela).
+- A ordem parece ser a ordem do relatório/slide, não uma ordem pensada para o cliente entender.
+- O consultor perde o controle quando o cliente pergunta algo fora de ordem e a reunião vira uma colcha de retalhos.
+
+### 3. Reencadramento do negativo
+
+**Boa entrega**
+- Um dado ruim (queda de conversão, erro do cliente, budget baixo) é nomeado sem rodeios e imediatamente reposicionado como parte da solução ("essa queda é exatamente o sintoma que confirma o diagnóstico — e é por isso que o próximo passo resolve os dois problemas ao mesmo tempo").
+- O consultor nunca nega ou minimiza o problema para "não incomodar" — ele reconhece e reenquadra.
+- O negativo vira combustível para a tese central, não um desvio dela.
+
+**Má entrega**
+- O dado ruim é apresentado e o consultor segue adiante sem reenquadrá-lo — fica "boiando" como um problema sem solução aparente.
+- Tentativa de suavizar/evitar o assunto em vez de reenquadrar ("mas isso não é tão importante", "vamos não focar muito nisso").
+- O reenquadramento, quando existe, é genérico e não conecta de volta à tese central.
+
+### Calibragem de nota pra D1 (escala 0–100)
+
+| Faixa | Significado para D1 |
+|---|---|
+| **85–100 Excelente** | Tese explícita desde o início, retomada no fechamento; transições citáveis entre todos os blocos; pelo menos um reenquadramento de negativo claramente executado. |
+| **70–84 Bom** | Fio condutor identificável e progressão organizada, mas sem retomada explícita da tese ou com alguma transição abrupta. |
+| **55–69 Regular** | Reunião tem alguma organização, mas tese pouco clara ou ausente; progressão mais próxima de lista de tópicos que de raciocínio construído. |
+| **< 55 Insuficiente** | Sem tese identificável; sequência de assuntos soltos; negativo(s) surgem e não são reenquadrados — ficam como problema em aberto. |
+
+**Regra de calibragem:** o básico (falar sobre os temas certos, na ordem do material) não é mérito — é piso. Nota alta exige controle narrativo ativo e citável na transcrição, não apenas ausência de erro grosseiro.
+
+**Checklist rápido pra D1:**
+- Existe uma tese/ideia central identificável nos primeiros minutos?
+- A tese é retomada no fechamento?
+- Há transições explícitas entre os blocos da reunião?
+- O consultor recupera o fio quando o cliente desvia?
+- Algum dado/fato negativo apareceu na reunião? Se sim: foi nomeado sem minimização? Foi reenquadrado a favor da narrativa (não apenas mencionado)?
+
 ### 4. Nota consolidada (média ponderada por tipo de entrega)
 A nota consolidada é a média das 9 dimensões **ponderada por pesos que variam conforme o tipo de entrega** (cada coluna soma 100%). Regras fixas: **D9 = 30% sempre** (é o entregável que o cliente contratou, o maior peso isolado); **D4 e D5** são o par mais pesado depois da D9 (gaps críticos da squad, devem puxar o resultado). Use a coluna do tipo de entrega:
 
