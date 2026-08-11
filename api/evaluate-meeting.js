@@ -61,11 +61,14 @@ export default async function handler(req, res) {
         system: MEETING_EVAL_SKILL,
         userText,
         maxTokens,
-        // Avaliar 9 dimensões com procedimento de pontuação em 3 componentes é tarefa
-        // complexa — é justamente onde o raciocínio ajuda a seguir a régua em vez de
-        // pontuar por impressão. `adaptive` é o modo do Sonnet 4.6 (o antigo
-        // budget_tokens foi descontinuado nessa geração).
-        thinking: { type: 'adaptive' },
+        // NÃO troque por `adaptive` sem medir de novo: já foi testado duas vezes neste
+        // projeto e reprovado. Em 3 rodadas na mesma transcrição, deixou a chamada ~3x mais
+        // lenta (110-180s vs ~50s) sem reduzir a variância da nota de forma clara. Ao
+        // reintroduzir em 10/08/2026, a chamada passou de 2 minutos ainda sem emitir uma
+        // linha de texto (só deltas de raciocínio) — o que estoura o tempo limite da função
+        // serverless e deixa a tela parada. A redução de variância fica por conta do
+        // procedimento mecânico da própria skill.
+        thinking: { type: 'disabled' },
       });
 
       if (!claudeRes.ok) {
