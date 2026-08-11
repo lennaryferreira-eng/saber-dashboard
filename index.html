@@ -3125,10 +3125,13 @@ function prazoStatus(p, refDateISO) {
   const jaEstourou = hoje > lim52;
 
   // Preditivo: além do reativo (já passou de 52 dias), projeta pelo RITMO das etapas já
-  // entregues — se, mantido esse ritmo, a Decolagem sairia depois do limite, o projeto já
-  // conta como fora do prazo mesmo sem ter estourado ainda (dá tempo de agir antes do fato
-  // consumado). Só entra em jogo com 2+ etapas entregues — com 1 só, qualquer intervalo vira
-  // "ritmo" e a projeção é só ruído.
+  // entregues — se, mantido esse ritmo, a Decolagem sairia depois do limite, marca "risco"
+  // como aviso antecipado (aparece nos cards do Insights e no Gantt). IMPORTANTE: risco NÃO
+  // é atraso — ok continua true, então NÃO derruba a flag (Verde/Amarelo/Vermelho) nem entra
+  // como "fora do prazo" em nenhum KPI/contagem que olha só pra `ok`. É projeção, não fato; só
+  // o reativo (jaEstourou, já passou de verdade dos 52 dias) conta como atraso pra esses fins.
+  // Só entra em jogo com 2+ etapas entregues — com 1 só, qualquer intervalo vira "ritmo" e a
+  // projeção é só ruído.
   let projRisco = false, projDias = null;
   if (!jaEstourou) {
     const ent = p.entregas || {};
@@ -3143,11 +3146,10 @@ function prazoStatus(p, refDateISO) {
       projRisco = addDays(p.inicio, projDias) > addDays(p.inicio, 52);
     }
   }
-  const ok = !jaEstourou && !projRisco;
 
   if (dec < 0)     return { ok: true, dias: diasPrev, html: `<span class="badge b-gray" style="margin-top:0">Inicia em ${Math.abs(dec)}d</span>` };
   if (jaEstourou)  return { ok: false, dias: diasPrev, html: `<span class="badge b-red" style="margin-top:0">${icon('x')} ${dec}d — fora do prazo</span>` };
-  if (projRisco)   return { ok: false, dias: diasPrev, risco: true, html: `<span class="badge b-amber" style="margin-top:0">${icon('zap')} ritmo projeta ~${projDias}d — risco de atraso</span>` };
+  if (projRisco)   return { ok: true, dias: diasPrev, risco: true, html: `<span class="badge b-amber" style="margin-top:0">${icon('zap')} ritmo projeta ~${projDias}d — risco de atraso</span>` };
   if (rest <= 7)   return { ok: true, dias: diasPrev, html: `<span class="badge b-amber" style="margin-top:0">${icon('zap')} ${rest}d p/ o limite</span>` };
   return { ok: true, dias: diasPrev, html: `<span class="badge b-blue" style="margin-top:0">${rest}d p/ o limite</span>` };
 }
@@ -7425,12 +7427,13 @@ function buildOvInsightsSemana() {
   // depois disso é atraso) — antes esse quadro comparava cada entrega isolada com a etapa
   // anterior +7 dias, um critério diferente do que de fato decide a flag. "Em risco" é o
   // preditivo (ritmo das entregas projeta estourar os 52 dias, mesmo sem ter estourado ainda)
-  // — conta como "fora do prazo" pra flag/KPIs (prazoStatus.ok já vem false), mas fica
-  // destacado à parte aqui pra dar sinal de alerta antes do atraso virar fato consumado.
+  // — é só um AVISO antecipado, não conta como atraso de verdade: NÃO derruba a flag nem entra
+  // como "fora do prazo" pra ela (prazoStatus.ok vem true pro risco). Aqui no card, fica
+  // destacado num bucket à parte só pra dar visibilidade, sem se misturar com "Atrasadas".
   const prazoStatuses  = projetosAtivosAgora.map(p => prazoStatus(p));
-  const noPrazoCount   = prazoStatuses.filter(st => st.ok === true).length;
-  const riscoCount     = prazoStatuses.filter(st => st.ok === false && st.risco).length;
-  const atrasadasCount = prazoStatuses.filter(st => st.ok === false && !st.risco).length;
+  const noPrazoCount   = prazoStatuses.filter(st => st.ok === true && !st.risco).length;
+  const riscoCount     = prazoStatuses.filter(st => st.risco).length;
+  const atrasadasCount = prazoStatuses.filter(st => st.ok === false).length;
   const totalPrazo     = noPrazoCount + riscoCount + atrasadasCount;
 
   const pct = (v, total) => total > 0 ? Math.round(v / total * 100) : 0;
@@ -7562,9 +7565,9 @@ function buildOvGantt() {
   if (ovFlagFiltro) prjs = prjs.filter(p => calcFlagAutomatica(p, refDateSemana) === ovFlagFiltro);
   if (ovPrazoFiltro) prjs = prjs.filter(p => {
     const st = prazoStatus(p);
-    if (ovPrazoFiltro === 'noPrazo')  return st.ok === true;
-    if (ovPrazoFiltro === 'risco')    return st.ok === false && st.risco;
-    if (ovPrazoFiltro === 'atrasado') return st.ok === false && !st.risco;
+    if (ovPrazoFiltro === 'noPrazo')  return st.ok === true && !st.risco;
+    if (ovPrazoFiltro === 'risco')    return !!st.risco;
+    if (ovPrazoFiltro === 'atrasado') return st.ok === false;
     return true;
   });
   if (etapaFilter !== '') {
