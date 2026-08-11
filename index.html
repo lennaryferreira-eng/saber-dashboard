@@ -7511,12 +7511,26 @@ function buildOvGantt() {
   // como estava no fim daquela semana, não o estado live de agora.
   const refDateSemana = refDateParaSemana(ovInsightsSemanaOffset);
 
-  // Semanas: 6 meses a partir de 1 semana antes da atual (mesmo padrão do Capacity)
+  // Semanas: pra trás, até a Growth do projeto ATIVO mais antigo (ou 1 semana antes de hoje,
+  // o que for mais cedo) — dá pra rolar a barra pra esquerda e ver o retroativo completo de
+  // qualquer projeto em andamento, desde o início. Pra frente, sempre 6 meses a partir de
+  // HOJE (não do início do período) — rolar mais pra trás não pode encurtar a janela futura.
   const hoje = new Date(); hoje.setHours(0,0,0,0);
-  const startRef = new Date(hoje);
-  const dow = startRef.getDay() || 7;
-  startRef.setDate(startRef.getDate() - dow + 1 - 7);
-  const endRef = new Date(startRef);
+  const hojeSeg = new Date(hoje);
+  const dow = hojeSeg.getDay() || 7;
+  hojeSeg.setDate(hojeSeg.getDate() - dow + 1);
+  const startRef = new Date(hojeSeg);
+  startRef.setDate(startRef.getDate() - 7); // fallback: 1 semana antes da atual, como já era
+  projects.forEach(p => {
+    if (isDroFam(p) || !p.inicio || calcStatus2(p) !== 'Em andamento') return;
+    const dIp = parseDate(p.inicio);
+    if (!dIp) return;
+    const dowIp = dIp.getDay() || 7;
+    const segIp = new Date(dIp);
+    segIp.setDate(segIp.getDate() - dowIp + 1); // segunda da semana da Growth desse projeto
+    if (segIp < startRef) startRef.setTime(segIp.getTime());
+  });
+  const endRef = new Date(hojeSeg);
   endRef.setMonth(endRef.getMonth() + 6);
   const semanas = [];
   let cur = new Date(startRef);
