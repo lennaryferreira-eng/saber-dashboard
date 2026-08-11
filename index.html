@@ -2346,6 +2346,11 @@ let auditorias = [];         // [{id, consultor, tipoEntrega, cliente, data, n:{
 // a coluna auditorias no PATCH — sem essa trava, qualquer save disparado antes de abrir a
 // aba (ex: editar um projeto na Base) mandaria auditorias:"[]" e apagaria tudo no Supabase.
 let _auditoriasLoaded = false;
+// Ids de avaliações que ESTA sessão apagou de propósito. audPersistirAuditorias() mescla a
+// lista local com a do servidor antes de gravar (duas pessoas avaliando ao mesmo tempo é
+// união, não conflito) — sem essa lista, essa mesma união traria de volta, vinda do
+// servidor, exatamente a avaliação que a pessoa acabou de excluir aqui.
+const audRemovidasLocalmente = new Set();
 // Mesma ideia pra `fotos` (~80KB de dataURL base64, só usada na aba Performance).
 let _fotosLoaded = false;
 let sinaisCulturais = [];    // Termômetro Cultural — [{id, created_at, consultor, framework, dimensao, tipo, gravidade, descricao, justificativa}]
@@ -11724,7 +11729,107 @@ function audEditar(id) {
   document.getElementById('aud-review')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function audSalvar(){
+// Grava SÓ a coluna `auditorias`, mesclando com o que já está no servidor antes de escrever.
+// É um caminho separado do sbSave() de propósito:
+//
+//   sbSave() grava a LINHA INTEIRA a partir de uma foto da memória, então ele precisa mesmo
+//   abortar quando outra sessão salvou depois (sbConflito) — escrever a linha toda por cima
+//   apagaria o que a outra pessoa acabou de fazer. O problema é que "abortar" ali significava
+//   PERDER a avaliação: o painel dizia "✓ Avaliação salva." e nada tinha chegado no banco.
+//   Com 2-3 pessoas com o painel aberto, qualquer save de qualquer um travava os saves de
+//   todos os outros até alguém recarregar a página, e ninguém era avisado disso (o
+//   #sync-status que mostrava o alerta tinha sido removido do header no redesign).
+//
+//   Uma avaliação é um item novo numa lista, com id único. Duas pessoas avaliando ao mesmo
+//   tempo não é conflito, é união. Então aqui dá pra reler a coluna, unir por id e gravar só
+//   ela: não toca em projects/pdi/nps, não sobrescreve o trabalho de ninguém, e não depende
+//   de a pessoa recarregar a página antes.
+//
+// Sobra uma janela pequena entre o GET e o PATCH em que outra sessão pode gravar e ser
+// sobrescrita. Fica assim de propósito: o PostgREST não faz update parcial de JSON, e a troca
+// é uma perda possível de segundos por uma perda garantida de toda avaliação feita em
+// paralelo, que é o que acontecia até agora.
+let _audGravando = null; // serializa as gravações — ver comentário no início da função
+async function audPersistirAuditorias() {
+  // Agora que gravar é assíncrono, dois saves disparados quase juntos (clique duplo, ou a
+  // fila do Drive emendando uma avaliação na outra) rodariam dois ciclos ler-mesclar-gravar
+  // em paralelo: o segundo leria o servidor ANTES de o primeiro ter gravado e escreveria por
+  // cima dele. Enfileirar é suficiente e mantém a mesclagem correta.
+  const anterior = _audGravando;
+  let liberar;
+  _audGravando = new Promise(res => { liberar = res; });
+  if (anterior) await anterior.catch(() => {});
+  try {
+    return await _audPersistirAuditoriasAgora();
+  } finally {
+    liberar();
+  }
+}
+
+async function _audPersistirAuditoriasAgora() {
+  if (VIEWER) return { ok: false, motivo: 'viewer' };
+  if (!_auditoriasLoaded) return { ok: false, motivo: 'nao_carregado' };
+  // Offline o dono do dado é a planilha (sbSalvarSnapshot), não o Supabase — não é falha.
+  if (typeof MODO_OFFLINE !== 'undefined' && MODO_OFFLINE) return { ok: false, motivo: 'offline' };
+  const tabela = SB_TABLE;
+  try {
+    const r = await fetch(SB_URL + '/rest/v1/' + tabela + '?id=eq.main&select=auditorias', { headers: SB_HEADERS });
+    if (!r.ok) throw new Error('HTTP ' + r.status + ' ao ler auditorias');
+    const rows = await r.json();
+    const remotas = _parseMaybe(rows.length ? rows[0].auditorias : null, []);
+    const porId = new Map();
+    (Array.isArray(remotas) ? remotas : []).forEach(a => { if (a && a.id) porId.set(a.id, a); });
+    auditorias.forEach(a => { if (a && a.id) porId.set(a.id, a); }); // no mesmo id, a versão local vence
+    audRemovidasLocalmente.forEach(id => porId.delete(id));
+    const mescladas = [...porId.values()];
+    // Se a coordenação mudou (SABER<->TER) enquanto a leitura acontecia, essa lista não é mais
+    // da tabela certa — mesma armadilha que já derrubou 39 projetos da TER em 18/07/2026.
+    if (tabela !== SB_TABLE) return { ok: false, motivo: 'coordenacao_mudou' };
+    const agora = new Date().toISOString();
+    const w = await fetch(SB_URL + '/rest/v1/' + tabela + '?id=eq.main', {
+      method: 'PATCH',
+      headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ auditorias: JSON.stringify(mescladas), updated_at: agora })
+    });
+    if (!w.ok) throw new Error('HTTP ' + w.status + ': ' + (await w.text().catch(() => '')));
+    auditorias = mescladas;
+    // Este PATCH move o updated_at do servidor. Sem alinhar a referência local, o polling de
+    // 30s leria a NOSSA PRÓPRIA escrita como "outra sessão salvou" e travaria o save da linha
+    // inteira sem motivo nenhum. Quando já existe conflito de verdade, a referência continua
+    // desatualizada de propósito: as outras colunas em memória seguem velhas e o save da linha
+    // inteira tem que continuar bloqueado.
+    if (!sbConflito) sbServerVersion = agora;
+    console.log('audPersistirAuditorias: ' + mescladas.length + ' avaliações gravadas em ' + tabela + ' ✓');
+    return { ok: true, total: mescladas.length };
+  } catch (e) {
+    console.error('audPersistirAuditorias falhou:', e);
+    return { ok: false, motivo: 'rede', erro: e.message };
+  }
+}
+
+// Mensagem honesta no rodapé do formulário. O motivo importa: "não salvou" com a avaliação
+// ainda na tela é recuperável (botão de tentar de novo); recarregar a página aqui é o único
+// caminho que perde o trabalho de vez, então nunca é o que a mensagem sugere.
+function audMostrarResultadoSave(r, textoSucesso) {
+  const m = document.getElementById('aud-form-msg');
+  if (!m) return;
+  if (r.ok) { m.textContent = textoSucesso; m.style.color = 'var(--green)'; return; }
+  if (r.motivo === 'viewer') { m.textContent = 'Seu perfil não tem permissão para salvar avaliações.'; m.style.color = 'var(--amber)'; return; }
+  if (r.motivo === 'offline') { m.textContent = '✓ Avaliação registrada na planilha (Supabase fora do ar). Volta pro banco quando ele responder.'; m.style.color = 'var(--amber)'; return; }
+  m.innerHTML = '<strong>NÃO foi salvo no banco</strong> (' + (r.erro || r.motivo) + '). A avaliação ainda está na lista abaixo — <button onclick="audTentarSalvarDeNovo()" style="background:none;border:none;color:var(--accent);text-decoration:underline;cursor:pointer;font-size:inherit;padding:0;">tentar salvar de novo</button>. Não recarregue a página: é o único jeito de perder o que está aqui.';
+  m.style.color = 'var(--red)';
+  if (typeof showToast === 'function') showToast('A avaliação NÃO foi salva no banco. Veja o aviso no formulário.', 'error');
+}
+
+async function audTentarSalvarDeNovo() {
+  const m = document.getElementById('aud-form-msg');
+  if (m) { m.textContent = 'Salvando…'; m.style.color = 'var(--text-hint)'; }
+  const r = await audPersistirAuditorias();
+  audRenderLista();
+  audMostrarResultadoSave(r, '✓ Avaliação salva.');
+}
+
+async function audSalvar(){
   const g=id=>(document.getElementById(id)?.value||'').trim();
   const scores=audGetScores();
   const obs={};
@@ -11770,9 +11875,18 @@ function audSalvar(){
   // reset
   ['aud-f-consultor','aud-f-tipo','aud-f-cliente','aud-f-data','aud-analise'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   audReviewD9={}; audCancelar();
-  if(typeof upd==='function') upd();
+  if(typeof upd==='function') upd(); // save da linha inteira — leva o score pro Lead Time
   audRenderLista();
-  const m=document.getElementById('aud-form-msg'); if(m){m.textContent=(estavaEditando?'✓ Alterações salvas.':'✓ Avaliação salva.')+msgExtra;m.style.color='var(--green)';}
+  // A avaliação em si vai por audPersistirAuditorias(), não pelo upd() acima: o upd() agenda o
+  // save da linha inteira, que é justamente o que trava quando outra sessão salvou antes
+  // (sbConflito). Até esta correção, a mensagem verde de "salva" era escrita aqui sem ninguém
+  // ter confirmado gravação nenhuma — e era exatamente isso que a pessoa via enquanto o
+  // console dizia "sbSave ABORTADO" e o banco não recebia nada.
+  const m=document.getElementById('aud-form-msg');
+  if(m){ m.textContent='Salvando…'; m.style.color='var(--text-hint)'; }
+  const rSave = await audPersistirAuditorias();
+  audRenderLista();
+  audMostrarResultadoSave(rSave, (estavaEditando?'✓ Alterações salvas.':'✓ Avaliação salva.')+msgExtra);
   // Se essa avaliação veio de um item da fila, marca 'revisada' — a lista de fila reaparece
   // sem esse item (as outras que já estejam prontas continuam esperando, sem gerar de novo).
   if (itemDaFila) itemDaFila.status='revisada';
@@ -11797,8 +11911,17 @@ async function audRemover(id){
     }
   }
   auditorias=auditorias.filter(x=>x.id!==id);
+  audRemovidasLocalmente.add(id); // senão a mesclagem com o servidor traria essa de volta
   if(typeof upd==='function') upd();
   audRenderLista();
+  // Mesma história do audSalvar(): a exclusão só existia na memória até alguém conseguir
+  // gravar a linha inteira — e com o save travado por conflito, a avaliação "excluída"
+  // reaparecia no próximo carregamento, sem aviso nenhum.
+  const r = await audPersistirAuditorias();
+  audRenderLista();
+  if (!r.ok && r.motivo !== 'offline' && r.motivo !== 'viewer' && typeof showToast === 'function') {
+    showToast('A exclusão NÃO chegou no banco (' + (r.erro || r.motivo) + '). Ela volta a aparecer se você recarregar.', 'error');
+  }
 }
 function audSetFiltro(k,v){ audFiltro[k]=v; audRenderLista(); }
 function audLimparFiltro(){
@@ -12232,6 +12355,18 @@ let sbChannel   = null;
 // ── indicador de sync na UI ──
 function setSyncStatus(msg, color, clickable) {
   const el = document.getElementById('sync-status');
+  // O indicador do header (#sync-status) foi removido no redesign. Sem esse fallback, TODO
+  // aviso de falha de gravação — "save pausado", "tentando salvar (1/3)", "Supabase
+  // offline" — virava silêncio absoluto na tela: a função escrevia num elemento que não
+  // existe mais e voltava sem fazer nada. Só os avisos (⚠) viram toast; o "Salvando…/✓
+  // Salvo" de rotina continua sem aparecer, que era justamente a intenção de tirar o
+  // indicador do header.
+  if (!el) {
+    if (typeof msg === 'string' && msg.trim().charAt(0) === '⚠' && typeof showToast === 'function') {
+      showToast(msg.replace(/^\s*⚠\s*/, ''), 'error');
+    }
+    return;
+  }
   if (el) {
     el.textContent = msg;
     el.style.color = color || 'var(--text-hint)';
