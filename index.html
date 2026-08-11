@@ -11113,8 +11113,20 @@ function audAtualizaProgresso(pct, label){
 // Gera a avaliação e joga o resultado no parser/tela de revisão existentes (textarea oculta
 // #aud-analise + audImportar()) — o mesmo caminho de sempre, só que preenchido por código em
 // vez de colado à mão.
+// Confere que a saída da IA tem as 9 dimensões ANTES de jogar no formulário. audParseScores
+// usa 70 como valor de fallback quando não acha a linha `dN:` — então uma resposta cortada no
+// meio (só o cabeçalho, ou 3 de 9 dimensões) virava um formulário com 70 em tudo e análise
+// vazia, sem nenhum aviso. 70 é um número plausível: passa por avaliação de verdade e vai
+// parar no histórico do consultor como se fosse nota real. Melhor falhar alto.
+function audValidarSaidaIA(texto){
+  const achadas=(texto.match(/(?:^|\n)\s*d[1-9]\s*:\s*\d{1,3}/gim)||[]).length;
+  if(achadas===0) throw new Error('a IA respondeu, mas sem nenhuma nota no formato esperado — nada foi preenchido. Tente de novo.');
+  if(achadas<9) throw new Error('a resposta veio incompleta ('+achadas+' de 9 dimensões) — provavelmente foi cortada. Tente de novo; se repetir, troque a IA no seletor.');
+  return texto;
+}
+
 async function audGerarEImportar(transcricao, onProgress){
-  const texto=await audChamarClaude(transcricao, onProgress);
+  const texto=audValidarSaidaIA(await audChamarClaude(transcricao, onProgress));
   document.getElementById('aud-analise').value=texto;
   audImportar();
 }
@@ -11485,6 +11497,11 @@ async function audFilaProcessarBackground(){
           const {label}=audEstimarProgressoAnalise(textoAcumulado);
           item.progressoLabel=label; audRenderFilaLista();
         }, item.tipoFoco, item.modelo);
+        // Valida ANTES de marcar como pronta. Sem isso, uma resposta cortada virava um item
+        // "pronta" que, ao abrir pra revisar, mostrava 70 em todas as 9 dimensões e análise
+        // vazia — porque 70 é o fallback do audParseScores quando não acha a linha `dN:`.
+        // Parecia avaliação de verdade e ia pro histórico do consultor como tal.
+        audValidarSaidaIA(texto);
         item.resultado={
           texto,
           scores: audParseScores(texto),
