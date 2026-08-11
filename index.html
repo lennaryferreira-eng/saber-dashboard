@@ -2769,6 +2769,11 @@ function segundaDaSemana(dataISO) {
 function calcStatus2(p) {
   if (p.status2 === 'Churn' || p.status2 === 'Pausado') return p.status2;
   if (p.status2 === 'Finalizado') return 'Finalizado';
+  // Reembolso = projeto interrompido/em tratativa, mesmo que ninguém tenha atualizado o
+  // status2 manualmente pra Pausado. Sem essa checagem, o projeto continua contando como
+  // "Em andamento" em Capacity e nas flags do Healthscore — um projeto que já não está
+  // rodando de fato não pode aparecer como ativo só porque o campo manual ficou desatualizado.
+  if (p.dataReembolso) return 'Pausado';
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   if (!p.inicio) return 'Início em breve';
   // DRO/DRX: finalizado só quando o ÚLTIMO comitê/marco tiver sido REALMENTE registrado
@@ -2960,12 +2965,12 @@ function calcFlagAutomatica(p) {
   // automático, incluindo a trava de DRO/DRX.
   if (p.flagManual) return p.flagManual;
   if (isDroFam(p)) return p.flag || '—'; // DRO/DRX não entram nesse cálculo, mantém manual
-  // Reembolso = projeto interrompido (mesmo critério de prazoStatus: "não conta como atraso
-  // nem como no prazo"). Sem esse bypass, prazoOk cai pra false por falta de critério aplicável
-  // (não por atraso de verdade) e o projeto é empurrado pra Vermelho por padrão, mesmo sem
-  // nenhum problema real de execução — mascarando a estatística com um caso que já não está
-  // mais em avaliação de saúde.
-  if (p.dataReembolso) return p.flag || '—';
+  // Reembolso = projeto interrompido/em tratativa, fora de avaliação de saúde — nem Verde
+  // nem Vermelho fazem sentido aqui. Diferente do DRO/DRX (onde p.flag é um campo mantido
+  // manualmente), pra reembolso o p.flag costuma ser só um resquício de antes do problema
+  // acontecer (ex: "Verde" de quando o projeto ainda ia bem) — usar esse valor mostraria uma
+  // cor enganosa, então sempre neutro aqui, ignorando p.flag.
+  if (p.dataReembolso) return '—';
   const ent = p.entregas || {};
   const hojeISO = new Date().toISOString().slice(0,10);
   // Projeto estagnado = regra semanal, alinhada ao ritmo real de upload de auditoria
