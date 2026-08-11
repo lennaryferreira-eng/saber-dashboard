@@ -36,9 +36,16 @@ export default async function handler(req, res) {
     return;
   }
 
+  // Lista fechada de propósito: `modelo` vem do navegador, e sem allowlist alguém poderia
+  // mandar qualquer identificador e faturar num modelo caro que a gente não escolheu.
+  const MODELOS_CLAUDE = {
+    claude: 'claude-sonnet-4-6',
+    haiku: 'claude-haiku-4-5',
+  };
   // Default no Claude: quem não manda `modelo` (chamada antiga, integração externa) cai no
   // que avalia com mais rigor, não no mais barato.
-  const usarClaude = modelo !== 'gemini';
+  const modeloClaude = modelo === 'gemini' ? null : (MODELOS_CLAUDE[modelo] || MODELOS_CLAUDE.claude);
+  const usarClaude = !!modeloClaude;
   const apiKey = usarClaude ? process.env.ANTHROPIC_API_KEY : process.env.GEMINI_API_KEY;
   if (!apiKey) {
     const nome = usarClaude ? 'ANTHROPIC_API_KEY' : 'GEMINI_API_KEY';
@@ -63,7 +70,7 @@ export default async function handler(req, res) {
     if (usarClaude) {
       const claudeRes = await callClaudeStream({
         apiKey,
-        model: 'claude-sonnet-4-6',
+        model: modeloClaude,
         system: MEETING_EVAL_SKILL,
         userText,
         maxTokens,
