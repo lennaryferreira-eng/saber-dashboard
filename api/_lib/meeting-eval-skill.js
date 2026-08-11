@@ -24,13 +24,13 @@ Identifique antes de avaliar: Kickoff, Pesquisa de Mercado, Diagnóstico de Míd
 Cada dimensão recebe nota 0–100, uma "Análise:" em prosa otimizada (direta ao gap, com evidência real, sem bullets) e um "Plano de ação:" em **tópicos curtos** (ações imperativas e concretas, nunca genéricas). No texto final colado no painel, a linha da nota é \`dX: NN (PP%)\` com o peso da dimensão (ver "Formato de saída") — os rótulos abaixo são referência interna do que cada dimensão avalia, **não** entram na saída.
 
 - **d1 — Controle narrativo:** tese central, progressão lógica, reencadramento do negativo.
-- **d2 — Escuta ativa e equilíbrio:** checkpoints, incorporação do cliente, didática preventiva.
+- **d2 — Escuta ativa e equilíbrio:** checkpoints, incorporação do cliente, didática preventiva. *(Cuidado com checkpoint de preenchimento: "né?", "beleza?", "tá bom?" usados como cacoete de fala, sem pausa real pra resposta ou sem checar se ela veio, não contam como checkpoint — só conta uma pergunta que genuinamente busca e recebe confirmação de entendimento, tipo "faz sentido?" ou "ficou claro?".)*
 - **d3 — Gestão de objeções:** validar antes de redirecionar, resolução ao vivo, autoridade sob pressão.
 - **d4 — Tradução técnica → negócio:** personalização dos dados, consequência financeira em reais, continuidade. *(Gap mais recorrente da squad — verificar sempre se os achados foram fechados em números concretos, não só qualitativos.)*
 - **d5 — Arquitetura de urgência:** custo da inação no presente (não só oportunidade futura), momentum, roadmap como âncora temporal. *(Segundo gap mais recorrente.)*
 - **d6 — Arquitetura de conversão:** solução como consequência, timing da proposta, posicionamento do preço.
-- **d7 — Construção de confiança:** fonte da autoridade, consistência entre entregas, presença em tensão.
-- **d8 — Domínio do negócio do cliente:** leitura do modelo, calibração ao setor, linguagem do cliente.
+- **d7 — Construção de confiança:** fonte da autoridade, consistência entre entregas, presença em tensão. *(Fonte da autoridade só é Pleno com referência específica e nomeável — dado real, fonte citada, case identificável. Caso anônimo, tipo "não posso falar o nome" ou "um cliente que atendi uma vez", é no máximo Parcial mesmo que a história seja boa: sem poder verificar, não constrói autoridade de verdade, só ilustra.)*
+- **d8 — Domínio do negócio do cliente:** leitura do modelo, calibração ao setor, linguagem do cliente. *(Linguagem do cliente só é Pleno quando o consultor fala no vocabulário que o PRÓPRIO cliente usaria pro negócio dele — jargão técnico explicado antes de usar (ex: "SVG", "ICP", "funil") ainda é jargão traduzido, não linguagem do cliente; é no máximo Parcial. Pleno exige trocar de registro de verdade pro vocabulário do setor do cliente, não só tornar o próprio jargão mais palatável.)*
 - **d9 — Qualidade técnica da entrega:** critérios específicos da skill daquele tipo de entrega. Na linha \`d9: NN\`, liste em seguida cada item no formato \`1.1: ✅\` (✅ entregue / ⚠️ parcial / ❌ ausente / N/A não se aplica), um por linha, **ANTES** da Análise em texto corrido. A D9 não tem "Plano de ação:" próprio — o encaminhamento técnico vai dentro da Análise.
 
 ### 4. Nota consolidada (média ponderada por tipo de entrega)
