@@ -3116,12 +3116,35 @@ function prazoStatus(p) {
   const diasPrev = p.prevFim ? diffDays(p.inicio, p.prevFim) : null;
   const dec      = Math.round((hoje - dIni) / 864e5);
   const rest     = Math.round((lim52 - hoje) / 864e5);
-  const ok       = !(hoje > lim52);
+  const jaEstourou = hoje > lim52;
 
-  if (dec < 0) return { ok, dias: diasPrev, html: `<span class="badge b-gray" style="margin-top:0">Inicia em ${Math.abs(dec)}d</span>` };
-  if (!ok)     return { ok, dias: diasPrev, html: `<span class="badge b-red" style="margin-top:0">${icon('x')} ${dec}d — fora do prazo</span>` };
-  if (rest <= 7) return { ok, dias: diasPrev, html: `<span class="badge b-amber" style="margin-top:0">${icon('zap')} ${rest}d p/ o limite</span>` };
-  return { ok, dias: diasPrev, html: `<span class="badge b-blue" style="margin-top:0">${rest}d p/ o limite</span>` };
+  // Preditivo: além do reativo (já passou de 52 dias), projeta pelo RITMO das etapas já
+  // entregues — se, mantido esse ritmo, a Decolagem sairia depois do limite, o projeto já
+  // conta como fora do prazo mesmo sem ter estourado ainda (dá tempo de agir antes do fato
+  // consumado). Só entra em jogo com 2+ etapas entregues — com 1 só, qualquer intervalo vira
+  // "ritmo" e a projeção é só ruído.
+  let projRisco = false, projDias = null;
+  if (!jaEstourou) {
+    const hojeISO = new Date().toISOString().slice(0,10);
+    const ent = p.entregas || {};
+    const etapas = ordemCompleta(p).filter(si => si !== 0 && si !== '0');
+    const entregues = etapas
+      .map(si => ent[si] || ent[String(si)])
+      .filter(e => e && e.real && e.real <= hojeISO);
+    if (entregues.length >= 2) {
+      const ultimaReal = entregues.reduce((max, e) => (e.real > max ? e.real : max), entregues[0].real);
+      const ritmo = diffDays(p.inicio, ultimaReal) / entregues.length; // dias médios por etapa entregue
+      projDias = Math.round(ritmo * etapas.length);
+      projRisco = addDays(p.inicio, projDias) > addDays(p.inicio, 52);
+    }
+  }
+  const ok = !jaEstourou && !projRisco;
+
+  if (dec < 0)     return { ok: true, dias: diasPrev, html: `<span class="badge b-gray" style="margin-top:0">Inicia em ${Math.abs(dec)}d</span>` };
+  if (jaEstourou)  return { ok: false, dias: diasPrev, html: `<span class="badge b-red" style="margin-top:0">${icon('x')} ${dec}d — fora do prazo</span>` };
+  if (projRisco)   return { ok: false, dias: diasPrev, risco: true, html: `<span class="badge b-amber" style="margin-top:0">${icon('zap')} ritmo projeta ~${projDias}d — risco de atraso</span>` };
+  if (rest <= 7)   return { ok: true, dias: diasPrev, html: `<span class="badge b-amber" style="margin-top:0">${icon('zap')} ${rest}d p/ o limite</span>` };
+  return { ok: true, dias: diasPrev, html: `<span class="badge b-blue" style="margin-top:0">${rest}d p/ o limite</span>` };
 }
 
 // Mês onde o veredito de prazo conta: finalização (Decolagem/real) ou mês atual (aberto)
