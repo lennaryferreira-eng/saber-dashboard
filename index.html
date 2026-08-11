@@ -2979,7 +2979,10 @@ function fimPrazo(p) {
 
 // Flag automática do projeto: cruza 2 critérios — score da entrega mais recente e prazo.
 // Bateu os 2 -> Verde. Bateu só 1 -> Amarelo. Não bateu nenhum -> Vermelho.
-function calcFlagAutomatica(p) {
+// refDateISO (opcional): "hoje" simulado, pra reconstruir qual era a flag EM OUTRA DATA —
+// usado pela navegação semanal do Healthscore ("como estava a flag no fim da semana passada"),
+// em vez de sempre mostrar o estado live de agora. Sem passar nada, calcula em tempo real.
+function calcFlagAutomatica(p, refDateISO) {
   // Flag manual (definida no Lead Time) sempre vence — sobrepõe qualquer critério
   // automático, incluindo a trava de DRO/DRX.
   if (p.flagManual) return p.flagManual;
@@ -2991,7 +2994,7 @@ function calcFlagAutomatica(p) {
   // cor enganosa, então sempre neutro aqui, ignorando p.flag.
   if (p.dataReembolso) return '—';
   const ent = p.entregas || {};
-  const hojeISO = new Date().toISOString().slice(0,10);
+  const hojeISO = refDateISO || new Date().toISOString().slice(0,10);
   // Projeto estagnado = regra semanal, alinhada ao ritmo real de upload de auditoria
   // (auditorias sobem ao longo da semana, normalmente até sexta). Pega a data da entrega
   // mais recente já realizada (ou o início do projeto, se nenhuma aconteceu ainda) e
@@ -3759,6 +3762,15 @@ function getWeekBounds(offset) {
 function semanaKey(offset) {
   const { inicio } = getWeekBounds(offset);
   return inicio.toISOString().slice(0,10);
+}
+
+// "Hoje" simulado pra reconstruir a flag do Healthscore como estava no FIM de uma semana
+// passada, em vez do estado live de agora — segunda-feira da semana seguinte à selecionada,
+// mesma folga de 1 semana que a regra de estagnação já dá pra entrega da semana corrente.
+// offset >= 0 (semana atual ou futura) devolve null, pra calcFlagAutomatica usar o hoje real.
+function refDateParaSemana(offset) {
+  if (offset >= 0) return null;
+  return addDays(semanaKey(offset), 7);
 }
 
 function navSemana(dir) { pipeSemanaOffset += dir; buildPipeSemana(); }
@@ -7372,15 +7384,17 @@ function buildOvInsightsSemana() {
   const scoreAcima   = comScore.filter(x => x.score >= 85).length;
   const totalScore   = comScore.length;
 
-  // Flags: TODOS os projetos atualmente ativos (Em andamento, não-DRO, com início) — a flag
-  // é um estado ATUAL do projeto, não histórico por semana, então não muda ao navegar as
-  // semanas (diferente do prazo/score, que são sobre entregas que aconteceram numa semana
-  // específica). Importante: projetos vermelhos por ESTAGNAÇÃO (sem entrega recente) não
-  // podem ficar de fora só porque não tiveram nada registrado nessa semana — são
-  // exatamente os que mais precisam aparecer aqui.
+  // Flags: TODOS os projetos atualmente ativos (Em andamento, não-DRO, com início). Ao navegar
+  // pra uma semana passada, a flag é recalculada como estava no FIM daquela semana (refDate =
+  // segunda seguinte, mesma folga que a regra de estagnação já dá) — assim uma auditoria que
+  // ainda não subiu HOJE não derruba retroativamente uma semana que na época já estava em dia.
+  // Na semana atual, refDate é null e cada projeto usa o hoje real, sem congelar nada.
+  // Projetos vermelhos por ESTAGNAÇÃO (sem entrega recente) não podem ficar de fora só porque
+  // não tiveram nada registrado nessa semana — são exatamente os que mais precisam aparecer aqui.
+  const refDateSemana = refDateParaSemana(ovInsightsSemanaOffset);
   const projetosAtivosAgora = projects.filter(p => !isDroFam(p) && !p.dataReembolso && p.inicio && calcStatus2(p) === 'Em andamento');
   const flags = { Verde: 0, Amarelo: 0, Vermelho: 0 };
-  projetosAtivosAgora.forEach(p => { const f = calcFlagAutomatica(p); if (flags[f] !== undefined) flags[f]++; });
+  projetosAtivosAgora.forEach(p => { const f = calcFlagAutomatica(p, refDateSemana); if (flags[f] !== undefined) flags[f]++; });
   const totalFlags = projetosAtivosAgora.length;
   const totalPrazo = adiantadas + noPrazo + atrasadas; // exclui as sem referência do total de %
 
@@ -7402,7 +7416,7 @@ function buildOvInsightsSemana() {
   // Card principal: a flag da semana — o mais importante, fica sozinho à esquerda
   const cardFlags = '<div style="flex:1;min-width:260px;background:var(--surface2);border-radius:var(--r-sm);padding:14px 16px;">'
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
-    + '<div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);">Flags dos projetos ativos agora</div>'
+    + '<div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);">' + (refDateSemana ? 'Flags como estavam no fim dessa semana' : 'Flags dos projetos ativos agora') + '</div>'
     + (ovFlagFiltro ? '<button onclick="toggleOvFlagFiltro(\''+ovFlagFiltro+'\')" style="font-size:var(--fs-2xs);color:var(--accent);background:none;border:none;cursor:pointer;text-decoration:underline;">'+icon('x',{size:10})+' limpar filtro</button>' : '')
     + '</div>'
     + '<div style="display:flex;gap:8px;">'
@@ -7453,6 +7467,9 @@ function buildOvGantt() {
   }
   const consFilter = selCons?.value || '';
   const etapaFilter = document.getElementById('ov-gantt-etapa')?.value ?? '';
+  // Mesma folga da navegação semanal do card de flags — numa semana passada, a flag reflete
+  // como estava no fim daquela semana, não o estado live de agora.
+  const refDateSemana = refDateParaSemana(ovInsightsSemanaOffset);
 
   // Semanas: 6 meses a partir de 1 semana antes da atual (mesmo padrão do Capacity)
   const hoje = new Date(); hoje.setHours(0,0,0,0);
@@ -7481,7 +7498,7 @@ function buildOvGantt() {
     });
   });
   if (consFilter) prjs = prjs.filter(p => p.consultor === consFilter);
-  if (ovFlagFiltro) prjs = prjs.filter(p => calcFlagAutomatica(p) === ovFlagFiltro);
+  if (ovFlagFiltro) prjs = prjs.filter(p => calcFlagAutomatica(p, refDateSemana) === ovFlagFiltro);
   if (etapaFilter !== '') {
     const etapaIdx = parseInt(etapaFilter);
     const diaSem = hoje.getDay();
@@ -7643,7 +7660,7 @@ function buildOvGantt() {
 
   const rows = prjs.map(p => {
     const lm = labelsMap[p.id] || {};
-    const flagCor = { Verde: 'var(--green)', Amarelo: 'var(--amber)', Vermelho: 'var(--accent)' }[calcFlagAutomatica(p)] || 'var(--text-hint)';
+    const flagCor = { Verde: 'var(--green)', Amarelo: 'var(--amber)', Vermelho: 'var(--accent)' }[calcFlagAutomatica(p, refDateSemana)] || 'var(--text-hint)';
     const temAnotacao = !!(p.flagManual || p.flagManualMotivo); // cor sobrescrita OU só um comentário deixado
     const flagTitle = temAnotacao
       ? (p.flagManual ? 'Flag manual — motivo: ' : 'Anotação: ') + (p.flagManualMotivo || 'sem motivo informado')
