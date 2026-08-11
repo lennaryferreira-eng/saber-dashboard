@@ -7352,7 +7352,10 @@ function buildOvVolumePorModelo() {
 // do Capacity, mas SEM os sinalizadores de status (prazo, monetização, cor de "Em andamento"
 // etc.) e só com os filtros de Consultor e Etapa Atual.
 // ── Insights da semana (Healthscore): flags e prazo das entregas, navegando semana a semana ──
-let ovInsightsSemanaOffset = 0; // 0 = semana atual
+// -1 = semana anterior — padrão, porque a semana atual costuma ter auditoria ainda não subida
+// (flag em falso "danger" só por isso), então a coordenadora usa a última semana fechada como
+// referência. "Hoje" (navOvInsightsSemanaHoje) continua pulando pra 0 = semana atual de verdade.
+let ovInsightsSemanaOffset = -1;
 let ovFlagFiltro = ''; // '' = sem filtro; 'Verde'/'Amarelo'/'Vermelho' = filtra a tabela abaixo
 function toggleOvFlagFiltro(cor) {
   ovFlagFiltro = (ovFlagFiltro === cor) ? '' : cor; // clica de novo na mesma = limpa o filtro
@@ -7377,7 +7380,7 @@ function buildOvInsightsSemana() {
   const iniISO = toISOi(inicio), fimISO = toISOi(fim);
   if (label) {
     const fmt = d => String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');
-    label.textContent = fmt(inicio) + ' – ' + fmt(fim) + (ovInsightsSemanaOffset===0 ? ' (atual)' : '');
+    label.textContent = fmt(inicio) + ' – ' + fmt(fim) + (ovInsightsSemanaOffset===0 ? ' (atual)' : ovInsightsSemanaOffset===-1 ? ' (semana passada)' : '');
   }
 
   // Toda entrega (qualquer projeto, qualquer posição) com data REAL dentro dessa semana —
