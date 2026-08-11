@@ -2996,12 +2996,12 @@ function calcFlagAutomatica(p, refDateISO) {
   const ent = p.entregas || {};
   const hojeISO = refDateISO || new Date().toISOString().slice(0,10);
   // Projeto estagnado = regra semanal, alinhada ao ritmo real de upload de auditoria
-  // (auditorias sobem ao longo da semana, normalmente até sexta). Pega a data da entrega
-  // mais recente já realizada (ou o início do projeto, se nenhuma aconteceu ainda) e
-  // verifica se ela é anterior à segunda-feira da semana passada — ou seja, se a última
-  // semana de trabalho já encerrada (segunda a sexta) não teve NENHUMA entrega registrada,
-  // o projeto já é Vermelho a partir da segunda seguinte, independente de score/prazo geral.
-  // A Decolagem entra na mesma checagem, sem atalho à parte.
+  // (auditorias sobem ao longo da semana, normalmente até sexta). Verifica se a última
+  // semana de trabalho já encerrada (segunda a domingo) teve NENHUMA entrega registrada —
+  // se sim, é perigo, mesmo que uma entrega tenha chegado logo na segunda desta semana
+  // (isso resolve a pendência de NOTA, mas não apaga uma semana inteira sem nenhum trabalho
+  // registrado — caso real: "Frenecar", zero entrega entre 03/08 e 09/08, só retomou em
+  // 10/08, segunda desta semana). A Decolagem entra na mesma checagem, sem atalho à parte.
   const ordem = ordemCompleta(p);
   // Projeto que já chegou na Decolagem (última etapa) está concluído — não tem mais "semana
   // de trabalho" esperada depois disso, então a regra de estagnação não se aplica mais nele.
@@ -3011,15 +3011,16 @@ function calcFlagAutomatica(p, refDateISO) {
   const decolagem = ent[6] || ent['6'];
   const decolagemAconteceu = !!(decolagem && decolagem.real && decolagem.real <= hojeISO)
     || !!(p.realFim && p.realFim <= hojeISO);
-  let referencia = null;
-  ordem.forEach(si => {
-    const e = ent[si] || ent[String(si)];
-    if (e && e.real && e.real <= hojeISO && (!referencia || e.real > referencia)) referencia = e.real;
-  });
-  referencia = referencia || p.inicio; // nenhuma entrega ainda -> conta a partir do início
-  if (!decolagemAconteceu && referencia) {
-    const segundaSemanaAnterior = addDays(segundaDaSemana(hojeISO), -7);
-    if (referencia < segundaSemanaAnterior) return 'Vermelho';
+  const segundaEstaSemana = segundaDaSemana(hojeISO);
+  const segundaSemanaAnterior = addDays(segundaEstaSemana, -7);
+  // Só cobra atividade da semana passada de projeto que já existia antes dela inteira —
+  // senão um projeto recém-iniciado nessa janela cairia aqui só por ainda não ter começado.
+  if (!decolagemAconteceu && p.inicio && p.inicio <= segundaSemanaAnterior) {
+    const teveEntregaSemanaPassada = ordem.some(si => {
+      const e = ent[si] || ent[String(si)];
+      return e && e.real && e.real >= segundaSemanaAnterior && e.real < segundaEstaSemana;
+    });
+    if (!teveEntregaSemanaPassada) return 'Vermelho';
   }
   // Score mais recente registrado — percorre na ordem CRONOLÓGICA real (ordemCompleta), não
   // por índice fixo 6→0, de trás pra frente. As etapas do meio (2-5) podem acontecer fora da
@@ -3039,7 +3040,6 @@ function calcFlagAutomatica(p, refDateISO) {
   // alegar ter avaliado um trabalho que na verdade ainda nem foi auditado (caso real:
   // "Frenecar" — Decolagem de hoje sem nota não pode "passar" com a nota da 4ª Entrega, de
   // 31/07: ninguém sabe ainda se a Decolagem foi boa).
-  const segundaEstaSemana = segundaDaSemana(hojeISO);
   let scoreRecente = null;
   let notaEhDaEtapaMaisRecente = false;
   let etapaAnteriorSemNotaVencida = false;
