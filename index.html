@@ -11492,8 +11492,20 @@ async function audFilaProcessarBackground(){
         const data=await response.json().catch(()=>({}));
         if(!response.ok) throw new Error(data.error || ('A API retornou um erro ('+response.status+')'));
         if(data.fileId) item.driveFileIdResolvido=data.fileId; // id real resolvido pelo servidor
+
+        // Reunião sem transcrição é caso comum e precisa de mensagem própria: gravação sem
+        // legenda ligada, Doc criado mas vazio, transcrição ainda processando no Google. Sem
+        // isso o texto vazio seguia adiante e o servidor devolvia "Campo transcricao é
+        // obrigatório" — que não diz nada sobre a reunião. Mesmo limiar do upload de arquivo.
+        const transcricaoDrive=(data.texto||'').trim();
+        if(transcricaoDrive.length<100){
+          throw new Error(transcricaoDrive
+            ? 'a transcrição do Drive tem só '+transcricaoDrive.length+' caracteres — curta demais pra avaliar. Confira se a gravação transcreveu direito.'
+            : 'essa reunião não tem transcrição no Drive (documento vazio). Verifique se a legenda estava ligada na gravação.');
+        }
+
         item.progressoLabel='Conectando com a IA…'; audRenderFilaLista();
-        const texto=await audChamarClaude(data.texto||'', (textoAcumulado)=>{
+        const texto=await audChamarClaude(transcricaoDrive, (textoAcumulado)=>{
           const {label}=audEstimarProgressoAnalise(textoAcumulado);
           item.progressoLabel=label; audRenderFilaLista();
         }, item.tipoFoco, item.modelo);
