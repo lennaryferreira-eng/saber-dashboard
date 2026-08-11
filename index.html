@@ -3069,7 +3069,12 @@ function calcFlagAutomatica(p, refDateISO) {
   return 'Vermelho';
 }
 
-function prazoStatus(p) {
+// refDateISO (opcional): "hoje" simulado, pra reconstruir qual era o veredito de prazo EM
+// OUTRA DATA — usado pelo Gantt do Healthscore, pra pintar cada semana com o prazo como ele
+// estava NAQUELA semana (o "risco" projetado só passa a valer a partir da semana em que
+// realmente apareceu, não retroage pras semanas em que o projeto ainda estava genuinamente ok).
+// Sem passar nada, calcula em tempo real.
+function prazoStatus(p, refDateISO) {
   if (!p.inicio) return {ok: null, html: '<span style="color:var(--text-hint)">—</span>', dias: null};
   // Reembolso → projeto INTERROMPIDO: não conta como atraso nem como no prazo.
   if (p.dataReembolso) {
@@ -3078,7 +3083,8 @@ function prazoStatus(p) {
   }
   const dIni  = parseDate(p.inicio);
   const dPrev = p.prevFim ? parseDate(p.prevFim) : null;
-  const hoje  = new Date(); hoje.setHours(0,0,0,0);
+  const hojeISO = refDateISO || new Date().toISOString().slice(0,10);
+  const hoje  = parseDate(hojeISO);
 
   // ── DRO: prazo = duração do contrato (início → fim do contrato) ──
   if (isDroFam(p)) {
@@ -3125,7 +3131,6 @@ function prazoStatus(p) {
   // "ritmo" e a projeção é só ruído.
   let projRisco = false, projDias = null;
   if (!jaEstourou) {
-    const hojeISO = new Date().toISOString().slice(0,10);
     const ent = p.entregas || {};
     const etapas = ordemCompleta(p).filter(si => si !== 0 && si !== '0');
     const entregues = etapas
@@ -7633,11 +7638,6 @@ function buildOvGantt() {
       const ep = entp[si] || entp[String(si)];
       if (ep && ep.real) reaisp[si] = ep.real;
     }
-    // Mesmo critério da flag/Insights (prazoStatus: até 52 dias do início é no prazo, depois
-    // disso é atraso) — antes cada etapa era tingida comparando com a etapa anterior +7 dias,
-    // um critério à parte que não batia com o que a flag do projeto (ícone no início da linha)
-    // realmente usa. Agora a cor é a mesma em toda a linha, uma por projeto.
-    const prazoOkP = prazoStatus(p).ok;
     const labelMap = {};
     const shown = new Set();
     semanas.forEach(s => {
@@ -7648,7 +7648,12 @@ function buildOvGantt() {
       const reaisHere = [0,1,2,3,4,5,6].filter(si => reaisp[si] && reaisp[si] >= sISO && reaisp[si] <= eISO);
       if (reaisHere.length > 0) {
         reaisHere.forEach(si => shown.add(si));
-        const corFinal = prazoOkP === true ? 'verde' : prazoOkP === false ? 'vermelho' : null;
+        // Mesmo critério da flag/Insights (prazoStatus: 52 dias, com projeção pelo ritmo das
+        // entregas já feitas) — reconstruído com "hoje" = fim desta semana, pra "risco" (amber)
+        // só pintar a partir da semana em que ele realmente apareceu, sem retroagir pras
+        // semanas anteriores em que o projeto ainda estava genuinamente ok.
+        const stSemana = prazoStatus(p, eISO);
+        const corFinal = stSemana.risco ? 'amber' : stSemana.ok === true ? 'verde' : stSemana.ok === false ? 'vermelho' : null;
         // Score da(s) etapa(s) dessa semana — mostra TODAS, uma por linha, alinhadas com
         // o nome de cada uma (antes só mostrava a pior nota e descartava as outras).
         const scoresAqui = reaisHere.map(si => {
@@ -7713,7 +7718,7 @@ function buildOvGantt() {
           const sISO = toISOf(s);
           const isAtual = sISO === toISOf(new Date(startRef.getTime())) ? false : (hojeISO >= sISO && hojeISO <= toISOf(new Date(s.getTime()+6*864e5)));
           const cel = lm[sISO] || { text: '', cor: null, score: [] };
-          const bgCor = cel.cor === 'verde' ? 'var(--green)' : cel.cor === 'vermelho' ? 'var(--accent)' : null;
+          const bgCor = cel.cor === 'verde' ? 'var(--green)' : cel.cor === 'vermelho' ? 'var(--accent)' : cel.cor === 'amber' ? 'var(--amber)' : null;
           const scoresArr = Array.isArray(cel.score) ? cel.score : (cel.score !== null && cel.score !== undefined ? [cel.score] : []);
           const temAlgumScore = scoresArr.some(s => s !== null);
           const scoreDourado = scoresArr.some(s => s !== null && s >= 85);
