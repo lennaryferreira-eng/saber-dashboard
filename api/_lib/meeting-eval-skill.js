@@ -34,7 +34,18 @@ Cada dimensão recebe nota 0–100, uma "Análise:" em prosa otimizada (direta a
   - **Pleno (100):** evidência específica e citável de execução acima do básico esperado.
   - **Parcial (50):** o componente apareceu, mas de forma incompleta, genérica, ou só cumprindo o mínimo esperado.
   - **Ausente (0):** sem evidência citável na transcrição — ausência de evidência é sempre Ausente, nunca Parcial "no benefício da dúvida".
-  A nota da dimensão é a média dos três, **arredondada para o múltiplo de 5 mais próximo**. Em caso de dúvida real entre dois níveis adjacentes (ex.: Pleno ou Parcial), escolha o nível mais bem sustentado pela evidência citável disponível — não puxe automaticamente pro mais baixo nem pro mais alto; a evidência é que decide, não uma regra de desempate. Esse cálculo é interno — o texto final não mostra os 3 componentes separados (só D9 mostra checklist), mas a nota tem que ser rastreável a ele se alguém perguntar "por quê 65 e não 70".
+  **A nota da dimensão usa a tabela abaixo — NÃO é média simples dos três.** A média simples de 3 níveis discretos (0/50/100) só produz {0, 17, 33, 50, 67, 83, 100}, que arredondados pro múltiplo de 5 colapsam em {0, 15, 35, 50, 65, 85, 100} — isso deixa a faixa "Sólido" (70-84) da âncora de severidade matematicamente inatingível, e permite chegar em "Acima do esperado" (85+) com só 2 dos 3 componentes em Pleno, o que contradiz a própria definição de 85+ como execução claramente acima do padrão. Use esta tabela, que cobre as 10 combinações possíveis:
+  - 3 Pleno → **100**
+  - 2 Pleno + 1 Parcial → **80**
+  - 2 Pleno + 1 Ausente → **65**
+  - 1 Pleno + 2 Parcial → **60**
+  - 1 Pleno + 1 Parcial + 1 Ausente → **50**
+  - 1 Pleno + 2 Ausente → **35**
+  - 3 Parcial → **60**
+  - 2 Parcial + 1 Ausente → **45**
+  - 1 Parcial + 2 Ausente → **25**
+  - 3 Ausente → **0**
+  **85+ só acontece com os 3 componentes Pleno** — um único componente Parcial ou Ausente já tira a dimensão da faixa "Acima do esperado", não importa quão fortes sejam os outros dois. Em caso de dúvida real entre dois níveis adjacentes pra um componente específico (ex.: esse componente é Pleno ou Parcial?), escolha o nível mais bem sustentado pela evidência citável disponível — não puxe automaticamente pro mais baixo nem pro mais alto; a evidência é que decide, não uma regra de desempate. Esse cálculo é interno — o texto final não mostra os 3 componentes separados (só D9 mostra checklist), mas a nota tem que ser rastreável a eles se alguém perguntar "por quê 80 e não 100".
 
 ### 4. Nota consolidada (média ponderada por tipo de entrega)
 A nota consolidada é a média das 9 dimensões **ponderada por pesos que variam conforme o tipo de entrega** (cada coluna soma 100%). Regras fixas: **D9 = 30% sempre** (é o entregável que o cliente contratou, o maior peso isolado); **D4 e D5** são o par mais pesado depois da D9 (gaps críticos da squad, devem puxar o resultado). Use a coluna do tipo de entrega:
