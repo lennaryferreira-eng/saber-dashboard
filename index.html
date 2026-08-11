@@ -7767,6 +7767,17 @@ function buildOvGantt() {
 
   wrap.innerHTML = '<table style="border-collapse:collapse;font-size:var(--fs-sm);min-width:100%;">'
     + '<thead>' + header + '</thead><tbody>' + rows + '</tbody></table>';
+
+  // Abre sempre mostrando a semana ATUAL (com uma margem de semanas anteriores visível), em
+  // vez de cair no início do retroativo — o histórico completo (até a Growth do projeto mais
+  // antigo) continua a um arraste de distância pra esquerda.
+  const weekThs = Array.from(wrap.querySelectorAll('thead th')).slice(2); // pula Projeto/Consultor
+  const idxAtual = semanas.findIndex(s => { const sEnd = new Date(s.getTime()+6*864e5); return hojeISO >= toISOf(s) && hojeISO <= toISOf(sEnd); });
+  if (idxAtual >= 0) {
+    const thAlvo = weekThs[Math.max(0, idxAtual - 3)]; // até 3 semanas de margem antes da atual
+    const stickyWidth = wrap.querySelector('thead th')?.offsetWidth || 0;
+    if (thAlvo) wrap.scrollLeft = Math.max(0, thAlvo.offsetLeft - stickyWidth);
+  }
 }
 
 
