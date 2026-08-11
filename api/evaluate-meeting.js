@@ -1,15 +1,28 @@
 // api/evaluate-meeting.js
 // Função serverless do Vercel — roda no servidor, nunca no navegador.
-// A chave do Gemini fica só aqui, lida de uma variável de ambiente
-// (Vercel > Project Settings > Environment Variables > GEMINI_API_KEY),
-// nunca aparece no código nem no HTML entregue ao navegador.
+// As chaves (GEMINI_API_KEY e ANTHROPIC_API_KEY) ficam só aqui, lidas de variáveis de
+// ambiente (Vercel > Project Settings > Environment Variables), nunca aparecem no código
+// nem no HTML entregue ao navegador.
 //
 // Recebe a transcrição de uma reunião de entrega e devolve a avaliação em
 // 9 dimensões (D1-D9) gerada pela skill "avaliacao-reunioes-v4", no mesmo
 // formato de texto que o parser da Auditoria de Entregas (audParseScores /
 // audParseObs / audParseD9 / audParseRec, em index.html) já sabe ler.
+//
+// TRÊS MODELOS, escolhidos por avaliação no seletor da aba Auditoria. Medido na mesma
+// transcrição e mesma rubrica (nota consolidada / US$ por avaliação / segundos):
+//   'haiku' (PADRÃO) -> claude-haiku-4-5.   62,0 · 0,0337 · 43s
+//   'claude'         -> claude-sonnet-4-6.  47,5 · 0,1177 · 87s
+//   'gemini'         -> gemini-2.5-pro.     76,4 · 0,0679 · 40s
+// Os dois Claude avaliam componente a componente e penalizam o que faltou; o Gemini avalia
+// o que aconteceu e premia o conjunto (na mesma D4, deu 100 contra 55 do Sonnet). Três
+// tentativas de endurecer o Gemini por prompt — trava de componentes, trava de citação
+// literal, nota calculada por fora — falharam: duas subiram a nota, a terceira foi ignorada.
+// A tradução de eventos SSE só existe no caminho do Gemini: o cliente já fala o formato da
+// Anthropic (content_block_delta/message_delta), então o stream do Claude é repassado cru.
 
 import { callGeminiStream } from './_lib/gemini.js';
+import { callClaudeStream } from './_lib/anthropic.js';
 import { MEETING_EVAL_SKILL } from './_lib/meeting-eval-skill.js';
 
 export default async function handler(req, res) {
@@ -18,15 +31,26 @@ export default async function handler(req, res) {
     return;
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    res.status(500).json({ error: 'GEMINI_API_KEY não configurada no Vercel (Settings > Environment Variables)' });
+  const { transcricao, tipoFoco, modelo } = req.body || {};
+  if (!transcricao || typeof transcricao !== 'string') {
+    res.status(400).json({ error: 'Campo "transcricao" é obrigatório' });
     return;
   }
 
-  const { transcricao, tipoFoco } = req.body || {};
-  if (!transcricao || typeof transcricao !== 'string') {
-    res.status(400).json({ error: 'Campo "transcricao" é obrigatório' });
+  // Lista fechada de propósito: `modelo` vem do navegador, e sem allowlist alguém poderia
+  // mandar qualquer identificador e faturar num modelo caro que a gente não escolheu.
+  const MODELOS_CLAUDE = {
+    claude: 'claude-sonnet-4-6',
+    haiku: 'claude-haiku-4-5',
+  };
+  // Default no Haiku: quem não manda `modelo` (chamada antiga, integração externa) cai no
+  // que avalia componente a componente, e é também o mais barato e o segundo mais rápido.
+  const modeloClaude = modelo === 'gemini' ? null : (MODELOS_CLAUDE[modelo] || MODELOS_CLAUDE.haiku);
+  const usarClaude = !!modeloClaude;
+  const apiKey = usarClaude ? process.env.ANTHROPIC_API_KEY : process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    const nome = usarClaude ? 'ANTHROPIC_API_KEY' : 'GEMINI_API_KEY';
+    res.status(500).json({ error: nome + ' não configurada no Vercel (Settings > Environment Variables)' });
     return;
   }
 
@@ -40,13 +64,54 @@ export default async function handler(req, res) {
     : transcricao;
 
   try {
+    // 16000 dá espaço de sobra pra saída completa das 9 dimensões (texto real fica em
+    // ~2500-3000 tokens) sem risco de truncar.
+    const maxTokens = 16000;
+
+    if (usarClaude) {
+      const claudeRes = await callClaudeStream({
+        apiKey,
+        model: modeloClaude,
+        system: MEETING_EVAL_SKILL,
+        userText,
+        maxTokens,
+        // NÃO troque por `adaptive` sem medir de novo: já foi testado duas vezes neste
+        // projeto e reprovado. Em 3 rodadas na mesma transcrição, deixou a chamada ~3x mais
+        // lenta (110-180s vs ~50s) sem reduzir a variância da nota de forma clara. Ao
+        // reintroduzir em 10/08/2026, a chamada passou de 2 minutos ainda sem emitir uma
+        // linha de texto (só deltas de raciocínio) — o que estoura o tempo limite da função
+        // serverless e deixa a tela parada. A redução de variância fica por conta do
+        // procedimento mecânico da própria skill.
+        thinking: { type: 'disabled' },
+      });
+
+      if (!claudeRes.ok) {
+        const data = await claudeRes.json().catch(() => ({}));
+        res.status(claudeRes.status).json({ error: 'Erro da API da Anthropic', details: data });
+        return;
+      }
+
+      // O cliente já interpreta o formato SSE da Anthropic — repassa os bytes sem traduzir.
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      });
+      const r = claudeRes.body.getReader();
+      while (true) {
+        const { done, value } = await r.read();
+        if (done) break;
+        res.write(value);
+      }
+      res.end();
+      return;
+    }
+
     const geminiRes = await callGeminiStream({
       apiKey,
       system: MEETING_EVAL_SKILL,
       userText,
-      // 16000 dá espaço de sobra pra saída completa das 9 dimensões (texto real fica em
-      // ~2500-3000 tokens) sem risco de truncar.
-      maxTokens: 16000,
+      maxTokens,
     });
 
     if (!geminiRes.ok) {
@@ -98,7 +163,7 @@ export default async function handler(req, res) {
     res.end();
   } catch (err) {
     if (!res.headersSent) {
-      res.status(500).json({ error: 'Falha ao chamar o Gemini: ' + err.message });
+      res.status(500).json({ error: 'Falha ao chamar ' + (usarClaude ? 'a Anthropic' : 'o Gemini') + ': ' + err.message });
     } else {
       res.end();
     }

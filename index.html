@@ -1542,9 +1542,23 @@
           <div style="font-size:var(--fs-base);color:var(--text-hint);padding:8px 0;">Buscando transcrições recentes…</div>
         </div>
         <div id="aud-drive-erro" style="display:none;font-size:var(--fs-base);color:var(--red);padding:8px 12px;background:var(--red-dim);border-radius:var(--r-sm);margin-top:10px;"></div>
-        <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:14px;">
-          <button class="btn btn-ghost" onclick="audFecharModalDrive()">Cancelar</button>
-          <button class="btn btn-primary" onclick="audAdicionarSelecaoNaFila()">Adicionar selecionadas à fila</button>
+        <!-- Seletor de IA no rodapé do modal, entre a lista e o botão: o fluxo é escolher as
+             calls, escolher com o que avaliar, e só então disparar. Cada item da fila guarda o
+             modelo escolhido AQUI (ver audAdicionarSelecaoNaFila) — trocar depois não mexe no
+             que já está na fila, porque a avaliação roda em segundo plano. -->
+        <div style="display:flex;gap:12px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--border);margin-top:14px;">
+          <div style="min-width:260px;flex:1;">
+            <label for="aud-drive-modelo" class="aud-lbl">IA que vai avaliar estas reuniões</label>
+            <select id="aud-drive-modelo" class="aud-inp">
+              <option value="haiku" selected>Claude Haiku 4.5 — padrão</option>
+              <option value="claude">Claude Sonnet 4.6 — mais rigoroso e mais lento</option>
+              <option value="gemini">Gemini 2.5 Pro — mais leniente</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost" onclick="audFecharModalDrive()">Cancelar</button>
+            <button class="btn btn-primary" onclick="audAdicionarSelecaoNaFila()">Avaliar selecionadas</button>
+          </div>
         </div>
       </div>
       <div id="modal-drive-processando" style="display:none;"></div>
@@ -2332,6 +2346,11 @@ let auditorias = [];         // [{id, consultor, tipoEntrega, cliente, data, n:{
 // a coluna auditorias no PATCH — sem essa trava, qualquer save disparado antes de abrir a
 // aba (ex: editar um projeto na Base) mandaria auditorias:"[]" e apagaria tudo no Supabase.
 let _auditoriasLoaded = false;
+// Ids de avaliações que ESTA sessão apagou de propósito. audPersistirAuditorias() mescla a
+// lista local com a do servidor antes de gravar (duas pessoas avaliando ao mesmo tempo é
+// união, não conflito) — sem essa lista, essa mesma união traria de volta, vinda do
+// servidor, exatamente a avaliação que a pessoa acabou de excluir aqui.
+const audRemovidasLocalmente = new Set();
 // Mesma ideia pra `fotos` (~80KB de dataURL base64, só usada na aba Performance).
 let _fotosLoaded = false;
 let sinaisCulturais = [];    // Termômetro Cultural — [{id, created_at, consultor, framework, dimensao, tipo, gravidade, descricao, justificativa}]
@@ -10924,13 +10943,18 @@ function audFormHTML(){
     + '<div><label for="aud-f-tipo" class="aud-lbl">Tipo de entrega</label><select id="aud-f-tipo" class="aud-inp"><option value="">Selecione…</option>'+opt(AUD_TIPOS)+'</select></div>'
     + '<div><label for="aud-f-cliente" class="aud-lbl">Cliente</label><input id="aud-f-cliente" class="aud-inp" list="aud-f-cliente-list" autocomplete="off" placeholder="Digite pra buscar…"><datalist id="aud-f-cliente-list">'+optDatalist(audClientes())+'</datalist></div>'
     + '<div><label for="aud-f-data" class="aud-lbl">Data da reunião</label><input id="aud-f-data" type="date" class="aud-inp"></div>'
+    + '<div><label for="aud-f-modelo" class="aud-lbl">IA que vai avaliar</label><select id="aud-f-modelo" class="aud-inp">'
+    +   '<option value="haiku" selected>Claude Haiku 4.5 — padrão</option>'
+    +   '<option value="claude">Claude Sonnet 4.6 — mais rigoroso e mais lento</option>'
+    +   '<option value="gemini">Gemini 2.5 Pro — mais leniente</option>'
+    + '</select></div>'
     + '</div>'
     + '<textarea id="aud-analise" style="display:none;"></textarea>'
     + '<div style="background:var(--surface2);border:1px dashed var(--border);border-radius:var(--r-sm);padding:14px;">'
-    + '<label for="aud-arquivo" class="aud-lbl">Envie o arquivo da reunião (.pdf, .txt ou .md) — a ferramenta gera a análise com Claude</label>'
+    + '<label for="aud-arquivo" class="aud-lbl">Envie o arquivo da reunião (.pdf, .txt ou .md) — a ferramenta gera a análise com a IA selecionada acima</label>'
     + '<input type="file" id="aud-arquivo" accept=".pdf,.txt,.md" class="aud-inp">'
     + '<div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center;">'
-    + '<button id="aud-btn-gerar-claude" class="btn btn-primary" onclick="audGerarComClaude()">'+icon('sparkle')+' Gerar avaliação com Claude</button>'
+    + '<button id="aud-btn-gerar-claude" class="btn btn-primary" onclick="audGerarComClaude()">'+icon('sparkle')+' Gerar avaliação com IA</button>'
     + '<button class="btn btn-ghost" onclick="audManual()">Preencher manual</button>'
     + '<span id="aud-gerar-msg" style="font-size:var(--fs-base);color:var(--text-hint);"></span>'
     + '<span id="aud-form-msg" style="font-size:var(--fs-base);color:var(--text-hint);"></span>'
@@ -11005,11 +11029,25 @@ async function audExtrairTextoArquivo(file){
 // deixar a tela travada entre 0% e 100% esperando a resposta inteira.
 // tipoFoco: só usado quando a mesma call cobre duas entregas diferentes (ver
 // audAdicionarSelecaoNaFila) — diz pro servidor qual das duas avaliar, ignorando a outra.
-async function audChamarClaude(transcricao, onProgress, tipoFoco){
+// Qual IA avalia a reunião. Vem do seletor no formulário da Auditoria e vale pra avaliação
+// avulsa e pra fila do Drive. O formato do texto de saída é o mesmo nos dois — quem muda é
+// só quem escreve (ver api/evaluate-meeting.js).
+function audModeloEscolhido(){
+  // Fallback no Claude, não no Gemini: se o seletor ainda não existe (fila do Drive
+  // disparando antes do formulário renderizar), o certo é cair no modelo que avalia com
+  // mais rigor — o mesmo default que o servidor aplica.
+  return document.getElementById('aud-f-modelo')?.value || 'haiku';
+}
+
+// `modeloExplicito` existe pra fila do Drive: cada item guarda a IA escolhida no momento em
+// que entrou na fila, e é essa que vale — não a que estiver selecionada agora na tela.
+async function audChamarClaude(transcricao, onProgress, tipoFoco, modeloExplicito){
+  const body={transcricao, modelo: modeloExplicito || audModeloEscolhido()};
+  if(tipoFoco) body.tipoFoco=tipoFoco;
   const response=await fetch('/api/evaluate-meeting',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(tipoFoco ? {transcricao, tipoFoco} : {transcricao})
+    body:JSON.stringify(body)
   });
   if(!response.ok){
     const errBody=await response.json().catch(()=>({}));
@@ -11085,8 +11123,20 @@ function audAtualizaProgresso(pct, label){
 // Gera a avaliação e joga o resultado no parser/tela de revisão existentes (textarea oculta
 // #aud-analise + audImportar()) — o mesmo caminho de sempre, só que preenchido por código em
 // vez de colado à mão.
+// Confere que a saída da IA tem as 9 dimensões ANTES de jogar no formulário. audParseScores
+// usa 70 como valor de fallback quando não acha a linha `dN:` — então uma resposta cortada no
+// meio (só o cabeçalho, ou 3 de 9 dimensões) virava um formulário com 70 em tudo e análise
+// vazia, sem nenhum aviso. 70 é um número plausível: passa por avaliação de verdade e vai
+// parar no histórico do consultor como se fosse nota real. Melhor falhar alto.
+function audValidarSaidaIA(texto){
+  const achadas=(texto.match(/(?:^|\n)\s*d[1-9]\s*:\s*\d{1,3}/gim)||[]).length;
+  if(achadas===0) throw new Error('a IA respondeu, mas sem nenhuma nota no formato esperado — nada foi preenchido. Tente de novo.');
+  if(achadas<9) throw new Error('a resposta veio incompleta ('+achadas+' de 9 dimensões) — provavelmente foi cortada. Tente de novo; se repetir, troque a IA no seletor.');
+  return texto;
+}
+
 async function audGerarEImportar(transcricao, onProgress){
-  const texto=await audChamarClaude(transcricao, onProgress);
+  const texto=audValidarSaidaIA(await audChamarClaude(transcricao, onProgress));
   document.getElementById('aud-analise').value=texto;
   audImportar();
 }
@@ -11103,8 +11153,8 @@ async function audGerarComClaude(){
   try{
     const transcricao=(await audExtrairTextoArquivo(arquivo)).trim();
     if(transcricao.length<100) throw new Error('O arquivo parece vazio ou curto demais pra ser uma transcrição.');
-    btn.textContent='Avaliando com Claude...';
-    audAtualizaProgresso(5,'Conectando com Claude…');
+    btn.textContent='Avaliando…';
+    audAtualizaProgresso(5,'Conectando com a IA…');
     await audGerarEImportar(transcricao, (textoAcumulado)=>{
       const {frac, label}=audEstimarProgressoAnalise(textoAcumulado);
       audAtualizaProgresso(frac*100, label);
@@ -11116,7 +11166,7 @@ async function audGerarComClaude(){
     if(msg){msg.textContent='Não consegui gerar a avaliação: '+err.message;msg.style.color='var(--accent)';}
   }finally{
     btn.disabled=false;
-    btn.innerHTML=icon('sparkle')+' Gerar avaliação com Claude';
+    btn.innerHTML=icon('sparkle')+' Gerar avaliação com IA';
   }
 }
 
@@ -11386,6 +11436,7 @@ function audAdicionarSelecaoNaFila(){
   const files=JSON.parse(lista.dataset.files||'[]');
   const itens=[];
   const erro=document.getElementById('aud-drive-erro');
+  const modeloFila=document.getElementById('aud-drive-modelo')?.value || 'haiku';
   let faltouCliente=false, faltouTipoDivisao=false;
   lista.querySelectorAll('.aud-drive-check').forEach(chk=>{
     if(!chk.checked) return;
@@ -11399,7 +11450,10 @@ function audAdicionarSelecaoNaFila(){
     // separado do .id do item da fila — o segundo item de uma divisão ganha um .id próprio
     // (pra poder revisar/remover cada um independente), mas os dois têm que buscar a MESMA
     // transcrição original.
-    const base={...files[idx], driveFileIdBusca:files[idx].id, consultorSugerido:consultor, clienteSugerido:cliente, status:'pendente', resultado:null, erroMsg:null};
+    // `modelo` fica gravado no item, não é lido na hora de avaliar: a fila roda em segundo
+    // plano, então trocar o seletor (ou adicionar uma segunda leva com outra IA) não pode
+    // mudar o modelo do que já está esperando. Também sobrevive ao F5, junto com a fila.
+    const base={...files[idx], driveFileIdBusca:files[idx].id, consultorSugerido:consultor, clienteSugerido:cliente, modelo:modeloFila, status:'pendente', resultado:null, erroMsg:null};
     if(tipo2 && tipo2!==tipo){
       if(!tipo){ faltouTipoDivisao=true; return; }
       // Mesma call cobre 2 entregas — gera DUAS auditorias separadas da mesma transcrição,
@@ -11448,11 +11502,28 @@ async function audFilaProcessarBackground(){
         const data=await response.json().catch(()=>({}));
         if(!response.ok) throw new Error(data.error || ('A API retornou um erro ('+response.status+')'));
         if(data.fileId) item.driveFileIdResolvido=data.fileId; // id real resolvido pelo servidor
-        item.progressoLabel='Conectando com Claude…'; audRenderFilaLista();
-        const texto=await audChamarClaude(data.texto||'', (textoAcumulado)=>{
+
+        // Reunião sem transcrição é caso comum e precisa de mensagem própria: gravação sem
+        // legenda ligada, Doc criado mas vazio, transcrição ainda processando no Google. Sem
+        // isso o texto vazio seguia adiante e o servidor devolvia "Campo transcricao é
+        // obrigatório" — que não diz nada sobre a reunião. Mesmo limiar do upload de arquivo.
+        const transcricaoDrive=(data.texto||'').trim();
+        if(transcricaoDrive.length<100){
+          throw new Error(transcricaoDrive
+            ? 'a transcrição do Drive tem só '+transcricaoDrive.length+' caracteres — curta demais pra avaliar. Confira se a gravação transcreveu direito.'
+            : 'essa reunião não tem transcrição no Drive (documento vazio). Verifique se a legenda estava ligada na gravação.');
+        }
+
+        item.progressoLabel='Conectando com a IA…'; audRenderFilaLista();
+        const texto=await audChamarClaude(transcricaoDrive, (textoAcumulado)=>{
           const {label}=audEstimarProgressoAnalise(textoAcumulado);
           item.progressoLabel=label; audRenderFilaLista();
-        }, item.tipoFoco);
+        }, item.tipoFoco, item.modelo);
+        // Valida ANTES de marcar como pronta. Sem isso, uma resposta cortada virava um item
+        // "pronta" que, ao abrir pra revisar, mostrava 70 em todas as 9 dimensões e análise
+        // vazia — porque 70 é o fallback do audParseScores quando não acha a linha `dN:`.
+        // Parecia avaliação de verdade e ia pro histórico do consultor como tal.
+        audValidarSaidaIA(texto);
         item.resultado={
           texto,
           scores: audParseScores(texto),
@@ -11481,10 +11552,13 @@ function audRenderFilaLista(){
   if(!visiveis.length){ box.innerHTML=''; audFilaAtiva=null; audFilaSalvarEstado(); return; }
   const ICO_NOME={pendente:'clock',gerando:'refresh',pronta:'check',erro:'warning'};
   const ICO_COR={pendente:'var(--text-hint)',gerando:'var(--blue)',pronta:'var(--green)',erro:'var(--accent)'};
+  const NOME_MODELO={claude:'Sonnet 4.6',haiku:'Haiku 4.5',gemini:'Gemini 2.5 Pro'};
   const linhas=visiveis.map(it=>{
     const sub = it.status==='gerando' ? (it.progressoLabel||'Processando…')
       : it.status==='erro' ? ('Erro: '+(it.erroMsg||'desconhecido'))
-      : (it.consultorSugerido||'—')+' · '+(it.tipoSugerido||'—')+' · '+(it.clienteSugerido||'—');
+      // Mostra a IA no subtítulo: levas enfileiradas em momentos diferentes podem ter
+      // modelos diferentes, e sem isso não daria pra saber qual avaliou o quê.
+      : (it.consultorSugerido||'—')+' · '+(it.tipoSugerido||'—')+' · '+(it.clienteSugerido||'—')+' · '+(NOME_MODELO[it.modelo]||NOME_MODELO.haiku);
     const acoes = it.status==='pronta'
       ? '<button class="btn btn-primary" style="padding:4px 10px;font-size:var(--fs-xs);" onclick="audAbrirRevisaoDoItem(\''+it.id+'\')">Revisar</button>'
       : it.status==='erro'
@@ -11660,7 +11734,107 @@ function audEditar(id) {
   document.getElementById('aud-review')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function audSalvar(){
+// Grava SÓ a coluna `auditorias`, mesclando com o que já está no servidor antes de escrever.
+// É um caminho separado do sbSave() de propósito:
+//
+//   sbSave() grava a LINHA INTEIRA a partir de uma foto da memória, então ele precisa mesmo
+//   abortar quando outra sessão salvou depois (sbConflito) — escrever a linha toda por cima
+//   apagaria o que a outra pessoa acabou de fazer. O problema é que "abortar" ali significava
+//   PERDER a avaliação: o painel dizia "✓ Avaliação salva." e nada tinha chegado no banco.
+//   Com 2-3 pessoas com o painel aberto, qualquer save de qualquer um travava os saves de
+//   todos os outros até alguém recarregar a página, e ninguém era avisado disso (o
+//   #sync-status que mostrava o alerta tinha sido removido do header no redesign).
+//
+//   Uma avaliação é um item novo numa lista, com id único. Duas pessoas avaliando ao mesmo
+//   tempo não é conflito, é união. Então aqui dá pra reler a coluna, unir por id e gravar só
+//   ela: não toca em projects/pdi/nps, não sobrescreve o trabalho de ninguém, e não depende
+//   de a pessoa recarregar a página antes.
+//
+// Sobra uma janela pequena entre o GET e o PATCH em que outra sessão pode gravar e ser
+// sobrescrita. Fica assim de propósito: o PostgREST não faz update parcial de JSON, e a troca
+// é uma perda possível de segundos por uma perda garantida de toda avaliação feita em
+// paralelo, que é o que acontecia até agora.
+let _audGravando = null; // serializa as gravações — ver comentário no início da função
+async function audPersistirAuditorias() {
+  // Agora que gravar é assíncrono, dois saves disparados quase juntos (clique duplo, ou a
+  // fila do Drive emendando uma avaliação na outra) rodariam dois ciclos ler-mesclar-gravar
+  // em paralelo: o segundo leria o servidor ANTES de o primeiro ter gravado e escreveria por
+  // cima dele. Enfileirar é suficiente e mantém a mesclagem correta.
+  const anterior = _audGravando;
+  let liberar;
+  _audGravando = new Promise(res => { liberar = res; });
+  if (anterior) await anterior.catch(() => {});
+  try {
+    return await _audPersistirAuditoriasAgora();
+  } finally {
+    liberar();
+  }
+}
+
+async function _audPersistirAuditoriasAgora() {
+  if (VIEWER) return { ok: false, motivo: 'viewer' };
+  if (!_auditoriasLoaded) return { ok: false, motivo: 'nao_carregado' };
+  // Offline o dono do dado é a planilha (sbSalvarSnapshot), não o Supabase — não é falha.
+  if (typeof MODO_OFFLINE !== 'undefined' && MODO_OFFLINE) return { ok: false, motivo: 'offline' };
+  const tabela = SB_TABLE;
+  try {
+    const r = await fetch(SB_URL + '/rest/v1/' + tabela + '?id=eq.main&select=auditorias', { headers: SB_HEADERS });
+    if (!r.ok) throw new Error('HTTP ' + r.status + ' ao ler auditorias');
+    const rows = await r.json();
+    const remotas = _parseMaybe(rows.length ? rows[0].auditorias : null, []);
+    const porId = new Map();
+    (Array.isArray(remotas) ? remotas : []).forEach(a => { if (a && a.id) porId.set(a.id, a); });
+    auditorias.forEach(a => { if (a && a.id) porId.set(a.id, a); }); // no mesmo id, a versão local vence
+    audRemovidasLocalmente.forEach(id => porId.delete(id));
+    const mescladas = [...porId.values()];
+    // Se a coordenação mudou (SABER<->TER) enquanto a leitura acontecia, essa lista não é mais
+    // da tabela certa — mesma armadilha que já derrubou 39 projetos da TER em 18/07/2026.
+    if (tabela !== SB_TABLE) return { ok: false, motivo: 'coordenacao_mudou' };
+    const agora = new Date().toISOString();
+    const w = await fetch(SB_URL + '/rest/v1/' + tabela + '?id=eq.main', {
+      method: 'PATCH',
+      headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ auditorias: JSON.stringify(mescladas), updated_at: agora })
+    });
+    if (!w.ok) throw new Error('HTTP ' + w.status + ': ' + (await w.text().catch(() => '')));
+    auditorias = mescladas;
+    // Este PATCH move o updated_at do servidor. Sem alinhar a referência local, o polling de
+    // 30s leria a NOSSA PRÓPRIA escrita como "outra sessão salvou" e travaria o save da linha
+    // inteira sem motivo nenhum. Quando já existe conflito de verdade, a referência continua
+    // desatualizada de propósito: as outras colunas em memória seguem velhas e o save da linha
+    // inteira tem que continuar bloqueado.
+    if (!sbConflito) sbServerVersion = agora;
+    console.log('audPersistirAuditorias: ' + mescladas.length + ' avaliações gravadas em ' + tabela + ' ✓');
+    return { ok: true, total: mescladas.length };
+  } catch (e) {
+    console.error('audPersistirAuditorias falhou:', e);
+    return { ok: false, motivo: 'rede', erro: e.message };
+  }
+}
+
+// Mensagem honesta no rodapé do formulário. O motivo importa: "não salvou" com a avaliação
+// ainda na tela é recuperável (botão de tentar de novo); recarregar a página aqui é o único
+// caminho que perde o trabalho de vez, então nunca é o que a mensagem sugere.
+function audMostrarResultadoSave(r, textoSucesso) {
+  const m = document.getElementById('aud-form-msg');
+  if (!m) return;
+  if (r.ok) { m.textContent = textoSucesso; m.style.color = 'var(--green)'; return; }
+  if (r.motivo === 'viewer') { m.textContent = 'Seu perfil não tem permissão para salvar avaliações.'; m.style.color = 'var(--amber)'; return; }
+  if (r.motivo === 'offline') { m.textContent = '✓ Avaliação registrada na planilha (Supabase fora do ar). Volta pro banco quando ele responder.'; m.style.color = 'var(--amber)'; return; }
+  m.innerHTML = '<strong>NÃO foi salvo no banco</strong> (' + (r.erro || r.motivo) + '). A avaliação ainda está na lista abaixo — <button onclick="audTentarSalvarDeNovo()" style="background:none;border:none;color:var(--accent);text-decoration:underline;cursor:pointer;font-size:inherit;padding:0;">tentar salvar de novo</button>. Não recarregue a página: é o único jeito de perder o que está aqui.';
+  m.style.color = 'var(--red)';
+  if (typeof showToast === 'function') showToast('A avaliação NÃO foi salva no banco. Veja o aviso no formulário.', 'error');
+}
+
+async function audTentarSalvarDeNovo() {
+  const m = document.getElementById('aud-form-msg');
+  if (m) { m.textContent = 'Salvando…'; m.style.color = 'var(--text-hint)'; }
+  const r = await audPersistirAuditorias();
+  audRenderLista();
+  audMostrarResultadoSave(r, '✓ Avaliação salva.');
+}
+
+async function audSalvar(){
   const g=id=>(document.getElementById(id)?.value||'').trim();
   const scores=audGetScores();
   const obs={};
@@ -11706,9 +11880,18 @@ function audSalvar(){
   // reset
   ['aud-f-consultor','aud-f-tipo','aud-f-cliente','aud-f-data','aud-analise'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   audReviewD9={}; audCancelar();
-  if(typeof upd==='function') upd();
+  if(typeof upd==='function') upd(); // save da linha inteira — leva o score pro Lead Time
   audRenderLista();
-  const m=document.getElementById('aud-form-msg'); if(m){m.textContent=(estavaEditando?'✓ Alterações salvas.':'✓ Avaliação salva.')+msgExtra;m.style.color='var(--green)';}
+  // A avaliação em si vai por audPersistirAuditorias(), não pelo upd() acima: o upd() agenda o
+  // save da linha inteira, que é justamente o que trava quando outra sessão salvou antes
+  // (sbConflito). Até esta correção, a mensagem verde de "salva" era escrita aqui sem ninguém
+  // ter confirmado gravação nenhuma — e era exatamente isso que a pessoa via enquanto o
+  // console dizia "sbSave ABORTADO" e o banco não recebia nada.
+  const m=document.getElementById('aud-form-msg');
+  if(m){ m.textContent='Salvando…'; m.style.color='var(--text-hint)'; }
+  const rSave = await audPersistirAuditorias();
+  audRenderLista();
+  audMostrarResultadoSave(rSave, (estavaEditando?'✓ Alterações salvas.':'✓ Avaliação salva.')+msgExtra);
   // Se essa avaliação veio de um item da fila, marca 'revisada' — a lista de fila reaparece
   // sem esse item (as outras que já estejam prontas continuam esperando, sem gerar de novo).
   if (itemDaFila) itemDaFila.status='revisada';
@@ -11733,8 +11916,17 @@ async function audRemover(id){
     }
   }
   auditorias=auditorias.filter(x=>x.id!==id);
+  audRemovidasLocalmente.add(id); // senão a mesclagem com o servidor traria essa de volta
   if(typeof upd==='function') upd();
   audRenderLista();
+  // Mesma história do audSalvar(): a exclusão só existia na memória até alguém conseguir
+  // gravar a linha inteira — e com o save travado por conflito, a avaliação "excluída"
+  // reaparecia no próximo carregamento, sem aviso nenhum.
+  const r = await audPersistirAuditorias();
+  audRenderLista();
+  if (!r.ok && r.motivo !== 'offline' && r.motivo !== 'viewer' && typeof showToast === 'function') {
+    showToast('A exclusão NÃO chegou no banco (' + (r.erro || r.motivo) + '). Ela volta a aparecer se você recarregar.', 'error');
+  }
 }
 function audSetFiltro(k,v){ audFiltro[k]=v; audRenderLista(); }
 function audLimparFiltro(){
@@ -12168,6 +12360,18 @@ let sbChannel   = null;
 // ── indicador de sync na UI ──
 function setSyncStatus(msg, color, clickable) {
   const el = document.getElementById('sync-status');
+  // O indicador do header (#sync-status) foi removido no redesign. Sem esse fallback, TODO
+  // aviso de falha de gravação — "save pausado", "tentando salvar (1/3)", "Supabase
+  // offline" — virava silêncio absoluto na tela: a função escrevia num elemento que não
+  // existe mais e voltava sem fazer nada. Só os avisos (⚠) viram toast; o "Salvando…/✓
+  // Salvo" de rotina continua sem aparecer, que era justamente a intenção de tirar o
+  // indicador do header.
+  if (!el) {
+    if (typeof msg === 'string' && msg.trim().charAt(0) === '⚠' && typeof showToast === 'function') {
+      showToast(msg.replace(/^\s*⚠\s*/, ''), 'error');
+    }
+    return;
+  }
   if (el) {
     el.textContent = msg;
     el.style.color = color || 'var(--text-hint)';
