@@ -7536,11 +7536,15 @@ function buildOvGantt() {
   let cur = new Date(startRef);
   while (cur <= endRef) { semanas.push(new Date(cur)); cur.setDate(cur.getDate() + 7); }
 
-  // Base: projetos não-DRO, com início, e (em andamento OU com alguma etapa datada dentro
-  // do período visível) — assim um projeto que finalizou nessa janela continua aparecendo,
-  // em vez de sumir assim que muda de status.
+  // Base: projetos não-DRO, com início, e (em andamento OU com alguma etapa REAL entre a
+  // segunda passada e hoje) — a grace de "acabou de mudar de status, não sumir na hora" fica
+  // limitada a 1 semana. Não pode usar o período visível inteiro aqui: agora ele recua até a
+  // Growth do mais antigo ainda ativo (pra dar o retroativo rolando a barra pra esquerda), e
+  // usar essa janela inteira traria de volta projeto parado/encerrado há meses só porque uma
+  // entrega antiga dele caiu ali dentro.
   const toISOf6 = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-  const janelaIni = toISOf6(startRef), janelaFim = toISOf6(endRef);
+  const segSemanaPassadaISO = (function() { const d = new Date(hojeSeg); d.setDate(d.getDate() - 7); return toISOf6(d); })();
+  const hojeISOBase = toISOf6(hoje);
   let prjs = projects.filter(p => {
     if (isDroFam(p)) return false;
     if (!p.inicio) return false;
@@ -7548,7 +7552,7 @@ function buildOvGantt() {
     const ent = p.entregas || {};
     return [0,1,2,3,4,5,6].some(i => {
       const e = ent[i] || ent[String(i)];
-      return e && e.real && e.real >= janelaIni && e.real <= janelaFim;
+      return e && e.real && e.real >= segSemanaPassadaISO && e.real <= hojeISOBase;
     });
   });
   if (consFilter) prjs = prjs.filter(p => p.consultor === consFilter);
