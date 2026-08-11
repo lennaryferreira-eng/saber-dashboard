@@ -10,9 +10,13 @@
 // audParseObs / audParseD9 / audParseRec, em index.html) já sabe ler.
 //
 // DOIS MODELOS, escolhidos por avaliação no seletor da aba Auditoria:
-//   'gemini' (padrão) -> gemini-2.5-pro. Mais barato; o raciocínio não pode ser desligado,
-//                        e é ele que introduz variação entre rodadas da mesma reunião.
-//   'claude'          -> claude-sonnet-4-6.
+//   'claude' (PADRÃO) -> claude-sonnet-4-6. Avalia component a componente e penaliza o que
+//                        faltou; o Gemini avalia o que aconteceu e premia o conjunto. Na
+//                        mesma transcrição e mesma rubrica, deu média 49 contra 76.
+//   'gemini'          -> gemini-2.5-pro. ~40% mais barato e ~2x mais rápido, mas mais
+//                        leniente. Três tentativas de endurecer por prompt (trava de
+//                        componentes, trava de citação literal, nota calculada por fora)
+//                        falharam — duas subiram a nota, a terceira foi ignorada.
 // A tradução de eventos SSE só existe no caminho do Gemini: o cliente já fala o formato da
 // Anthropic (content_block_delta/message_delta), então o stream do Claude é repassado cru.
 
@@ -32,7 +36,9 @@ export default async function handler(req, res) {
     return;
   }
 
-  const usarClaude = modelo === 'claude';
+  // Default no Claude: quem não manda `modelo` (chamada antiga, integração externa) cai no
+  // que avalia com mais rigor, não no mais barato.
+  const usarClaude = modelo !== 'gemini';
   const apiKey = usarClaude ? process.env.ANTHROPIC_API_KEY : process.env.GEMINI_API_KEY;
   if (!apiKey) {
     const nome = usarClaude ? 'ANTHROPIC_API_KEY' : 'GEMINI_API_KEY';
