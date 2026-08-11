@@ -7354,6 +7354,12 @@ function toggleOvFlagFiltro(cor) {
   buildOvGantt();
   buildOvInsightsSemana();
 }
+let ovPrazoFiltro = ''; // '' = sem filtro; 'noPrazo'/'risco'/'atrasado' = filtra a tabela abaixo
+function toggleOvPrazoFiltro(v) {
+  ovPrazoFiltro = (ovPrazoFiltro === v) ? '' : v; // clica de novo no mesmo = limpa o filtro
+  buildOvGantt();
+  buildOvInsightsSemana();
+}
 function navOvInsightsSemana(dir) { ovInsightsSemanaOffset += dir; buildOvInsightsSemana(); }
 function navOvInsightsSemanaHoje() { ovInsightsSemanaOffset = 0; buildOvInsightsSemana(); }
 
@@ -7407,12 +7413,17 @@ function buildOvInsightsSemana() {
   const flags = { Verde: 0, Amarelo: 0, Vermelho: 0 };
   projetosAtivosAgora.forEach(p => { const f = calcFlagAutomatica(p, refDateSemana); if (flags[f] !== undefined) flags[f]++; });
   const totalFlags = projetosAtivosAgora.length;
-  // Mesmo critério binário usado DENTRO da flag (prazoStatus: até 52 dias do início é no
-  // prazo, depois disso é atraso) — antes esse quadro comparava cada entrega isolada com a
-  // etapa anterior +7 dias, um critério diferente do que de fato decide a flag.
-  const noPrazoCount   = projetosAtivosAgora.filter(p => prazoStatus(p).ok === true).length;
-  const atrasadasCount = projetosAtivosAgora.filter(p => prazoStatus(p).ok === false).length;
-  const totalPrazo     = noPrazoCount + atrasadasCount;
+  // Mesmo critério usado DENTRO da flag (prazoStatus: até 52 dias do início é no prazo,
+  // depois disso é atraso) — antes esse quadro comparava cada entrega isolada com a etapa
+  // anterior +7 dias, um critério diferente do que de fato decide a flag. "Em risco" é o
+  // preditivo (ritmo das entregas projeta estourar os 52 dias, mesmo sem ter estourado ainda)
+  // — conta como "fora do prazo" pra flag/KPIs (prazoStatus.ok já vem false), mas fica
+  // destacado à parte aqui pra dar sinal de alerta antes do atraso virar fato consumado.
+  const prazoStatuses  = projetosAtivosAgora.map(p => prazoStatus(p));
+  const noPrazoCount   = prazoStatuses.filter(st => st.ok === true).length;
+  const riscoCount     = prazoStatuses.filter(st => st.ok === false && st.risco).length;
+  const atrasadasCount = prazoStatuses.filter(st => st.ok === false && !st.risco).length;
+  const totalPrazo     = noPrazoCount + riscoCount + atrasadasCount;
 
   const pct = (v, total) => total > 0 ? Math.round(v / total * 100) : 0;
   // Quadradinho grande — usado só na flag principal (card da esquerda). Clicável: filtra a
@@ -7428,6 +7439,13 @@ function buildOvInsightsSemana() {
     + '<div style="font-size:var(--fs-2xs);font-weight:700;color:'+cor+';margin-top:2px;">'+pctVal+'%</div>'
     + '<div style="font-size:var(--fs-3xs);color:var(--text-hint);margin-top:1px;text-transform:uppercase;letter-spacing:.02em;">'+label+'</div>'
     + '</div>';
+  // Mesma cara do quadradinho pequeno, só que clicável — filtra a tabela do Healthscore
+  // abaixo por esse critério de prazo. Clicar de novo no mesmo limpa o filtro.
+  const quadradoPeqClic = (valor, pctVal, cor, label, filtroVal) => '<button type="button" onclick="toggleOvPrazoFiltro(\''+filtroVal+'\')" title="Clique pra filtrar a tabela abaixo só com projetos '+label+'" aria-pressed="'+(ovPrazoFiltro===filtroVal?'true':'false')+'" style="font:inherit;flex:1;min-width:58px;background:var(--surface);border:1px solid '+(ovPrazoFiltro===filtroVal?cor:'var(--border)')+';border-top:2px solid '+cor+';border-radius:5px;padding:6px 4px;text-align:center;cursor:pointer;'+(ovPrazoFiltro===filtroVal?'box-shadow:0 0 0 1.5px '+cor+';':'')+'">'
+    + '<div style="font-size:15px;font-weight:800;color:'+cor+';line-height:1;">'+valor+'</div>'
+    + '<div style="font-size:var(--fs-2xs);font-weight:700;color:'+cor+';margin-top:2px;">'+pctVal+'%</div>'
+    + '<div style="font-size:var(--fs-3xs);color:var(--text-hint);margin-top:1px;text-transform:uppercase;letter-spacing:.02em;">'+label+'</div>'
+    + '</button>';
 
   // Card principal: a flag da semana — o mais importante, fica sozinho à esquerda
   const cardFlags = '<div style="flex:1;min-width:260px;background:var(--surface2);border-radius:var(--r-sm);padding:14px 16px;">'
@@ -7446,10 +7464,14 @@ function buildOvInsightsSemana() {
   // Card de destrinchamento: os dois critérios que COMPÕEM a flag — prazo e score —
   // lado a lado, na mesma largura total do card de flags.
   const cardDestrinche = '<div style="flex:1;min-width:260px;background:var(--surface2);border-radius:var(--r-sm);padding:14px 16px;">'
-    + '<div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:8px;">Composição da flag — prazo</div>'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'
+    + '<div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);">Composição da flag — prazo</div>'
+    + (ovPrazoFiltro ? '<button onclick="toggleOvPrazoFiltro(\''+ovPrazoFiltro+'\')" style="font-size:var(--fs-2xs);color:var(--accent);background:none;border:none;cursor:pointer;text-decoration:underline;">'+icon('x',{size:10})+' limpar filtro</button>' : '')
+    + '</div>'
     + '<div style="display:flex;gap:6px;margin-bottom:12px;">'
-    + quadradoPeq(noPrazoCount, pct(noPrazoCount, totalPrazo), 'var(--green)', 'No prazo')
-    + quadradoPeq(atrasadasCount, pct(atrasadasCount, totalPrazo), 'var(--accent)', 'Atrasadas')
+    + quadradoPeqClic(noPrazoCount, pct(noPrazoCount, totalPrazo), 'var(--green)', 'No prazo', 'noPrazo')
+    + quadradoPeqClic(riscoCount, pct(riscoCount, totalPrazo), 'var(--amber)', 'Em risco', 'risco')
+    + quadradoPeqClic(atrasadasCount, pct(atrasadasCount, totalPrazo), 'var(--accent)', 'Atrasadas', 'atrasado')
     + '</div>'
     + '<div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:8px;">Composição da flag — score</div>'
     + '<div style="display:flex;gap:6px;">'
@@ -7512,6 +7534,13 @@ function buildOvGantt() {
   });
   if (consFilter) prjs = prjs.filter(p => p.consultor === consFilter);
   if (ovFlagFiltro) prjs = prjs.filter(p => calcFlagAutomatica(p, refDateSemana) === ovFlagFiltro);
+  if (ovPrazoFiltro) prjs = prjs.filter(p => {
+    const st = prazoStatus(p);
+    if (ovPrazoFiltro === 'noPrazo')  return st.ok === true;
+    if (ovPrazoFiltro === 'risco')    return st.ok === false && st.risco;
+    if (ovPrazoFiltro === 'atrasado') return st.ok === false && !st.risco;
+    return true;
+  });
   if (etapaFilter !== '') {
     const etapaIdx = parseInt(etapaFilter);
     const diaSem = hoje.getDay();
