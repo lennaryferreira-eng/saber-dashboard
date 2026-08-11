@@ -1542,9 +1542,23 @@
           <div style="font-size:var(--fs-base);color:var(--text-hint);padding:8px 0;">Buscando transcrições recentes…</div>
         </div>
         <div id="aud-drive-erro" style="display:none;font-size:var(--fs-base);color:var(--red);padding:8px 12px;background:var(--red-dim);border-radius:var(--r-sm);margin-top:10px;"></div>
-        <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:14px;">
-          <button class="btn btn-ghost" onclick="audFecharModalDrive()">Cancelar</button>
-          <button class="btn btn-primary" onclick="audAdicionarSelecaoNaFila()">Adicionar selecionadas à fila</button>
+        <!-- Seletor de IA no rodapé do modal, entre a lista e o botão: o fluxo é escolher as
+             calls, escolher com o que avaliar, e só então disparar. Cada item da fila guarda o
+             modelo escolhido AQUI (ver audAdicionarSelecaoNaFila) — trocar depois não mexe no
+             que já está na fila, porque a avaliação roda em segundo plano. -->
+        <div style="display:flex;gap:12px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--border);margin-top:14px;">
+          <div style="min-width:260px;flex:1;">
+            <label for="aud-drive-modelo" class="aud-lbl">IA que vai avaliar estas reuniões</label>
+            <select id="aud-drive-modelo" class="aud-inp">
+              <option value="claude" selected>Claude Sonnet 4.6 — mais rigoroso</option>
+              <option value="haiku">Claude Haiku 4.5 — rigor intermediário, 3x mais barato</option>
+              <option value="gemini">Gemini 2.5 Pro — mais leniente</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost" onclick="audFecharModalDrive()">Cancelar</button>
+            <button class="btn btn-primary" onclick="audAdicionarSelecaoNaFila()">Avaliar selecionadas</button>
+          </div>
         </div>
       </div>
       <div id="modal-drive-processando" style="display:none;"></div>
@@ -11015,8 +11029,10 @@ function audModeloEscolhido(){
   return document.getElementById('aud-f-modelo')?.value || 'claude';
 }
 
-async function audChamarClaude(transcricao, onProgress, tipoFoco){
-  const body={transcricao, modelo: audModeloEscolhido()};
+// `modeloExplicito` existe pra fila do Drive: cada item guarda a IA escolhida no momento em
+// que entrou na fila, e é essa que vale — não a que estiver selecionada agora na tela.
+async function audChamarClaude(transcricao, onProgress, tipoFoco, modeloExplicito){
+  const body={transcricao, modelo: modeloExplicito || audModeloEscolhido()};
   if(tipoFoco) body.tipoFoco=tipoFoco;
   const response=await fetch('/api/evaluate-meeting',{
     method:'POST',
@@ -11398,6 +11414,7 @@ function audAdicionarSelecaoNaFila(){
   const files=JSON.parse(lista.dataset.files||'[]');
   const itens=[];
   const erro=document.getElementById('aud-drive-erro');
+  const modeloFila=document.getElementById('aud-drive-modelo')?.value || 'claude';
   let faltouCliente=false, faltouTipoDivisao=false;
   lista.querySelectorAll('.aud-drive-check').forEach(chk=>{
     if(!chk.checked) return;
@@ -11411,7 +11428,10 @@ function audAdicionarSelecaoNaFila(){
     // separado do .id do item da fila — o segundo item de uma divisão ganha um .id próprio
     // (pra poder revisar/remover cada um independente), mas os dois têm que buscar a MESMA
     // transcrição original.
-    const base={...files[idx], driveFileIdBusca:files[idx].id, consultorSugerido:consultor, clienteSugerido:cliente, status:'pendente', resultado:null, erroMsg:null};
+    // `modelo` fica gravado no item, não é lido na hora de avaliar: a fila roda em segundo
+    // plano, então trocar o seletor (ou adicionar uma segunda leva com outra IA) não pode
+    // mudar o modelo do que já está esperando. Também sobrevive ao F5, junto com a fila.
+    const base={...files[idx], driveFileIdBusca:files[idx].id, consultorSugerido:consultor, clienteSugerido:cliente, modelo:modeloFila, status:'pendente', resultado:null, erroMsg:null};
     if(tipo2 && tipo2!==tipo){
       if(!tipo){ faltouTipoDivisao=true; return; }
       // Mesma call cobre 2 entregas — gera DUAS auditorias separadas da mesma transcrição,
@@ -11464,7 +11484,7 @@ async function audFilaProcessarBackground(){
         const texto=await audChamarClaude(data.texto||'', (textoAcumulado)=>{
           const {label}=audEstimarProgressoAnalise(textoAcumulado);
           item.progressoLabel=label; audRenderFilaLista();
-        }, item.tipoFoco);
+        }, item.tipoFoco, item.modelo);
         item.resultado={
           texto,
           scores: audParseScores(texto),
@@ -11493,10 +11513,13 @@ function audRenderFilaLista(){
   if(!visiveis.length){ box.innerHTML=''; audFilaAtiva=null; audFilaSalvarEstado(); return; }
   const ICO_NOME={pendente:'clock',gerando:'refresh',pronta:'check',erro:'warning'};
   const ICO_COR={pendente:'var(--text-hint)',gerando:'var(--blue)',pronta:'var(--green)',erro:'var(--accent)'};
+  const NOME_MODELO={claude:'Sonnet 4.6',haiku:'Haiku 4.5',gemini:'Gemini 2.5 Pro'};
   const linhas=visiveis.map(it=>{
     const sub = it.status==='gerando' ? (it.progressoLabel||'Processando…')
       : it.status==='erro' ? ('Erro: '+(it.erroMsg||'desconhecido'))
-      : (it.consultorSugerido||'—')+' · '+(it.tipoSugerido||'—')+' · '+(it.clienteSugerido||'—');
+      // Mostra a IA no subtítulo: levas enfileiradas em momentos diferentes podem ter
+      // modelos diferentes, e sem isso não daria pra saber qual avaliou o quê.
+      : (it.consultorSugerido||'—')+' · '+(it.tipoSugerido||'—')+' · '+(it.clienteSugerido||'—')+' · '+(NOME_MODELO[it.modelo]||NOME_MODELO.claude);
     const acoes = it.status==='pronta'
       ? '<button class="btn btn-primary" style="padding:4px 10px;font-size:var(--fs-xs);" onclick="audAbrirRevisaoDoItem(\''+it.id+'\')">Revisar</button>'
       : it.status==='erro'
