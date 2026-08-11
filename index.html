@@ -7604,6 +7604,11 @@ function buildOvGantt() {
       const ep = entp[si] || entp[String(si)];
       if (ep && ep.real) reaisp[si] = ep.real;
     }
+    // Mesmo critério da flag/Insights (prazoStatus: até 52 dias do início é no prazo, depois
+    // disso é atraso) — antes cada etapa era tingida comparando com a etapa anterior +7 dias,
+    // um critério à parte que não batia com o que a flag do projeto (ícone no início da linha)
+    // realmente usa. Agora a cor é a mesma em toda a linha, uma por projeto.
+    const prazoOkP = prazoStatus(p).ok;
     const labelMap = {};
     const shown = new Set();
     semanas.forEach(s => {
@@ -7614,17 +7619,7 @@ function buildOvGantt() {
       const reaisHere = [0,1,2,3,4,5,6].filter(si => reaisp[si] && reaisp[si] >= sISO && reaisp[si] <= eISO);
       if (reaisHere.length > 0) {
         reaisHere.forEach(si => shown.add(si));
-        // MESMA fórmula da barra de progresso do Lead Time: prazo = data real da etapa
-        // ANTERIOR + 7 dias (ou início + 7d pra Growth/Kickoff) — não é a divisão
-        // proporcional do prazo total, é sempre em relação ao que realmente aconteceu antes.
-        const cores = reaisHere.map(si => {
-          const refDate = (si === 0 || si === 1) ? p.inicio : (entp[si-1] || entp[String(si-1)])?.real;
-          const prazo7 = refDate ? addDays(refDate, 7) : null;
-          const real = reaisp[si];
-          const atraso = prazo7 && real ? diffDays(prazo7, real) : null;
-          return atraso === null ? null : (atraso <= 0 ? 'verde' : 'vermelho');
-        });
-        const corFinal = cores.includes('vermelho') ? 'vermelho' : (cores.length && cores.every(c => c === 'verde') ? 'verde' : null);
+        const corFinal = prazoOkP === true ? 'verde' : prazoOkP === false ? 'vermelho' : null;
         // Score da(s) etapa(s) dessa semana — mostra TODAS, uma por linha, alinhadas com
         // o nome de cada uma (antes só mostrava a pior nota e descartava as outras).
         const scoresAqui = reaisHere.map(si => {
