@@ -7347,32 +7347,20 @@ function buildOvInsightsSemana() {
   }
 
   // Toda entrega (qualquer projeto, qualquer posição) com data REAL dentro dessa semana —
-  // classificada em adiantada/no prazo/atrasada com o mesmo critério da barra de progresso
-  // do Lead Time (prazo = 7 dias após a etapa anterior NA ORDEM DE EXIBIÇÃO daquele projeto).
+  // usada só pra distribuição de score. O prazo virou um critério de PROJETO (prazoStatus,
+  // mais abaixo), não mais de entrega isolada comparada com a etapa anterior +7 dias.
   const entregasDaSemana = [];
   projects.forEach(p => {
     if (isDroFam(p)) return;
     const ent = p.entregas || {};
-    const ordem = ordemCompleta(p);
     [0,1,2,3,4,5,6].forEach(si => {
       const e = ent[si] || ent[String(si)];
       if (!e || !e.real) return;
       if (e.real < iniISO || e.real > fimISO) return;
-      const pos = ordem.indexOf(si);
-      let refDate = null;
-      if (pos === 0 || pos === 1) refDate = p.inicio || null;
-      else { const siAnt = ordem[pos - 1]; refDate = (p.entregas?.[siAnt] || p.entregas?.[String(siAnt)])?.real || null; }
-      const prazo7 = refDate ? addDays(refDate, 7) : null;
-      const atraso = prazo7 ? diffDays(prazo7, e.real) : null;
       const score = (e.score !== undefined && e.score !== '' && !isNaN(parseFloat(e.score))) ? parseFloat(e.score) : null;
-      entregasDaSemana.push({ p, si, atraso, score });
+      entregasDaSemana.push({ p, si, score });
     });
   });
-
-  const adiantadas = entregasDaSemana.filter(x => x.atraso !== null && x.atraso < 0).length;
-  const noPrazo    = entregasDaSemana.filter(x => x.atraso === 0).length;
-  const atrasadas  = entregasDaSemana.filter(x => x.atraso !== null && x.atraso > 0).length;
-  const semRef     = entregasDaSemana.length - adiantadas - noPrazo - atrasadas; // sem etapa anterior pra comparar
 
   // Score das entregas da semana — mesma faixa usada em todo o painel: <55 ruim, 55-69 fez
   // o básico, 70-84 sólido, 85-100 acima do padrão (85+ é "sólido" pra fins de contagem,
@@ -7396,7 +7384,12 @@ function buildOvInsightsSemana() {
   const flags = { Verde: 0, Amarelo: 0, Vermelho: 0 };
   projetosAtivosAgora.forEach(p => { const f = calcFlagAutomatica(p, refDateSemana); if (flags[f] !== undefined) flags[f]++; });
   const totalFlags = projetosAtivosAgora.length;
-  const totalPrazo = adiantadas + noPrazo + atrasadas; // exclui as sem referência do total de %
+  // Mesmo critério binário usado DENTRO da flag (prazoStatus: até 52 dias do início é no
+  // prazo, depois disso é atraso) — antes esse quadro comparava cada entrega isolada com a
+  // etapa anterior +7 dias, um critério diferente do que de fato decide a flag.
+  const noPrazoCount   = projetosAtivosAgora.filter(p => prazoStatus(p).ok === true).length;
+  const atrasadasCount = projetosAtivosAgora.filter(p => prazoStatus(p).ok === false).length;
+  const totalPrazo     = noPrazoCount + atrasadasCount;
 
   const pct = (v, total) => total > 0 ? Math.round(v / total * 100) : 0;
   // Quadradinho grande — usado só na flag principal (card da esquerda). Clicável: filtra a
@@ -7432,9 +7425,8 @@ function buildOvInsightsSemana() {
   const cardDestrinche = '<div style="flex:1;min-width:260px;background:var(--surface2);border-radius:var(--r-sm);padding:14px 16px;">'
     + '<div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:8px;">Composição da flag — prazo</div>'
     + '<div style="display:flex;gap:6px;margin-bottom:12px;">'
-    + quadradoPeq(adiantadas, pct(adiantadas, totalPrazo), 'var(--green)', 'Adiant.')
-    + quadradoPeq(noPrazo, pct(noPrazo, totalPrazo), 'var(--green)', 'No prazo')
-    + quadradoPeq(atrasadas, pct(atrasadas, totalPrazo), 'var(--accent)', 'Atrasadas')
+    + quadradoPeq(noPrazoCount, pct(noPrazoCount, totalPrazo), 'var(--green)', 'No prazo')
+    + quadradoPeq(atrasadasCount, pct(atrasadasCount, totalPrazo), 'var(--accent)', 'Atrasadas')
     + '</div>'
     + '<div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:8px;">Composição da flag — score</div>'
     + '<div style="display:flex;gap:6px;">'
@@ -7444,10 +7436,8 @@ function buildOvInsightsSemana() {
     + quadradoPeq(scoreAcima, pct(scoreAcima, totalScore), 'var(--green)', 'Acima padrão')
     + '</div>'
     + (entregasDaSemana.length===0 ? '<div style="font-size:var(--fs-sm);color:var(--text-hint);margin-top:10px;">Nenhuma entrega registrada nessa semana.</div>'
-        : '<div style="font-size:var(--fs-2xs);color:var(--text-hint);margin-top:10px;">'
-          + (semRef>0 ? semRef+' sem etapa anterior pra comparar prazo. ' : '')
-          + ((entregasDaSemana.length - totalScore)>0 ? (entregasDaSemana.length - totalScore)+' ainda sem avaliação de score.' : '')
-          + '</div>')
+        : ((entregasDaSemana.length - totalScore)>0 ? '<div style="font-size:var(--fs-2xs);color:var(--text-hint);margin-top:10px;">'
+          + (entregasDaSemana.length - totalScore)+' ainda sem avaliação de score.</div>' : ''))
     + '</div>';
 
   el.innerHTML = '<div style="display:flex;gap:14px;flex-wrap:wrap;">' + cardFlags + cardDestrinche + '</div>';
