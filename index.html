@@ -7771,13 +7771,19 @@ function buildOvGantt() {
   // Abre sempre mostrando a semana ATUAL (com uma margem de semanas anteriores visível), em
   // vez de cair no início do retroativo — o histórico completo (até a Growth do projeto mais
   // antigo) continua a um arraste de distância pra esquerda.
-  const weekThs = Array.from(wrap.querySelectorAll('thead th')).slice(2); // pula Projeto/Consultor
-  const idxAtual = semanas.findIndex(s => { const sEnd = new Date(s.getTime()+6*864e5); return hojeISO >= toISOf(s) && hojeISO <= toISOf(sEnd); });
-  if (idxAtual >= 0) {
+  // Roda depois de 2 frames (não na hora): o card de flags/composição FICA ACIMA do Gantt na
+  // mesma página, e ícone SVG + fonte às vezes só terminam de medir a largura real das colunas
+  // depois do primeiro paint — calcular o scroll cedo demais pega uma largura de coluna que
+  // ainda vai mudar, e a semana atual acaba um pouco deslocada (ex: 03/08 cortada pela metade).
+  const posicionarScrollAtual = () => {
+    const weekThs = Array.from(wrap.querySelectorAll('thead th')).slice(2); // pula Projeto/Consultor
+    const idxAtual = semanas.findIndex(s => { const sEnd = new Date(s.getTime()+6*864e5); return hojeISO >= toISOf(s) && hojeISO <= toISOf(sEnd); });
+    if (idxAtual < 0) return;
     const thAlvo = weekThs[Math.max(0, idxAtual - 3)]; // até 3 semanas de margem antes da atual
     const stickyWidth = wrap.querySelector('thead th')?.offsetWidth || 0;
     if (thAlvo) wrap.scrollLeft = Math.max(0, thAlvo.offsetLeft - stickyWidth);
-  }
+  };
+  requestAnimationFrame(() => requestAnimationFrame(posicionarScrollAtual));
 }
 
 
