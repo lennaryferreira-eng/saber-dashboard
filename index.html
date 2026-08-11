@@ -1550,8 +1550,8 @@
           <div style="min-width:260px;flex:1;">
             <label for="aud-drive-modelo" class="aud-lbl">IA que vai avaliar estas reuniões</label>
             <select id="aud-drive-modelo" class="aud-inp">
-              <option value="claude" selected>Claude Sonnet 4.6 — mais rigoroso</option>
-              <option value="haiku">Claude Haiku 4.5 — rigor intermediário, 3x mais barato</option>
+              <option value="haiku" selected>Claude Haiku 4.5 — padrão</option>
+              <option value="claude">Claude Sonnet 4.6 — mais rigoroso e mais lento</option>
               <option value="gemini">Gemini 2.5 Pro — mais leniente</option>
             </select>
           </div>
@@ -10934,8 +10934,8 @@ function audFormHTML(){
     + '<div><label for="aud-f-cliente" class="aud-lbl">Cliente</label><input id="aud-f-cliente" class="aud-inp" list="aud-f-cliente-list" autocomplete="off" placeholder="Digite pra buscar…"><datalist id="aud-f-cliente-list">'+optDatalist(audClientes())+'</datalist></div>'
     + '<div><label for="aud-f-data" class="aud-lbl">Data da reunião</label><input id="aud-f-data" type="date" class="aud-inp"></div>'
     + '<div><label for="aud-f-modelo" class="aud-lbl">IA que vai avaliar</label><select id="aud-f-modelo" class="aud-inp">'
-    +   '<option value="claude" selected>Claude Sonnet 4.6 — mais rigoroso</option>'
-    +   '<option value="haiku">Claude Haiku 4.5 — rigor intermediário, 3x mais barato</option>'
+    +   '<option value="haiku" selected>Claude Haiku 4.5 — padrão</option>'
+    +   '<option value="claude">Claude Sonnet 4.6 — mais rigoroso e mais lento</option>'
     +   '<option value="gemini">Gemini 2.5 Pro — mais leniente</option>'
     + '</select></div>'
     + '</div>'
@@ -11026,7 +11026,7 @@ function audModeloEscolhido(){
   // Fallback no Claude, não no Gemini: se o seletor ainda não existe (fila do Drive
   // disparando antes do formulário renderizar), o certo é cair no modelo que avalia com
   // mais rigor — o mesmo default que o servidor aplica.
-  return document.getElementById('aud-f-modelo')?.value || 'claude';
+  return document.getElementById('aud-f-modelo')?.value || 'haiku';
 }
 
 // `modeloExplicito` existe pra fila do Drive: cada item guarda a IA escolhida no momento em
@@ -11426,7 +11426,7 @@ function audAdicionarSelecaoNaFila(){
   const files=JSON.parse(lista.dataset.files||'[]');
   const itens=[];
   const erro=document.getElementById('aud-drive-erro');
-  const modeloFila=document.getElementById('aud-drive-modelo')?.value || 'claude';
+  const modeloFila=document.getElementById('aud-drive-modelo')?.value || 'haiku';
   let faltouCliente=false, faltouTipoDivisao=false;
   lista.querySelectorAll('.aud-drive-check').forEach(chk=>{
     if(!chk.checked) return;
@@ -11548,7 +11548,7 @@ function audRenderFilaLista(){
       : it.status==='erro' ? ('Erro: '+(it.erroMsg||'desconhecido'))
       // Mostra a IA no subtítulo: levas enfileiradas em momentos diferentes podem ter
       // modelos diferentes, e sem isso não daria pra saber qual avaliou o quê.
-      : (it.consultorSugerido||'—')+' · '+(it.tipoSugerido||'—')+' · '+(it.clienteSugerido||'—')+' · '+(NOME_MODELO[it.modelo]||NOME_MODELO.claude);
+      : (it.consultorSugerido||'—')+' · '+(it.tipoSugerido||'—')+' · '+(it.clienteSugerido||'—')+' · '+(NOME_MODELO[it.modelo]||NOME_MODELO.haiku);
     const acoes = it.status==='pronta'
       ? '<button class="btn btn-primary" style="padding:4px 10px;font-size:var(--fs-xs);" onclick="audAbrirRevisaoDoItem(\''+it.id+'\')">Revisar</button>'
       : it.status==='erro'

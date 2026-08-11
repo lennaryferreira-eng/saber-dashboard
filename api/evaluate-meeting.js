@@ -9,14 +9,15 @@
 // formato de texto que o parser da Auditoria de Entregas (audParseScores /
 // audParseObs / audParseD9 / audParseRec, em index.html) já sabe ler.
 //
-// DOIS MODELOS, escolhidos por avaliação no seletor da aba Auditoria:
-//   'claude' (PADRÃO) -> claude-sonnet-4-6. Avalia component a componente e penaliza o que
-//                        faltou; o Gemini avalia o que aconteceu e premia o conjunto. Na
-//                        mesma transcrição e mesma rubrica, deu média 49 contra 76.
-//   'gemini'          -> gemini-2.5-pro. ~40% mais barato e ~2x mais rápido, mas mais
-//                        leniente. Três tentativas de endurecer por prompt (trava de
-//                        componentes, trava de citação literal, nota calculada por fora)
-//                        falharam — duas subiram a nota, a terceira foi ignorada.
+// TRÊS MODELOS, escolhidos por avaliação no seletor da aba Auditoria. Medido na mesma
+// transcrição e mesma rubrica (nota consolidada / US$ por avaliação / segundos):
+//   'haiku' (PADRÃO) -> claude-haiku-4-5.   62,0 · 0,0337 · 43s
+//   'claude'         -> claude-sonnet-4-6.  47,5 · 0,1177 · 87s
+//   'gemini'         -> gemini-2.5-pro.     76,4 · 0,0679 · 40s
+// Os dois Claude avaliam componente a componente e penalizam o que faltou; o Gemini avalia
+// o que aconteceu e premia o conjunto (na mesma D4, deu 100 contra 55 do Sonnet). Três
+// tentativas de endurecer o Gemini por prompt — trava de componentes, trava de citação
+// literal, nota calculada por fora — falharam: duas subiram a nota, a terceira foi ignorada.
 // A tradução de eventos SSE só existe no caminho do Gemini: o cliente já fala o formato da
 // Anthropic (content_block_delta/message_delta), então o stream do Claude é repassado cru.
 
@@ -42,9 +43,9 @@ export default async function handler(req, res) {
     claude: 'claude-sonnet-4-6',
     haiku: 'claude-haiku-4-5',
   };
-  // Default no Claude: quem não manda `modelo` (chamada antiga, integração externa) cai no
-  // que avalia com mais rigor, não no mais barato.
-  const modeloClaude = modelo === 'gemini' ? null : (MODELOS_CLAUDE[modelo] || MODELOS_CLAUDE.claude);
+  // Default no Haiku: quem não manda `modelo` (chamada antiga, integração externa) cai no
+  // que avalia componente a componente, e é também o mais barato e o segundo mais rápido.
+  const modeloClaude = modelo === 'gemini' ? null : (MODELOS_CLAUDE[modelo] || MODELOS_CLAUDE.haiku);
   const usarClaude = !!modeloClaude;
   const apiKey = usarClaude ? process.env.ANTHROPIC_API_KEY : process.env.GEMINI_API_KEY;
   if (!apiKey) {
