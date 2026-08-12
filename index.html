@@ -676,13 +676,14 @@
 </section>
 <section id="sec-fca" class="section">
   <div class="sec-head" style="display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:10px;">
-    <div><h2 class="sec-title">FCA</h2><p class="sec-desc">Fato, Causa e Ação — problemas gerais do squad e o que foi feito a respeito.</p></div>
-    <button class="btn btn-primary" onclick="abrirModalFcaNovo()" style="white-space:nowrap;">+ Nova FCA</button>
+    <div><h2 class="sec-title">FCA</h2><p class="sec-desc">Fato, Causa e Ação — problemas gerais do squad e de projetos específicos.</p></div>
+    <button class="btn btn-primary" onclick="fcaAbrirModalNovo()" style="white-space:nowrap;">+ Nova FCA</button>
   </div>
+  <div id="fca-modo-toggle" style="display:flex;gap:8px;margin-bottom:1rem;"></div>
   <div class="card">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap;">
       <div class="card-title" style="margin:0;">FCAs registradas</div>
-      <div id="fca-filtros" style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;"></div>
+      <div id="fca-filtros" style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;"></div>
     </div>
     <div id="fca-tabela-wrap" class="tbl-scroll"></div>
   </div>
@@ -1282,6 +1283,10 @@
       <button class="modal-close" onclick="fecharModalFca()" title="Fechar"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
     </div>
     <div class="modal-body">
+      <div id="fca-modal-projeto-row" style="display:none;">
+        <label for="fca-modal-projeto" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Projeto</label>
+        <select id="fca-modal-projeto" class="sel" style="width:100%;font-size:var(--fs-base);margin-bottom:12px;"></select>
+      </div>
       <label for="fca-modal-fato" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Fato</label>
       <textarea id="fca-modal-fato" class="sel" rows="2" placeholder="O que foi observado…" style="width:100%;font-size:var(--fs-base);margin-bottom:12px;resize:vertical;"></textarea>
       <label for="fca-modal-causa" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Causa</label>
@@ -2304,25 +2309,63 @@ document.getElementById('filter-framework').addEventListener('change', renderAll
 document.getElementById('filter-tipo').addEventListener('change', renderAll);
 
 /* ============================================================
-   FCA — Fato, Causa, Ação (problemas gerais do squad)
+   FCA — Fato, Causa, Ação (problemas gerais do squad e de projetos)
    ============================================================ */
+let fcaModo = 'geral'; // 'geral' | 'projetos' — mesma aba, alterna a visão
 let fcaFiltro = 'aberto'; // 'aberto' | 'concluida' | 'todas' — padrão: só as que ainda precisam de acompanhamento
+let fcaProjSemanaOffset = 0; // só usado no modo 'projetos': qual semana alimenta o seletor de projeto do modal
 const FCA_IMPACTO_COR = { Alto: 'var(--accent)', 'Médio': 'var(--amber)', Baixo: 'var(--green)' };
 const FCA_PRIORIDADE_COR = { Alta: 'var(--accent)', 'Média': 'var(--amber)', Baixa: 'var(--green)' };
 function buildFca(){
+  fcaRenderModoToggle();
   fcaRenderFiltros();
   fcaRenderLista();
+}
+function fcaRenderModoToggle(){
+  const box = document.getElementById('fca-modo-toggle');
+  if (!box) return;
+  const modos = [['geral','FCA Geral'],['projetos','FCA Projetos']];
+  box.innerHTML = modos.map(([v,l]) => '<button type="button" class="btn' + (fcaModo===v?' btn-primary':' btn-ghost') + '" onclick="fcaTrocarModo(\''+v+'\')">'+l+'</button>').join('');
+}
+function fcaTrocarModo(v){ fcaModo = v; fcaRenderModoToggle(); fcaRenderFiltros(); fcaRenderLista(); }
+function fcaNavProjSemana(dir){ fcaProjSemanaOffset += dir; fcaRenderFiltros(); }
+// Quem está "rodando" numa semana (início já começou, ainda não tinha terminado ou só
+// terminou depois do começo dessa semana) — é essa a régua de "projeto entra/sai da semana"
+// que decide quem aparece pra escolher no modal de FCA de projeto. A FCA em si não fica presa
+// à semana (fica só o registro do projeto, permanente) — só a lista de quem dá pra escolher.
+function fcaProjetosElegiveis(offset){
+  const { inicio, fim } = getWeekBounds(offset);
+  return projects.filter(p => {
+    if (isDroFam(p) || !p.inicio) return false;
+    const dIni = parseDate(p.inicio);
+    if (!dIni || dIni > fim) return false;
+    const dFim = fimRealEfetivo(p);
+    return !dFim || dFim >= inicio;
+  }).sort((a,b) => (a.nome||'').localeCompare(b.nome||''));
 }
 function fcaRenderFiltros(){
   const box = document.getElementById('fca-filtros');
   if (!box) return;
   const opts = [['aberto','Em aberto'],['concluida','Concluídas'],['todas','Todas']];
-  box.innerHTML = opts.map(([v,l]) => '<button type="button" class="btn' + (fcaFiltro===v?' btn-primary':' btn-ghost') + '" style="padding:5px 12px;font-size:var(--fs-sm);" onclick="fcaTrocarFiltro(\''+v+'\')">'+l+'</button>').join('');
+  let html = opts.map(([v,l]) => '<button type="button" class="btn' + (fcaFiltro===v?' btn-primary':' btn-ghost') + '" style="padding:5px 12px;font-size:var(--fs-sm);" onclick="fcaTrocarFiltro(\''+v+'\')">'+l+'</button>').join('');
+  if (fcaModo === 'projetos') {
+    const { inicio, fim } = getWeekBounds(fcaProjSemanaOffset);
+    const fmt = d => String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');
+    html += '<div style="display:flex;align-items:center;gap:6px;margin-left:12px;padding-left:12px;border-left:1px solid var(--border);">'
+      + '<span style="font-size:var(--fs-xs);color:var(--text-hint);">Projetos p/ nova FCA:</span>'
+      + '<button type="button" onclick="fcaNavProjSemana(-1)" style="padding:3px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);cursor:pointer;">‹</button>'
+      + '<span style="font-size:var(--fs-sm);font-weight:600;min-width:96px;text-align:center;">' + fmt(inicio) + '–' + fmt(fim) + (fcaProjSemanaOffset===0?' (atual)':'') + '</span>'
+      + '<button type="button" onclick="fcaNavProjSemana(1)" style="padding:3px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);cursor:pointer;">›</button>'
+      + '</div>';
+  }
+  box.innerHTML = html;
 }
 function fcaTrocarFiltro(v){ fcaFiltro = v; fcaRenderFiltros(); fcaRenderLista(); }
 // Pop-up de registro — fica fora da tela principal de propósito (a lista já tinha ficado
-// poluída com o formulário sempre aberto em cima da tabela).
-function abrirModalFcaNovo(){
+// poluída com o formulário sempre aberto em cima da tabela). Um único modal serve os dois
+// modos: no modo 'projetos' aparece o seletor de projeto no topo, populado pela semana
+// navegável ao lado do filtro.
+function fcaAbrirModalNovo(){
   ['fca-modal-fato','fca-modal-causa','fca-modal-acao','fca-modal-resultado-esperado','fca-modal-frente'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
   const impactoEl = document.getElementById('fca-modal-impacto'); if (impactoEl) impactoEl.value = 'Médio';
   const prioridadeEl = document.getElementById('fca-modal-prioridade'); if (prioridadeEl) prioridadeEl.value = 'Média';
@@ -2331,6 +2374,22 @@ function abrirModalFcaNovo(){
   if (frenteListEl) {
     const frentes = [...new Set(fcaItens.map(it => it.frente).filter(Boolean))].sort();
     frenteListEl.innerHTML = frentes.map(f => '<option value="'+f.replace(/"/g,'&quot;')+'">').join('');
+  }
+  const tituloEl = document.getElementById('fca-modal-titulo');
+  const projRowEl = document.getElementById('fca-modal-projeto-row');
+  const projSelEl = document.getElementById('fca-modal-projeto');
+  if (fcaModo === 'projetos') {
+    if (tituloEl) tituloEl.textContent = 'Nova FCA de Projeto';
+    if (projRowEl) projRowEl.style.display = 'block';
+    if (projSelEl) {
+      const elegiveis = fcaProjetosElegiveis(fcaProjSemanaOffset);
+      projSelEl.innerHTML = elegiveis.length
+        ? elegiveis.map(p => '<option value="'+p.id+'">'+p.nome.replace(/</g,'&lt;')+'</option>').join('')
+        : '<option value="">Nenhum projeto rodando nessa semana</option>';
+    }
+  } else {
+    if (tituloEl) tituloEl.textContent = 'Nova FCA';
+    if (projRowEl) projRowEl.style.display = 'none';
   }
   const modal = document.getElementById('modal-fca-novo');
   if (modal) modal.style.display = 'flex';
@@ -2343,6 +2402,13 @@ function fcaSalvarNovo(){
   const g = id => (document.getElementById(id)?.value || '').trim();
   const fato = g('fca-modal-fato'), causa = g('fca-modal-causa'), acao = g('fca-modal-acao');
   if (!fato || !causa || !acao) { showAlert('Preencha ao menos Fato, Causa e Ação.'); return; }
+  let projetoId = null, projetoNome = null;
+  if (fcaModo === 'projetos') {
+    const projSelEl = document.getElementById('fca-modal-projeto');
+    projetoId = projSelEl?.value || '';
+    if (!projetoId) { showAlert('Selecione o projeto.'); return; }
+    projetoNome = projects.find(p => String(p.id) === String(projetoId))?.nome || '';
+  }
   fcaItens.unshift({
     id: 'fca_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
     criadoEm: new Date().toISOString(),
@@ -2353,6 +2419,7 @@ function fcaSalvarNovo(){
     prioridade: g('fca-modal-prioridade') || 'Média',
     frente: g('fca-modal-frente'),
     concluida: false,
+    projetoId, projetoNome, // null nos dois = FCA geral; preenchidos = FCA de projeto
   });
   upd();
   fecharModalFca();
@@ -2377,8 +2444,16 @@ async function fcaExcluir(id){
 function fcaRenderLista(){
   const wrap = document.getElementById('fca-tabela-wrap');
   if (!wrap) return;
-  const lista = fcaItens.filter(it => fcaFiltro === 'todas' || (fcaFiltro === 'concluida') === !!it.concluida);
-  if (!lista.length) { wrap.innerHTML = '<div style="font-size:var(--fs-base);color:var(--text-hint);padding:8px 0;">Nenhuma FCA' + (fcaFiltro==='concluida'?' concluída':fcaFiltro==='aberto'?' em aberto':'') + '.</div>'; return; }
+  const lista = fcaItens.filter(it => {
+    const doModoCerto = fcaModo === 'projetos' ? !!it.projetoId : !it.projetoId;
+    if (!doModoCerto) return false;
+    return fcaFiltro === 'todas' || (fcaFiltro === 'concluida') === !!it.concluida;
+  });
+  if (!lista.length) {
+    const vazio = fcaModo === 'projetos' ? 'Nenhuma FCA de projeto' : 'Nenhuma FCA';
+    wrap.innerHTML = '<div style="font-size:var(--fs-base);color:var(--text-hint);padding:8px 0;">' + vazio + (fcaFiltro==='concluida'?' concluída':fcaFiltro==='aberto'?' em aberto':'') + '.</div>';
+    return;
+  }
   const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const trunc = (s, max) => { const full = esc(s); return '<span title="' + full + '">' + (s && s.length > max ? esc(s.slice(0, max)) + '…' : full) + '</span>'; };
   // Select estilizado como badge colorido — editável direto na tabela, sem precisar reabrir
@@ -2387,14 +2462,24 @@ function fcaRenderLista(){
     + opts.map(o => '<option value="'+o+'"'+(val===o?' selected':'')+'>'+o+'</option>').join('')
     + '</select>';
   const th = txt => '<th style="text-align:left;padding:6px 10px;background:var(--surface2);white-space:nowrap;">'+txt+'</th>';
-  const header = '<tr>' + ['Data','Fato','Causa','Ação','Resultado esperado','Resultado real','Impacto','Prioridade','Frente','Concluída',''].map(th).join('') + '</tr>';
+  const colunas = ['Data'].concat(fcaModo==='projetos' ? ['Projeto'] : []).concat(['Fato','Causa','Ação','Resultado esperado','Resultado real','Impacto','Prioridade','Frente','Concluída','']);
+  const header = '<tr>' + colunas.map(th).join('') + '</tr>';
   // Sugestões de Frente = todas as já usadas em qualquer FCA, um datalist só compartilhado
   // por todas as linhas da tabela (não precisa um por linha).
   const frentesExistentes = [...new Set(fcaItens.map(it => it.frente).filter(Boolean))].sort();
   const datalistFrente = '<datalist id="fca-tabela-frente-list">' + frentesExistentes.map(f => '<option value="'+esc(f)+'">').join('') + '</datalist>';
   const rows = lista.map(it => {
+    const pProj = it.projetoId ? projects.find(p => String(p.id) === String(it.projetoId)) : null;
+    const flagCorProj = pProj ? ({Verde:'var(--green)',Amarelo:'var(--amber)',Vermelho:'var(--accent)'})[calcFlagAutomatica(pProj)] || 'var(--text-hint)' : '';
+    const colProjeto = fcaModo === 'projetos'
+      ? '<td style="padding:6px 10px;white-space:nowrap;">' + (pProj
+          ? '<button type="button" onclick="abrirModalFlag('+pProj.id+',\'healthscore\')" style="font:inherit;padding:0;background:none;border:none;color:'+flagCorProj+';cursor:pointer;">' + icon('flag') + '</button> ' + esc(pProj.nome)
+          : '<span style="color:var(--text-hint);">' + esc(it.projetoNome || '—') + ' (excluído)</span>')
+        + '</td>'
+      : '';
     return '<tr style="border-bottom:1px solid var(--border);' + (it.concluida ? 'opacity:.6;' : '') + '">'
       + '<td style="padding:6px 10px;white-space:nowrap;color:var(--text-hint);font-size:var(--fs-xs);">' + fmtD((it.criadoEm||'').slice(0,10)) + '</td>'
+      + colProjeto
       + '<td style="padding:6px 10px;max-width:200px;">' + trunc(it.fato, 60) + '</td>'
       + '<td style="padding:6px 10px;max-width:200px;">' + trunc(it.causa, 60) + '</td>'
       + '<td style="padding:6px 10px;max-width:200px;">' + trunc(it.acao, 60) + '</td>'
