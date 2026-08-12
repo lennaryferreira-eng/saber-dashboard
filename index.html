@@ -675,17 +675,16 @@
   </div>
 </section>
 <section id="sec-fca" class="section">
-  <div class="sec-head"><h2 class="sec-title">FCA</h2><p class="sec-desc">Fato, Causa e Ação — problemas gerais do squad e o que foi feito a respeito.</p></div>
-  <div class="card" style="margin-bottom:1.2rem;">
-    <div class="card-title">Nova FCA</div>
-    <div id="fca-form"></div>
+  <div class="sec-head" style="display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+    <div><h2 class="sec-title">FCA</h2><p class="sec-desc">Fato, Causa e Ação — problemas gerais do squad e o que foi feito a respeito.</p></div>
+    <button class="btn btn-primary" onclick="abrirModalFcaNovo()" style="white-space:nowrap;">+ Nova FCA</button>
   </div>
   <div class="card">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap;">
       <div class="card-title" style="margin:0;">FCAs registradas</div>
       <div id="fca-filtros" style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;"></div>
     </div>
-    <div id="fca-lista"></div>
+    <div id="fca-tabela-wrap" class="tbl-scroll"></div>
   </div>
 </section>
 <section id="sec-cultura" class="section">
@@ -1272,6 +1271,51 @@
       <div style="display:flex;gap:6px;">
         <button class="btn btn-primary" onclick="salvarModalFlag()" style="flex:1;border-radius:6px;">Salvar</button>
         <button class="btn btn-ghost" onclick="fecharModalFlag()" style="border-radius:6px;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-fca-novo" onclick="if(event.target===this)fecharModalFca()">
+  <div class="modal-box" style="max-width:520px;" role="dialog" aria-modal="true" aria-labelledby="fca-modal-titulo">
+    <div class="modal-header">
+      <span class="modal-title" id="fca-modal-titulo">Nova FCA</span>
+      <button class="modal-close" onclick="fecharModalFca()" title="Fechar"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <label for="fca-modal-fato" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Fato</label>
+      <textarea id="fca-modal-fato" class="sel" rows="2" placeholder="O que foi observado…" style="width:100%;font-size:var(--fs-base);margin-bottom:12px;resize:vertical;"></textarea>
+      <label for="fca-modal-causa" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Causa</label>
+      <textarea id="fca-modal-causa" class="sel" rows="2" placeholder="Por que isso aconteceu…" style="width:100%;font-size:var(--fs-base);margin-bottom:12px;resize:vertical;"></textarea>
+      <label for="fca-modal-acao" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Ação</label>
+      <textarea id="fca-modal-acao" class="sel" rows="2" placeholder="O que vai ser feito…" style="width:100%;font-size:var(--fs-base);margin-bottom:12px;resize:vertical;"></textarea>
+      <label for="fca-modal-resultado-esperado" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Resultado esperado</label>
+      <textarea id="fca-modal-resultado-esperado" class="sel" rows="2" placeholder="O que se espera que aconteça…" style="width:100%;font-size:var(--fs-base);margin-bottom:12px;resize:vertical;"></textarea>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
+        <div>
+          <label for="fca-modal-impacto" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Impacto</label>
+          <select id="fca-modal-impacto" class="sel" style="width:100%;font-size:var(--fs-base);">
+            <option value="Alto">Alto</option>
+            <option value="Médio" selected>Médio</option>
+            <option value="Baixo">Baixo</option>
+          </select>
+        </div>
+        <div>
+          <label for="fca-modal-prioridade" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Prioridade</label>
+          <select id="fca-modal-prioridade" class="sel" style="width:100%;font-size:var(--fs-base);">
+            <option value="Alta">Alta</option>
+            <option value="Média" selected>Média</option>
+            <option value="Baixa">Baixa</option>
+          </select>
+        </div>
+        <div>
+          <label for="fca-modal-frente" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Frente</label>
+          <input id="fca-modal-frente" class="sel" list="fca-modal-frente-list" placeholder="ex: Comercial" style="width:100%;font-size:var(--fs-base);">
+          <datalist id="fca-modal-frente-list"></datalist>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-primary" onclick="fcaSalvarNovo()" style="flex:1;border-radius:6px;">Registrar</button>
+        <button class="btn btn-ghost" onclick="fecharModalFca()" style="border-radius:6px;">Cancelar</button>
       </div>
     </div>
   </div>
@@ -2263,20 +2307,9 @@ document.getElementById('filter-tipo').addEventListener('change', renderAll);
    FCA — Fato, Causa, Ação (problemas gerais do squad)
    ============================================================ */
 let fcaFiltro = 'aberto'; // 'aberto' | 'concluida' | 'todas' — padrão: só as que ainda precisam de acompanhamento
+const FCA_IMPACTO_COR = { Alto: 'var(--accent)', 'Médio': 'var(--amber)', Baixo: 'var(--green)' };
+const FCA_PRIORIDADE_COR = { Alta: 'var(--accent)', 'Média': 'var(--amber)', Baixa: 'var(--green)' };
 function buildFca(){
-  const form = document.getElementById('fca-form');
-  if (form && !form.dataset.ready) {
-    form.innerHTML = '<div style="display:flex;flex-direction:column;gap:10px;">'
-      + '<div><label for="fca-f-fato" class="aud-lbl">Fato</label><textarea id="fca-f-fato" class="sel" rows="2" style="width:100%;resize:vertical;" placeholder="O que foi observado…"></textarea></div>'
-      + '<div><label for="fca-f-causa" class="aud-lbl">Causa</label><textarea id="fca-f-causa" class="sel" rows="2" style="width:100%;resize:vertical;" placeholder="Por que isso aconteceu…"></textarea></div>'
-      + '<div><label for="fca-f-acao" class="aud-lbl">Ação</label><textarea id="fca-f-acao" class="sel" rows="2" style="width:100%;resize:vertical;" placeholder="O que vai ser feito…"></textarea></div>'
-      + '<div><label for="fca-f-resultado-esperado" class="aud-lbl">Resultado esperado</label><textarea id="fca-f-resultado-esperado" class="sel" rows="2" style="width:100%;resize:vertical;" placeholder="O que se espera que aconteça com essa ação…"></textarea></div>'
-      + '<div style="display:flex;gap:10px;align-items:center;">'
-      + '<button class="btn btn-primary" onclick="fcaAdicionar()">'+icon('plus')+' Registrar FCA</button>'
-      + '<span id="fca-form-msg" style="font-size:var(--fs-base);color:var(--text-hint);"></span>'
-      + '</div></div>';
-    form.dataset.ready = '1';
-  }
   fcaRenderFiltros();
   fcaRenderLista();
 }
@@ -2287,21 +2320,42 @@ function fcaRenderFiltros(){
   box.innerHTML = opts.map(([v,l]) => '<button type="button" class="btn' + (fcaFiltro===v?' btn-primary':' btn-ghost') + '" style="padding:5px 12px;font-size:var(--fs-sm);" onclick="fcaTrocarFiltro(\''+v+'\')">'+l+'</button>').join('');
 }
 function fcaTrocarFiltro(v){ fcaFiltro = v; fcaRenderFiltros(); fcaRenderLista(); }
-function fcaAdicionar(){
+// Pop-up de registro — fica fora da tela principal de propósito (a lista já tinha ficado
+// poluída com o formulário sempre aberto em cima da tabela).
+function abrirModalFcaNovo(){
+  ['fca-modal-fato','fca-modal-causa','fca-modal-acao','fca-modal-resultado-esperado','fca-modal-frente'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  const impactoEl = document.getElementById('fca-modal-impacto'); if (impactoEl) impactoEl.value = 'Médio';
+  const prioridadeEl = document.getElementById('fca-modal-prioridade'); if (prioridadeEl) prioridadeEl.value = 'Média';
+  // Sugestões de "Frente" = as já usadas em FCAs anteriores, mesmo padrão do datalist de tags de projeto.
+  const frenteListEl = document.getElementById('fca-modal-frente-list');
+  if (frenteListEl) {
+    const frentes = [...new Set(fcaItens.map(it => it.frente).filter(Boolean))].sort();
+    frenteListEl.innerHTML = frentes.map(f => '<option value="'+f.replace(/"/g,'&quot;')+'">').join('');
+  }
+  const modal = document.getElementById('modal-fca-novo');
+  if (modal) modal.style.display = 'flex';
+}
+function fecharModalFca(){
+  const modal = document.getElementById('modal-fca-novo');
+  if (modal) modal.style.display = 'none';
+}
+function fcaSalvarNovo(){
   const g = id => (document.getElementById(id)?.value || '').trim();
-  const fato = g('fca-f-fato'), causa = g('fca-f-causa'), acao = g('fca-f-acao'), resultadoEsperado = g('fca-f-resultado-esperado');
-  const msg = document.getElementById('fca-form-msg');
-  if (!fato || !causa || !acao) { if (msg) { msg.textContent = 'Preencha ao menos Fato, Causa e Ação.'; msg.style.color = 'var(--accent)'; } return; }
+  const fato = g('fca-modal-fato'), causa = g('fca-modal-causa'), acao = g('fca-modal-acao');
+  if (!fato || !causa || !acao) { showAlert('Preencha ao menos Fato, Causa e Ação.'); return; }
   fcaItens.unshift({
     id: 'fca_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
     criadoEm: new Date().toISOString(),
-    fato, causa, acao, resultadoEsperado,
+    fato, causa, acao,
+    resultadoEsperado: g('fca-modal-resultado-esperado'),
     resultadoReal: '',
+    impacto: g('fca-modal-impacto') || 'Médio',
+    prioridade: g('fca-modal-prioridade') || 'Média',
+    frente: g('fca-modal-frente'),
     concluida: false,
   });
   upd();
-  ['fca-f-fato','fca-f-causa','fca-f-acao','fca-f-resultado-esperado'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
-  if (msg) { msg.textContent = '✓ Registrada.'; msg.style.color = 'var(--green)'; }
+  fecharModalFca();
   fcaRenderLista();
 }
 function fcaSetField(id, field, value){
@@ -2309,7 +2363,7 @@ function fcaSetField(id, field, value){
   if (!item) return;
   item[field] = value;
   upd();
-  if (field === 'concluida') fcaRenderLista(); // badge e filtro dependem do estado
+  if (field === 'concluida') fcaRenderLista(); // opacidade/filtro dependem do estado
 }
 async function fcaExcluir(id){
   if (!(await showConfirm('Excluir essa FCA?'))) return;
@@ -2318,32 +2372,31 @@ async function fcaExcluir(id){
   fcaRenderLista();
 }
 function fcaRenderLista(){
-  const box = document.getElementById('fca-lista');
-  if (!box) return;
+  const wrap = document.getElementById('fca-tabela-wrap');
+  if (!wrap) return;
   const lista = fcaItens.filter(it => fcaFiltro === 'todas' || (fcaFiltro === 'concluida') === !!it.concluida);
-  if (!lista.length) { box.innerHTML = '<div style="font-size:var(--fs-base);color:var(--text-hint);padding:8px 0;">Nenhuma FCA' + (fcaFiltro==='concluida'?' concluída':fcaFiltro==='aberto'?' em aberto':'') + '.</div>'; return; }
+  if (!lista.length) { wrap.innerHTML = '<div style="font-size:var(--fs-base);color:var(--text-hint);padding:8px 0;">Nenhuma FCA' + (fcaFiltro==='concluida'?' concluída':fcaFiltro==='aberto'?' em aberto':'') + '.</div>'; return; }
   const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
-  box.innerHTML = lista.map(it => {
-    return '<div style="border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:10px;' + (it.concluida ? 'opacity:.7;' : '') + '">'
-      + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">'
-      + '<span class="badge ' + (it.concluida ? 'b-gray' : 'b-amber') + '" style="margin-top:0;">' + (it.concluida ? icon('check') + ' concluída' : icon('zap') + ' em aberto') + '</span>'
-      + '<span style="font-size:var(--fs-xs);color:var(--text-hint);">' + fmtD((it.criadoEm||'').slice(0,10)) + '</span>'
-      + '<button type="button" onclick="fcaExcluir(\'' + it.id + '\')" title="Excluir" style="margin-left:auto;font:inherit;padding:0;background:none;border:none;color:var(--text-hint);cursor:pointer;">' + icon('x', {size:12}) + '</button>'
-      + '</div>'
-      + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">'
-      + '<div><label style="display:block;font-size:var(--fs-2xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;margin-bottom:3px;">Fato</label><div style="font-size:var(--fs-sm);white-space:pre-wrap;">' + esc(it.fato) + '</div></div>'
-      + '<div><label style="display:block;font-size:var(--fs-2xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;margin-bottom:3px;">Causa</label><div style="font-size:var(--fs-sm);white-space:pre-wrap;">' + esc(it.causa) + '</div></div>'
-      + '<div><label style="display:block;font-size:var(--fs-2xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;margin-bottom:3px;">Ação</label><div style="font-size:var(--fs-sm);white-space:pre-wrap;">' + esc(it.acao) + '</div></div>'
-      + '</div>'
-      + (it.resultadoEsperado ? '<div style="margin-bottom:10px;"><label style="display:block;font-size:var(--fs-2xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;margin-bottom:3px;">Resultado esperado</label><div style="font-size:var(--fs-sm);white-space:pre-wrap;">' + esc(it.resultadoEsperado) + '</div></div>' : '')
-      + '<label style="display:block;font-size:var(--fs-2xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;margin-bottom:3px;">Resultado real</label>'
-      + '<textarea class="sel" rows="2" style="width:100%;margin-bottom:8px;resize:vertical;" placeholder="O que de fato aconteceu…" onchange="fcaSetField(\'' + it.id + '\',\'resultadoReal\',this.value)">' + esc(it.resultadoReal) + '</textarea>'
-      + '<label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-sm);cursor:pointer;">'
-      + '<input type="checkbox" ' + (it.concluida ? 'checked' : '') + ' onchange="fcaSetField(\'' + it.id + '\',\'concluida\',this.checked)" style="width:16px;height:16px;cursor:pointer;">'
-      + 'Concluída'
-      + '</label>'
-      + '</div>';
+  const trunc = (s, max) => { const full = esc(s); return '<span title="' + full + '">' + (s && s.length > max ? esc(s.slice(0, max)) + '…' : full) + '</span>'; };
+  const badge = (txt, cor) => txt ? '<span style="font-size:var(--fs-3xs);font-weight:700;color:#fff;background:'+cor+';border-radius:8px;padding:2px 8px;white-space:nowrap;">'+esc(txt)+'</span>' : '<span style="color:var(--text-hint);">—</span>';
+  const th = txt => '<th style="text-align:left;padding:6px 10px;background:var(--surface2);white-space:nowrap;">'+txt+'</th>';
+  const header = '<tr>' + ['Data','Fato','Causa','Ação','Resultado esperado','Resultado real','Impacto','Prioridade','Frente','Concluída',''].map(th).join('') + '</tr>';
+  const rows = lista.map(it => {
+    return '<tr style="border-bottom:1px solid var(--border);' + (it.concluida ? 'opacity:.6;' : '') + '">'
+      + '<td style="padding:6px 10px;white-space:nowrap;color:var(--text-hint);font-size:var(--fs-xs);">' + fmtD((it.criadoEm||'').slice(0,10)) + '</td>'
+      + '<td style="padding:6px 10px;max-width:200px;">' + trunc(it.fato, 60) + '</td>'
+      + '<td style="padding:6px 10px;max-width:200px;">' + trunc(it.causa, 60) + '</td>'
+      + '<td style="padding:6px 10px;max-width:200px;">' + trunc(it.acao, 60) + '</td>'
+      + '<td style="padding:6px 10px;max-width:180px;">' + trunc(it.resultadoEsperado, 50) + '</td>'
+      + '<td style="padding:6px 10px;min-width:180px;"><textarea class="sel" rows="1" style="width:100%;resize:vertical;font-size:var(--fs-sm);" placeholder="O que de fato aconteceu…" onchange="fcaSetField(\''+it.id+'\',\'resultadoReal\',this.value)">'+esc(it.resultadoReal)+'</textarea></td>'
+      + '<td style="padding:6px 10px;">' + badge(it.impacto, FCA_IMPACTO_COR[it.impacto] || 'var(--text-hint)') + '</td>'
+      + '<td style="padding:6px 10px;">' + badge(it.prioridade, FCA_PRIORIDADE_COR[it.prioridade] || 'var(--text-hint)') + '</td>'
+      + '<td style="padding:6px 10px;">' + (it.frente ? '<span style="font-size:var(--fs-3xs);font-weight:700;color:#fff;background:'+tagCor(it.frente)+';border-radius:8px;padding:2px 8px;white-space:nowrap;">'+esc(it.frente)+'</span>' : '<span style="color:var(--text-hint);">—</span>') + '</td>'
+      + '<td style="padding:6px 10px;text-align:center;"><input type="checkbox" ' + (it.concluida?'checked':'') + ' onchange="fcaSetField(\''+it.id+'\',\'concluida\',this.checked)" style="width:16px;height:16px;cursor:pointer;"></td>'
+      + '<td style="padding:6px 10px;"><button type="button" onclick="fcaExcluir(\''+it.id+'\')" title="Excluir" style="font:inherit;padding:0;background:none;border:none;color:var(--text-hint);cursor:pointer;">'+icon('x',{size:12})+'</button></td>'
+      + '</tr>';
   }).join('');
+  wrap.innerHTML = '<table style="border-collapse:collapse;font-size:var(--fs-sm);min-width:100%;"><thead>'+header+'</thead><tbody>'+rows+'</tbody></table>';
 }
 
 /* ============================================================
@@ -2706,7 +2759,7 @@ function _confirmModalResponder(v) {
 // Esc fecha o modal visível — nenhum dos 8 modais existentes tinha esse atalho antes.
 // Backdrop-click (já existente em todos) continua funcionando do jeito que estava.
 const MODAL_CLOSE_FN = {
-  'modal-flag-edit':'fecharModalFlag', 'modal-novo-projeto':'closeNovoProj',
+  'modal-flag-edit':'fecharModalFlag', 'modal-fca-novo':'fecharModalFca', 'modal-novo-projeto':'closeNovoProj',
   'modal-nova-mon':'closeNovaMon', 'modal-pipe-evento':'closeNovoPipeEvento',
   'modal-drive-fila':'audFecharModalDrive', 'modal-consultores':'closeConsultoresModal',
   'modal-novo-projeto-ter':'closeNovoProjTer', 'modal-login':'closeLoginModal',
