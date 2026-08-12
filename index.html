@@ -2602,23 +2602,41 @@ async function tratExcluirAtual(){
   fecharModalTrat();
   buildOvTratativas();
 }
-// Card compacto na Visão Geral — só as ABERTAS (finalizada some da lista, mas continua salva
-// pra histórico). Clicar num item reabre o modal já preenchido pra editar/finalizar.
+// Edição rápida direto na tabela (reembolso/atualização/finalizado) — sem precisar abrir o
+// modal pra cada ajuste pequeno. Cliente/Situação continuam só pelo modal (abre com o ícone
+// de editar), já que trocar de cliente ou reescrever a situação do zero é uma ação maior.
+function tratSetField(id, field, value){
+  const item = tratativas.find(t => t.id === id);
+  if (!item) return;
+  item[field] = value;
+  upd();
+  buildOvTratativas(); // finalizado muda quem aparece na tabela
+}
+// Tabela compacta na Visão Geral — só as ABERTAS (finalizada some da lista, mas continua salva
+// pra histórico). Ícone de editar abre o modal completo; reembolso/atualização/finalizado dá
+// pra mexer direto na célula.
 function buildOvTratativas(){
   const box = document.getElementById('ov-tratativas-lista');
   if (!box) return;
   const abertas = tratativas.filter(t => !t.finalizado);
   if (!abertas.length) { box.innerHTML = '<div style="font-size:var(--fs-sm);color:var(--text-hint);padding:4px 0;">Nenhuma tratativa em aberto.</div>'; return; }
   const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
-  box.innerHTML = '<div style="display:flex;flex-direction:column;gap:8px;max-height:220px;overflow-y:auto;">'
-    + abertas.map(t => '<div onclick="tratAbrirModal(\''+t.id+'\')" style="cursor:pointer;padding:8px 10px;border:1px solid var(--border);border-radius:var(--r-sm);">'
-        + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:3px;">'
-        + '<strong style="font-size:var(--fs-sm);">' + esc(t.clienteNome) + '</strong>'
-        + (t.pediuReembolso ? '<span class="badge b-red" style="margin-top:0;">' + icon('x',{size:10}) + ' reembolso</span>' : '')
-        + '</div>'
-        + '<div style="font-size:var(--fs-xs);color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(t.situacao) + '</div>'
-        + '</div>').join('')
-    + '</div>';
+  const trunc = (s, max) => { const full = esc(s); return '<span title="' + full + '">' + (s && s.length > max ? esc(s.slice(0, max)) + '…' : full) + '</span>'; };
+  const th = txt => '<th style="text-align:left;padding:5px 8px;background:var(--surface2);white-space:nowrap;">'+txt+'</th>';
+  const header = '<tr>' + ['Cliente','Situação','Reembolso','Atualização','Finalizado',''].map(th).join('') + '</tr>';
+  const rows = abertas.map(t => {
+    return '<tr style="border-bottom:1px solid var(--border);">'
+      + '<td style="padding:5px 8px;max-width:140px;font-weight:600;">' + trunc(t.clienteNome, 22) + '</td>'
+      + '<td style="padding:5px 8px;max-width:160px;">' + trunc(t.situacao, 45) + '</td>'
+      + '<td style="padding:5px 8px;text-align:center;"><input type="checkbox" ' + (t.pediuReembolso?'checked':'') + ' onchange="tratSetField(\''+t.id+'\',\'pediuReembolso\',this.checked)" style="width:15px;height:15px;cursor:pointer;"></td>'
+      + '<td style="padding:5px 8px;min-width:150px;"><textarea class="sel" rows="1" style="width:100%;resize:vertical;font-size:var(--fs-sm);" placeholder="Como está agora…" onchange="tratSetField(\''+t.id+'\',\'atualizacao\',this.value)">'+esc(t.atualizacao)+'</textarea></td>'
+      + '<td style="padding:5px 8px;text-align:center;"><input type="checkbox" ' + (t.finalizado?'checked':'') + ' onchange="tratSetField(\''+t.id+'\',\'finalizado\',this.checked)" style="width:15px;height:15px;cursor:pointer;"></td>'
+      + '<td style="padding:5px 8px;white-space:nowrap;">'
+        + '<button type="button" onclick="tratAbrirModal(\''+t.id+'\')" title="Editar cliente/situação" style="font:inherit;padding:0;background:none;border:none;color:var(--text-hint);cursor:pointer;margin-right:6px;">'+icon('edit',{size:12})+'</button>'
+        + '</td>'
+      + '</tr>';
+  }).join('');
+  box.innerHTML = '<div class="tbl-scroll"><table style="border-collapse:collapse;font-size:var(--fs-sm);width:100%;"><thead>'+header+'</thead><tbody>'+rows+'</tbody></table></div>';
 }
 
 /* ============================================================
