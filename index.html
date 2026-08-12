@@ -674,6 +674,20 @@
     <div id="aud-heat-body" style="overflow-x:auto;"></div>
   </div>
 </section>
+<section id="sec-fca" class="section">
+  <div class="sec-head"><h2 class="sec-title">FCA</h2><p class="sec-desc">Fato, Causa e Ação — problemas gerais do squad e o que foi feito a respeito.</p></div>
+  <div class="card" style="margin-bottom:1.2rem;">
+    <div class="card-title">Nova FCA</div>
+    <div id="fca-form"></div>
+  </div>
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap;">
+      <div class="card-title" style="margin:0;">FCAs registradas</div>
+      <div id="fca-filtros" style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;"></div>
+    </div>
+    <div id="fca-lista"></div>
+  </div>
+</section>
 <section id="sec-cultura" class="section">
 <div class="app">
   <!-- ============ SIDEBAR: registrar sinal ============ -->
@@ -2246,6 +2260,93 @@ document.getElementById('filter-framework').addEventListener('change', renderAll
 document.getElementById('filter-tipo').addEventListener('change', renderAll);
 
 /* ============================================================
+   FCA — Fato, Causa, Ação (problemas gerais do squad)
+   ============================================================ */
+let fcaFiltro = 'aberto'; // 'aberto' | 'concluida' | 'todas' — padrão: só as que ainda precisam de acompanhamento
+function buildFca(){
+  const form = document.getElementById('fca-form');
+  if (form && !form.dataset.ready) {
+    form.innerHTML = '<div style="display:flex;flex-direction:column;gap:10px;">'
+      + '<div><label for="fca-f-fato" class="aud-lbl">Fato</label><textarea id="fca-f-fato" class="sel" rows="2" style="width:100%;resize:vertical;" placeholder="O que foi observado…"></textarea></div>'
+      + '<div><label for="fca-f-causa" class="aud-lbl">Causa</label><textarea id="fca-f-causa" class="sel" rows="2" style="width:100%;resize:vertical;" placeholder="Por que isso aconteceu…"></textarea></div>'
+      + '<div><label for="fca-f-acao" class="aud-lbl">Ação</label><textarea id="fca-f-acao" class="sel" rows="2" style="width:100%;resize:vertical;" placeholder="O que vai ser feito…"></textarea></div>'
+      + '<div><label for="fca-f-resultado-esperado" class="aud-lbl">Resultado esperado</label><textarea id="fca-f-resultado-esperado" class="sel" rows="2" style="width:100%;resize:vertical;" placeholder="O que se espera que aconteça com essa ação…"></textarea></div>'
+      + '<div style="display:flex;gap:10px;align-items:center;">'
+      + '<button class="btn btn-primary" onclick="fcaAdicionar()">'+icon('plus')+' Registrar FCA</button>'
+      + '<span id="fca-form-msg" style="font-size:var(--fs-base);color:var(--text-hint);"></span>'
+      + '</div></div>';
+    form.dataset.ready = '1';
+  }
+  fcaRenderFiltros();
+  fcaRenderLista();
+}
+function fcaRenderFiltros(){
+  const box = document.getElementById('fca-filtros');
+  if (!box) return;
+  const opts = [['aberto','Em aberto'],['concluida','Concluídas'],['todas','Todas']];
+  box.innerHTML = opts.map(([v,l]) => '<button type="button" class="btn' + (fcaFiltro===v?' btn-primary':' btn-ghost') + '" style="padding:5px 12px;font-size:var(--fs-sm);" onclick="fcaTrocarFiltro(\''+v+'\')">'+l+'</button>').join('');
+}
+function fcaTrocarFiltro(v){ fcaFiltro = v; fcaRenderFiltros(); fcaRenderLista(); }
+function fcaAdicionar(){
+  const g = id => (document.getElementById(id)?.value || '').trim();
+  const fato = g('fca-f-fato'), causa = g('fca-f-causa'), acao = g('fca-f-acao'), resultadoEsperado = g('fca-f-resultado-esperado');
+  const msg = document.getElementById('fca-form-msg');
+  if (!fato || !causa || !acao) { if (msg) { msg.textContent = 'Preencha ao menos Fato, Causa e Ação.'; msg.style.color = 'var(--accent)'; } return; }
+  fcaItens.unshift({
+    id: 'fca_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
+    criadoEm: new Date().toISOString(),
+    fato, causa, acao, resultadoEsperado,
+    resultadoReal: '',
+    concluida: false,
+  });
+  upd();
+  ['fca-f-fato','fca-f-causa','fca-f-acao','fca-f-resultado-esperado'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  if (msg) { msg.textContent = '✓ Registrada.'; msg.style.color = 'var(--green)'; }
+  fcaRenderLista();
+}
+function fcaSetField(id, field, value){
+  const item = fcaItens.find(x => x.id === id);
+  if (!item) return;
+  item[field] = value;
+  upd();
+  if (field === 'concluida') fcaRenderLista(); // badge e filtro dependem do estado
+}
+async function fcaExcluir(id){
+  if (!(await showConfirm('Excluir essa FCA?'))) return;
+  fcaItens = fcaItens.filter(x => x.id !== id);
+  upd();
+  fcaRenderLista();
+}
+function fcaRenderLista(){
+  const box = document.getElementById('fca-lista');
+  if (!box) return;
+  const lista = fcaItens.filter(it => fcaFiltro === 'todas' || (fcaFiltro === 'concluida') === !!it.concluida);
+  if (!lista.length) { box.innerHTML = '<div style="font-size:var(--fs-base);color:var(--text-hint);padding:8px 0;">Nenhuma FCA' + (fcaFiltro==='concluida'?' concluída':fcaFiltro==='aberto'?' em aberto':'') + '.</div>'; return; }
+  const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  box.innerHTML = lista.map(it => {
+    return '<div style="border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:10px;' + (it.concluida ? 'opacity:.7;' : '') + '">'
+      + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">'
+      + '<span class="badge ' + (it.concluida ? 'b-gray' : 'b-amber') + '" style="margin-top:0;">' + (it.concluida ? icon('check') + ' concluída' : icon('zap') + ' em aberto') + '</span>'
+      + '<span style="font-size:var(--fs-xs);color:var(--text-hint);">' + fmtD((it.criadoEm||'').slice(0,10)) + '</span>'
+      + '<button type="button" onclick="fcaExcluir(\'' + it.id + '\')" title="Excluir" style="margin-left:auto;font:inherit;padding:0;background:none;border:none;color:var(--text-hint);cursor:pointer;">' + icon('x', {size:12}) + '</button>'
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">'
+      + '<div><label style="display:block;font-size:var(--fs-2xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;margin-bottom:3px;">Fato</label><div style="font-size:var(--fs-sm);white-space:pre-wrap;">' + esc(it.fato) + '</div></div>'
+      + '<div><label style="display:block;font-size:var(--fs-2xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;margin-bottom:3px;">Causa</label><div style="font-size:var(--fs-sm);white-space:pre-wrap;">' + esc(it.causa) + '</div></div>'
+      + '<div><label style="display:block;font-size:var(--fs-2xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;margin-bottom:3px;">Ação</label><div style="font-size:var(--fs-sm);white-space:pre-wrap;">' + esc(it.acao) + '</div></div>'
+      + '</div>'
+      + (it.resultadoEsperado ? '<div style="margin-bottom:10px;"><label style="display:block;font-size:var(--fs-2xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;margin-bottom:3px;">Resultado esperado</label><div style="font-size:var(--fs-sm);white-space:pre-wrap;">' + esc(it.resultadoEsperado) + '</div></div>' : '')
+      + '<label style="display:block;font-size:var(--fs-2xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;margin-bottom:3px;">Resultado real</label>'
+      + '<textarea class="sel" rows="2" style="width:100%;margin-bottom:8px;resize:vertical;" placeholder="O que de fato aconteceu…" onchange="fcaSetField(\'' + it.id + '\',\'resultadoReal\',this.value)">' + esc(it.resultadoReal) + '</textarea>'
+      + '<label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-sm);cursor:pointer;">'
+      + '<input type="checkbox" ' + (it.concluida ? 'checked' : '') + ' onchange="fcaSetField(\'' + it.id + '\',\'concluida\',this.checked)" style="width:16px;height:16px;cursor:pointer;">'
+      + 'Concluída'
+      + '</label>'
+      + '</div>';
+  }).join('');
+}
+
+/* ============================================================
    INIT
    ============================================================ */
 function buildCultura(){
@@ -2363,6 +2464,7 @@ const audRemovidasLocalmente = new Set();
 // Mesma ideia pra `fotos` (~80KB de dataURL base64, só usada na aba Performance).
 let _fotosLoaded = false;
 let sinaisCulturais = [];    // Termômetro Cultural — [{id, created_at, consultor, framework, dimensao, tipo, gravidade, descricao, justificativa}]
+let fcaItens = [];    // FCA — [{id, criadoEm, fato, causa, acao, resultadoEsperado, resultadoReal, concluida}]
 let npsChart = null;
 
 
@@ -2483,6 +2585,7 @@ const SIDEBAR_NAV = [
     { id: 'performance', label: 'Performance', icon: 'trophy' },
     { id: 'auditoria', label: 'Auditoria de Entregas', icon: 'eye' },
     { id: 'cultura', label: 'Termômetro Cultural', icon: 'sparkle', elId: 'nav-tab-cultura' },
+    { id: 'fca', label: 'FCA', icon: 'flag' },
   ] },
 ];
 function renderSidebarNav() {
@@ -8053,6 +8156,7 @@ function show(sec) {
     else if (sec === 'auditoria')   buildAuditoria();
     else if (sec === 'aql')         buildAql();
     else if (sec === 'cultura')     buildCultura();
+    else if (sec === 'fca')         buildFca();
   } catch(e) { console.error('show(' + sec + ') erro:', e); }
 }
 
@@ -12650,6 +12754,7 @@ async function sbSave() {
     auditoriasLoaded: _auditoriasLoaded, // trava junto com o resto — ver payload.auditorias abaixo
     fotosLoaded: _fotosLoaded,
     sinaisCulturais: sinaisCulturais,
+    fcaItens: fcaItens,
     consList: window.CONS_MON || [],
     consColors: window.dotColors || {},
   };
@@ -12752,6 +12857,7 @@ async function sbSave() {
       pdi_data:   JSON.stringify(_snap.pdiData),
       conv_base:  JSON.stringify(_snap.convBaseManual),
       sinais_culturais: JSON.stringify(_snap.sinaisCulturais),
+      fca_itens: JSON.stringify(_snap.fcaItens),
       consultores: JSON.stringify({list:_snap.consList, colors:_snap.consColors}),
     };
     // Só manda auditorias/fotos se essa aba realmente carregou o valor de verdade (abriu a
@@ -12817,6 +12923,7 @@ async function sbSave() {
         mon_metas: _snap.monMetas, aql_metas: _snap.aqlMetas, cap_data: _snap.capData, cap_manual: _snap.capManual,
         pdi_data: _snap.pdiData, conv_base: _snap.convBaseManual,
         sinais_culturais: _snap.sinaisCulturais,
+        fca_itens: _snap.fcaItens,
         consultores: {list:_snap.consList, colors:_snap.consColors},
         saved_at: sbLastSaved.toISOString(), total: _snap.projects.length, table: _snap.table
       };
@@ -12940,12 +13047,12 @@ function _parseMaybe(val, fallback) {
 // Colunas do carregamento padrão. Ficam de fora as duas colunas grandes que só interessam a
 // uma aba específica, ambas lidas sob demanda: `auditorias` (~950KB, ~70% da linha inteira —
 // só na aba Auditoria, ver sbLoadAuditorias()) e `fotos` (~80KB de dataURL base64 — só na aba
-// Performance, ver sbLoadFotos()). `sinais_culturais` só existe em saber_data (ter_data não
-// tem Cultura), por isso entra condicionalmente — nomear uma coluna que não existe faz o
-// PostgREST devolver erro em vez de simplesmente omitir, diferente de select=*.
+// Performance, ver sbLoadFotos()). `sinais_culturais`/`fca_itens` só existem em saber_data
+// (ter_data não tem Cultura nem FCA), por isso entram condicionalmente — nomear uma coluna que
+// não existe faz o PostgREST devolver erro em vez de simplesmente omitir, diferente de select=*.
 function _sbColsPadrao() {
   const base = 'id,projects,nps_data,csp_manual,cap_data,cap_manual,updated_at,mon_metas,pdi_data,conv_base,consultores,aql_metas';
-  return SB_TABLE === 'saber_data' ? base + ',sinais_culturais' : base;
+  return SB_TABLE === 'saber_data' ? base + ',sinais_culturais,fca_itens' : base;
 }
 
 async function sbLoad() {
@@ -13074,6 +13181,9 @@ async function sbLoad() {
       if (row.sinais_culturais) {
         try { const sc = _parseMaybe(row.sinais_culturais, []); if (Array.isArray(sc)) sinaisCulturais = sc; } catch(e){}
       }
+      if (row.fca_itens) {
+        try { const fi = _parseMaybe(row.fca_itens, []); if (Array.isArray(fi)) fcaItens = fi; } catch(e){}
+      }
       if (row.consultores) {
         try { const cm = _parseMaybe(row.consultores, {}); if (cm && Array.isArray(cm.list) && cm.list.length) window.CONS_MON = cm.list; if (cm && cm.colors) window.dotColors = Object.assign({}, window.dotColors||{}, cm.colors); } catch(e){}
       }
@@ -13125,6 +13235,7 @@ function _aplicarSnapshot(d) {
   if (d.conv_base)  Object.assign(convBaseManual, d.conv_base);
   if (d.pdi_data)   { try { pdiData = normalizePdi(d.pdi_data); } catch(err){} }
   if (Array.isArray(d.sinais_culturais)) sinaisCulturais = d.sinais_culturais;
+  if (Array.isArray(d.fca_itens)) fcaItens = d.fca_itens;
   // auditorias/fotos podem faltar (backup local de uma sessão que não abriu aquelas abas).
   // Marca como carregado de qualquer jeito: buscar no Supabase agora não é opção, ele caiu.
   if (Array.isArray(d.auditorias)) auditorias = d.auditorias;
@@ -13263,6 +13374,7 @@ function _montarSnapshot() {
     fotos: perfFotos,
     auditorias,
     sinais_culturais: sinaisCulturais,
+    fca_itens: fcaItens,
     consultores: { list: window.CONS_MON || [], colors: window.dotColors || {} },
     saved_at: new Date().toISOString(),
   };
@@ -13354,6 +13466,7 @@ async function sbReinjetarSnapshot() {
     if (Array.isArray(dados.auditorias)) payload.auditorias = JSON.stringify(dados.auditorias);
     if (dados.fotos && typeof dados.fotos === 'object') payload.fotos = JSON.stringify(dados.fotos);
     if (Array.isArray(dados.sinais_culturais) && SB_TABLE === 'saber_data') payload.sinais_culturais = JSON.stringify(dados.sinais_culturais);
+    if (Array.isArray(dados.fca_itens) && SB_TABLE === 'saber_data') payload.fca_itens = JSON.stringify(dados.fca_itens);
 
     const res = await fetch(SB_URL + '/rest/v1/' + SB_TABLE + '?id=eq.main', {
       method: 'PATCH',
