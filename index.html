@@ -350,8 +350,11 @@
       <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;" id="ov-pipe-stages"></div>
     </div>
     <div class="card" style="margin:0;">
-      <div class="card-title">Flags</div>
-      <div style="display:flex;flex-direction:column;gap:8px;" id="ov-flags"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;">
+        <div class="card-title" style="margin:0;">Tratativas</div>
+        <button class="btn btn-primary" style="padding:4px 10px;font-size:var(--fs-sm);" onclick="tratAbrirModal()">+ Nova</button>
+      </div>
+      <div id="ov-tratativas-lista"></div>
     </div>
   </div>
   <!-- Ticket e Tier -->
@@ -1321,6 +1324,33 @@
       <div style="display:flex;gap:6px;">
         <button class="btn btn-primary" onclick="fcaSalvarNovo()" style="flex:1;border-radius:6px;">Registrar</button>
         <button class="btn btn-ghost" onclick="fecharModalFca()" style="border-radius:6px;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-trat-novo" onclick="if(event.target===this)fecharModalTrat()">
+  <div class="modal-box" style="max-width:480px;" role="dialog" aria-modal="true" aria-labelledby="trat-modal-titulo">
+    <div class="modal-header">
+      <span class="modal-title" id="trat-modal-titulo">Nova Tratativa</span>
+      <button class="modal-close" onclick="fecharModalTrat()" title="Fechar"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <label for="trat-modal-cliente" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Cliente</label>
+      <select id="trat-modal-cliente" class="sel" style="width:100%;font-size:var(--fs-base);margin-bottom:12px;"></select>
+      <label for="trat-modal-situacao" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Situação</label>
+      <textarea id="trat-modal-situacao" class="sel" rows="3" placeholder="O que está acontecendo…" style="width:100%;font-size:var(--fs-base);margin-bottom:10px;resize:vertical;"></textarea>
+      <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);cursor:pointer;margin-bottom:14px;">
+        <input type="checkbox" id="trat-modal-reembolso" style="width:16px;height:16px;cursor:pointer;"> Pediu reembolso?
+      </label>
+      <label for="trat-modal-atualizacao" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Atualização</label>
+      <textarea id="trat-modal-atualizacao" class="sel" rows="3" placeholder="Como está agora…" style="width:100%;font-size:var(--fs-base);margin-bottom:10px;resize:vertical;"></textarea>
+      <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);cursor:pointer;margin-bottom:14px;">
+        <input type="checkbox" id="trat-modal-finalizado" style="width:16px;height:16px;cursor:pointer;"> Finalizado
+      </label>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-primary" onclick="tratSalvar()" style="flex:1;border-radius:6px;">Salvar</button>
+        <button class="btn btn-ghost" id="trat-modal-excluir-btn" onclick="tratExcluirAtual()" style="border-radius:6px;display:none;color:var(--accent);">Excluir</button>
+        <button class="btn btn-ghost" onclick="fecharModalTrat()" style="border-radius:6px;">Cancelar</button>
       </div>
     </div>
   </div>
@@ -2507,6 +2537,91 @@ function fcaRenderLista(){
 }
 
 /* ============================================================
+   TRATATIVAS — card na Visão Geral (substituiu o card de Flags)
+   ============================================================ */
+let tratativas = []; // [{id, criadoEm, clienteId, clienteNome, situacao, pediuReembolso, atualizacao, finalizado}]
+let _tratModalId = null; // null = criando nova; com valor = editando a tratativa desse id
+// Um único modal serve criação e edição — abre já preenchido quando vem de um clique na lista.
+function tratAbrirModal(id){
+  _tratModalId = id || null;
+  const item = id ? tratativas.find(t => t.id === id) : null;
+  const tituloEl = document.getElementById('trat-modal-titulo');
+  const clienteEl = document.getElementById('trat-modal-cliente');
+  const situacaoEl = document.getElementById('trat-modal-situacao');
+  const reembolsoEl = document.getElementById('trat-modal-reembolso');
+  const atualizacaoEl = document.getElementById('trat-modal-atualizacao');
+  const finalizadoEl = document.getElementById('trat-modal-finalizado');
+  const excluirBtn = document.getElementById('trat-modal-excluir-btn');
+  if (clienteEl) {
+    const opcoes = projects.filter(p => !isDroFam(p)).sort((a,b) => (a.nome||'').localeCompare(b.nome||''));
+    clienteEl.innerHTML = opcoes.map(p => '<option value="'+p.id+'">'+(p.nome||'').replace(/</g,'&lt;')+'</option>').join('');
+  }
+  if (tituloEl) tituloEl.textContent = item ? 'Editar Tratativa' : 'Nova Tratativa';
+  if (clienteEl) clienteEl.value = item ? item.clienteId : (clienteEl.options[0]?.value || '');
+  if (situacaoEl) situacaoEl.value = item ? (item.situacao || '') : '';
+  if (reembolsoEl) reembolsoEl.checked = !!(item && item.pediuReembolso);
+  if (atualizacaoEl) atualizacaoEl.value = item ? (item.atualizacao || '') : '';
+  if (finalizadoEl) finalizadoEl.checked = !!(item && item.finalizado);
+  if (excluirBtn) excluirBtn.style.display = item ? '' : 'none';
+  const modal = document.getElementById('modal-trat-novo');
+  if (modal) modal.style.display = 'flex';
+}
+function fecharModalTrat(){
+  const modal = document.getElementById('modal-trat-novo');
+  if (modal) modal.style.display = 'none';
+  _tratModalId = null;
+}
+function tratSalvar(){
+  const clienteId = document.getElementById('trat-modal-cliente')?.value || '';
+  if (!clienteId) { showAlert('Selecione o cliente.'); return; }
+  const clienteNome = projects.find(p => String(p.id) === String(clienteId))?.nome || '';
+  const situacao = (document.getElementById('trat-modal-situacao')?.value || '').trim();
+  if (!situacao) { showAlert('Preencha a situação.'); return; }
+  const pediuReembolso = !!document.getElementById('trat-modal-reembolso')?.checked;
+  const atualizacao = (document.getElementById('trat-modal-atualizacao')?.value || '').trim();
+  const finalizado = !!document.getElementById('trat-modal-finalizado')?.checked;
+  if (_tratModalId) {
+    const item = tratativas.find(t => t.id === _tratModalId);
+    if (item) Object.assign(item, { clienteId, clienteNome, situacao, pediuReembolso, atualizacao, finalizado });
+  } else {
+    tratativas.unshift({
+      id: 'trat_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
+      criadoEm: new Date().toISOString(),
+      clienteId, clienteNome, situacao, pediuReembolso, atualizacao, finalizado,
+    });
+  }
+  upd();
+  fecharModalTrat();
+  buildOvTratativas();
+}
+async function tratExcluirAtual(){
+  if (!_tratModalId) return;
+  if (!(await showConfirm('Excluir essa tratativa?'))) return;
+  tratativas = tratativas.filter(t => t.id !== _tratModalId);
+  upd();
+  fecharModalTrat();
+  buildOvTratativas();
+}
+// Card compacto na Visão Geral — só as ABERTAS (finalizada some da lista, mas continua salva
+// pra histórico). Clicar num item reabre o modal já preenchido pra editar/finalizar.
+function buildOvTratativas(){
+  const box = document.getElementById('ov-tratativas-lista');
+  if (!box) return;
+  const abertas = tratativas.filter(t => !t.finalizado);
+  if (!abertas.length) { box.innerHTML = '<div style="font-size:var(--fs-sm);color:var(--text-hint);padding:4px 0;">Nenhuma tratativa em aberto.</div>'; return; }
+  const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  box.innerHTML = '<div style="display:flex;flex-direction:column;gap:8px;max-height:220px;overflow-y:auto;">'
+    + abertas.map(t => '<div onclick="tratAbrirModal(\''+t.id+'\')" style="cursor:pointer;padding:8px 10px;border:1px solid var(--border);border-radius:var(--r-sm);">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:3px;">'
+        + '<strong style="font-size:var(--fs-sm);">' + esc(t.clienteNome) + '</strong>'
+        + (t.pediuReembolso ? '<span class="badge b-red" style="margin-top:0;">' + icon('x',{size:10}) + ' reembolso</span>' : '')
+        + '</div>'
+        + '<div style="font-size:var(--fs-xs);color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(t.situacao) + '</div>'
+        + '</div>').join('')
+    + '</div>';
+}
+
+/* ============================================================
    INIT
    ============================================================ */
 function buildCultura(){
@@ -2866,7 +2981,7 @@ function _confirmModalResponder(v) {
 // Esc fecha o modal visível — nenhum dos 8 modais existentes tinha esse atalho antes.
 // Backdrop-click (já existente em todos) continua funcionando do jeito que estava.
 const MODAL_CLOSE_FN = {
-  'modal-flag-edit':'fecharModalFlag', 'modal-fca-novo':'fecharModalFca', 'modal-novo-projeto':'closeNovoProj',
+  'modal-flag-edit':'fecharModalFlag', 'modal-fca-novo':'fecharModalFca', 'modal-trat-novo':'fecharModalTrat', 'modal-novo-projeto':'closeNovoProj',
   'modal-nova-mon':'closeNovaMon', 'modal-pipe-evento':'closeNovoPipeEvento',
   'modal-drive-fila':'audFecharModalDrive', 'modal-consultores':'closeConsultoresModal',
   'modal-novo-projeto-ter':'closeNovoProjTer', 'modal-login':'closeLoginModal',
@@ -8194,22 +8309,7 @@ function buildOvAnalises(curM) {
     }).join('');
   }
 
-  // Flags
-  const flagsEl = document.getElementById('ov-flags');
-  if (flagsEl) {
-    const FLAGS = [['Verde','var(--green)','<span class="flag-dot flag-V"></span> Verde'],['Amarelo','var(--amber)','<span class="flag-dot flag-A"></span> Amarelo'],['Vermelho','var(--red)','<span class="flag-dot flag-R"></span> Vermelho']];
-    const total = ativos.length || 1;
-    flagsEl.innerHTML = FLAGS.map(([key,cor,label]) => {
-      const n = ativos.filter(p => p.flag === key).length;
-      const pct = Math.round(n / total * 100);
-      return '<div style="display:flex;align-items:center;gap:8px;">'
-        + '<span style="font-size:var(--fs-sm);min-width:90px;">' + label + '</span>'
-        + '<div style="flex:1;background:var(--surface3);border-radius:3px;height:14px;overflow:hidden;">'
-        + '<div style="height:100%;width:' + pct + '%;background:' + cor + ';border-radius:3px;"></div></div>'
-        + '<span style="font-size:var(--fs-sm);font-weight:600;min-width:50px;text-align:right;">' + n + ' <span style="color:var(--text-hint);font-weight:400;">(' + pct + '%)</span></span>'
-        + '</div>';
-    }).join('');
-  }
+  buildOvTratativas();
 
   // Ticket médio — usa a MONETIZAÇÃO REALIZADA (array monetizacoes[]), por evento de venda
   let somaOT = 0, somaRec = 0, nOT = 0, nRec = 0;
@@ -12922,6 +13022,7 @@ async function sbSave() {
     fotosLoaded: _fotosLoaded,
     sinaisCulturais: sinaisCulturais,
     fcaItens: fcaItens,
+    tratativas: tratativas,
     consList: window.CONS_MON || [],
     consColors: window.dotColors || {},
   };
@@ -13025,6 +13126,7 @@ async function sbSave() {
       conv_base:  JSON.stringify(_snap.convBaseManual),
       sinais_culturais: JSON.stringify(_snap.sinaisCulturais),
       fca_itens: JSON.stringify(_snap.fcaItens),
+      tratativas: JSON.stringify(_snap.tratativas),
       consultores: JSON.stringify({list:_snap.consList, colors:_snap.consColors}),
     };
     // Só manda auditorias/fotos se essa aba realmente carregou o valor de verdade (abriu a
@@ -13091,6 +13193,7 @@ async function sbSave() {
         pdi_data: _snap.pdiData, conv_base: _snap.convBaseManual,
         sinais_culturais: _snap.sinaisCulturais,
         fca_itens: _snap.fcaItens,
+        tratativas: _snap.tratativas,
         consultores: {list:_snap.consList, colors:_snap.consColors},
         saved_at: sbLastSaved.toISOString(), total: _snap.projects.length, table: _snap.table
       };
@@ -13214,12 +13317,13 @@ function _parseMaybe(val, fallback) {
 // Colunas do carregamento padrão. Ficam de fora as duas colunas grandes que só interessam a
 // uma aba específica, ambas lidas sob demanda: `auditorias` (~950KB, ~70% da linha inteira —
 // só na aba Auditoria, ver sbLoadAuditorias()) e `fotos` (~80KB de dataURL base64 — só na aba
-// Performance, ver sbLoadFotos()). `sinais_culturais`/`fca_itens` só existem em saber_data
-// (ter_data não tem Cultura nem FCA), por isso entram condicionalmente — nomear uma coluna que
-// não existe faz o PostgREST devolver erro em vez de simplesmente omitir, diferente de select=*.
+// Performance, ver sbLoadFotos()). `sinais_culturais`/`fca_itens`/`tratativas` só existem em
+// saber_data (ter_data não tem Cultura, FCA nem Tratativas), por isso entram condicionalmente —
+// nomear uma coluna que não existe faz o PostgREST devolver erro em vez de simplesmente omitir,
+// diferente de select=*.
 function _sbColsPadrao() {
   const base = 'id,projects,nps_data,csp_manual,cap_data,cap_manual,updated_at,mon_metas,pdi_data,conv_base,consultores,aql_metas';
-  return SB_TABLE === 'saber_data' ? base + ',sinais_culturais,fca_itens' : base;
+  return SB_TABLE === 'saber_data' ? base + ',sinais_culturais,fca_itens,tratativas' : base;
 }
 
 async function sbLoad() {
@@ -13351,6 +13455,9 @@ async function sbLoad() {
       if (row.fca_itens) {
         try { const fi = _parseMaybe(row.fca_itens, []); if (Array.isArray(fi)) fcaItens = fi; } catch(e){}
       }
+      if (row.tratativas) {
+        try { const tr = _parseMaybe(row.tratativas, []); if (Array.isArray(tr)) tratativas = tr; } catch(e){}
+      }
       if (row.consultores) {
         try { const cm = _parseMaybe(row.consultores, {}); if (cm && Array.isArray(cm.list) && cm.list.length) window.CONS_MON = cm.list; if (cm && cm.colors) window.dotColors = Object.assign({}, window.dotColors||{}, cm.colors); } catch(e){}
       }
@@ -13403,6 +13510,7 @@ function _aplicarSnapshot(d) {
   if (d.pdi_data)   { try { pdiData = normalizePdi(d.pdi_data); } catch(err){} }
   if (Array.isArray(d.sinais_culturais)) sinaisCulturais = d.sinais_culturais;
   if (Array.isArray(d.fca_itens)) fcaItens = d.fca_itens;
+  if (Array.isArray(d.tratativas)) tratativas = d.tratativas;
   // auditorias/fotos podem faltar (backup local de uma sessão que não abriu aquelas abas).
   // Marca como carregado de qualquer jeito: buscar no Supabase agora não é opção, ele caiu.
   if (Array.isArray(d.auditorias)) auditorias = d.auditorias;
@@ -13542,6 +13650,7 @@ function _montarSnapshot() {
     auditorias,
     sinais_culturais: sinaisCulturais,
     fca_itens: fcaItens,
+    tratativas,
     consultores: { list: window.CONS_MON || [], colors: window.dotColors || {} },
     saved_at: new Date().toISOString(),
   };
@@ -13634,6 +13743,7 @@ async function sbReinjetarSnapshot() {
     if (dados.fotos && typeof dados.fotos === 'object') payload.fotos = JSON.stringify(dados.fotos);
     if (Array.isArray(dados.sinais_culturais) && SB_TABLE === 'saber_data') payload.sinais_culturais = JSON.stringify(dados.sinais_culturais);
     if (Array.isArray(dados.fca_itens) && SB_TABLE === 'saber_data') payload.fca_itens = JSON.stringify(dados.fca_itens);
+    if (Array.isArray(dados.tratativas) && SB_TABLE === 'saber_data') payload.tratativas = JSON.stringify(dados.tratativas);
 
     const res = await fetch(SB_URL + '/rest/v1/' + SB_TABLE + '?id=eq.main', {
       method: 'PATCH',
