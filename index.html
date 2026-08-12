@@ -8032,13 +8032,19 @@ function buildOvGantt() {
     const flagTitle = temAnotacao
       ? (p.flagManual ? 'Flag manual — motivo: ' : 'Anotação: ') + (p.flagManualMotivo || 'sem motivo informado')
       : 'Flag automática';
+    // Tag automática — não é uma tag manual (p.tags), é calculada na hora a partir de
+    // fcaItens: true se esse projeto tem QUALQUER FCA de projeto ainda não concluída.
+    const temFcaAberta = fcaItens.some(it => it.projetoId && String(it.projetoId) === String(p.id) && !it.concluida);
     return '<tr style="border-bottom:1px solid var(--border);">'
       + '<td style="padding:6px 10px;color:var(--text);font-weight:600;background:var(--surface);position:sticky;left:0;white-space:nowrap;">'
       + '<button type="button" onclick="abrirModalFlag(' + p.id + ',\'healthscore\')" title="' + flagTitle.replace(/"/g,'&quot;') + '" style="font:inherit;padding:0;background:none;border:none;color:' + flagCor + ';font-size:var(--fs-md);margin-right:5px;cursor:pointer;">'+icon('flag')+(temAnotacao ? '<sup style="font-size:var(--fs-3xs);">'+icon('edit',{size:8})+'</sup>' : '') + '</button>'
       + '<button type="button" onclick="fcaAbrirModalNovoParaProjeto(' + p.id + ')" title="Registrar FCA para esse projeto" style="font:inherit;padding:0;background:none;border:none;color:var(--text-hint);font-size:var(--fs-md);margin-right:5px;cursor:pointer;">'+icon('zap')+'</button>'
       + (p.nome||'—')
       + (temAnotacao ? '<div style="font-size:var(--fs-2xs);font-weight:400;color:var(--text-hint);white-space:normal;max-width:190px;line-height:1.3;margin-top:1px;">' + (p.flagManualMotivo || 'sem motivo informado').replace(/</g,'&lt;') + '</div>' : '')
-      + ((p.tags && p.tags.length) ? '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:3px;max-width:190px;">' + p.tags.map(t => '<span style="font-size:var(--fs-3xs);font-weight:700;color:#fff;background:' + tagCor(t) + ';border-radius:8px;padding:1px 7px;white-space:nowrap;">' + t.replace(/</g,'&lt;') + '</span>').join('') + '</div>' : '')
+      + ((temFcaAberta || (p.tags && p.tags.length)) ? '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:3px;max-width:190px;">'
+          + (temFcaAberta ? '<span title="Tem FCA de projeto em aberto" style="font-size:var(--fs-3xs);font-weight:700;color:#fff;background:var(--amber);border-radius:8px;padding:1px 7px;white-space:nowrap;">'+icon('zap',{size:8})+' FCA aberta</span>' : '')
+          + (p.tags||[]).map(t => '<span style="font-size:var(--fs-3xs);font-weight:700;color:#fff;background:' + tagCor(t) + ';border-radius:8px;padding:1px 7px;white-space:nowrap;">' + t.replace(/</g,'&lt;') + '</span>').join('')
+        + '</div>' : '')
       + '</td>'
       + '<td style="padding:6px 10px;color:var(--text-muted);">' + (p.consultor||'—') + '</td>'
       + semanas.map(s => {
