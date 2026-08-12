@@ -340,13 +340,6 @@
       </div>
     </div>
   </div>
-  <!-- Tratativas: projetos com tag "tratativa" ou em pedido de reembolso, com campos pra
-       acompanhar o andamento da negociação -->
-  <div id="ov-tratativas-card" class="card" style="margin-bottom:1rem;">
-    <div class="card-title">Tratativas</div>
-    <div style="font-size:var(--fs-sm);color:var(--text-hint);margin:-0.4rem 0 .8rem;">Projetos com a tag "tratativa" ou com pedido de reembolso registrado.</div>
-    <div id="ov-tratativas-lista"></div>
-  </div>
   <!-- Pipeline e Flags -->
   <div id="ov-pipeline-flags-row" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
     <div class="card" style="margin:0;">
@@ -7164,47 +7157,6 @@ function calcMon() {
   return total;
 }
 
-// Tratativas: todo projeto com a tag "tratativa" OU com pedido de reembolso registrado
-// (p.dataReembolso) — cada um ganha um espaço pra acompanhar contexto, quando foi pedido,
-// se envolve reembolso e qual é a próxima ação, sem depender de abrir o modal da flag.
-function buildOvTratativas() {
-  const box = document.getElementById('ov-tratativas-lista');
-  if (!box) return;
-  const lista = projects.filter(p => (p.tags || []).includes('tratativa') || !!p.dataReembolso);
-  if (!lista.length) { box.innerHTML = '<div style="font-size:var(--fs-base);color:var(--text-hint);padding:8px 0;">Nenhum projeto em tratativa no momento.</div>'; return; }
-  const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
-  box.innerHTML = lista.map(p => {
-    const t = p.tratativa || {};
-    const flagCor = { Verde: 'var(--green)', Amarelo: 'var(--amber)', Vermelho: 'var(--accent)' }[calcFlagAutomatica(p)] || 'var(--text-hint)';
-    return '<div style="border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:10px;">'
-      + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">'
-      + '<button type="button" onclick="abrirModalFlag(' + p.id + ',\'healthscore\')" title="Editar flag" style="font:inherit;padding:0;background:none;border:none;color:' + flagCor + ';font-size:var(--fs-md);cursor:pointer;">' + icon('flag') + '</button>'
-      + '<strong style="font-size:var(--fs-base);">' + esc(p.nome) + '</strong>'
-      + ((p.tags && p.tags.length) ? p.tags.map(tg => '<span style="font-size:var(--fs-3xs);font-weight:700;color:#fff;background:' + tagCor(tg) + ';border-radius:8px;padding:1px 7px;">' + esc(tg) + '</span>').join('') : '')
-      + (p.dataReembolso ? '<span class="badge b-red" style="margin-top:0;">' + icon('x') + ' reembolso solicitado ' + fmtD(p.dataReembolso) + '</span>' : '')
-      + '</div>'
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">'
-      + '<div><label style="display:block;font-size:var(--fs-2xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;margin-bottom:3px;">Data da solicitação</label>'
-      + '<input type="date" class="sel" style="width:100%;" value="' + esc(t.dataSolicitacao || '') + '" onchange="tratSetField(' + p.id + ',\'dataSolicitacao\',this.value)"></div>'
-      + '<div style="display:flex;align-items:flex-end;gap:6px;padding-bottom:6px;">'
-      + '<input type="checkbox" id="trat-reemb-' + p.id + '" ' + (t.pediuReembolso ? 'checked' : '') + ' onchange="tratSetField(' + p.id + ',\'pediuReembolso\',this.checked)" style="width:16px;height:16px;cursor:pointer;">'
-      + '<label for="trat-reemb-' + p.id + '" style="font-size:var(--fs-sm);cursor:pointer;">Pediu reembolso?</label>'
-      + '</div></div>'
-      + '<label style="display:block;font-size:var(--fs-2xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;margin-bottom:3px;">Contexto</label>'
-      + '<textarea class="sel" rows="2" style="width:100%;margin-bottom:10px;resize:vertical;" placeholder="O que está acontecendo…" onchange="tratSetField(' + p.id + ',\'contexto\',this.value)">' + esc(t.contexto || '') + '</textarea>'
-      + '<label style="display:block;font-size:var(--fs-2xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;margin-bottom:3px;">Próxima ação</label>'
-      + '<input type="text" class="sel" style="width:100%;" placeholder="O que precisa acontecer agora…" value="' + esc(t.proximaAcao || '') + '" onchange="tratSetField(' + p.id + ',\'proximaAcao\',this.value)">'
-      + '</div>';
-  }).join('');
-}
-function tratSetField(id, field, value) {
-  const p = projects.find(x => String(x.id) === String(id));
-  if (!p) return;
-  if (!p.tratativa) p.tratativa = {};
-  p.tratativa[field] = value;
-  upd();
-}
-
 // ═══════════════════════════════════
 //  VISÃO GERAL
 // ═══════════════════════════════════
@@ -7924,8 +7876,6 @@ function buildOvAnalises(curM) {
   set('ov-reembolsos-motivos', reembMesProjs.length);
   const reembNomesEl = document.getElementById('ov-reembolsos-nomes');
   if (reembNomesEl) reembNomesEl.textContent = reembMesProjs.map(p => p.nome).join(' · ');
-
-  buildOvTratativas();
 
   // Motivos de perda — volume por motivo, só entre os projetos em andamento no mês
   (function(){
