@@ -11053,6 +11053,9 @@ function audFormHTML(){
     + '<div style="background:var(--surface2);border:1px dashed var(--border);border-radius:var(--r-sm);padding:14px;">'
     + '<label for="aud-arquivo" class="aud-lbl">Envie o arquivo da reunião (.pdf, .txt ou .md) — a ferramenta gera a análise com a IA selecionada acima</label>'
     + '<input type="file" id="aud-arquivo" accept=".pdf,.txt,.md" class="aud-inp">'
+    + '<div style="text-align:center;font-size:var(--fs-sm);color:var(--text-hint);margin:10px 0;">— ou —</div>'
+    + '<label for="aud-transcricao-colada" class="aud-lbl">Cole a transcrição da reunião aqui</label>'
+    + '<textarea id="aud-transcricao-colada" rows="6" class="aud-inp" placeholder="Cole o texto da transcrição…" style="resize:vertical;"></textarea>'
     + '<div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center;">'
     + '<button id="aud-btn-gerar-claude" class="btn btn-primary" onclick="audGerarComClaude()">'+icon('sparkle')+' Gerar avaliação com IA</button>'
     + '<button class="btn btn-ghost" onclick="audManual()">Preencher manual</button>'
@@ -11244,15 +11247,17 @@ async function audGerarEImportar(transcricao, onProgress){
 async function audGerarComClaude(){
   if(!audIdentOk()) return;
   const arquivo=document.getElementById('aud-arquivo')?.files?.[0];
+  const colada=(document.getElementById('aud-transcricao-colada')?.value||'').trim();
   const msg=document.getElementById('aud-gerar-msg');
   const btn=document.getElementById('aud-btn-gerar-claude');
-  if(!arquivo){ if(msg){msg.textContent='Selecione o arquivo da reunião (.pdf, .txt ou .md).';msg.style.color='var(--accent)';} return; }
+  if(!arquivo && !colada){ if(msg){msg.textContent='Selecione o arquivo da reunião ou cole a transcrição.';msg.style.color='var(--accent)';} return; }
   btn.disabled=true;
-  btn.textContent='Lendo arquivo...';
+  btn.textContent=arquivo?'Lendo arquivo...':'Avaliando…';
   if(msg){msg.textContent='';msg.style.color='var(--text-hint)';}
   try{
-    const transcricao=(await audExtrairTextoArquivo(arquivo)).trim();
-    if(transcricao.length<100) throw new Error('O arquivo parece vazio ou curto demais pra ser uma transcrição.');
+    // Arquivo tem prioridade se os dois estiverem preenchidos — evita ambiguidade silenciosa.
+    const transcricao=arquivo ? (await audExtrairTextoArquivo(arquivo)).trim() : colada;
+    if(transcricao.length<100) throw new Error('O texto parece vazio ou curto demais pra ser uma transcrição.');
     btn.textContent='Avaliando…';
     audAtualizaProgresso(5,'Conectando com a IA…');
     await audGerarEImportar(transcricao, (textoAcumulado)=>{
@@ -11978,7 +11983,7 @@ async function audSalvar(){
     }
   }
   // reset
-  ['aud-f-consultor','aud-f-tipo','aud-f-cliente','aud-f-data','aud-analise'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['aud-f-consultor','aud-f-tipo','aud-f-cliente','aud-f-data','aud-analise','aud-transcricao-colada'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   audReviewD9={}; audCancelar();
   if(typeof upd==='function') upd(); // save da linha inteira — leva o score pro Lead Time
   audRenderLista();
