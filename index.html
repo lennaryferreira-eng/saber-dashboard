@@ -2363,7 +2363,10 @@ function fcaSetField(id, field, value){
   if (!item) return;
   item[field] = value;
   upd();
-  if (field === 'concluida') fcaRenderLista(); // opacidade/filtro dependem do estado
+  // Sempre re-renderiza: impacto/prioridade mudam a cor do badge, frente muda a cor da tag e
+  // as sugestões do datalist, concluída muda opacidade/filtro — só resultadoReal (textarea)
+  // não dependeria disso, mas re-render não atrapalha porque onchange só dispara no blur.
+  fcaRenderLista();
 }
 async function fcaExcluir(id){
   if (!(await showConfirm('Excluir essa FCA?'))) return;
@@ -2378,9 +2381,17 @@ function fcaRenderLista(){
   if (!lista.length) { wrap.innerHTML = '<div style="font-size:var(--fs-base);color:var(--text-hint);padding:8px 0;">Nenhuma FCA' + (fcaFiltro==='concluida'?' concluída':fcaFiltro==='aberto'?' em aberto':'') + '.</div>'; return; }
   const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const trunc = (s, max) => { const full = esc(s); return '<span title="' + full + '">' + (s && s.length > max ? esc(s.slice(0, max)) + '…' : full) + '</span>'; };
-  const badge = (txt, cor) => txt ? '<span style="font-size:var(--fs-3xs);font-weight:700;color:#fff;background:'+cor+';border-radius:8px;padding:2px 8px;white-space:nowrap;">'+esc(txt)+'</span>' : '<span style="color:var(--text-hint);">—</span>';
+  // Select estilizado como badge colorido — editável direto na tabela, sem precisar reabrir
+  // o modal. A cor muda sozinha porque fcaSetField sempre re-renderiza a lista inteira.
+  const selectBadge = (id, field, val, opts, corMap) => '<select onchange="fcaSetField(\''+id+'\',\''+field+'\',this.value)" style="background:'+(corMap[val]||'var(--text-hint)')+';color:#fff;font-size:var(--fs-3xs);font-weight:700;border:none;border-radius:8px;padding:3px 6px;cursor:pointer;">'
+    + opts.map(o => '<option value="'+o+'"'+(val===o?' selected':'')+'>'+o+'</option>').join('')
+    + '</select>';
   const th = txt => '<th style="text-align:left;padding:6px 10px;background:var(--surface2);white-space:nowrap;">'+txt+'</th>';
   const header = '<tr>' + ['Data','Fato','Causa','Ação','Resultado esperado','Resultado real','Impacto','Prioridade','Frente','Concluída',''].map(th).join('') + '</tr>';
+  // Sugestões de Frente = todas as já usadas em qualquer FCA, um datalist só compartilhado
+  // por todas as linhas da tabela (não precisa um por linha).
+  const frentesExistentes = [...new Set(fcaItens.map(it => it.frente).filter(Boolean))].sort();
+  const datalistFrente = '<datalist id="fca-tabela-frente-list">' + frentesExistentes.map(f => '<option value="'+esc(f)+'">').join('') + '</datalist>';
   const rows = lista.map(it => {
     return '<tr style="border-bottom:1px solid var(--border);' + (it.concluida ? 'opacity:.6;' : '') + '">'
       + '<td style="padding:6px 10px;white-space:nowrap;color:var(--text-hint);font-size:var(--fs-xs);">' + fmtD((it.criadoEm||'').slice(0,10)) + '</td>'
@@ -2389,14 +2400,14 @@ function fcaRenderLista(){
       + '<td style="padding:6px 10px;max-width:200px;">' + trunc(it.acao, 60) + '</td>'
       + '<td style="padding:6px 10px;max-width:180px;">' + trunc(it.resultadoEsperado, 50) + '</td>'
       + '<td style="padding:6px 10px;min-width:180px;"><textarea class="sel" rows="1" style="width:100%;resize:vertical;font-size:var(--fs-sm);" placeholder="O que de fato aconteceu…" onchange="fcaSetField(\''+it.id+'\',\'resultadoReal\',this.value)">'+esc(it.resultadoReal)+'</textarea></td>'
-      + '<td style="padding:6px 10px;">' + badge(it.impacto, FCA_IMPACTO_COR[it.impacto] || 'var(--text-hint)') + '</td>'
-      + '<td style="padding:6px 10px;">' + badge(it.prioridade, FCA_PRIORIDADE_COR[it.prioridade] || 'var(--text-hint)') + '</td>'
-      + '<td style="padding:6px 10px;">' + (it.frente ? '<span style="font-size:var(--fs-3xs);font-weight:700;color:#fff;background:'+tagCor(it.frente)+';border-radius:8px;padding:2px 8px;white-space:nowrap;">'+esc(it.frente)+'</span>' : '<span style="color:var(--text-hint);">—</span>') + '</td>'
+      + '<td style="padding:6px 10px;">' + selectBadge(it.id, 'impacto', it.impacto || 'Médio', ['Alto','Médio','Baixo'], FCA_IMPACTO_COR) + '</td>'
+      + '<td style="padding:6px 10px;">' + selectBadge(it.id, 'prioridade', it.prioridade || 'Média', ['Alta','Média','Baixa'], FCA_PRIORIDADE_COR) + '</td>'
+      + '<td style="padding:6px 10px;min-width:110px;"><input type="text" class="sel" list="fca-tabela-frente-list" value="'+esc(it.frente)+'" placeholder="—" style="width:100%;font-size:var(--fs-sm);border-left:3px solid '+(it.frente?tagCor(it.frente):'var(--border)')+';" onchange="fcaSetField(\''+it.id+'\',\'frente\',this.value)"></td>'
       + '<td style="padding:6px 10px;text-align:center;"><input type="checkbox" ' + (it.concluida?'checked':'') + ' onchange="fcaSetField(\''+it.id+'\',\'concluida\',this.checked)" style="width:16px;height:16px;cursor:pointer;"></td>'
       + '<td style="padding:6px 10px;"><button type="button" onclick="fcaExcluir(\''+it.id+'\')" title="Excluir" style="font:inherit;padding:0;background:none;border:none;color:var(--text-hint);cursor:pointer;">'+icon('x',{size:12})+'</button></td>'
       + '</tr>';
   }).join('');
-  wrap.innerHTML = '<table style="border-collapse:collapse;font-size:var(--fs-sm);min-width:100%;"><thead>'+header+'</thead><tbody>'+rows+'</tbody></table>';
+  wrap.innerHTML = datalistFrente + '<table style="border-collapse:collapse;font-size:var(--fs-sm);min-width:100%;"><thead>'+header+'</thead><tbody>'+rows+'</tbody></table>';
 }
 
 /* ============================================================
