@@ -2394,6 +2394,17 @@ function fcaAbrirModalNovo(){
   const modal = document.getElementById('modal-fca-novo');
   if (modal) modal.style.display = 'flex';
 }
+// Atalho a partir do Gantt do Healthscore (botão de raio ao lado da flag, em cada linha de
+// projeto) — abre o mesmo modal já em modo Projetos, semana atual, com o projeto pré-
+// selecionado, pra registrar "algo precisa acontecer aqui" sem sair da análise da semana. O
+// registro cai direto na aba FCA Projetos pra revisar durante a semana.
+function fcaAbrirModalNovoParaProjeto(projectId){
+  fcaModo = 'projetos';
+  fcaProjSemanaOffset = 0;
+  fcaAbrirModalNovo();
+  const projSelEl = document.getElementById('fca-modal-projeto');
+  if (projSelEl) projSelEl.value = String(projectId);
+}
 function fecharModalFca(){
   const modal = document.getElementById('modal-fca-novo');
   if (modal) modal.style.display = 'none';
@@ -8024,6 +8035,7 @@ function buildOvGantt() {
     return '<tr style="border-bottom:1px solid var(--border);">'
       + '<td style="padding:6px 10px;color:var(--text);font-weight:600;background:var(--surface);position:sticky;left:0;white-space:nowrap;">'
       + '<button type="button" onclick="abrirModalFlag(' + p.id + ',\'healthscore\')" title="' + flagTitle.replace(/"/g,'&quot;') + '" style="font:inherit;padding:0;background:none;border:none;color:' + flagCor + ';font-size:var(--fs-md);margin-right:5px;cursor:pointer;">'+icon('flag')+(temAnotacao ? '<sup style="font-size:var(--fs-3xs);">'+icon('edit',{size:8})+'</sup>' : '') + '</button>'
+      + '<button type="button" onclick="fcaAbrirModalNovoParaProjeto(' + p.id + ')" title="Registrar FCA para esse projeto" style="font:inherit;padding:0;background:none;border:none;color:var(--text-hint);font-size:var(--fs-md);margin-right:5px;cursor:pointer;">'+icon('zap')+'</button>'
       + (p.nome||'—')
       + (temAnotacao ? '<div style="font-size:var(--fs-2xs);font-weight:400;color:var(--text-hint);white-space:normal;max-width:190px;line-height:1.3;margin-top:1px;">' + (p.flagManualMotivo || 'sem motivo informado').replace(/</g,'&lt;') + '</div>' : '')
       + ((p.tags && p.tags.length) ? '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:3px;max-width:190px;">' + p.tags.map(t => '<span style="font-size:var(--fs-3xs);font-weight:700;color:#fff;background:' + tagCor(t) + ';border-radius:8px;padding:1px 7px;white-space:nowrap;">' + t.replace(/</g,'&lt;') + '</span>').join('') + '</div>' : '')
