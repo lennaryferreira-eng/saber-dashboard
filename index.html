@@ -11049,7 +11049,7 @@ function audFormHTML(){
     +   '<option value="gemini">Gemini 2.5 Pro — mais leniente</option>'
     + '</select></div>'
     + '</div>'
-    + '<textarea id="aud-analise" style="display:none;"></textarea>'
+    + '<span id="aud-form-msg" style="display:block;font-size:var(--fs-base);color:var(--text-hint);margin-bottom:10px;"></span>'
     + '<div style="background:var(--surface2);border:1px dashed var(--border);border-radius:var(--r-sm);padding:14px;">'
     + '<label for="aud-arquivo" class="aud-lbl">Envie o arquivo da reunião (.pdf, .txt ou .md) — a ferramenta gera a análise com a IA selecionada acima</label>'
     + '<input type="file" id="aud-arquivo" accept=".pdf,.txt,.md" class="aud-inp">'
@@ -11057,7 +11057,13 @@ function audFormHTML(){
     + '<button id="aud-btn-gerar-claude" class="btn btn-primary" onclick="audGerarComClaude()">'+icon('sparkle')+' Gerar avaliação com IA</button>'
     + '<button class="btn btn-ghost" onclick="audManual()">Preencher manual</button>'
     + '<span id="aud-gerar-msg" style="font-size:var(--fs-base);color:var(--text-hint);"></span>'
-    + '<span id="aud-form-msg" style="font-size:var(--fs-base);color:var(--text-hint);"></span>'
+    + '</div></div>'
+    + '<div style="text-align:center;font-size:var(--fs-sm);color:var(--text-hint);margin:10px 0;">— ou —</div>'
+    + '<div style="background:var(--surface2);border:1px dashed var(--border);border-radius:var(--r-sm);padding:14px;">'
+    + '<label for="aud-analise" class="aud-lbl">Cole o diagnóstico já pronto (gerado fora do painel — do "**Consultor:**" até a "Recomendação:")</label>'
+    + '<textarea id="aud-analise" rows="10" class="aud-inp" placeholder="Cole aqui o texto completo da avaliação…" style="resize:vertical;"></textarea>'
+    + '<div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center;">'
+    + '<button class="btn btn-primary" onclick="audImportar()">'+icon('check')+' Importar diagnóstico colado</button>'
     + '</div></div>'
     + '<div id="aud-review" style="display:none;margin-top:18px;"></div>';
 }
