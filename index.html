@@ -11269,20 +11269,28 @@ const AUD_DIMS = [
 // Pesos por dimensão — variam por TIPO de entrega, conforme a tabela oficial da skill
 // avaliacao-reunioes-v4. D9 é sempre 30%; o resto muda conforme o que cada entrega prioriza.
 const AUD_PESOS_POR_TIPO = {
-  'Kickoff':                  {d1:6, d2:13, d3:3, d4:13, d5:13, d6:3, d7:6, d8:13, d9:30},
+  'Kickoff':                  {d1:8, d2:16, d3:3, d4:9,  d5:9,  d6:3, d7:6, d8:16, d9:30},
   'Pesquisa de Mercado':      {d1:7, d2:7,  d3:7, d4:14, d5:14, d6:3, d7:7, d8:11, d9:30},
   'Diagnóstico de Vendas':    {d1:7, d2:7,  d3:7, d4:14, d5:14, d6:7, d7:7, d8:7,  d9:30},
-  'Diagnóstico de Mídia Paga':{d1:7, d2:7,  d3:7, d4:14, d5:14, d6:7, d7:7, d8:7,  d9:30},
-  'Análise de Ambientes':     {d1:7, d2:7,  d3:7, d4:14, d5:14, d6:7, d7:7, d8:7,  d9:30},
+  'Diagnóstico de Mídia Paga':{d1:7, d2:7,  d3:7, d4:10, d5:10, d6:11,d7:7, d8:11, d9:30},
+  'Análise de Ambientes':     {d1:11,d2:7,  d3:7, d4:8,  d5:8,  d6:11,d7:7, d8:11, d9:30},
   'Apresentação Final':       {d1:5, d2:5,  d3:5, d4:12, d5:12, d6:12,d7:9, d8:10, d9:30},
 };
-// Fallback pra tipos sem coluna própria na tabela (Reunião de Negociação, Outra) — usa o
-// perfil "Diagnósticos", que é o meio-termo entre as colunas documentadas.
+// D4/D5 pesam menos em Mídia Paga (CPA/ROI já vem em R$ da plataforma), Ambientes
+// (diagnóstico visual/de marca — forçar R$ arrisca número inventado) e Kickoff (reunião de
+// coleta de insumo, sem achado formado ainda pra quantificar); o peso liberado nesses três
+// vai pra D1/D2/D6/D8. Fallback pra tipos sem coluna própria (Reunião de Negociação, Outra):
+// usa o perfil de Vendas, por ser o mais próximo de uma conversa comercial padrão.
 const AUD_PESOS_PADRAO = AUD_PESOS_POR_TIPO['Diagnóstico de Vendas'];
 function audPesosDoTipo(entrega){ return AUD_PESOS_POR_TIPO[entrega] || AUD_PESOS_PADRAO; }
 function audNotaPonderada(scores, entrega){
   const pesos = audPesosDoTipo(entrega);
   return Math.round(AUD_DIMS.reduce((soma, d) => soma + (scores[d.id]||0) * (pesos[d.id]||0), 0) / 100);
+}
+// Bônus de feedback excepcional do cliente (0/10/20) — exceção, não regra: some por cima da
+// ponderada normal (0-100), permitindo nota final até 120. Ver skill, passo 5.
+function audNotaFinal(scores, entrega, bonus){
+  return Math.min(120, audNotaPonderada(scores, entrega) + Math.min(20,Math.max(0,bonus||0)));
 }
 const AUD_GRUPOS = {
   G1:{nome:'Condução & Comunicação', cor:'#1f9d55', ids:['d1','d2','d3']},
@@ -11418,6 +11426,15 @@ function audParseObs(txt){
   return obs;
 }
 function audParseRec(txt){ const m=txt.match(/(?:^|\n)\s*recomenda[çc][aã]o(?:\s+geral)?\s*:\s*([\s\S]*?)(?:\n\n|$)/i); return m?m[1].replace(/\*+/g,'').trim():''; }
+// Bônus de feedback excepcional do cliente (0/10/20, opcional) — a skill escreve numa linha
+// própria tipo "Bônus de feedback: +10 — [evidência]", separada por linha em branco da
+// Recomendação (então audParseRec não a engole). Ausente = 0, sem penalizar quem colou só
+// até a Recomendação manualmente.
+function audParseBonus(txt){
+  const m=txt.match(/(?:^|\n)\s*b[oô]nus\s+de\s+feedback[^\n:]*:\s*\+?\s*(\d{1,3})\s*[—-]?\s*([\s\S]*?)(?:\n\n|$)/i);
+  if(!m) return {valor:0,evidencia:''};
+  return {valor:Math.min(20,Math.max(0,parseInt(m[1])||0)), evidencia:(m[2]||'').replace(/\*+/g,'').trim()};
+}
 function audParseD9(txt, entrega){
   txt=txt.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
   const mB=txt.match(/\nd9[:\s]*\d{1,3}[^\n]*\n([\s\S]*?)(?=\nd[1-8][:\s]|\nRecomenda|$)/i);
@@ -11501,7 +11518,7 @@ function audFormHTML(){
     + '</div></div>'
     + '<div style="text-align:center;font-size:var(--fs-sm);color:var(--text-hint);margin:10px 0;">— ou —</div>'
     + '<div style="background:var(--surface2);border:1px dashed var(--border);border-radius:var(--r-sm);padding:14px;">'
-    + '<label for="aud-analise" class="aud-lbl">Cole o diagnóstico já pronto (gerado fora do painel — do "**Consultor:**" até a "Recomendação:")</label>'
+    + '<label for="aud-analise" class="aud-lbl">Cole o diagnóstico já pronto (gerado fora do painel — do "**Consultor:**" até a "Recomendação:", incluindo a linha "Bônus de feedback:" se houver)</label>'
     + '<textarea id="aud-analise" rows="10" class="aud-inp" placeholder="Cole aqui o texto completo da avaliação…" style="resize:vertical;"></textarea>'
     + '<div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center;">'
     + '<button class="btn btn-primary" onclick="audImportar()">'+icon('check')+' Importar diagnóstico colado</button>'
@@ -11536,16 +11553,16 @@ function audImportar(){
   const txt=(document.getElementById('aud-analise')?.value||'').trim();
   const msg=document.getElementById('aud-form-msg');
   if(txt.length<30){ if(msg){msg.textContent='Cole o texto da análise do Claude.';msg.style.color='var(--accent)';} return; }
-  const scores=audParseScores(txt), obs=audParseObs(txt), rec=audParseRec(txt);
+  const scores=audParseScores(txt), obs=audParseObs(txt), rec=audParseRec(txt), bonus=audParseBonus(txt);
   audReviewD9=audParseD9(txt, document.getElementById('aud-f-tipo')?.value || '');
-  audRenderReview(scores,obs,rec);
+  audRenderReview(scores,obs,rec,bonus);
   if(msg){msg.textContent='✓ Importado — revise e salve.';msg.style.color='var(--green)';}
 }
 function audManual(){
   if(!audIdentOk()) return;
   const scores={},obs={}; AUD_DIMS.forEach(d=>{scores[d.id]=70;obs[d.id]={analise:'',plano:''};});
   audReviewD9={};
-  audRenderReview(scores,obs,'');
+  audRenderReview(scores,obs,'',{valor:0,evidencia:''});
 }
 
 if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -12077,6 +12094,7 @@ async function audFilaProcessarBackground(){
           obs: audParseObs(texto),
           rec: audParseRec(texto),
           d9Itens: audParseD9(texto, item.tipoSugerido||''),
+          bonus: audParseBonus(texto),
         };
         item.status='pronta'; item.progressoLabel=null;
       }catch(err){
@@ -12140,7 +12158,7 @@ function audAbrirRevisaoDoItem(itemId){
   setVal('aud-f-cliente', item.clienteSugerido);
   setVal('aud-f-data', (item.modificadoEm||'').slice(0,10));
   audReviewD9=item.resultado.d9Itens||{};
-  audRenderReview(item.resultado.scores, item.resultado.obs, item.resultado.rec);
+  audRenderReview(item.resultado.scores, item.resultado.obs, item.resultado.rec, item.resultado.bonus);
   document.getElementById('aud-review')?.scrollIntoView({behavior:'smooth', block:'start'});
 }
 
@@ -12201,7 +12219,8 @@ async function audFilaCarregarEstado(){
   }catch(e){ console.warn('audFilaCarregarEstado falhou:', e); }
 }
 
-function audRenderReview(scores,obs,rec){
+function audRenderReview(scores,obs,rec,bonus){
+  bonus = bonus || {valor:0,evidencia:''};
   const entrega=(document.getElementById('aud-f-tipo')?.value||'');
   let html='';
   ['G1','G2','G3'].forEach(gk=>{
@@ -12228,8 +12247,15 @@ function audRenderReview(scores,obs,rec){
     });
   });
   html+='<div style="margin-top:16px;"><label for="aud-rec" class="aud-lbl">Recomendação geral</label><textarea id="aud-rec" class="aud-inp" rows="3" placeholder="Principal recomendação…" style="line-height:1.55;resize:vertical;">'+(rec||'')+'</textarea></div>';
+  html+='<div style="margin-top:16px;padding:14px;background:var(--surface2);border-radius:var(--r-sm);border-left:2px solid var(--green);">'
+    + '<label for="aud-bonus-num" class="aud-lbl">Bônus de feedback excepcional do cliente (0, 10 ou 20 — exceção, não regra)</label>'
+    + '<div style="display:flex;gap:10px;align-items:center;margin-bottom:8px;">'
+    +   '<input type="number" min="0" max="20" step="10" value="'+(bonus.valor||0)+'" id="aud-bonus-num" oninput="audAtualizarMedia()" class="aud-inp" style="width:90px;text-align:center;font-weight:700;">'
+    + '</div>'
+    + '<textarea id="aud-bonus-evidencia" rows="2" class="aud-inp" placeholder="Evidência do feedback excepcional, nas palavras do cliente (deixe vazio se bônus = 0)…" style="resize:vertical;">'+(bonus.evidencia||'')+'</textarea>'
+    + '</div>';
   html+='<div style="margin-top:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">'
-    + '<div style="font-size:var(--fs-md);">Nota geral: <strong id="aud-media" style="font-size:22px;color:var(--accent);">—</strong><span style="font-size:var(--fs-base);color:var(--text-hint);">/100</span></div>'
+    + '<div style="font-size:var(--fs-md);">Nota geral: <strong id="aud-media" style="font-size:22px;color:var(--accent);">—</strong><span id="aud-media-den" style="font-size:var(--fs-base);color:var(--text-hint);">/100</span></div>'
     + (audEditandoId ? '<span style="font-size:var(--fs-sm);color:var(--amber);font-weight:600;">'+icon('edit',{size:11})+' editando avaliação existente</span>' : '')
     + '<button id="aud-btn-salvar" class="btn btn-primary" onclick="audSalvar()">'+(audEditandoId?'Salvar alterações':'Salvar avaliação')+'</button>'
     + '<button class="btn btn-ghost" onclick="audCancelar()">Cancelar</button>'
@@ -12262,7 +12288,14 @@ function audSyncDim(id,from){
   audAtualizarMedia();
 }
 function audGetScores(){ const s={}; AUD_DIMS.forEach(d=>{ const el=document.getElementById('aud-num-'+d.id); s[d.id]=el?Math.min(100,Math.max(0,parseInt(el.value)||0)):70; }); return s; }
-function audAtualizarMedia(){ const s=audGetScores(); const entrega=document.getElementById('aud-f-tipo')?.value||''; const m=audNotaPonderada(s, entrega); const el=document.getElementById('aud-media'); if(el){ el.textContent=m; el.style.color=audClassif(m).cor; } }
+function audGetBonus(){ const el=document.getElementById('aud-bonus-num'); return el?Math.min(20,Math.max(0,parseInt(el.value)||0)):0; }
+function audAtualizarMedia(){
+  const s=audGetScores(); const entrega=document.getElementById('aud-f-tipo')?.value||'';
+  const base=audNotaPonderada(s, entrega); const bonus=audGetBonus(); const total=audNotaFinal(s, entrega, bonus);
+  const el=document.getElementById('aud-media'); const den=document.getElementById('aud-media-den');
+  if(el){ el.textContent=total; el.style.color=audClassif(total).cor; }
+  if(den){ den.textContent = bonus>0 ? (' = '+base+' + '+bonus+' bônus') : '/100'; }
+}
 function audCancelar(){ const rv=document.getElementById('aud-review'); if(rv){rv.style.display='none';rv.innerHTML='';} audEditandoId=null; audFilaRevisandoId=null; }
 
 // Reabre uma avaliação já salva pra edição — reaproveita a mesma tela de revisão usada
@@ -12277,7 +12310,7 @@ function audEditar(id) {
   setVal('aud-f-cliente', a.cliente);
   setVal('aud-f-data', a.data);
   audReviewD9 = a.d9_itens || {};
-  audRenderReview(a.scores || {}, a.observacoes || {}, a.recomendacao || '');
+  audRenderReview(a.scores || {}, a.observacoes || {}, a.recomendacao || '', a.bonusFeedback || {valor:0,evidencia:''});
   document.getElementById('aud-review')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -12389,11 +12422,12 @@ async function audSalvar(){
     if(d.id==='d9') obs.d9={analise:g('aud-analise-d9'),plano:''};
     else obs[d.id]={analise:g('aud-analise-'+d.id),plano:g('aud-plano-'+d.id)};
   });
-  const nota=audNotaPonderada(scores, g('aud-f-tipo'));
   const entregaTipo = g('aud-f-tipo');
+  const bonusFeedback = { valor: audGetBonus(), evidencia: g('aud-bonus-evidencia') };
+  const nota=audNotaFinal(scores, entregaTipo, bonusFeedback.valor);
   const ordemEntrega = ordemDaEntregaPeloTipo(entregaTipo); // deriva do tipo, sem campo extra
   const cliente = g('aud-f-cliente');
-  const dadosAtualizados = { consultor:g('aud-f-consultor'), entrega:entregaTipo, cliente, data:g('aud-f-data'), scores, observacoes:obs, recomendacao:g('aud-rec'), nota, d9_itens:audReviewD9, ordemEntrega };
+  const dadosAtualizados = { consultor:g('aud-f-consultor'), entrega:entregaTipo, cliente, data:g('aud-f-data'), scores, observacoes:obs, recomendacao:g('aud-rec'), nota, bonusFeedback, d9_itens:audReviewD9, ordemEntrega };
   // Só grava driveFileId quando a avaliação nasceu de um item da fila (audFilaRevisandoId
   // setado por audAbrirRevisaoDoItem) — em qualquer outro caso (manual, colar, editar uma
   // avaliação existente) a chave nem entra no objeto, então o merge abaixo preserva o que já

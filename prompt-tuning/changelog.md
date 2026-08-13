@@ -68,6 +68,34 @@ Decisão: o padrão de âncoras 0/50/75/100 + Análise/Plano de ação por crit�
 
 **Nota sobre o cálculo:** com os 2 itens novos sempre presentes no checklist (exceto Kickoff pro item 4), a base de itens aplicáveis da D9 cresce em todos os tipos — reconferir a % de cumprimento na próxima avaliação real, não só nos casos de teste.
 
+## D4/D5 — dado indisponível ou não confiável do cliente — ajustado em 13/08/2026
+**O que mudou:** adicionada regra em D4 e D5 pra quando o cliente não fornece o número necessário (mesmo perguntado), o dado genuinamente não existe, ou o único número disponível vem do próprio cliente e a transcrição sugere que pode ser impreciso/inflado (cliente hedge, outro participante contesta, valor muda ao longo da call). Diferente da regra "piso neutro 70" usada em D3/D6, aqui a neutralização é cirúrgica: só o critério que depende do número ("consequência financeira em reais" em D4, "custo da inação no presente" em D5) deixa de ser penalizado — a nota continua vindo dos outros 2 critérios de cada dimensão. Usar um número do cliente com ressalva ("com base no que vocês passaram") não penaliza; só penaliza usar sem nenhuma ressalva um número que a própria call já contestou.
+
+**Por quê:** a régua anterior cobrava tradução financeira mesmo quando o cliente simplesmente não tinha ou não passou o dado — isso empurrava o consultor a inventar número pra não perder nota, o oposto do que a régua de "números contraditórios" já tenta evitar.
+
+**Teste no caso de referência:** não muda nada — o cliente F2 Solution forneceu números reais (ticket médio, margem, fechamentos/mês); o gap identificado em D4/D5 é não ter fechado esses números já disponíveis em R$/mês, não falta de dado. A regra nova só entraria em cena se o cliente tivesse se recusado a informar isso.
+
+## Pesos por tipo de entrega — D4/D5 diferenciados — ajustado em 13/08/2026
+**O que mudou:** a tabela de pesos (skill, seção "Nota consolidada", e o espelho client-side `AUD_PESOS_POR_TIPO` em `index.html`) deixou de tratar Mídia Paga/Vendas/Ambientes como uma coluna só ("Diagnósticos", 14%/14% pra D4/D5 nos três). Agora:
+- **Diagnóstico de Vendas:** mantido em 14%/14% (achado central é literalmente financeiro).
+- **Diagnóstico de Mídia Paga:** D4/D5 caem pra 10%/10% (CPA/ROI já vem em R$ nativo da plataforma — menos sobre habilidade do consultor). Peso liberado vai pra D6 (11%, recomendação/realocação de verba) e D8 (11%, domínio do canal).
+- **Diagnóstico de Ambientes:** D4/D5 caem pra 8%/8% (diagnóstico visual/de marca — forçar R$ arriscava número inventado, o problema que a regra acima também endereça). Peso liberado vai pra D1 (11%, narrativa), D6 (11%) e D8 (11%).
+- **Kickoff:** D4/D5 caem de 13%/13% pra 9%/9% (reunião de coleta de insumo, sem achado formado ainda pra quantificar). Peso liberado vai pra D2 (16%, escuta ativa — já era a maior do Kickoff) e D8 (16%, domínio do negócio do cliente desde o início).
+- Pesquisa de Mercado e Apresentação Final: inalterados.
+
+**Por quê:** a coordenadora observou que exigir tradução financeira pesada nesses três tipos não bate com o que cada um realmente prioriza, e pressiona a régua de D4/D5 (que já é rígida sobre número inventado/genérico) numa direção contraditória.
+
+**Teste no caso de referência:** o caso F2 Solution é Diagnóstico de Vendas, cujos pesos não mudaram — nota consolidada continua 64,0. **Ainda não temos caso de referência de Kickoff, Mídia Paga ou Ambientes pra testar a redistribuição na prática** — os números novos (9/10/8% pra D4/D5, redistribuição pra D1/D2/D6/D8) são um design baseado no raciocínio acima, não validados contra uma transcrição real ainda. Recomendado pegar uma entrega real de cada um desses 3 tipos pra rodar o mesmo processo de teste.
+
+## Bônus de feedback excepcional do cliente (0 a +20) — adicionado em 13/08/2026
+**O que mudou:** novo "passo 5" na skill, separado das 9 dimensões — bônus de 0/10/20 pontos, somado por cima da consolidada (nota final pode chegar a 120), quando o cliente dá feedback verbal excepcional (entusiasmo espontâneo e específico, nas próprias palavras dele) sobre pelo menos 1 de 3 eixos: a entrega em si, a postura do consultor, ou entendimento claro do assunto adequado à realidade daquela entrega. É exceção, não regra — feedback educado ou o "faz sentido" que já conta pra D9 (Regra Transversal 2) não é suficiente sozinho.
+
+Diferente das outras mudanças desta sessão, essa não ficou só no prompt: o painel recalcula a nota salva a partir das notas d1-d9 no client-side (`audNotaPonderada`), então implementei o pipeline completo em `index.html` também — `audParseBonus` (lê a linha `Bônus de feedback: +N — [evidência]` que a skill agora escreve sempre, mesmo quando N=0), `audNotaFinal` (soma o bônus, capado em 120), campo editável na tela de revisão (número + evidência), e persistência (`bonusFeedback` no registro salvo, restaurado ao reabrir pra editar). Cobre os dois caminhos de geração — upload manual e fila do Drive.
+
+**Por quê:** a coordenadora quer reconhecer entregas que geraram uma reação de cliente claramente acima do esperado, sem que isso fique só andando por fora da nota registrada no painel.
+
+**Pendência:** não foi auditado se outras partes do painel que consomem a nota da auditoria (Lead Time, Healthscore) têm alguma barra/gráfico que assume teto 100 — só vai aparecer na prática quando uma auditoria real ganhar bônus.
+
 ## Nota consolidada do caso de referência após todos os ajustes (D1-D8)
 D1=60, D2=52, D3=70, D4=52, D5=38, D6=72, D7=70, D8=55, D9=83 (inalterado).
 Consolidada = (60×7 + 52×7 + 70×7 + 52×14 + 38×14 + 72×7 + 70×7 + 55×7 + 83×30) ÷ 100
