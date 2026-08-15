@@ -1,1 +1,9 @@
 .vercel
+
+# Segredos de ambiente. `vercel env pull` (necessário pra rodar `vercel dev` localmente)
+# escreve a ANTHROPIC_API_KEY, a GEMINI_API_KEY e a chave da conta de serviço do Google em
+# texto puro nesses arquivos — sem esta linha eles apareceriam no `git status` prontos pra
+# serem commitados por engano.
+.env
+.env.local
+.env*.local

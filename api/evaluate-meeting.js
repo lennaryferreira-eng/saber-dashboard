@@ -98,10 +98,31 @@ export default async function handler(req, res) {
         'Connection': 'keep-alive',
       });
       const r = claudeRes.body.getReader();
+      // Espia só o começo do stream pra registrar o aproveitamento do cache da rubrica. O
+      // `message_start` é o primeiro evento e já traz o usage; assim que ele é lido, paramos
+      // de decodificar e o resto dos bytes segue direto pro cliente, sem custo.
+      // Sem este log não dá pra saber se o cache está pegando: quando ele para de funcionar
+      // (ver a trava dos 4.096 tokens em _lib/anthropic.js) nada falha, só fica caro.
+      const decoder = new TextDecoder();
+      let inicio = '';
+      let cacheRegistrado = false;
       while (true) {
         const { done, value } = await r.read();
         if (done) break;
         res.write(value);
+        if (!cacheRegistrado) {
+          inicio += decoder.decode(value, { stream: true });
+          const leu = inicio.match(/"cache_read_input_tokens":(\d+)/);
+          const gravou = inicio.match(/"cache_creation_input_tokens":(\d+)/);
+          if (leu && gravou) {
+            cacheRegistrado = true;
+            console.log('cache da rubrica (' + modeloClaude + '): leu ' + leu[1] + ' tokens, gravou ' + gravou[1]);
+            inicio = '';
+          } else if (inicio.length > 8000) {
+            cacheRegistrado = true; // não achou no começo do stream — desiste e libera a memória
+            inicio = '';
+          }
+        }
       }
       res.end();
       return;
