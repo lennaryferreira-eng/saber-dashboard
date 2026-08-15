@@ -33,213 +33,111 @@ Cada dimensão recebe nota 0–100, uma "Análise:" em prosa otimizada (direta a
 - **d8 — Domínio do negócio do cliente:** leitura do modelo, calibração ao setor, linguagem do cliente. *(Linguagem do cliente só é Pleno quando o consultor fala no vocabulário que o PRÓPRIO cliente usaria pro negócio dele — jargão técnico explicado antes de usar (ex: "SVG", "ICP", "funil") ainda é jargão traduzido, não linguagem do cliente; é no máximo Parcial. Pleno exige trocar de registro de verdade pro vocabulário do setor do cliente, não só tornar o próprio jargão mais palatável.)*
 - **d9 — Qualidade técnica da entrega:** critérios específicos da skill daquele tipo de entrega. Na linha \`d9: NN\`, liste em seguida cada item no formato \`1.1: ✅\` (✅ entregue / ⚠️ parcial / ❌ ausente / N/A não se aplica), um por linha, **ANTES** da Análise em texto corrido. A D9 não tem "Plano de ação:" próprio — o encaminhamento técnico vai dentro da Análise.
 
+## Modelo de calibração — D1 a D8
+Cada dimensão D1–D8 (a D9 tem sistema próprio, ver seção específica) tem exatamente 3 critérios nomeados. A nota 0–100 é calibrada por 4 âncoras (0/50/75/100) que descrevem o estado dos 3 critérios juntos naquele ponto — não são as únicas notas possíveis, servem pra interpolar; quando o caso cai entre duas âncoras, pesa mais o critério mais fraco dos três (mesma lógica do contra-argumento obrigatório da régua geral, mais abaixo). A seção de cada dimensão define os 3 critérios e as 4 âncoras específicas dela.
+
 ## Referência de calibração — D1 (Controle Narrativo)
-Use este bloco como critério de referência pra julgar D1. D1 mede a capacidade do consultor de **conduzir a narrativa da reunião**, não apenas apresentar informação.
+D1 mede a capacidade do consultor de **conduzir a narrativa da reunião**, não apenas apresentar informação. Três critérios, sempre nomeados nessa ordem na Análise e no Plano de ação:
+- **Tese central** — existe uma ideia que guia a reunião inteira (não só o bloco atual), e ela é retomada no fechamento.
+- **Progressão lógica** — os blocos são conectados por transição construída, não uma lista de tópicos na ordem do material/slide.
+- **Reencadramento do negativo** — todo dado ruim (queda, erro do cliente, budget baixo, gap encontrado) é nomeado sem minimizar e reenquadrado como parte da tese, não deixado boiando como problema em aberto.
 
-### 1. Tese central
+**100** — Tese explícita nos primeiros minutos, citável quase palavra por palavra, retomada no fechamento. Toda transição entre blocos amarra de volta à tese — nenhum trecho é lista solta. Todo negativo relevante foi nomeado sem minimização e reenquadrado explicitamente como parte da tese.
 
-**Boa entrega**
-- Nos primeiros minutos, fica claro qual é a ideia que vai guiar a reunião inteira (ex.: "o problema não é geração de leads, é conversão — e é isso que vamos provar hoje").
-- Cada bloco da reunião é amarrado de volta a essa tese, explicitamente ("isso confirma o que eu disse no início...").
-- No fechamento, a tese é retomada e reforçada com o que foi mostrado.
+**75** — Tese identificável e citável, mas a retomada no fechamento é implícita ou parcial. Progressão organizada, com transição na maioria dos blocos — até 1-2 trechos podem ser lista solta sem reconexão à tese, desde que não sejam a maior parte da reunião. O(s) negativo(s) mais importante(s) foi(ram) reenquadrado(s); negativos secundários podem ter ficado só nomeados.
 
-**Má entrega**
-- A reunião é uma lista de tópicos apresentados em sequência, sem uma ideia central que os conecte.
-- O consultor não sinaliza qual é o fio condutor; cada achado é tratado como independente.
-- Se perguntado "qual é a mensagem principal desta reunião?", a resposta não estaria clara para quem assistiu.
+**50** — Tese precisa ser inferida (nunca dita explicitamente) ou nunca é retomada no fechamento. Progressão é majoritariamente lista de tópicos, com poucas ou nenhuma transição construída. Negativo(s) relevante(s) nomeado(s) mas não reenquadrado(s) — ficou(aram) como problema em aberto, ou reenquadramento genérico ("mas isso a gente resolve depois").
 
-### 2. Progressão lógica
-
-**Boa entrega**
-- Cada tópico prepara o próximo — há transições explícitas ("agora que vimos X, isso nos leva a Y").
-- A ordem dos assuntos tem propósito: constrói-se um raciocínio, não se despeja informação.
-- O consultor recupera o controle quando o cliente desvia do fio, sem cortar bruscamente ("ótimo ponto, eu volto nisso daqui a pouco, mas deixa eu fechar esse raciocínio primeiro").
-
-**Má entrega**
-- Saltos entre assuntos sem transição ("mudando de assunto...", ou silêncio e troca de tela).
-- A ordem parece ser a ordem do relatório/slide, não uma ordem pensada para o cliente entender.
-- O consultor perde o controle quando o cliente pergunta algo fora de ordem e a reunião vira uma colcha de retalhos.
-
-### 3. Reencadramento do negativo
-
-**Boa entrega**
-- Um dado ruim (queda de conversão, erro do cliente, budget baixo) é nomeado sem rodeios e imediatamente reposicionado como parte da solução ("essa queda é exatamente o sintoma que confirma o diagnóstico — e é por isso que o próximo passo resolve os dois problemas ao mesmo tempo").
-- O consultor nunca nega ou minimiza o problema para "não incomodar" — ele reconhece e reenquadra.
-- O negativo vira combustível para a tese central, não um desvio dela.
-
-**Má entrega**
-- O dado ruim é apresentado e o consultor segue adiante sem reenquadrá-lo — fica "boiando" como um problema sem solução aparente.
-- Tentativa de suavizar/evitar o assunto em vez de reenquadrar ("mas isso não é tão importante", "vamos não focar muito nisso").
-- O reenquadramento, quando existe, é genérico e não conecta de volta à tese central.
-
-### Calibragem de nota pra D1 (escala 0–100)
-
-| Faixa | Significado para D1 |
-|---|---|
-| **85–100 Excelente** | Tese explícita desde o início, retomada no fechamento; transições citáveis entre todos os blocos; pelo menos um reenquadramento de negativo claramente executado. |
-| **70–84 Bom** | Fio condutor identificável e progressão organizada, mas sem retomada explícita da tese ou com alguma transição abrupta. |
-| **55–69 Regular** | Reunião tem alguma organização, mas tese pouco clara ou ausente; progressão mais próxima de lista de tópicos que de raciocínio construído. |
-| **< 55 Insuficiente** | Sem tese identificável; sequência de assuntos soltos; negativo(s) surgem e não são reenquadrados — ficam como problema em aberto. |
+**0** — Nenhuma tese identificável, nem por inferência. Sequência de assuntos sem ordem pensada. Negativo(s) relevante(s) ignorado(s) ou minimizado(s), ou a call evitou visivelmente um dado negativo óbvio.
 
 **Regra de calibragem:** o básico (falar sobre os temas certos, na ordem do material) não é mérito — é piso. Nota alta exige controle narrativo ativo e citável na transcrição, não apenas ausência de erro grosseiro.
 
-**Checklist rápido pra D1:**
-- Existe uma tese/ideia central identificável nos primeiros minutos?
-- A tese é retomada no fechamento?
-- Há transições explícitas entre os blocos da reunião?
-- O consultor recupera o fio quando o cliente desvia?
-- Algum dado/fato negativo apareceu na reunião? Se sim: foi nomeado sem minimização? Foi reenquadrado a favor da narrativa (não apenas mencionado)?
-
 ## Referência de calibração — D2 (Escuta Ativa e Equilíbrio)
-**O que avalia:** checkpoints ao longo da reunião, incorporação real do que o cliente diz, didática preventiva (antecipar dúvida antes que vire objeção).
+Três critérios: **checkpoints** (pausa real pra checar entendimento, não cacoete tipo "tá?"/"né?"/"certo?"), **incorporação do cliente** (a resposta muda o rumo da explicação ou é citada depois — não é só pergunta retórica), **didática preventiva** (antecipa dúvida técnica antes do cliente demonstrar confusão).
 
-**Boa entrega**
-- Faz checkpoints periódicos ("faz sentido até aqui?", "isso bate com o que vocês vivem?") em vez de falar 20 minutos seguidos sem pausa.
-- Incorpora de fato o que o cliente respondeu — muda o rumo da explicação, cita a resposta do cliente depois ("como você mencionou sobre X, isso explica Y").
-- Antecipa uma dúvida técnica antes que o cliente precise perguntar (didática preventiva), sem que o cliente tenha demonstrado confusão antes.
-- Equilíbrio de fala: não é um monólogo — o cliente participa de fato, não só responde "sim" a perguntas fechadas.
+**100** — Checkpoints genuínos e frequentes ao longo de toda a reunião (não só no fim de um bloco), sempre com pausa real. Pelo menos 2-3 casos citáveis de incorporação real — muda o rumo da explicação ou cita a resposta do cliente depois. Pelo menos um caso de didática preventiva genuína.
 
-**Má entrega**
-- Fala corrida sem pausas para checar entendimento; só pergunta "alguma dúvida?" genérico no fim.
-- Pergunta a opinião do cliente mas segue o roteiro como se a resposta não tivesse sido dada.
-- Cliente demonstra confusão (repete pergunta, pede para explicar de novo) e o consultor não percebe/ajusta.
-- Reunião é essencialmente um monólogo de apresentação de slides.
+**75** — Checkpoints presentes ao longo da reunião, a maioria genuína. Pelo menos 1 caso citável de incorporação real. Didática preventiva pode não aparecer, mas nenhuma confusão do cliente foi ignorada.
 
-**Calibragem D2**
-| Faixa | Significado |
-|---|---|
-| 85–100 | Checkpoints frequentes e genuínos, incorporação citável do cliente, pelo menos um caso de didática preventiva. |
-| 70–84 | Alguns checkpoints, escuta razoável, sem falhas graves de didática. |
-| 55–69 | Checkpoints raros ou genéricos ("faz sentido?" sem pausa real para resposta); pouca incorporação do que o cliente diz. |
-| < 55 | Monólogo; cliente demonstra confusão e não é endereçado; zero incorporação do que foi dito pelo cliente. |
+**50** — Checkpoints existem mas são esparsos ou majoritariamente genéricos (só "compreendido?"/"dúvidas?" no fim de blocos longos, sem aprofundar a resposta). Incorporação fraca — perguntas feitas, mas a resposta não muda nada no que vem depois. Nenhuma didática preventiva.
+
+**0** — Monólogo do início ao fim, sem pausa real pra checar entendimento em nenhum momento. Zero incorporação do que o cliente disse. Cliente demonstra confusão (repete pergunta, pede pra explicar de novo) e não é percebido.
 
 ## Referência de calibração — D3 (Gestão de Objeções)
-**O que avalia:** validar a objeção antes de redirecionar, resolver ao vivo (não empurrar para depois), manter autoridade sob pressão.
+Três critérios: **validar antes de redirecionar**, **resolução ao vivo** (não empurrar pra depois o que dava pra responder ali), **autoridade sob pressão**.
 
-**Boa entrega**
-- Quando surge objeção, o consultor primeiro valida ("entendo a preocupação, faz sentido questionar isso") antes de responder — nunca parte direto para a defesa.
-- Resolve a objeção na própria call, com dado ou raciocínio concreto, em vez de "vou verificar e te retorno" para algo que poderia ser respondido ali.
-- Mantém postura de autoridade mesmo sob pressão/questionamento incisivo — não fica na defensiva nem cede posição tecnicamente incorreta só para agradar.
+**100** — Toda objeção (ou hesitação/questionamento forte) foi validada antes de qualquer resposta, resolvida ao vivo com dado/raciocínio concreto, e a autoridade do consultor se manteve mesmo sob pressão real testada na call.
 
-**Má entrega**
-- Vai direto para a defesa/justificativa sem validar o que o cliente disse — soa como quem está se explicando, não conduzindo.
-- Empurra objeções resolvíveis ali para "depois" sem necessidade real.
-- Sob pressão, muda de posição ou fica visivelmente na defensiva, perdendo autoridade percebida.
+**75** — Objeções/questionamentos tratados de forma sólida — validados e respondidos ao vivo — mas sem grande teste de pressão real na call.
 
-**Calibragem D3**
-| Faixa | Significado |
-|---|---|
-| 85–100 | Toda objeção validada antes de responder; resolução ao vivo com evidência; autoridade mantida mesmo sob questionamento forte. |
-| 70–84 | Objeções tratadas de forma sólida, com validação e resposta ao vivo, mas sem grande teste de pressão. |
-| 55–69 | Objeções respondidas, mas sem validar antes; alguma insegurança perceptível. |
-| < 55 | Postura defensiva, objeção não resolvida ao vivo sem justificativa, ou perda de autoridade sob pressão. |
+**50** — Objeção foi respondida mas sem validar antes, ou resolução ficou incompleta/empurrada pra depois sem necessidade real. Alguma insegurança perceptível sob pressão.
+
+**0** — Postura defensiva perceptível, objeção resolvível não resolvida ao vivo, ou perda visível de autoridade sob pressão.
+
+**Regra pra call sem objeção:** se não surgiu nenhuma objeção, hesitação ou questionamento de peso do cliente na call inteira, a dimensão não tem o que avaliar — isso é um fato da call, não falha do consultor. Nota parte de **70** (nível neutro — "não testado nesta call", nem prêmio nem punição) em vez de ser tratada como ausência de evidência penalizável. Declare isso explicitamente na Análise ("não houve objeção nesta call") em vez de forçar uma nota como se tivesse havido.
 
 ## Referência de calibração — D4 (Tradução Técnica → Negócio) — gap mais recorrente da squad
-**O que avalia:** personalização dos dados ao cliente (não genérico), consequência financeira em reais (não só percentual/qualitativo), continuidade do raciocínio até o impacto no negócio.
+Três critérios: **personalização dos dados** (do próprio cliente, não benchmark genérico), **consequência financeira em reais** (não só percentual/qualitativo), **continuidade** (dado técnico → o que significa pra operação → quanto vale/custa).
 
-**Boa entrega**
-- Todo achado técnico é fechado em número concreto de reais usando dados do próprio cliente ("isso está custando R$X/mês com base no seu CPA atual e ticket médio").
-- Os dados apresentados são específicos daquele cliente — não benchmarks genéricos de mercado sem conexão com a realidade dele.
-- Há continuidade explícita: dado técnico → o que significa para a operação → quanto isso vale/custa.
+**Números que se contradizem** (dois valores diferentes pro mesmo rótulo/cenário na mesma call, ou dado nacional/genérico citado como se fosse do cliente) não contam como "fechado em número" — é pior que dado ausente, porque mina a credibilidade de toda a tradução financeira. Antes de creditar um número, confirme que ele não se contradiz com nenhum outro dito na mesma call pro mesmo rótulo.
 
-**Má entrega**
-- Achado fica só no nível técnico/percentual ("sua taxa de conversão caiu 15%") sem tradução para impacto financeiro real.
-- Usa benchmark genérico de mercado sem personalizar para o cliente específico.
-- Menciona "isso impacta o negócio" de forma vaga, sem fechar a conta.
-- **Números que se contradizem** (dois valores diferentes pro mesmo rótulo/cenário na mesma call, ou um dado nacional/genérico citado como se fosse específico do cliente) não contam como "fechado em número" — dado contraditório é pior que dado ausente, porque mina a credibilidade de toda a tradução financeira. Antes de creditar um número como boa entrega, confirme que ele não se contradiz com nenhum outro número dito na mesma call pro mesmo rótulo.
+**100** — Todo achado relevante é fechado em R$ real, calculado a partir de dados do próprio cliente, com continuidade explícita do dado técnico até o impacto financeiro — sem nenhum número contraditório na call.
 
-**Calibragem D4**
-| Faixa | Significado |
-|---|---|
-| 85–100 | Todo achado relevante fechado em R$ real e personalizado, com continuidade explícita até o negócio. |
-| 70–84 | Maioria dos achados traduzida em impacto financeiro, com boa personalização. |
-| 55–69 | Tradução ocorre só parcialmente — alguns achados ficam qualitativos, sem fechar em número. |
-| < 55 | Achados apresentados apenas no nível técnico, sem qualquer tradução financeira; dados genéricos, não personalizados, ou números contraditórios. |
+**75** — Maioria dos achados relevantes é traduzida em R$ usando dados do cliente, com boa personalização; um achado secundário pode ficar só qualitativo.
+
+**50** — Tradução ocorre só parcialmente — a maior parte dos achados fica qualitativa/percentual, sem fechar em número; quando há número, pode ser benchmark genérico (desde que citado como estimativa, não como dado do cliente — caso contrário cai pra 0 pela regra de números contraditórios acima).
+
+**0** — Nenhum achado é traduzido em impacto financeiro; dados genéricos sem personalização; ou há números que se contradizem entre si na mesma call.
+
+**Regra de dado indisponível ou não confiável.** Se o cliente não forneceu o número necessário (mesmo perguntado) ou a informação genuinamente não existe/não pôde ser obtida na call, isso não é falha do consultor — o critério "consequência financeira em reais" não é penalizado nesse achado específico; considere-o atendido e calibre a nota pelos outros dois critérios (personalização do que estava disponível + continuidade do raciocínio até onde os dados permitem). Se o único número vier do próprio cliente e a transcrição sugerir que pode ser impreciso/inflado (o cliente hedge: "isso é só um chute", outro participante contesta, o valor muda ao longo da call), usar esse número com a ressalva devida ("com base no que vocês passaram") também não penaliza — só penaliza usar um número contestado na própria call sem qualquer ressalva, o que cai na regra de número contraditório acima.
 
 ## Referência de calibração — D5 (Arquitetura de Urgência) — segundo gap mais recorrente da squad
-**O que avalia:** custo da inação **no presente** (não só oportunidade futura), construção de momentum, uso do roadmap como âncora temporal.
+Três critérios: **custo da inação no presente** (não só oportunidade futura), **momentum** (janela concreta — sazonalidade, concorrência avançando), **roadmap como âncora temporal** (não cronograma administrativo).
 
-**Boa entrega**
-- Mostra o que a inação está custando **agora**, não apenas o que se ganharia no futuro ("cada mês sem agir custa R$X, e já se passaram 3 meses").
-- Cria senso de momentum — conecta a urgência a uma janela concreta (sazonalidade, concorrência avançando, campanha perdendo força).
-- Usa o roadmap/cronograma como âncora temporal real ("se começarmos essa semana, chegamos no pico de vendas com a campanha rodando").
+**Regra de dado indisponível (depende de D4).** Quando a "consequência financeira em reais" de D4 não pôde ser calculada por falta de dado do cliente (ver regra em D4), o critério "custo da inação no presente" também fica sem base pra ser quantificado — não penalize esse critério isoladamente nesse caso; calibre a nota pelos outros dois (momentum + roadmap como âncora temporal), que não dependem de número financeiro.
 
-**Má entrega**
-- Urgência é só sobre oportunidade futura ("quanto antes começar, melhor"), sem quantificar o custo de continuar como está.
-- Nenhuma menção a janela de tempo, sazonalidade ou momentum concreto.
-- Roadmap apresentado como cronograma administrativo, sem função de gerar urgência.
+**100** — Custo da inação hoje é quantificado com números do cliente ("cada mês sem X custa R$Y, já se passaram Z meses"), momentum citável, roadmap usado ativamente como âncora de urgência.
 
-**Calibragem D5**
-| Faixa | Significado |
-|---|---|
-| 85–100 | Custo da inação quantificado no presente, momentum citável, roadmap usado ativamente como âncora de urgência. |
-| 70–84 | Urgência presente e razoavelmente concreta, mas sem quantificação completa do custo presente. |
-| 55–69 | Urgência mencionada de forma genérica ("é importante agir logo"), sem ancoragem temporal real. |
-| < 55 | Nenhuma construção de urgência — só orientação para o futuro, sem custo da inação hoje. |
+**75** — Urgência presente e razoavelmente concreta — pelo menos um dos três critérios está bem executado, mas não os três juntos.
+
+**50** — Urgência mencionada de forma genérica ("é importante agir logo", "quanto antes melhor"), sem quantificação e sem ancoragem temporal real; roadmap existe mas funciona só como cronograma.
+
+**0** — Nenhuma construção de urgência — só orientação pro futuro, sem menção a custo de continuar como está nem janela de tempo.
 
 ## Referência de calibração — D6 (Arquitetura de Conversão)
-**O que avalia:** a solução apresentada como consequência lógica do diagnóstico (não pitch desconectado), timing certo da proposta na reunião, posicionamento do preço.
+Três critérios: **solução como consequência** do diagnóstico (não pitch desconectado), **timing da proposta** (depois de estabelecidos diagnóstico e urgência), **posicionamento do preço** (ancorado no valor/custo já quantificado em D4/D5).
 
-**Boa entrega**
-- A proposta/solução surge como decorrência natural de tudo que foi mostrado — o cliente já "sabe" o que vem antes de ouvir.
-- Timing correto: a proposta chega depois que o diagnóstico e a urgência foram estabelecidos, nunca antes.
-- Preço é posicionado em relação ao valor/custo do problema já quantificado (D4/D5), não isolado ou justificado por si só.
+**100** — A solução/proposta surge como decorrência lógica e citável do diagnóstico; timing correto; preço ancorado explicitamente no valor/custo já quantificado.
 
-**Má entrega**
-- Solução parece pitch genérico, desconectado do que foi diagnosticado especificamente para aquele cliente.
-- Proposta chega cedo demais (antes de estabelecer o problema) ou tarde demais (perde o momentum criado).
-- Preço apresentado isolado, sem ancoragem no valor/custo já demonstrado.
+**75** — Conexão diagnóstico→solução clara e timing adequado; ancoragem de preço presente mas não totalmente amarrada ao valor quantificado.
 
-**Calibragem D6**
-| Faixa | Significado |
-|---|---|
-| 85–100 | Solução como consequência óbvia do diagnóstico, timing preciso, preço ancorado no valor quantificado. |
-| 70–84 | Conexão diagnóstico-solução clara, timing adequado, ancoragem de preço razoável. |
-| 55–69 | Solução conectada ao diagnóstico de forma fraca ou timing levemente deslocado. |
-| < 55 | Solução desconectada do diagnóstico (pitch genérico) ou preço sem qualquer ancoragem de valor. |
+**50** — Solução conectada ao diagnóstico de forma fraca, ou timing levemente deslocado (cedo/tarde demais); preço mencionado sem ancoragem clara.
+
+**0** — Solução apresentada como pitch genérico desconectado do diagnóstico específico daquele cliente, ou preço sem qualquer ancoragem de valor.
+
+**Regra pra call sem momento de proposta/preço:** entregas de diagnóstico dentro de um contrato em andamento (sem oferta comercial nova na call) não têm o que avaliar em timing de proposta nem preço — isso é um fato do tipo de call, não falha do consultor. Nota parte de **70** (nível neutro) e é ajustada só pelo critério aplicável (solução como consequência do diagnóstico, se houver alguma recomendação técnica/ferramenta na call). Declare isso explicitamente na Análise.
 
 ## Referência de calibração — D7 (Construção de Confiança)
-**O que avalia:** fonte da autoridade (dado/experiência, não afirmação vazia), consistência entre entregas anteriores, presença mantida em momentos de tensão.
+Três critérios: **fonte da autoridade** (evidência nomeável — dado real, fonte citada, case identificável; caso anônimo ou comparação agregada não é lastro pleno), **consistência entre entregas** (sem contradizer o que foi combinado/dito antes), **presença em tensão** (questionamento duro, silêncio desconfortável — sem se desestabilizar).
 
-**Boa entrega**
-- Autoridade é sustentada por evidência (dado, caso, metodologia citável), não apenas afirmação de "confie em nós".
-- Referências a entregas/combinados anteriores são consistentes com o que foi dito antes — sem contradição.
-- Em momento de tensão (questionamento duro, silêncio desconfortável, objeção forte), o consultor mantém presença e controle, sem se desestabilizar visivelmente.
+**100** — Autoridade sempre lastreada em evidência nomeável (não anônima/agregada); total consistência com tudo que foi combinado em entregas anteriores; presença mantida mesmo em teste real de tensão.
 
-**Má entrega**
-- Autoridade afirmada sem lastro ("somos especialistas nisso") sem evidência de apoio.
-- Contradiz ou ignora o que foi combinado/dito em entregas anteriores.
-- Em tensão, o consultor perde presença — fica hesitante, muda de assunto ou concorda com tudo para aliviar a tensão.
-- Caso anônimo ("não posso falar o nome", "um cliente que atendi uma vez") não é lastro verificável — mesmo que a história seja boa, sem poder confirmar não constrói autoridade real, só ilustra.
+**75** — Boa consistência com entregas anteriores e alguma evidência de autoridade (pode ser agregada/comparativa, não necessariamente um case nomeável único), sem grande teste de tensão na call.
 
-**Calibragem D7**
-| Faixa | Significado |
-|---|---|
-| 85–100 | Autoridade sempre lastreada em evidência nomeável, total consistência com entregas anteriores, presença mantida mesmo em tensão real. |
-| 70–84 | Boa consistência e alguma evidência de autoridade, sem grande teste de tensão. |
-| 55–69 | Autoridade mais afirmada que demonstrada, ou lastreada em caso anônimo; pequenas inconsistências com o que foi combinado antes. |
-| < 55 | Autoridade vazia, contradição perceptível com entregas anteriores, ou perda visível de presença sob tensão. |
+**50** — Autoridade mais afirmada que demonstrada, ou lastreada só em caso anônimo ("não posso falar o nome"); pequenas inconsistências com o que foi combinado antes.
+
+**0** — Autoridade vazia (sem lastro nenhum), contradição perceptível com entregas anteriores, ou perda visível de presença sob tensão real.
 
 ## Referência de calibração — D8 (Domínio do Negócio do Cliente)
-**O que avalia:** leitura correta do modelo de negócio do cliente, calibração da linguagem/exemplos ao setor, uso da linguagem que o cliente usa (não jargão de marketing genérico).
+Três critérios: **leitura do modelo** (como o cliente ganha dinheiro, ciclo de venda, particularidades do setor), **calibração ao setor** (exemplos específicos do negócio do cliente, não genéricos), **linguagem do cliente** (vocabulário do setor dele — jargão de marketing/vendas explicado antes de usar ainda é jargão traduzido, não linguagem do cliente).
 
-**Boa entrega**
-- Demonstra entendimento correto de como o cliente ganha dinheiro, ciclo de venda, particularidades do setor.
-- Exemplos e comparações são calibrados ao setor do cliente (não genéricos de "qualquer negócio").
-- Usa os termos que o próprio cliente usa para se referir a produtos/processos, mostrando que "fala a língua" do negócio dele.
+**100** — Leitura precisa e citável de como o cliente opera; exemplos e comparações sempre calibrados ao setor específico; linguagem usada é a do próprio setor do cliente, não jargão traduzido.
 
-**Má entrega**
-- Erra ou generaliza sobre como o modelo de negócio do cliente funciona.
-- Usa exemplos genéricos de marketing que poderiam se aplicar a qualquer empresa, sem calibração setorial.
-- Impõe jargão técnico de marketing sem tradução para os termos do cliente, gerando distância. Jargão técnico EXPLICADO antes de usar ainda é jargão traduzido, não linguagem do cliente — precisa trocar de registro de verdade pro vocabulário do setor/negócio dele, não só tornar o próprio jargão mais palatável.
+**75** — Bom domínio geral do modelo de negócio, sem erro relevante; a maioria dos exemplos é calibrada ao setor, mas 1-2 blocos usam jargão genérico traduzido em vez do vocabulário do cliente.
 
-**Calibragem D8**
-| Faixa | Significado |
-|---|---|
-| 85–100 | Leitura precisa e citável do modelo de negócio, exemplos calibrados ao setor, linguagem do cliente incorporada de verdade. |
-| 70–84 | Bom domínio geral do negócio do cliente, sem falhas relevantes de calibração. |
-| 55–69 | Domínio superficial — entende o básico mas usa exemplos/linguagem genéricos (jargão traduzido, não vocabulário do cliente) na maior parte do tempo. |
-| < 55 | Erro perceptível sobre como o negócio do cliente funciona, ou linguagem genérica/jargão do início ao fim. |
+**50** — Domínio superficial — entende o básico do negócio do cliente, mas a maior parte da entrega usa exemplos/linguagem genéricos (jargão explicado, não vocabulário do cliente).
+
+**0** — Erro perceptível sobre como o negócio do cliente funciona, ou linguagem genérica do início ao fim, sem nenhuma calibração setorial.
 
 ## Referência de calibração — D9 (Qualidade Técnica da Entrega)
 Sempre 30% da nota — o maior peso isolado, porque é o entregável que o cliente contratou. Diferente das demais dimensões, a D9 não tem uma única definição de "boa vs má entrega": cada tipo de reunião tem seu próprio checklist técnico no APÊNDICE (itens numerados, ex: "1.1 Modelo de negócio mapeado", "3B.2 Comitê de compra mapeado"). Os princípios gerais abaixo valem pra todos os tipos, além do checklist específico.
@@ -261,26 +159,43 @@ Sempre 30% da nota — o maior peso isolado, porque é o entregável que o clien
 **Calibragem D9:** % de cumprimento dos itens aplicáveis do checklist técnico daquele tipo (✅=1, ⚠️=0,5, ❌=0; N/A não entra na conta), ajustada para baixo se houver falha grave em item crítico (ex: Bloco 1 da Apresentação Final).
 
 ### 4. Nota consolidada (média ponderada por tipo de entrega)
-A nota consolidada é a média das 9 dimensões **ponderada por pesos que variam conforme o tipo de entrega** (cada coluna soma 100%). Regras fixas: **D9 = 30% sempre** (é o entregável que o cliente contratou, o maior peso isolado); **D4 e D5** são o par mais pesado depois da D9 (gaps críticos da squad, devem puxar o resultado). Use a coluna do tipo de entrega:
+A nota consolidada é a média das 9 dimensões **ponderada por pesos que variam conforme o tipo de entrega** (cada coluna soma 100%). Regra fixa: **D9 = 30% sempre** (é o entregável que o cliente contratou, o maior peso isolado). D4 e D5 continuam sendo o par mais pesado depois da D9 na Pesquisa de Mercado e no Diagnóstico de Vendas — onde o achado central é naturalmente financeiro — mas pesam menos em Mídia Paga (o CPA/ROI já vem em R$ direto da plataforma, a tradução exige menos do consultor), Ambientes (diagnóstico visual/de marca, onde forçar um R$ arriscaria número inventado) e Kickoff (reunião de coleta de insumo, sem achado formado ainda pra quantificar) — nesses três, o peso liberado vai pra D1/D2/D6/D8, mais centrais ao que aquele tipo de entrega realmente avalia. Use a coluna do tipo de entrega:
 
-| Dim | Kickoff | Pesquisa de Mercado | Diagnósticos (Mídia Paga / Vendas / Ambientes) | Apresentação Final / Decolagem |
-|---|---|---|---|---|
-| **D9** | **30%** | **30%** | **30%** | **30%** |
-| D4  | 13% | 14% | 14% | 12% |
-| D5  | 13% | 14% | 14% | 12% |
-| D1  | 6%  | 7%  | 7%  | 5%  |
-| D2  | 13% | 7%  | 7%  | 5%  |
-| D3  | 3%  | 7%  | 7%  | 5%  |
-| D6  | 3%  | 3%  | 7%  | 12% |
-| D7  | 6%  | 7%  | 7%  | 9%  |
-| D8  | 13% | 11% | 7%  | 10% |
-| **Soma** | **100%** | **100%** | **100%** | **100%** |
+| Dim | Kickoff | Pesquisa de Mercado | Diagnóstico de Mídia Paga | Diagnóstico de Vendas | Diagnóstico de Ambientes | Apresentação Final / Decolagem |
+|---|---|---|---|---|---|---|
+| **D9** | **30%** | **30%** | **30%** | **30%** | **30%** | **30%** |
+| D4  | 9%  | 14% | 10% | 14% | 8%  | 12% |
+| D5  | 9%  | 14% | 10% | 14% | 8%  | 12% |
+| D1  | 8%  | 7%  | 7%  | 7%  | 11% | 5%  |
+| D2  | 16% | 7%  | 7%  | 7%  | 7%  | 5%  |
+| D3  | 3%  | 7%  | 7%  | 7%  | 7%  | 5%  |
+| D6  | 3%  | 3%  | 11% | 7%  | 11% | 12% |
+| D7  | 6%  | 7%  | 7%  | 7%  | 7%  | 9%  |
+| D8  | 16% | 11% | 11% | 7%  | 11% | 10% |
+| **Soma** | **100%** | **100%** | **100%** | **100%** | **100%** | **100%** |
 
-Cálculo (faça a conta explícita): \`consolidada = (D1×P1 + D2×P2 + ... + D9×P9) ÷ 100\`, onde Px é o peso% da coluna do tipo. D9 + D4 + D5 juntas dominam a nota: 56% (Kickoff), 58% (Pesquisa), 58% (Diagnósticos), 54% (Apresentação Final).
+Cálculo (faça a conta explícita): \`consolidada = (D1×P1 + D2×P2 + ... + D9×P9) ÷ 100\`, onde Px é o peso% da coluna do tipo. D9 + D4 + D5 juntas: 48% (Kickoff), 58% (Pesquisa), 50% (Mídia Paga), 58% (Vendas), 46% (Ambientes), 54% (Apresentação Final).
 
 Calcule a consolidada sempre, internamente. **Ela não entra no bloco colado no painel** (que vai só do cabeçalho à Recomendação) — apresente-a separadamente para a coordenadora, fora do template, junto com a faixa e a conta. Classificação: **85–100 Excelente / 70–84 Bom / 55–69 Regular / abaixo de 55 Insuficiente**. A ponderação por tipo existe para que uma entrega forte em D1/D7 não mascare o gap real em tradução financeira (D4) e urgência (D5), e para que o entregável contratado (D9) tenha o peso que merece.
 
-### 5. Recomendação final
+### 5. Bônus de feedback excepcional do cliente (0 a +20, por cima da consolidada)
+Depois de calcular a consolidada (0–100), avalie se o cliente deu um feedback verbal **excepcional** durante a própria call — algo além do "feedback básico" que já é item obrigatório da D9 (Regra Transversal 2: cliente validou a entrega, tipo "faz sentido"/"ficou claro"). Esse bônus é sobre entusiasmo espontâneo e específico, nas próprias palavras do cliente, em pelo menos um destes três eixos:
+- **a entrega em si** — qualidade do que foi apresentado/entregue;
+- **a postura do consultor** — como conduziu, se colocou, tratou o cliente;
+- **entendimento claro do assunto, adequado à realidade daquela entrega** — o cliente demonstra ter compreendido de verdade, no nível de profundidade esperado pra aquele tipo de call (não é "genérico e educado", é elaborado com as próprias palavras dele).
+
+**É exceção, não regra.** A maioria das entregas boas não deve ganhar bônus nenhum — feedback educado, "valeu"/"gostei"/"ótimo" sem elaboração, ou resposta curta a uma pergunta fechada tipo "gostou?" não contam.
+
+**Âncoras do bônus:**
+**+20** — Entusiasmo espontâneo e específico em pelo menos 2 dos 3 eixos, com evidência citável nas próprias palavras do cliente.
+**+10** — Entusiasmo espontâneo e específico em exatamente 1 dos 3 eixos, citável, indo além de uma validação padrão.
+**0** — Sem feedback, feedback genérico/protocolar, ou feedback só induzido por pergunta fechada sem elaboração real do cliente.
+
+Interpole entre 0/10/20 conforme a força e quantidade de evidência. **Nunca invente ou infira entusiasmo que a transcrição não mostra** — na dúvida entre duas âncoras, use a mais baixa. Com o bônus, a nota final (consolidada + bônus) pode passar de 100, até **120**; quando isso acontece, o rótulo continua "Excelente", só sinalizando que superou o esperado.
+
+Escreva o bônus **sempre**, mesmo quando for 0 — o painel lê essa linha pra preencher o campo de bônus automaticamente. Formato exato, numa linha própria, logo depois da "Recomendação:" (separado dela por uma linha em branco), fora do bloco que a coordenadora copia pro painel manualmente: \`Bônus de feedback: +N — [evidência ou "sem feedback excepcional nesta call"]\`. Nunca vira uma linha "d10" nem entra no template das 9 dimensões.
+
+### 6. Recomendação final
 Fecha com **"Recomendação:"** — um parágrafo de tamanho médio identificando o padrão dominante da entrega (maior força, gap mais importante e a ação #1 a aplicar), sem repetir item por item.
 
 ---
@@ -364,9 +279,10 @@ Recomendação: [um parágrafo de tamanho médio — padrão dominante da entreg
 
 Regras do template:
 - Cabeçalho: as quatro linhas em negrito (\`**Consultor:**\` etc.), seguidas de uma linha com \`---\`.
-- Notas: formato \`dX: NN (PP%)\` — d minúsculo, dois pontos, número inteiro, espaço, e o **peso percentual da dimensão** naquele tipo de entrega entre parênteses (use a coluna correta da tabela do passo 4; ex: num Kickoff, \`d4: 55 (13%)\`). Sem o nome da dimensão na linha.
+- Notas: formato \`dX: NN (PP%)\` — d minúsculo, dois pontos, número inteiro, espaço, e o **peso percentual da dimensão** naquele tipo de entrega entre parênteses (use a coluna correta da tabela do passo 4; ex: num Kickoff, \`d4: 55 (9%)\`). Sem o nome da dimensão na linha.
 - \`Análise:\` em prosa otimizada — direta ao gap, com a evidência (fala/número/momento real), sem parágrafo longo nem rodeio. Não há limite fixo de frases; o critério é densidade, não contagem.
 - \`Plano de ação:\` em **tópicos curtos** (linhas iniciadas por \`- \`), cada um uma ação imperativa e concreta, com número/prazo quando existir. Não é mais parágrafo corrido.
+- D1–D8 (todas exceto D9): a \`Análise:\` nomeia os 3 critérios daquela dimensão, sempre na mesma ordem fixa (a ordem em que aparecem na seção "Referência de calibração" de cada dimensão) — ex. em D1: "Tese central:", "Progressão lógica:", "Reencadramento do negativo:". Cada critério é seguido do gap com evidência real (fala/momento/número citável), ou uma constatação curta de que está no nível esperado quando não há gap (sem inflar elogio). O \`Plano de ação:\` lista os mesmos 3 critérios na mesma ordem; quando um critério já está no nível esperado, o item é "[critério]: manter — já está no padrão esperado, sem ação necessária".
 - D9: a linha \`d9: NN (30%)\` vem primeiro (a d9 é sempre 30%), depois os checkmarks (um por linha, \`1.1: ✅\`, com os códigos exatos da skill técnica do tipo), e só então \`Análise:\`. A D9 **não** tem \`Plano de ação:\` separado — o encaminhamento técnico entra na Análise.
 - \`Recomendação:\` é a última linha, parágrafo de tamanho médio (padrão dominante + ação #1), sem a palavra "final" e sem faixa de classificação.
 - Uma linha em branco entre cada dimensão.
@@ -378,11 +294,15 @@ Estas cinco regras valem em toda avaliação, mesmo que o bloco técnico do tipo
 
 1. **Material pós-call não penaliza.** Se o consultor sinaliza claramente na call que vai enviar algo depois (pasta, relatório, acesso), isso NÃO conta como ausência. Só marque ❌ um entregável/acesso se ele não foi entregue nem prometido com sinal explícito de envio.
 
-2. **Feedback ao final da call.** Toda reunião de entrega deve terminar com o consultor pedindo feedback do cliente sobre o que foi apresentado. Adicione este item ao checklist da D9: ✅ pediu feedback — incluindo perguntas como "fez sentido?", "está de acordo com o apresentado?", "o que achou?", "ficou claro?" ou pedido de feedback aberto sobre a call; ❌ encerrou sem pedir nenhum tipo de feedback ou validação. Pesquisa/formulário de satisfação não substitui o pedido verbal. **Exceção única — Apresentação Final / Plano de Decolagem:** aí o esperado é enviar o link da pesquisa de satisfação (NPS) durante a própria call (conta como ✅ neste item).
+2. **Feedback ao final da call — solicitado e avaliado pelo conteúdo, não só pela presença.** Toda reunião de entrega deve terminar com o consultor pedindo feedback do cliente sobre o que foi apresentado, e a resposta do cliente precisa ser lida pelo que ela diz, não só marcada como "houve resposta". Adicione este item ao checklist da D9:
+   - ✅ **pediu feedback e o cliente validou a entrega** — mesmo que de forma simples e direta ("faz sentido", "estamos no caminho certo", "ficou claro", "é isso mesmo que a gente precisa"), desde que seja concordância real com o que foi apresentado nessa call.
+   - ⚠️ **pediu feedback mas a resposta do cliente foi hedged/adiada** — o cliente não validou a entrega em si, só sinalizou que vai avaliar depois ou esperar as próximas entregas para opinar ("vamos ver nas próximas", "ainda vou olhar com calma", "depois te falo o que achei", silêncio seguido de troca de assunto). Isso conta como sinal de que a entrega não gerou validação — mesmo sem reclamação explícita, a ausência de endosso é o dado relevante, não deve ser lida como "ok" só porque não houve crítica.
+   - ❌ **encerrou sem pedir nenhum tipo de feedback ou validação.**
+   Pesquisa/formulário de satisfação não substitui o pedido verbal. **O pedido precisa partir do consultor**: um comentário espontâneo do cliente no meio da call, sem o consultor ter buscado a validação, não conta como ✅ — o item mede se o consultor buscou saber a reação do cliente, não se ela apareceu por acaso. **Exceção única — Apresentação Final / Plano de Decolagem:** aí o esperado é enviar o link da pesquisa de satisfação (NPS) durante a própria call (conta como ✅ neste item, sem precisar do feedback verbal).
 
 3. **Situação A/B/C (não penalizar acesso negado ou fora de escopo).** Critérios que dependem de acesso a uma conta/ambiente só são penalizados quando o ambiente genuinamente se aplica E havia acesso. Se o acesso foi negado, o ambiente não existe, ou está fora de escopo, avalie a CONDUÇÃO (o consultor mapeou o problema, propôs solução, seguiu consultivo) em vez de marcar ❌ por dado ausente. N/A exige sinal EXPLÍCITO na transcrição — nunca infira N/A por omissão.
 
-4. **Plano de ação obrigatório em toda entrega, exceto Kickoff.** Toda reunião de entrega (Pesquisa, Mídia Paga, Vendas, Ambientes, Apresentação Final) precisa terminar com plano de ação ou encaminhamento prático aplicável — não só diagnóstico/dado. Kickoff é a única exceção (sua função é coletar insumo). Todos os blocos técnicos do apêndice já incluem esse item; se um tipo novo surgir sem ele, adicione antes de avaliar.
+4. **Plano de ação obrigatório em toda entrega, exceto Kickoff.** Toda reunião de entrega (Pesquisa, Mídia Paga, Vendas, Ambientes, Apresentação Final) precisa terminar com plano de ação ou encaminhamento prático aplicável — não só diagnóstico/dado. Além dos itens técnicos do apêndice que já tocam nisso pelo lado da qualidade (ex: "3.1 ações corretivas" na Vendas, "1.5 plano de ação detalhado" na Apresentação Final), adicione este item estrutural ao checklist da D9 — ele mede só se HOUVE fechamento prático, não a qualidade dele: ✅ terminou com plano de ação/encaminhamento prático, com passos que o cliente consegue executar (não só diagnóstico sem desdobramento); ⚠️ encaminhamento existe mas é vago (falta responsável, prazo ou próximo passo concreto); ❌ terminou só no diagnóstico/dado, sem plano de ação nem próximo passo prático. **Kickoff é a única exceção — não adicione este item ao checklist do Kickoff** (sua função é só coletar insumo).
 
 5. **Pessoas-chave / decisores presentes.** Este item **só é penalizado (⚠️/❌) quando a transcrição menciona ou revela que faltou um decisor necessário** — por exemplo, o consultor comenta que alguém-chave não pôde vir, ou o próprio cliente diz que precisa validar com outra pessoa. Se nada na transcrição indica ausência de decisor, marque ✅ (não infira ausência que a transcrição não mostra). Quando a ausência aparece: ✅ lacuna endereçada (consultor identificou quem falta e garantiu presença nas próximas); ⚠️ ausência mencionada e só parcialmente tratada; ❌ decisor-chave ausente sem qualquer encaminhamento. Item mais relevante na Apresentação Final, onde todos os decisores devem validar o forecast.
 

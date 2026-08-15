@@ -336,6 +336,7 @@
         <div class="card-title">Reembolsos</div>
         <div style="font-size:32px;font-weight:700;color:var(--accent);" id="ov-reembolsos-mes">0</div>
         <div style="font-size:var(--fs-xs);color:var(--text-hint);margin-top:8px;">pedidos no mês</div>
+        <div id="ov-reembolsos-nomes" style="font-size:var(--fs-xs);color:var(--text-muted);margin-top:6px;line-height:1.5;"></div>
       </div>
     </div>
   </div>
@@ -349,8 +350,11 @@
       <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;" id="ov-pipe-stages"></div>
     </div>
     <div class="card" style="margin:0;">
-      <div class="card-title">Flags</div>
-      <div style="display:flex;flex-direction:column;gap:8px;" id="ov-flags"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;">
+        <div class="card-title" style="margin:0;">Tratativas</div>
+        <button class="btn btn-primary" style="padding:4px 10px;font-size:var(--fs-sm);" onclick="tratAbrirModal()">+ Nova</button>
+      </div>
+      <div id="ov-tratativas-lista"></div>
     </div>
   </div>
   <!-- Ticket e Tier -->
@@ -416,6 +420,11 @@
         <option value="4">3ª Entrega</option>
         <option value="5">4ª Entrega</option>
         <option value="6">Decolagem</option>
+      </select>
+      <select class="base-sel" id="ov-gantt-tag" onchange="buildOvGantt()" style="font-size:var(--fs-sm);"><option value="">Todas tags</option></select>
+      <select class="base-sel" id="ov-gantt-ordem" onchange="buildOvGantt()" style="font-size:var(--fs-sm);">
+        <option value="inicio">Ordenar por início</option>
+        <option value="tag">Ordenar por tag</option>
       </select>
       <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
         <button onclick="navOvInsightsSemana(-1)" style="padding:4px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);cursor:pointer;font-size:var(--fs-md);">‹</button>
@@ -666,6 +675,20 @@
       <div id="aud-heat-tabs" style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;"></div>
     </div>
     <div id="aud-heat-body" style="overflow-x:auto;"></div>
+  </div>
+</section>
+<section id="sec-fca" class="section">
+  <div class="sec-head" style="display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+    <div><h2 class="sec-title">FCA</h2><p class="sec-desc">Fato, Causa e Ação — problemas gerais do squad e de projetos específicos.</p></div>
+    <button class="btn btn-primary" onclick="fcaAbrirModalNovo()" style="white-space:nowrap;">+ Nova FCA</button>
+  </div>
+  <div id="fca-modo-toggle" style="display:flex;gap:8px;margin-bottom:1rem;"></div>
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap;">
+      <div class="card-title" style="margin:0;">FCAs registradas</div>
+      <div id="fca-filtros" style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;"></div>
+    </div>
+    <div id="fca-tabela-wrap" class="tbl-scroll"></div>
   </div>
 </section>
 <section id="sec-cultura" class="section">
@@ -1246,9 +1269,88 @@
       </select>
       <label for="flag-modal-motivo" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Motivo</label>
       <textarea id="flag-modal-motivo" class="sel" placeholder="Por que essa flag?" style="width:100%;font-size:var(--fs-base);min-height:80px;margin-bottom:14px;resize:vertical;"></textarea>
+      <label for="flag-modal-tags" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Tags</label>
+      <input id="flag-modal-tags" class="sel" list="flag-modal-tags-list" placeholder="separe por vírgula, ex: urgente, upsell" style="width:100%;font-size:var(--fs-base);margin-bottom:14px;">
+      <datalist id="flag-modal-tags-list"></datalist>
       <div style="display:flex;gap:6px;">
         <button class="btn btn-primary" onclick="salvarModalFlag()" style="flex:1;border-radius:6px;">Salvar</button>
         <button class="btn btn-ghost" onclick="fecharModalFlag()" style="border-radius:6px;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-fca-novo" onclick="if(event.target===this)fecharModalFca()">
+  <div class="modal-box" style="max-width:520px;" role="dialog" aria-modal="true" aria-labelledby="fca-modal-titulo">
+    <div class="modal-header">
+      <span class="modal-title" id="fca-modal-titulo">Nova FCA</span>
+      <button class="modal-close" onclick="fecharModalFca()" title="Fechar"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div id="fca-modal-projeto-row" style="display:none;">
+        <label for="fca-modal-projeto" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Projeto</label>
+        <select id="fca-modal-projeto" class="sel" style="width:100%;font-size:var(--fs-base);margin-bottom:12px;"></select>
+      </div>
+      <label for="fca-modal-fato" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Fato</label>
+      <textarea id="fca-modal-fato" class="sel" rows="2" placeholder="O que foi observado…" style="width:100%;font-size:var(--fs-base);margin-bottom:12px;resize:vertical;"></textarea>
+      <label for="fca-modal-causa" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Causa</label>
+      <textarea id="fca-modal-causa" class="sel" rows="2" placeholder="Por que isso aconteceu…" style="width:100%;font-size:var(--fs-base);margin-bottom:12px;resize:vertical;"></textarea>
+      <label for="fca-modal-acao" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Ação</label>
+      <textarea id="fca-modal-acao" class="sel" rows="2" placeholder="O que vai ser feito…" style="width:100%;font-size:var(--fs-base);margin-bottom:12px;resize:vertical;"></textarea>
+      <label for="fca-modal-resultado-esperado" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Resultado esperado</label>
+      <textarea id="fca-modal-resultado-esperado" class="sel" rows="2" placeholder="O que se espera que aconteça…" style="width:100%;font-size:var(--fs-base);margin-bottom:12px;resize:vertical;"></textarea>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
+        <div>
+          <label for="fca-modal-impacto" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Impacto</label>
+          <select id="fca-modal-impacto" class="sel" style="width:100%;font-size:var(--fs-base);">
+            <option value="Alto">Alto</option>
+            <option value="Médio" selected>Médio</option>
+            <option value="Baixo">Baixo</option>
+          </select>
+        </div>
+        <div>
+          <label for="fca-modal-prioridade" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Prioridade</label>
+          <select id="fca-modal-prioridade" class="sel" style="width:100%;font-size:var(--fs-base);">
+            <option value="Alta">Alta</option>
+            <option value="Média" selected>Média</option>
+            <option value="Baixa">Baixa</option>
+          </select>
+        </div>
+        <div>
+          <label for="fca-modal-frente" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Frente</label>
+          <input id="fca-modal-frente" class="sel" list="fca-modal-frente-list" placeholder="ex: Comercial" style="width:100%;font-size:var(--fs-base);">
+          <datalist id="fca-modal-frente-list"></datalist>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-primary" onclick="fcaSalvarNovo()" style="flex:1;border-radius:6px;">Registrar</button>
+        <button class="btn btn-ghost" onclick="fecharModalFca()" style="border-radius:6px;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-trat-novo" onclick="if(event.target===this)fecharModalTrat()">
+  <div class="modal-box" style="max-width:480px;" role="dialog" aria-modal="true" aria-labelledby="trat-modal-titulo">
+    <div class="modal-header">
+      <span class="modal-title" id="trat-modal-titulo">Nova Tratativa</span>
+      <button class="modal-close" onclick="fecharModalTrat()" title="Fechar"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <label for="trat-modal-cliente" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Cliente</label>
+      <select id="trat-modal-cliente" class="sel" style="width:100%;font-size:var(--fs-base);margin-bottom:12px;"></select>
+      <label for="trat-modal-situacao" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Situação</label>
+      <textarea id="trat-modal-situacao" class="sel" rows="3" placeholder="O que está acontecendo…" style="width:100%;font-size:var(--fs-base);margin-bottom:10px;resize:vertical;"></textarea>
+      <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);cursor:pointer;margin-bottom:14px;">
+        <input type="checkbox" id="trat-modal-reembolso" style="width:16px;height:16px;cursor:pointer;"> Pediu reembolso?
+      </label>
+      <label for="trat-modal-atualizacao" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Atualização</label>
+      <textarea id="trat-modal-atualizacao" class="sel" rows="3" placeholder="Como está agora…" style="width:100%;font-size:var(--fs-base);margin-bottom:10px;resize:vertical;"></textarea>
+      <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);cursor:pointer;margin-bottom:14px;">
+        <input type="checkbox" id="trat-modal-finalizado" style="width:16px;height:16px;cursor:pointer;"> Finalizado
+      </label>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-primary" onclick="tratSalvar()" style="flex:1;border-radius:6px;">Salvar</button>
+        <button class="btn btn-ghost" id="trat-modal-excluir-btn" onclick="tratExcluirAtual()" style="border-radius:6px;display:none;color:var(--accent);">Excluir</button>
+        <button class="btn btn-ghost" onclick="fecharModalTrat()" style="border-radius:6px;">Cancelar</button>
       </div>
     </div>
   </div>
@@ -2237,6 +2339,307 @@ document.getElementById('filter-framework').addEventListener('change', renderAll
 document.getElementById('filter-tipo').addEventListener('change', renderAll);
 
 /* ============================================================
+   FCA — Fato, Causa, Ação (problemas gerais do squad e de projetos)
+   ============================================================ */
+let fcaModo = 'geral'; // 'geral' | 'projetos' — mesma aba, alterna a visão
+let fcaFiltro = 'aberto'; // 'aberto' | 'concluida' | 'todas' — padrão: só as que ainda precisam de acompanhamento
+let fcaProjSemanaOffset = 0; // só usado no modo 'projetos': qual semana alimenta o seletor de projeto do modal
+const FCA_IMPACTO_COR = { Alto: 'var(--accent)', 'Médio': 'var(--amber)', Baixo: 'var(--green)' };
+const FCA_PRIORIDADE_COR = { Alta: 'var(--accent)', 'Média': 'var(--amber)', Baixa: 'var(--green)' };
+function buildFca(){
+  fcaRenderModoToggle();
+  fcaRenderFiltros();
+  fcaRenderLista();
+}
+function fcaRenderModoToggle(){
+  const box = document.getElementById('fca-modo-toggle');
+  if (!box) return;
+  const modos = [['geral','FCA Geral'],['projetos','FCA Projetos']];
+  box.innerHTML = modos.map(([v,l]) => '<button type="button" class="btn' + (fcaModo===v?' btn-primary':' btn-ghost') + '" onclick="fcaTrocarModo(\''+v+'\')">'+l+'</button>').join('');
+}
+function fcaTrocarModo(v){ fcaModo = v; fcaRenderModoToggle(); fcaRenderFiltros(); fcaRenderLista(); }
+function fcaNavProjSemana(dir){ fcaProjSemanaOffset += dir; fcaRenderFiltros(); }
+// Quem está "rodando" numa semana (início já começou, ainda não tinha terminado ou só
+// terminou depois do começo dessa semana) — é essa a régua de "projeto entra/sai da semana"
+// que decide quem aparece pra escolher no modal de FCA de projeto. A FCA em si não fica presa
+// à semana (fica só o registro do projeto, permanente) — só a lista de quem dá pra escolher.
+function fcaProjetosElegiveis(offset){
+  const { inicio, fim } = getWeekBounds(offset);
+  return projects.filter(p => {
+    if (isDroFam(p) || !p.inicio) return false;
+    const dIni = parseDate(p.inicio);
+    if (!dIni || dIni > fim) return false;
+    const dFim = fimRealEfetivo(p);
+    return !dFim || dFim >= inicio;
+  }).sort((a,b) => (a.nome||'').localeCompare(b.nome||''));
+}
+function fcaRenderFiltros(){
+  const box = document.getElementById('fca-filtros');
+  if (!box) return;
+  const opts = [['aberto','Em aberto'],['concluida','Concluídas'],['todas','Todas']];
+  let html = opts.map(([v,l]) => '<button type="button" class="btn' + (fcaFiltro===v?' btn-primary':' btn-ghost') + '" style="padding:5px 12px;font-size:var(--fs-sm);" onclick="fcaTrocarFiltro(\''+v+'\')">'+l+'</button>').join('');
+  if (fcaModo === 'projetos') {
+    const { inicio, fim } = getWeekBounds(fcaProjSemanaOffset);
+    const fmt = d => String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');
+    html += '<div style="display:flex;align-items:center;gap:6px;margin-left:12px;padding-left:12px;border-left:1px solid var(--border);">'
+      + '<span style="font-size:var(--fs-xs);color:var(--text-hint);">Projetos p/ nova FCA:</span>'
+      + '<button type="button" onclick="fcaNavProjSemana(-1)" style="padding:3px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);cursor:pointer;">‹</button>'
+      + '<span style="font-size:var(--fs-sm);font-weight:600;min-width:96px;text-align:center;">' + fmt(inicio) + '–' + fmt(fim) + (fcaProjSemanaOffset===0?' (atual)':'') + '</span>'
+      + '<button type="button" onclick="fcaNavProjSemana(1)" style="padding:3px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);cursor:pointer;">›</button>'
+      + '</div>';
+  }
+  box.innerHTML = html;
+}
+function fcaTrocarFiltro(v){ fcaFiltro = v; fcaRenderFiltros(); fcaRenderLista(); }
+// Pop-up de registro — fica fora da tela principal de propósito (a lista já tinha ficado
+// poluída com o formulário sempre aberto em cima da tabela). Um único modal serve os dois
+// modos: no modo 'projetos' aparece o seletor de projeto no topo, populado pela semana
+// navegável ao lado do filtro.
+function fcaAbrirModalNovo(){
+  ['fca-modal-fato','fca-modal-causa','fca-modal-acao','fca-modal-resultado-esperado','fca-modal-frente'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  const impactoEl = document.getElementById('fca-modal-impacto'); if (impactoEl) impactoEl.value = 'Médio';
+  const prioridadeEl = document.getElementById('fca-modal-prioridade'); if (prioridadeEl) prioridadeEl.value = 'Média';
+  // Sugestões de "Frente" = as já usadas em FCAs anteriores, mesmo padrão do datalist de tags de projeto.
+  const frenteListEl = document.getElementById('fca-modal-frente-list');
+  if (frenteListEl) {
+    const frentes = [...new Set(fcaItens.map(it => it.frente).filter(Boolean))].sort();
+    frenteListEl.innerHTML = frentes.map(f => '<option value="'+f.replace(/"/g,'&quot;')+'">').join('');
+  }
+  const tituloEl = document.getElementById('fca-modal-titulo');
+  const projRowEl = document.getElementById('fca-modal-projeto-row');
+  const projSelEl = document.getElementById('fca-modal-projeto');
+  if (fcaModo === 'projetos') {
+    if (tituloEl) tituloEl.textContent = 'Nova FCA de Projeto';
+    if (projRowEl) projRowEl.style.display = 'block';
+    if (projSelEl) {
+      const elegiveis = fcaProjetosElegiveis(fcaProjSemanaOffset);
+      projSelEl.innerHTML = elegiveis.length
+        ? elegiveis.map(p => '<option value="'+p.id+'">'+p.nome.replace(/</g,'&lt;')+'</option>').join('')
+        : '<option value="">Nenhum projeto rodando nessa semana</option>';
+    }
+  } else {
+    if (tituloEl) tituloEl.textContent = 'Nova FCA';
+    if (projRowEl) projRowEl.style.display = 'none';
+  }
+  const modal = document.getElementById('modal-fca-novo');
+  if (modal) modal.style.display = 'flex';
+}
+// Atalho a partir do Gantt do Healthscore (botão de raio ao lado da flag, em cada linha de
+// projeto) — abre o mesmo modal já em modo Projetos, semana atual, com o projeto pré-
+// selecionado, pra registrar "algo precisa acontecer aqui" sem sair da análise da semana. O
+// registro cai direto na aba FCA Projetos pra revisar durante a semana.
+function fcaAbrirModalNovoParaProjeto(projectId){
+  fcaModo = 'projetos';
+  fcaProjSemanaOffset = 0;
+  fcaAbrirModalNovo();
+  const projSelEl = document.getElementById('fca-modal-projeto');
+  if (projSelEl) projSelEl.value = String(projectId);
+}
+function fecharModalFca(){
+  const modal = document.getElementById('modal-fca-novo');
+  if (modal) modal.style.display = 'none';
+}
+function fcaSalvarNovo(){
+  const g = id => (document.getElementById(id)?.value || '').trim();
+  const fato = g('fca-modal-fato'), causa = g('fca-modal-causa'), acao = g('fca-modal-acao');
+  if (!fato || !causa || !acao) { showAlert('Preencha ao menos Fato, Causa e Ação.'); return; }
+  let projetoId = null, projetoNome = null;
+  if (fcaModo === 'projetos') {
+    const projSelEl = document.getElementById('fca-modal-projeto');
+    projetoId = projSelEl?.value || '';
+    if (!projetoId) { showAlert('Selecione o projeto.'); return; }
+    projetoNome = projects.find(p => String(p.id) === String(projetoId))?.nome || '';
+  }
+  fcaItens.unshift({
+    id: 'fca_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
+    criadoEm: new Date().toISOString(),
+    fato, causa, acao,
+    resultadoEsperado: g('fca-modal-resultado-esperado'),
+    resultadoReal: '',
+    impacto: g('fca-modal-impacto') || 'Médio',
+    prioridade: g('fca-modal-prioridade') || 'Média',
+    frente: g('fca-modal-frente'),
+    concluida: false,
+    projetoId, projetoNome, // null nos dois = FCA geral; preenchidos = FCA de projeto
+  });
+  upd();
+  fecharModalFca();
+  fcaRenderLista();
+}
+function fcaSetField(id, field, value){
+  const item = fcaItens.find(x => x.id === id);
+  if (!item) return;
+  item[field] = value;
+  upd();
+  // Sempre re-renderiza: impacto/prioridade mudam a cor do badge, frente muda a cor da tag e
+  // as sugestões do datalist, concluída muda opacidade/filtro — só resultadoReal (textarea)
+  // não dependeria disso, mas re-render não atrapalha porque onchange só dispara no blur.
+  fcaRenderLista();
+}
+async function fcaExcluir(id){
+  if (!(await showConfirm('Excluir essa FCA?'))) return;
+  fcaItens = fcaItens.filter(x => x.id !== id);
+  upd();
+  fcaRenderLista();
+}
+function fcaRenderLista(){
+  const wrap = document.getElementById('fca-tabela-wrap');
+  if (!wrap) return;
+  const lista = fcaItens.filter(it => {
+    const doModoCerto = fcaModo === 'projetos' ? !!it.projetoId : !it.projetoId;
+    if (!doModoCerto) return false;
+    return fcaFiltro === 'todas' || (fcaFiltro === 'concluida') === !!it.concluida;
+  });
+  if (!lista.length) {
+    const vazio = fcaModo === 'projetos' ? 'Nenhuma FCA de projeto' : 'Nenhuma FCA';
+    wrap.innerHTML = '<div style="font-size:var(--fs-base);color:var(--text-hint);padding:8px 0;">' + vazio + (fcaFiltro==='concluida'?' concluída':fcaFiltro==='aberto'?' em aberto':'') + '.</div>';
+    return;
+  }
+  const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const trunc = (s, max) => { const full = esc(s); return '<span title="' + full + '">' + (s && s.length > max ? esc(s.slice(0, max)) + '…' : full) + '</span>'; };
+  // Select estilizado como badge colorido — editável direto na tabela, sem precisar reabrir
+  // o modal. A cor muda sozinha porque fcaSetField sempre re-renderiza a lista inteira.
+  const selectBadge = (id, field, val, opts, corMap) => '<select onchange="fcaSetField(\''+id+'\',\''+field+'\',this.value)" style="background:'+(corMap[val]||'var(--text-hint)')+';color:#fff;font-size:var(--fs-3xs);font-weight:700;border:none;border-radius:8px;padding:3px 6px;cursor:pointer;">'
+    + opts.map(o => '<option value="'+o+'"'+(val===o?' selected':'')+'>'+o+'</option>').join('')
+    + '</select>';
+  const th = txt => '<th style="text-align:left;padding:6px 10px;background:var(--surface2);white-space:nowrap;">'+txt+'</th>';
+  const colunas = ['Data'].concat(fcaModo==='projetos' ? ['Projeto'] : []).concat(['Fato','Causa','Ação','Resultado esperado','Resultado real','Impacto','Prioridade','Frente','Concluída','']);
+  const header = '<tr>' + colunas.map(th).join('') + '</tr>';
+  // Sugestões de Frente = todas as já usadas em qualquer FCA, um datalist só compartilhado
+  // por todas as linhas da tabela (não precisa um por linha).
+  const frentesExistentes = [...new Set(fcaItens.map(it => it.frente).filter(Boolean))].sort();
+  const datalistFrente = '<datalist id="fca-tabela-frente-list">' + frentesExistentes.map(f => '<option value="'+esc(f)+'">').join('') + '</datalist>';
+  const rows = lista.map(it => {
+    const pProj = it.projetoId ? projects.find(p => String(p.id) === String(it.projetoId)) : null;
+    const flagCorProj = pProj ? ({Verde:'var(--green)',Amarelo:'var(--amber)',Vermelho:'var(--accent)'})[calcFlagAutomatica(pProj)] || 'var(--text-hint)' : '';
+    const colProjeto = fcaModo === 'projetos'
+      ? '<td style="padding:6px 10px;white-space:nowrap;">' + (pProj
+          ? '<button type="button" onclick="abrirModalFlag('+pProj.id+',\'healthscore\')" style="font:inherit;padding:0;background:none;border:none;color:'+flagCorProj+';cursor:pointer;">' + icon('flag') + '</button> ' + esc(pProj.nome)
+          : '<span style="color:var(--text-hint);">' + esc(it.projetoNome || '—') + ' (excluído)</span>')
+        + '</td>'
+      : '';
+    return '<tr style="border-bottom:1px solid var(--border);' + (it.concluida ? 'opacity:.6;' : '') + '">'
+      + '<td style="padding:6px 10px;white-space:nowrap;color:var(--text-hint);font-size:var(--fs-xs);">' + fmtD((it.criadoEm||'').slice(0,10)) + '</td>'
+      + colProjeto
+      + '<td style="padding:6px 10px;max-width:200px;">' + trunc(it.fato, 60) + '</td>'
+      + '<td style="padding:6px 10px;max-width:200px;">' + trunc(it.causa, 60) + '</td>'
+      + '<td style="padding:6px 10px;max-width:200px;">' + trunc(it.acao, 60) + '</td>'
+      + '<td style="padding:6px 10px;max-width:180px;">' + trunc(it.resultadoEsperado, 50) + '</td>'
+      + '<td style="padding:6px 10px;min-width:180px;"><textarea class="sel" rows="1" style="width:100%;resize:vertical;font-size:var(--fs-sm);" placeholder="O que de fato aconteceu…" onchange="fcaSetField(\''+it.id+'\',\'resultadoReal\',this.value)">'+esc(it.resultadoReal)+'</textarea></td>'
+      + '<td style="padding:6px 10px;">' + selectBadge(it.id, 'impacto', it.impacto || 'Médio', ['Alto','Médio','Baixo'], FCA_IMPACTO_COR) + '</td>'
+      + '<td style="padding:6px 10px;">' + selectBadge(it.id, 'prioridade', it.prioridade || 'Média', ['Alta','Média','Baixa'], FCA_PRIORIDADE_COR) + '</td>'
+      + '<td style="padding:6px 10px;min-width:110px;"><input type="text" class="sel" list="fca-tabela-frente-list" value="'+esc(it.frente)+'" placeholder="—" style="width:100%;font-size:var(--fs-sm);border-left:3px solid '+(it.frente?tagCor(it.frente):'var(--border)')+';" onchange="fcaSetField(\''+it.id+'\',\'frente\',this.value)"></td>'
+      + '<td style="padding:6px 10px;text-align:center;"><input type="checkbox" ' + (it.concluida?'checked':'') + ' onchange="fcaSetField(\''+it.id+'\',\'concluida\',this.checked)" style="width:16px;height:16px;cursor:pointer;"></td>'
+      + '<td style="padding:6px 10px;"><button type="button" onclick="fcaExcluir(\''+it.id+'\')" title="Excluir" style="font:inherit;padding:0;background:none;border:none;color:var(--text-hint);cursor:pointer;">'+icon('x',{size:12})+'</button></td>'
+      + '</tr>';
+  }).join('');
+  wrap.innerHTML = datalistFrente + '<table style="border-collapse:collapse;font-size:var(--fs-sm);min-width:100%;"><thead>'+header+'</thead><tbody>'+rows+'</tbody></table>';
+}
+
+/* ============================================================
+   TRATATIVAS — card na Visão Geral (substituiu o card de Flags)
+   ============================================================ */
+let tratativas = []; // [{id, criadoEm, clienteId, clienteNome, situacao, pediuReembolso, atualizacao, finalizado}]
+let _tratModalId = null; // null = criando nova; com valor = editando a tratativa desse id
+// Um único modal serve criação e edição — abre já preenchido quando vem de um clique na lista.
+function tratAbrirModal(id){
+  _tratModalId = id || null;
+  const item = id ? tratativas.find(t => t.id === id) : null;
+  const tituloEl = document.getElementById('trat-modal-titulo');
+  const clienteEl = document.getElementById('trat-modal-cliente');
+  const situacaoEl = document.getElementById('trat-modal-situacao');
+  const reembolsoEl = document.getElementById('trat-modal-reembolso');
+  const atualizacaoEl = document.getElementById('trat-modal-atualizacao');
+  const finalizadoEl = document.getElementById('trat-modal-finalizado');
+  const excluirBtn = document.getElementById('trat-modal-excluir-btn');
+  if (clienteEl) {
+    const opcoes = projects.filter(p => !isDroFam(p)).sort((a,b) => (a.nome||'').localeCompare(b.nome||''));
+    clienteEl.innerHTML = opcoes.map(p => '<option value="'+p.id+'">'+(p.nome||'').replace(/</g,'&lt;')+'</option>').join('');
+  }
+  if (tituloEl) tituloEl.textContent = item ? 'Editar Tratativa' : 'Nova Tratativa';
+  if (clienteEl) clienteEl.value = item ? item.clienteId : (clienteEl.options[0]?.value || '');
+  if (situacaoEl) situacaoEl.value = item ? (item.situacao || '') : '';
+  if (reembolsoEl) reembolsoEl.checked = !!(item && item.pediuReembolso);
+  if (atualizacaoEl) atualizacaoEl.value = item ? (item.atualizacao || '') : '';
+  if (finalizadoEl) finalizadoEl.checked = !!(item && item.finalizado);
+  if (excluirBtn) excluirBtn.style.display = item ? '' : 'none';
+  const modal = document.getElementById('modal-trat-novo');
+  if (modal) modal.style.display = 'flex';
+}
+function fecharModalTrat(){
+  const modal = document.getElementById('modal-trat-novo');
+  if (modal) modal.style.display = 'none';
+  _tratModalId = null;
+}
+function tratSalvar(){
+  const clienteId = document.getElementById('trat-modal-cliente')?.value || '';
+  if (!clienteId) { showAlert('Selecione o cliente.'); return; }
+  const clienteNome = projects.find(p => String(p.id) === String(clienteId))?.nome || '';
+  const situacao = (document.getElementById('trat-modal-situacao')?.value || '').trim();
+  if (!situacao) { showAlert('Preencha a situação.'); return; }
+  const pediuReembolso = !!document.getElementById('trat-modal-reembolso')?.checked;
+  const atualizacao = (document.getElementById('trat-modal-atualizacao')?.value || '').trim();
+  const finalizado = !!document.getElementById('trat-modal-finalizado')?.checked;
+  if (_tratModalId) {
+    const item = tratativas.find(t => t.id === _tratModalId);
+    if (item) Object.assign(item, { clienteId, clienteNome, situacao, pediuReembolso, atualizacao, finalizado });
+  } else {
+    tratativas.unshift({
+      id: 'trat_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
+      criadoEm: new Date().toISOString(),
+      clienteId, clienteNome, situacao, pediuReembolso, atualizacao, finalizado,
+    });
+  }
+  upd();
+  fecharModalTrat();
+  buildOvTratativas();
+}
+async function tratExcluirAtual(){
+  if (!_tratModalId) return;
+  if (!(await showConfirm('Excluir essa tratativa?'))) return;
+  tratativas = tratativas.filter(t => t.id !== _tratModalId);
+  upd();
+  fecharModalTrat();
+  buildOvTratativas();
+}
+// Edição rápida direto na tabela (reembolso/atualização/finalizado) — sem precisar abrir o
+// modal pra cada ajuste pequeno. Cliente/Situação continuam só pelo modal (abre com o ícone
+// de editar), já que trocar de cliente ou reescrever a situação do zero é uma ação maior.
+function tratSetField(id, field, value){
+  const item = tratativas.find(t => t.id === id);
+  if (!item) return;
+  item[field] = value;
+  upd();
+  buildOvTratativas(); // finalizado muda quem aparece na tabela
+}
+// Tabela compacta na Visão Geral — só as ABERTAS (finalizada some da lista, mas continua salva
+// pra histórico). Ícone de editar abre o modal completo; reembolso/atualização/finalizado dá
+// pra mexer direto na célula.
+function buildOvTratativas(){
+  const box = document.getElementById('ov-tratativas-lista');
+  if (!box) return;
+  const abertas = tratativas.filter(t => !t.finalizado);
+  if (!abertas.length) { box.innerHTML = '<div style="font-size:var(--fs-sm);color:var(--text-hint);padding:4px 0;">Nenhuma tratativa em aberto.</div>'; return; }
+  const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const trunc = (s, max) => { const full = esc(s); return '<span title="' + full + '">' + (s && s.length > max ? esc(s.slice(0, max)) + '…' : full) + '</span>'; };
+  const th = txt => '<th style="text-align:left;padding:5px 8px;background:var(--surface2);white-space:nowrap;">'+txt+'</th>';
+  const header = '<tr>' + ['Cliente','Situação','Reembolso','Atualização','Finalizado',''].map(th).join('') + '</tr>';
+  const rows = abertas.map(t => {
+    return '<tr style="border-bottom:1px solid var(--border);">'
+      + '<td style="padding:5px 8px;max-width:140px;font-weight:600;">' + trunc(t.clienteNome, 22) + '</td>'
+      + '<td style="padding:5px 8px;max-width:160px;">' + trunc(t.situacao, 45) + '</td>'
+      + '<td style="padding:5px 8px;text-align:center;"><input type="checkbox" ' + (t.pediuReembolso?'checked':'') + ' onchange="tratSetField(\''+t.id+'\',\'pediuReembolso\',this.checked)" style="width:15px;height:15px;cursor:pointer;"></td>'
+      + '<td style="padding:5px 8px;min-width:150px;"><textarea class="sel" rows="1" style="width:100%;resize:vertical;font-size:var(--fs-sm);" placeholder="Como está agora…" onchange="tratSetField(\''+t.id+'\',\'atualizacao\',this.value)">'+esc(t.atualizacao)+'</textarea></td>'
+      + '<td style="padding:5px 8px;text-align:center;"><input type="checkbox" ' + (t.finalizado?'checked':'') + ' onchange="tratSetField(\''+t.id+'\',\'finalizado\',this.checked)" style="width:15px;height:15px;cursor:pointer;"></td>'
+      + '<td style="padding:5px 8px;white-space:nowrap;">'
+        + '<button type="button" onclick="tratAbrirModal(\''+t.id+'\')" title="Editar cliente/situação" style="font:inherit;padding:0;background:none;border:none;color:var(--text-hint);cursor:pointer;margin-right:6px;">'+icon('edit',{size:12})+'</button>'
+        + '</td>'
+      + '</tr>';
+  }).join('');
+  box.innerHTML = '<div class="tbl-scroll"><table style="border-collapse:collapse;font-size:var(--fs-sm);width:100%;"><thead>'+header+'</thead><tbody>'+rows+'</tbody></table></div>';
+}
+
+/* ============================================================
    INIT
    ============================================================ */
 function buildCultura(){
@@ -2354,6 +2757,7 @@ const audRemovidasLocalmente = new Set();
 // Mesma ideia pra `fotos` (~80KB de dataURL base64, só usada na aba Performance).
 let _fotosLoaded = false;
 let sinaisCulturais = [];    // Termômetro Cultural — [{id, created_at, consultor, framework, dimensao, tipo, gravidade, descricao, justificativa}]
+let fcaItens = [];    // FCA — [{id, criadoEm, fato, causa, acao, resultadoEsperado, resultadoReal, concluida}]
 let npsChart = null;
 
 
@@ -2474,6 +2878,7 @@ const SIDEBAR_NAV = [
     { id: 'performance', label: 'Performance', icon: 'trophy' },
     { id: 'auditoria', label: 'Auditoria de Entregas', icon: 'eye' },
     { id: 'cultura', label: 'Termômetro Cultural', icon: 'sparkle', elId: 'nav-tab-cultura' },
+    { id: 'fca', label: 'FCA', icon: 'flag' },
   ] },
 ];
 function renderSidebarNav() {
@@ -2594,7 +2999,7 @@ function _confirmModalResponder(v) {
 // Esc fecha o modal visível — nenhum dos 8 modais existentes tinha esse atalho antes.
 // Backdrop-click (já existente em todos) continua funcionando do jeito que estava.
 const MODAL_CLOSE_FN = {
-  'modal-flag-edit':'fecharModalFlag', 'modal-novo-projeto':'closeNovoProj',
+  'modal-flag-edit':'fecharModalFlag', 'modal-fca-novo':'fecharModalFca', 'modal-trat-novo':'fecharModalTrat', 'modal-novo-projeto':'closeNovoProj',
   'modal-nova-mon':'closeNovaMon', 'modal-pipe-evento':'closeNovoPipeEvento',
   'modal-drive-fila':'audFecharModalDrive', 'modal-consultores':'closeConsultoresModal',
   'modal-novo-projeto-ter':'closeNovoProjTer', 'modal-login':'closeLoginModal',
@@ -2788,6 +3193,11 @@ function segundaDaSemana(dataISO) {
 function calcStatus2(p) {
   if (p.status2 === 'Churn' || p.status2 === 'Pausado') return p.status2;
   if (p.status2 === 'Finalizado') return 'Finalizado';
+  // Reembolso = projeto interrompido/em tratativa, mesmo que ninguém tenha atualizado o
+  // status2 manualmente pra Pausado. Sem essa checagem, o projeto continua contando como
+  // "Em andamento" em Capacity e nas flags do Healthscore — um projeto que já não está
+  // rodando de fato não pode aparecer como ativo só porque o campo manual ficou desatualizado.
+  if (p.dataReembolso) return 'Pausado';
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   if (!p.inicio) return 'Início em breve';
   // DRO/DRX: finalizado só quando o ÚLTIMO comitê/marco tiver sido REALMENTE registrado
@@ -2974,26 +3384,29 @@ function fimPrazo(p) {
 
 // Flag automática do projeto: cruza 2 critérios — score da entrega mais recente e prazo.
 // Bateu os 2 -> Verde. Bateu só 1 -> Amarelo. Não bateu nenhum -> Vermelho.
-function calcFlagAutomatica(p) {
+// refDateISO (opcional): "hoje" simulado, pra reconstruir qual era a flag EM OUTRA DATA —
+// usado pela navegação semanal do Healthscore ("como estava a flag no fim da semana passada"),
+// em vez de sempre mostrar o estado live de agora. Sem passar nada, calcula em tempo real.
+function calcFlagAutomatica(p, refDateISO) {
   // Flag manual (definida no Lead Time) sempre vence — sobrepõe qualquer critério
   // automático, incluindo a trava de DRO/DRX.
   if (p.flagManual) return p.flagManual;
   if (isDroFam(p)) return p.flag || '—'; // DRO/DRX não entram nesse cálculo, mantém manual
-  // Reembolso = projeto interrompido (mesmo critério de prazoStatus: "não conta como atraso
-  // nem como no prazo"). Sem esse bypass, prazoOk cai pra false por falta de critério aplicável
-  // (não por atraso de verdade) e o projeto é empurrado pra Vermelho por padrão, mesmo sem
-  // nenhum problema real de execução — mascarando a estatística com um caso que já não está
-  // mais em avaliação de saúde.
-  if (p.dataReembolso) return p.flag || '—';
+  // Reembolso = projeto interrompido/em tratativa, fora de avaliação de saúde — nem Verde
+  // nem Vermelho fazem sentido aqui. Diferente do DRO/DRX (onde p.flag é um campo mantido
+  // manualmente), pra reembolso o p.flag costuma ser só um resquício de antes do problema
+  // acontecer (ex: "Verde" de quando o projeto ainda ia bem) — usar esse valor mostraria uma
+  // cor enganosa, então sempre neutro aqui, ignorando p.flag.
+  if (p.dataReembolso) return '—';
   const ent = p.entregas || {};
-  const hojeISO = new Date().toISOString().slice(0,10);
+  const hojeISO = refDateISO || new Date().toISOString().slice(0,10);
   // Projeto estagnado = regra semanal, alinhada ao ritmo real de upload de auditoria
-  // (auditorias sobem ao longo da semana, normalmente até sexta). Pega a data da entrega
-  // mais recente já realizada (ou o início do projeto, se nenhuma aconteceu ainda) e
-  // verifica se ela é anterior à segunda-feira da semana passada — ou seja, se a última
-  // semana de trabalho já encerrada (segunda a sexta) não teve NENHUMA entrega registrada,
-  // o projeto já é Vermelho a partir da segunda seguinte, independente de score/prazo geral.
-  // A Decolagem entra na mesma checagem, sem atalho à parte.
+  // (auditorias sobem ao longo da semana, normalmente até sexta). Verifica se a última
+  // semana de trabalho já encerrada (segunda a domingo) teve NENHUMA entrega registrada —
+  // se sim, é perigo, mesmo que uma entrega tenha chegado logo na segunda desta semana
+  // (isso resolve a pendência de NOTA, mas não apaga uma semana inteira sem nenhum trabalho
+  // registrado — caso real: "Frenecar", zero entrega entre 03/08 e 09/08, só retomou em
+  // 10/08, segunda desta semana). A Decolagem entra na mesma checagem, sem atalho à parte.
   const ordem = ordemCompleta(p);
   // Projeto que já chegou na Decolagem (última etapa) está concluído — não tem mais "semana
   // de trabalho" esperada depois disso, então a regra de estagnação não se aplica mais nele.
@@ -3003,15 +3416,16 @@ function calcFlagAutomatica(p) {
   const decolagem = ent[6] || ent['6'];
   const decolagemAconteceu = !!(decolagem && decolagem.real && decolagem.real <= hojeISO)
     || !!(p.realFim && p.realFim <= hojeISO);
-  let referencia = null;
-  ordem.forEach(si => {
-    const e = ent[si] || ent[String(si)];
-    if (e && e.real && e.real <= hojeISO && (!referencia || e.real > referencia)) referencia = e.real;
-  });
-  referencia = referencia || p.inicio; // nenhuma entrega ainda -> conta a partir do início
-  if (!decolagemAconteceu && referencia) {
-    const segundaSemanaAnterior = addDays(segundaDaSemana(hojeISO), -7);
-    if (referencia < segundaSemanaAnterior) return 'Vermelho';
+  const segundaEstaSemana = segundaDaSemana(hojeISO);
+  const segundaSemanaAnterior = addDays(segundaEstaSemana, -7);
+  // Só cobra atividade da semana passada de projeto que já existia antes dela inteira —
+  // senão um projeto recém-iniciado nessa janela cairia aqui só por ainda não ter começado.
+  if (!decolagemAconteceu && p.inicio && p.inicio <= segundaSemanaAnterior) {
+    const teveEntregaSemanaPassada = ordem.some(si => {
+      const e = ent[si] || ent[String(si)];
+      return e && e.real && e.real >= segundaSemanaAnterior && e.real < segundaEstaSemana;
+    });
+    if (!teveEntregaSemanaPassada) return 'Vermelho';
   }
   // Score mais recente registrado — percorre na ordem CRONOLÓGICA real (ordemCompleta), não
   // por índice fixo 6→0, de trás pra frente. As etapas do meio (2-5) podem acontecer fora da
@@ -3031,7 +3445,6 @@ function calcFlagAutomatica(p) {
   // alegar ter avaliado um trabalho que na verdade ainda nem foi auditado (caso real:
   // "Frenecar" — Decolagem de hoje sem nota não pode "passar" com a nota da 4ª Entrega, de
   // 31/07: ninguém sabe ainda se a Decolagem foi boa).
-  const segundaEstaSemana = segundaDaSemana(hojeISO);
   let scoreRecente = null;
   let notaEhDaEtapaMaisRecente = false;
   let etapaAnteriorSemNotaVencida = false;
@@ -3061,7 +3474,12 @@ function calcFlagAutomatica(p) {
   return 'Vermelho';
 }
 
-function prazoStatus(p) {
+// refDateISO (opcional): "hoje" simulado, pra reconstruir qual era o veredito de prazo EM
+// OUTRA DATA — usado pelo Gantt do Healthscore, pra pintar cada semana com o prazo como ele
+// estava NAQUELA semana (o "risco" projetado só passa a valer a partir da semana em que
+// realmente apareceu, não retroage pras semanas em que o projeto ainda estava genuinamente ok).
+// Sem passar nada, calcula em tempo real.
+function prazoStatus(p, refDateISO) {
   if (!p.inicio) return {ok: null, html: '<span style="color:var(--text-hint)">—</span>', dias: null};
   // Reembolso → projeto INTERROMPIDO: não conta como atraso nem como no prazo.
   if (p.dataReembolso) {
@@ -3070,7 +3488,8 @@ function prazoStatus(p) {
   }
   const dIni  = parseDate(p.inicio);
   const dPrev = p.prevFim ? parseDate(p.prevFim) : null;
-  const hoje  = new Date(); hoje.setHours(0,0,0,0);
+  const hojeISO = refDateISO || new Date().toISOString().slice(0,10);
+  const hoje  = parseDate(hojeISO);
 
   // ── DRO: prazo = duração do contrato (início → fim do contrato) ──
   if (isDroFam(p)) {
@@ -3108,12 +3527,36 @@ function prazoStatus(p) {
   const diasPrev = p.prevFim ? diffDays(p.inicio, p.prevFim) : null;
   const dec      = Math.round((hoje - dIni) / 864e5);
   const rest     = Math.round((lim52 - hoje) / 864e5);
-  const ok       = !(hoje > lim52);
+  const jaEstourou = hoje > lim52;
 
-  if (dec < 0) return { ok, dias: diasPrev, html: `<span class="badge b-gray" style="margin-top:0">Inicia em ${Math.abs(dec)}d</span>` };
-  if (!ok)     return { ok, dias: diasPrev, html: `<span class="badge b-red" style="margin-top:0">${icon('x')} ${dec}d — fora do prazo</span>` };
-  if (rest <= 7) return { ok, dias: diasPrev, html: `<span class="badge b-amber" style="margin-top:0">${icon('zap')} ${rest}d p/ o limite</span>` };
-  return { ok, dias: diasPrev, html: `<span class="badge b-blue" style="margin-top:0">${rest}d p/ o limite</span>` };
+  // Preditivo: além do reativo (já passou de 52 dias), projeta pelo RITMO das etapas já
+  // entregues — se, mantido esse ritmo, a Decolagem sairia depois do limite, marca "risco"
+  // como aviso antecipado (aparece nos cards do Insights e no Gantt). IMPORTANTE: risco NÃO
+  // é atraso — ok continua true, então NÃO derruba a flag (Verde/Amarelo/Vermelho) nem entra
+  // como "fora do prazo" em nenhum KPI/contagem que olha só pra `ok`. É projeção, não fato; só
+  // o reativo (jaEstourou, já passou de verdade dos 52 dias) conta como atraso pra esses fins.
+  // Só entra em jogo com 2+ etapas entregues — com 1 só, qualquer intervalo vira "ritmo" e a
+  // projeção é só ruído.
+  let projRisco = false, projDias = null;
+  if (!jaEstourou) {
+    const ent = p.entregas || {};
+    const etapas = ordemCompleta(p).filter(si => si !== 0 && si !== '0');
+    const entregues = etapas
+      .map(si => ent[si] || ent[String(si)])
+      .filter(e => e && e.real && e.real <= hojeISO);
+    if (entregues.length >= 2) {
+      const ultimaReal = entregues.reduce((max, e) => (e.real > max ? e.real : max), entregues[0].real);
+      const ritmo = diffDays(p.inicio, ultimaReal) / entregues.length; // dias médios por etapa entregue
+      projDias = Math.round(ritmo * etapas.length);
+      projRisco = addDays(p.inicio, projDias) > addDays(p.inicio, 52);
+    }
+  }
+
+  if (dec < 0)     return { ok: true, dias: diasPrev, html: `<span class="badge b-gray" style="margin-top:0">Inicia em ${Math.abs(dec)}d</span>` };
+  if (jaEstourou)  return { ok: false, dias: diasPrev, html: `<span class="badge b-red" style="margin-top:0">${icon('x')} ${dec}d — fora do prazo</span>` };
+  if (projRisco)   return { ok: true, dias: diasPrev, risco: true, html: `<span class="badge b-amber" style="margin-top:0">${icon('zap')} ritmo projeta ~${projDias}d — risco de atraso</span>` };
+  if (rest <= 7)   return { ok: true, dias: diasPrev, html: `<span class="badge b-amber" style="margin-top:0">${icon('zap')} ${rest}d p/ o limite</span>` };
+  return { ok: true, dias: diasPrev, html: `<span class="badge b-blue" style="margin-top:0">${rest}d p/ o limite</span>` };
 }
 
 // Mês onde o veredito de prazo conta: finalização (Decolagem/real) ou mês atual (aberto)
@@ -3756,6 +4199,15 @@ function semanaKey(offset) {
   return inicio.toISOString().slice(0,10);
 }
 
+// "Hoje" simulado pra reconstruir a flag do Healthscore como estava no FIM de uma semana
+// passada, em vez do estado live de agora — segunda-feira da semana seguinte à selecionada,
+// mesma folga de 1 semana que a regra de estagnação já dá pra entrega da semana corrente.
+// offset >= 0 (semana atual ou futura) devolve null, pra calcFlagAutomatica usar o hoje real.
+function refDateParaSemana(offset) {
+  if (offset >= 0) return null;
+  return addDays(semanaKey(offset), 7);
+}
+
 function navSemana(dir) { pipeSemanaOffset += dir; buildPipeSemana(); }
 function navSemanaHoje() { pipeSemanaOffset = 0; buildPipeSemana(); }
 
@@ -4106,6 +4558,40 @@ function droComiteStatus(com, semFim, semAtual){
 }
 function droTravaLabel(k){ const t=DRO_TRAVAS.find(x=>x[0]===k); return t? (t[0]+' '+t[1]) : ''; }
 
+// Próximo comitê/marco que ainda precisa de atenção (sem "real" preenchido) — o mais atrasado
+// primeiro, senão o de data mais próxima. Alimenta a coluna "Próximo" da linha compacta, pra
+// dar o mesmo tipo de sinal de relance que o Lead Time já dá com "próxima etapa".
+function droProximoEvento(p){
+  const eventos=[];
+  if(p.modelo==='DRX'){
+    const dx=drxInit(p);
+    const sem=drxSemana(p);
+    DRX_MARCOS.forEach(m=>{
+      const mo=dx.marcos[m.k];
+      if(mo && mo.real) return;
+      eventos.push({ nome:m.nome, prev:mo?mo.prev:'', status:drxMarcoStatus(mo,m.sem,sem) });
+    });
+  } else {
+    droGetCiclos(p).forEach(c=>{
+      const sem=droSemana(c);
+      DRO_FASES.forEach(f=>{
+        const com=c[f.ck];
+        if(com && com.real) return;
+        eventos.push({ nome:'C'+c.num+' · '+f.cnome, prev:com?com.prev:'', status:droComiteStatus(com,f.semFim,sem) });
+      });
+    });
+  }
+  eventos.sort((a,b)=>{
+    if(a.status==='atrasado' && b.status!=='atrasado') return -1;
+    if(b.status==='atrasado' && a.status!=='atrasado') return 1;
+    if(!a.prev && !b.prev) return 0;
+    if(!a.prev) return 1;
+    if(!b.prev) return -1;
+    return a.prev<b.prev?-1:1;
+  });
+  return eventos[0]||null;
+}
+
 function buildDRO(){
   const container=document.getElementById('dro-list');
   if(!container) return;
@@ -4156,134 +4642,155 @@ function buildDRO(){
 
   if(lista.length===0){ container.innerHTML=resumo+'<p style="color:var(--text-hint);font-size:var(--fs-md);padding:16px 0;">Nenhum projeto DRO/DRX ativo.</p>'; return; }
 
-  container.innerHTML = resumo + lista.map(p=>{
-    if(p.modelo==='DRX') return drxCard(p, hoje);
-    const d=droInitData(p);
-    const ciclos=droGetCiclos(p);
-    const atualIdx=droCicloAtualIdx(ciclos);
-    if(p.droCicloView===undefined || p.droCicloView>=ciclos.length) p.droCicloView=atualIdx;
-    const vi=p.droCicloView;
-    const ciclo=ciclos[vi];
-    if(p.droExpanded===undefined) p.droExpanded=true;
+  // Uma linha por cliente (igual Lead Time) — recolhida por padrão (droExpanded agora nasce
+  // false). Detalhe pesado (trilha de ciclos, cadeia de travas, comitês/marcos com prev/real,
+  // auditorias) continua tudo, só que dentro de uma linha que só existe quando expandida.
+  const th=txt=>'<th style="text-align:left;padding:6px 10px;background:var(--surface2);white-space:nowrap;">'+txt+'</th>';
+  const header='<tr>'+['','Cliente','Progresso','Próximo evento','Auditorias','Oportunidade'].map(th).join('')+'</tr>';
+
+  const linhas = lista.map(p=>{
+    if(p.droExpanded===undefined) p.droExpanded=false;
     const exp=p.droExpanded;
-    const fmtBR=dt=>dt? dt.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'}) : '?';
+    const isDrx=p.modelo==='DRX';
+    const cor = isDrx?'var(--teal)':'var(--dro)';
+    const corDim = isDrx?'rgba(13,148,136,.14)':'var(--dro-dim)';
+    const badge = isDrx?'DR-X':'DRO';
+    const d=droInitData(p);
+    const auditorias=d.auditorias||[];
+    const audFeitas=auditorias.filter(a=>a.feita).length;
+    const audAtrasCliente=auditorias.filter(a=>{ if(a.feita) return false; const dp=a.dataPrev?parseDate(a.dataPrev):null; return dp&&hoje>dp; }).length;
 
-    // Trilha de ciclos
-    const trilha = ciclos.map((c,i)=>{
-      const sem=droSemana(c);
-      const done = sem>=13;
-      const cur = i===atualIdx;
-      const sel = i===vi;
-      const bg = done?'var(--green)': cur?'var(--surface)':'var(--surface)';
-      const bc = done?'var(--green)': cur?'var(--dro)':'var(--border)';
-      const col= done?'#fff': cur?'var(--dro)':'var(--text-hint)';
-      const line = i<ciclos.length-1 ? `<div style="flex:1;height:2px;min-width:12px;background:${done?'var(--green)':'var(--border)'};"></div>` : '';
-      return `<button type="button" onclick="droSetView(${p.id},${i})" title="Ver ciclo ${c.num}" style="font:inherit;text-align:inherit;padding:0;margin:0;background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:92px;cursor:pointer;">
-        <div style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:var(--fs-base);font-weight:700;border:2px solid ${bc};background:${bg};color:${col};${sel?'box-shadow:0 0 0 3px rgba(142,91,196,.15);':''}">${done?icon('check',{size:14}):c.num}</div>
-        <div style="font-size:var(--fs-2xs);color:var(--text-hint);text-align:center;line-height:1.25;">Ciclo ${c.num}<br>${fmtBR(c.inicio)}–${fmtBR(droAddMonths(c.inicio,2))}<br><b style="color:${c.trava?'var(--dro)':'var(--text-hint)'};">${c.trava?droTravaLabel(c.trava).split(' ')[0]:'—'}</b></div>
-      </button>${line?'<div style="display:flex;align-items:center;flex:0 0 auto;">'+line+'</div>':''}`;
-    }).join('');
+    let progressoTxt;
+    if(isDrx){
+      const sem=drxSemana(p);
+      const semTxt= sem===0?'não iniciado': sem>=7?'encerrado':('Sem '+sem+'/6');
+      const dx=drxInit(p);
+      progressoTxt = semTxt + (dx.travaPrim? ' · '+dx.travaPrim : '');
+    } else {
+      const ciclos=droGetCiclos(p);
+      const atualIdx=droCicloAtualIdx(ciclos);
+      const cicloAtual=ciclos[atualIdx];
+      const sem=cicloAtual?droSemana(cicloAtual):0;
+      const semTxt= sem===0?'não iniciado': sem>=13?'encerrado':('Sem '+sem+'/12');
+      progressoTxt = 'Ciclo '+(atualIdx+1)+'/'+ciclos.length+' · '+semTxt + (cicloAtual&&cicloAtual.trava? ' · '+cicloAtual.trava : '');
+    }
 
-    // Cadeia de travas T7→T1
-    const chain = DRO_TRAVAS.map(([k,n])=>{
-      const gov = ciclo.trava===k;
-      return `<div style="flex:1;text-align:center;font-size:var(--fs-2xs);font-weight:700;padding:4px 2px;border-radius:var(--r-sm);background:${gov?'var(--dro)':'var(--surface3,#ecebe8)'};color:${gov?'#fff':'var(--text-hint)'};" title="${k} ${n}">${k}</div>`;
-    }).join('');
+    const prox=droProximoEvento(p);
+    let proxHTML='<span style="color:var(--text-hint);">—</span>';
+    if(prox){
+      const [pcor,plabel]=STATUS_MAP[prox.status]||['var(--text-hint)','—'];
+      proxHTML='<span title="'+prox.nome+'" style="font-size:var(--fs-xs);font-weight:700;color:'+pcor+';">'+prox.nome+(prox.prev?' · '+fmtD(prox.prev):'')+' · '+plabel+'</span>';
+    }
 
-    // Ponteiro de semana
-    const sem=droSemana(ciclo);
-    const semPct = sem<=0?0: sem>=13?100: Math.round(sem/12*100);
-    const semTxt = sem===0?'não iniciado': sem>=13?'encerrado':`Semana ${sem}/12`;
+    const oportSel=(v)=>'<option value="'+v+'" '+(p.oport===v?'selected':'')+'>'+v+'</option>';
 
-    // 3 fases + 3 comitês
-    const fasesHTML = DRO_FASES.map(f=>{
-      const com=ciclo[f.ck]||{prev:'',real:''};
-      const stt=droComiteStatus(com,f.semFim,sem);
-      const [scor,slabel,sicon]=STATUS_MAP[stt];
-      const stxt=sicon?icon(sicon)+' '+slabel:slabel;
-      return `<div style="border:1px solid var(--border);border-radius:9px;overflow:hidden;">
-        <div style="font-size:var(--fs-sm);font-weight:700;padding:6px 9px;color:#fff;background:${f.cor};display:flex;justify-content:space-between;">${f.nome}<span style="font-weight:500;opacity:.85;">${f.sem}</span></div>
-        <div style="padding:8px 9px;font-size:var(--fs-xs);color:var(--text-muted);">
-          ${f.resumo}
-          <div style="margin-top:7px;border-top:1px dashed var(--border);padding-top:7px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;"><b style="font-size:var(--fs-xs);">${icon('flag')} ${f.cnome}</b><span style="font-size:var(--fs-xs);font-weight:700;color:${scor};">${stxt}</span></div>
-            <div style="display:flex;gap:5px;">
-              <label style="flex:1;font-size:var(--fs-2xs);color:var(--text-hint);">prev<input type="date" class="sel" style="width:100%;font-size:var(--fs-xs);padding:1px 3px;" value="${dv(com.prev)}" onchange="droSetComite(${p.id},${vi},'${f.ck}','prev',this.value)"></label>
-              <label style="flex:1;font-size:var(--fs-2xs);color:var(--text-hint);">real<input type="date" class="sel" style="width:100%;font-size:var(--fs-xs);padding:1px 3px;" value="${dv(com.real)}" onchange="droSetComite(${p.id},${vi},'${f.ck}','real',this.value)"></label>
-            </div>
+    const linhaCompacta='<tr style="border-bottom:1px solid var(--border);">'
+      + '<td style="padding:8px 6px;text-align:center;"><button type="button" onclick="droToggleExpanded('+p.id+')" title="'+(exp?'Recolher':'Expandir')+'" style="font:inherit;padding:0;background:none;border:none;color:var(--text-hint);cursor:pointer;display:inline-block;transform:rotate('+(exp?'90':'0')+'deg);transition:transform .15s;">▸</button></td>'
+      + '<td style="padding:8px 10px;position:sticky;left:0;background:var(--surface);min-width:190px;">'
+        + '<div style="display:flex;align-items:center;gap:6px;">'+flagHTML(calcFlagAutomatica(p))+'<b>'+p.nome+'</b><span class="badge" style="background:'+corDim+';color:'+cor+';font-size:var(--fs-2xs);margin-top:0;">'+badge+'</span></div>'
+        + '<div style="font-size:var(--fs-xs);color:var(--text-hint);margin-top:2px;">'+(p.consultor||'—')+'</div>'
+      + '</td>'
+      + '<td style="padding:8px 10px;font-size:var(--fs-sm);white-space:nowrap;">'+progressoTxt+'</td>'
+      + '<td style="padding:8px 10px;">'+proxHTML+'</td>'
+      + '<td style="padding:8px 10px;font-size:var(--fs-sm);white-space:nowrap;'+(audAtrasCliente?'color:var(--red);font-weight:700;':'')+'">'+audFeitas+'/'+auditorias.length+(audAtrasCliente?' ('+audAtrasCliente+' atrasada'+(audAtrasCliente>1?'s':'')+')':'')+'</td>'
+      + '<td style="padding:8px 10px;" onclick="event.stopPropagation()">'
+        + '<select class="sel" style="font-size:var(--fs-sm);padding:2px 6px;" onchange="const pr=projects.find(x=>String(x.id)===String('+p.id+'));pr.oport=this.value;upd();"><option value="" '+(!p.oport?'selected':'')+'>Sem oportunidade</option>'+oportSel('Mapeado (AQL)')+oportSel('Apresentar proposta (SQL)')+oportSel('Proposta apresentada (SAL)')+oportSel('Follow (COMMIT)')+'</select>'
+      + '</td>'
+      + '</tr>';
+
+    const linhaDetalhe = exp ? ('<tr><td colspan="6" style="padding:0 10px 16px;background:var(--surface2);">'+(isDrx?droDetailDRX(p,hoje):droDetailDRO(p,hoje))+'</td></tr>') : '';
+
+    return linhaCompacta + linhaDetalhe;
+  }).join('');
+
+  container.innerHTML = resumo + '<div class="tbl-scroll"><table style="border-collapse:collapse;font-size:var(--fs-sm);width:100%;"><thead>'+header+'</thead><tbody>'+linhas+'</tbody></table></div>';
+}
+
+// Detalhe expandido do DRO — trilha de ciclos, ciclo selecionado (trava governante, cadeia de
+// travas, foco, ponteiro de semana, 3 fases/comitês) e auditorias. Extraído da linha compacta
+// pra só existir no DOM quando o cliente está realmente expandido.
+function droDetailDRO(p, hoje){
+  const d=droInitData(p);
+  const ciclos=droGetCiclos(p);
+  const atualIdx=droCicloAtualIdx(ciclos);
+  if(p.droCicloView===undefined || p.droCicloView>=ciclos.length) p.droCicloView=atualIdx;
+  const vi=p.droCicloView;
+  const ciclo=ciclos[vi];
+  const fmtBR=dt=>dt? dt.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'}) : '?';
+
+  const trilha = ciclos.map((c,i)=>{
+    const sem=droSemana(c);
+    const done = sem>=13;
+    const cur = i===atualIdx;
+    const sel = i===vi;
+    const bg = done?'var(--green)': cur?'var(--surface)':'var(--surface)';
+    const bc = done?'var(--green)': cur?'var(--dro)':'var(--border)';
+    const col= done?'#fff': cur?'var(--dro)':'var(--text-hint)';
+    const line = i<ciclos.length-1 ? `<div style="flex:1;height:2px;min-width:12px;background:${done?'var(--green)':'var(--border)'};"></div>` : '';
+    return `<button type="button" onclick="droSetView(${p.id},${i})" title="Ver ciclo ${c.num}" style="font:inherit;text-align:inherit;padding:0;margin:0;background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:92px;cursor:pointer;">
+      <div style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:var(--fs-base);font-weight:700;border:2px solid ${bc};background:${bg};color:${col};${sel?'box-shadow:0 0 0 3px rgba(142,91,196,.15);':''}">${done?icon('check',{size:14}):c.num}</div>
+      <div style="font-size:var(--fs-2xs);color:var(--text-hint);text-align:center;line-height:1.25;">Ciclo ${c.num}<br>${fmtBR(c.inicio)}–${fmtBR(droAddMonths(c.inicio,2))}<br><b style="color:${c.trava?'var(--dro)':'var(--text-hint)'};">${c.trava?droTravaLabel(c.trava).split(' ')[0]:'—'}</b></div>
+    </button>${line?'<div style="display:flex;align-items:center;flex:0 0 auto;">'+line+'</div>':''}`;
+  }).join('');
+
+  const chain = DRO_TRAVAS.map(([k,n])=>{
+    const gov = ciclo.trava===k;
+    return `<div style="flex:1;text-align:center;font-size:var(--fs-2xs);font-weight:700;padding:4px 2px;border-radius:var(--r-sm);background:${gov?'var(--dro)':'var(--surface3,#ecebe8)'};color:${gov?'#fff':'var(--text-hint)'};" title="${k} ${n}">${k}</div>`;
+  }).join('');
+
+  const sem=droSemana(ciclo);
+  const semPct = sem<=0?0: sem>=13?100: Math.round(sem/12*100);
+  const semTxt = sem===0?'não iniciado': sem>=13?'encerrado':`Semana ${sem}/12`;
+
+  const fasesHTML = DRO_FASES.map(f=>{
+    const com=ciclo[f.ck]||{prev:'',real:''};
+    const stt=droComiteStatus(com,f.semFim,sem);
+    const [scor,slabel,sicon]=STATUS_MAP[stt];
+    const stxt=sicon?icon(sicon)+' '+slabel:slabel;
+    return `<div style="border:1px solid var(--border);border-radius:9px;overflow:hidden;">
+      <div style="font-size:var(--fs-sm);font-weight:700;padding:6px 9px;color:#fff;background:${f.cor};display:flex;justify-content:space-between;">${f.nome}<span style="font-weight:500;opacity:.85;">${f.sem}</span></div>
+      <div style="padding:8px 9px;font-size:var(--fs-xs);color:var(--text-muted);">
+        ${f.resumo}
+        <div style="margin-top:7px;border-top:1px dashed var(--border);padding-top:7px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;"><b style="font-size:var(--fs-xs);">${icon('flag')} ${f.cnome}</b><span style="font-size:var(--fs-xs);font-weight:700;color:${scor};">${stxt}</span></div>
+          <div style="display:flex;gap:5px;">
+            <label style="flex:1;font-size:var(--fs-2xs);color:var(--text-hint);">prev<input type="date" class="sel" style="width:100%;font-size:var(--fs-xs);padding:1px 3px;" value="${dv(com.prev)}" onchange="droSetComite(${p.id},${vi},'${f.ck}','prev',this.value)"></label>
+            <label style="flex:1;font-size:var(--fs-2xs);color:var(--text-hint);">real<input type="date" class="sel" style="width:100%;font-size:var(--fs-xs);padding:1px 3px;" value="${dv(com.real)}" onchange="droSetComite(${p.id},${vi},'${f.ck}','real',this.value)"></label>
           </div>
         </div>
-      </div>`;
-    }).join('');
-    const audCardsHTML = (d.auditorias||[]).map(a=>droAudMini(a, hoje)).join('');
-
-
-    return `
-    <div class="card" style="margin-bottom:1rem;">
-      <div onclick="droToggleExpanded(${p.id})" role="button" tabindex="0" aria-expanded="${exp?'true':'false'}" onkeydown="droToggleExpandedKey(event,${p.id})"
-        style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;cursor:pointer;${exp?'margin-bottom:12px;':''}">
-        <div>
-          <div style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;"><span style="width:9px;height:9px;border-radius:50%;background:var(--dro);display:inline-block;"></span>${p.nome} <span class="badge" style="background:var(--dro-dim);color:var(--dro);font-size:var(--fs-xs);margin-top:0;">DRO</span></div>
-          <div style="font-size:var(--fs-base);color:var(--text-hint);margin-top:2px;">${p.consultor||'—'} · ${p.inicio||'?'} → ${p.prevFim||'?'} · ${ciclos.length} ciclos${p.gmv? ' · GMV '+BRL(p.gmv):''}</div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;" onclick="event.stopPropagation()">
-          ${flagHTML(calcFlagAutomatica(p))}
-          <select class="sel" style="font-size:var(--fs-sm);padding:2px 6px;" onchange="const pr=projects.find(x=>String(x.id)===String(${p.id}));pr.oport=this.value;upd();">
-            <option value="" ${!p.oport?'selected':''}>Sem oportunidade</option>
-            <option value="Mapeado (AQL)" ${p.oport==='Mapeado (AQL)'?'selected':''}>Mapeado (AQL)</option>
-            <option value="Apresentar proposta (SQL)" ${p.oport==='Apresentar proposta (SQL)'?'selected':''}>Apresentar proposta (SQL)</option>
-            <option value="Proposta apresentada (SAL)" ${p.oport==='Proposta apresentada (SAL)'?'selected':''}>Proposta apresentada (SAL)</option>
-            <option value="Follow (COMMIT)" ${p.oport==='Follow (COMMIT)'?'selected':''}>Follow (COMMIT)</option>
-          </select>
-          <span style="font-size:var(--fs-xl);color:var(--text-hint);line-height:1;display:inline-block;transform:rotate(${exp?'0':'180deg'});">⌃</span>
-        </div>
-      </div>
-
-      <div style="display:${exp?'block':'none'}">
-        <!-- Trilha de ciclos -->
-        <div style="display:flex;align-items:center;margin:6px 0 8px;overflow-x:auto;">${trilha}</div>
-
-        <!-- Ciclo selecionado -->
-        <div style="border:1px solid rgba(142,91,196,.25);border-radius:10px;padding:13px;background:linear-gradient(180deg,rgba(142,91,196,.05),transparent);">
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
-            <b style="font-size:var(--fs-md);">Ciclo ${ciclo.num} · ${fmtBR(ciclo.inicio)}–${fmtBR(droAddMonths(ciclo.inicio,2))}</b>
-            <span style="font-size:var(--fs-xs);font-weight:700;color:${sem>=1&&sem<=12?'var(--dro)':'var(--text-hint)'};">${semTxt}</span>
-            <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
-              <span style="font-size:var(--fs-xs);color:var(--text-hint);">Trava governante:</span>
-              <select class="sel" style="font-size:var(--fs-sm);padding:2px 6px;" onchange="droSetTrava(${p.id},${vi},this.value)">
-                <option value="" ${!ciclo.trava?'selected':''}>— definir —</option>
-                ${DRO_TRAVAS.map(([k,n])=>`<option value="${k}" ${ciclo.trava===k?'selected':''}>${k} ${n}</option>`).join('')}
-              </select>
-            </div>
-          </div>
-
-          <!-- Cadeia de travas -->
-          <div style="display:flex;gap:3px;margin-bottom:8px;">${chain}</div>
-
-          <!-- Foco do ciclo -->
-          <input type="text" class="sel" style="width:100%;font-size:var(--fs-sm);padding:4px 8px;margin-bottom:10px;" placeholder="Foco / injeção do ciclo (ex.: explorar ao máximo antes de elevar)" value="${(ciclo.foco||'').replace(/"/g,'&quot;')}" onblur="droSetFoco(${p.id},${vi},this.value)">
-
-          <!-- Ponteiro de semana -->
-          <div style="height:7px;border-radius:5px;background:var(--surface3,#ecebe8);overflow:hidden;"><div style="height:100%;width:${semPct}%;background:var(--dro);border-radius:5px;"></div></div>
-          <div style="display:flex;justify-content:space-between;font-size:var(--fs-2xs);color:var(--text-hint);margin-top:2px;"><span>Sem 1</span><span>Sem 12</span></div>
-
-          <!-- 3 fases + 3 comitês -->
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-top:12px;">${fasesHTML}${audCardsHTML}</div>
-        </div>
-
-        ${droAudBlock(p, hoje)}
       </div>
     </div>`;
   }).join('');
+  const audCardsHTML = (d.auditorias||[]).map(a=>droAudMini(a, hoje)).join('');
+
+  return `<div style="padding-top:12px;">
+    <div style="display:flex;align-items:center;margin:6px 0 8px;overflow-x:auto;">${trilha}</div>
+    <div style="border:1px solid rgba(142,91,196,.25);border-radius:10px;padding:13px;background:linear-gradient(180deg,rgba(142,91,196,.05),transparent);">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+        <b style="font-size:var(--fs-md);">Ciclo ${ciclo.num} · ${fmtBR(ciclo.inicio)}–${fmtBR(droAddMonths(ciclo.inicio,2))}</b>
+        <span style="font-size:var(--fs-xs);font-weight:700;color:${sem>=1&&sem<=12?'var(--dro)':'var(--text-hint)'};">${semTxt}</span>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
+          <span style="font-size:var(--fs-xs);color:var(--text-hint);">Trava governante:</span>
+          <select class="sel" style="font-size:var(--fs-sm);padding:2px 6px;" onchange="droSetTrava(${p.id},${vi},this.value)">
+            <option value="" ${!ciclo.trava?'selected':''}>— definir —</option>
+            ${DRO_TRAVAS.map(([k,n])=>`<option value="${k}" ${ciclo.trava===k?'selected':''}>${k} ${n}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:3px;margin-bottom:8px;">${chain}</div>
+      <input type="text" class="sel" style="width:100%;font-size:var(--fs-sm);padding:4px 8px;margin-bottom:10px;" placeholder="Foco / injeção do ciclo (ex.: explorar ao máximo antes de elevar)" value="${(ciclo.foco||'').replace(/"/g,'&quot;')}" onblur="droSetFoco(${p.id},${vi},this.value)">
+      <div style="height:7px;border-radius:5px;background:var(--surface3,#ecebe8);overflow:hidden;"><div style="height:100%;width:${semPct}%;background:var(--dro);border-radius:5px;"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:var(--fs-2xs);color:var(--text-hint);margin-top:2px;"><span>Sem 1</span><span>Sem 12</span></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-top:12px;">${fasesHTML}${audCardsHTML}</div>
+    </div>
+    ${droAudBlock(p, hoje)}
+  </div>`;
 }
 
 // ── Setters de ciclo ──
 function droSetView(projId, idx){ const p=projects.find(x=>String(x.id)===String(projId)); if(!p) return; p.droCicloView=idx; buildDRO(); }
-// Expande/recolhe o card de DRO/DRX — compartilhado pelos dois, os dois usam a mesma flag.
+// Expande/recolhe a linha de DRO/DRX na tabela — compartilhado pelos dois, mesma flag.
 function droToggleExpanded(id){ const pr=projects.find(x=>String(x.id)===String(id)); if(pr){ pr.droExpanded=!pr.droExpanded; buildDRO(); } }
-// Ativa o toggle do header do card por teclado (Enter/Espaço) — o header não pode ser um
-// <button> real porque contém um <select> aninhado (botão não pode conter controle de form).
-function droToggleExpandedKey(e, id){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); droToggleExpanded(id); } }
 function droSetTrava(projId, ci, val){ const p=projects.find(x=>String(x.id)===String(projId)); if(!p) return; const d=droInitData(p); if(!d.ciclos[ci]) d.ciclos[ci]={}; d.ciclos[ci].trava=val; upd(); buildDRO(); }
 function droSetFoco(projId, ci, val){ const p=projects.find(x=>String(x.id)===String(projId)); if(!p) return; const d=droInitData(p); if(!d.ciclos[ci]) d.ciclos[ci]={}; d.ciclos[ci].foco=val; upd(); }
 function droSetComite(projId, ci, ck, field, val){ const p=projects.find(x=>String(x.id)===String(projId)); if(!p) return; const d=droInitData(p); if(!d.ciclos[ci]) d.ciclos[ci]={}; if(!d.ciclos[ci][ck]) d.ciclos[ci][ck]={prev:'',real:''}; d.ciclos[ci][ck][field]=val; upd(); buildDRO(); }
@@ -4326,10 +4833,11 @@ function drxMarcoStatus(mo, semAlvo, semAtual){
   return 'pendente';
 }
 
-function drxCard(p, hoje){
+// Detalhe expandido do DR-X — trava primária/secundárias, cadeia de travas, ponteiro de
+// semana, marcos (kickoff/validação/final) e auditorias. Mesmo espírito da extração do DRO:
+// só existe no DOM quando o cliente está expandido na tabela.
+function droDetailDRX(p, hoje){
   const dx=drxInit(p);
-  if(p.droExpanded===undefined) p.droExpanded=true;
-  const exp=p.droExpanded;
   const sem=drxSemana(p);
   const semPct = sem<=0?0: sem>=7?100: Math.round(sem/6*100);
   const semTxt = sem===0?'não iniciado': sem>=7?'encerrado':('Semana '+sem+'/6');
@@ -4366,34 +4874,23 @@ function drxCard(p, hoje){
 
   const travaOpts = (cur)=>DRO_TRAVAS.map(([k,n])=>'<option value="'+k+'" '+(cur===k?'selected':'')+'>'+k+' '+n+'</option>').join('');
   const sec0=dx.travasSec[0]||'', sec1=dx.travasSec[1]||'';
-  const oportSel = (v)=>'<option value="'+v+'" '+(p.oport===v?'selected':'')+'>'+v+'</option>';
 
   return ''
-  + '<div class="card" style="margin-bottom:1rem;">'
-  +   '<div onclick="droToggleExpanded('+p.id+')" role="button" tabindex="0" aria-expanded="'+(exp?'true':'false')+'" onkeydown="droToggleExpandedKey(event,'+p.id+')" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;cursor:pointer;'+(exp?'margin-bottom:12px;':'')+'">'
-  +     '<div><div style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;"><span style="width:9px;height:9px;border-radius:50%;background:var(--teal);display:inline-block;"></span>'+p.nome+' <span class="badge" style="background:rgba(13,148,136,.14);color:var(--teal);font-size:var(--fs-xs);margin-top:0;">DR-X</span></div>'
-  +     '<div style="font-size:var(--fs-base);color:var(--text-hint);margin-top:2px;">'+(p.consultor||'—')+' · '+(p.inicio||'?')+' → '+(p.prevFim||'?')+' · 6 semanas'+(p.gmv? ' · GMV '+BRL(p.gmv):'')+'</div></div>'
-  +     '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;" onclick="event.stopPropagation()">'+flagHTML(calcFlagAutomatica(p))
-  +       '<select class="sel" style="font-size:var(--fs-sm);padding:2px 6px;" onchange="const pr=projects.find(x=>String(x.id)===String('+p.id+'));pr.oport=this.value;upd();"><option value="" '+(!p.oport?'selected':'')+'>Sem oportunidade</option>'+oportSel('Mapeado (AQL)')+oportSel('Apresentar proposta (SQL)')+oportSel('Proposta apresentada (SAL)')+oportSel('Follow (COMMIT)')+'</select>'
-  +       '<span style="font-size:var(--fs-xl);color:var(--text-hint);line-height:1;display:inline-block;transform:rotate('+(exp?'0':'180deg')+');">⌃</span>'
+  + '<div style="padding-top:12px;">'
+  +   '<div style="border:1px solid rgba(13,148,136,.25);border-radius:10px;padding:13px;background:linear-gradient(180deg,rgba(13,148,136,.05),transparent);">'
+  +     '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;"><b style="font-size:var(--fs-md);">Diagnóstico DR-X · 6 semanas</b><span style="font-size:var(--fs-xs);font-weight:700;color:'+(sem>=1&&sem<=6?'var(--teal)':'var(--text-hint)')+';">'+semTxt+'</span>'+(qw?'<span class="badge b-teal" style="margin-left:auto;margin-top:0;">'+icon('zap')+' Quick Win: '+qw+'</span>':'')+'</div>'
+  +     '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;"><span style="font-size:var(--fs-xs);color:var(--text-hint);">Trava primária:</span>'
+  +       '<select class="sel" style="font-size:var(--fs-sm);padding:2px 6px;" onchange="drxSetTravaPrim('+p.id+',this.value)"><option value="" '+(!dx.travaPrim?'selected':'')+'>— definir —</option>'+travaOpts(dx.travaPrim)+'</select>'
+  +       '<span style="font-size:var(--fs-xs);color:var(--text-hint);">Secundárias:</span>'
+  +       '<select class="sel" style="font-size:var(--fs-sm);padding:2px 6px;" onchange="drxSetTravaSec('+p.id+',0,this.value)"><option value="" '+(!sec0?'selected':'')+'>—</option>'+travaOpts(sec0)+'</select>'
+  +       '<select class="sel" style="font-size:var(--fs-sm);padding:2px 6px;" onchange="drxSetTravaSec('+p.id+',1,this.value)"><option value="" '+(!sec1?'selected':'')+'>—</option>'+travaOpts(sec1)+'</select>'
   +     '</div>'
+  +     '<div style="display:flex;gap:3px;margin-bottom:8px;">'+chain+'</div>'
+  +     '<div style="height:7px;border-radius:5px;background:var(--surface3,#ecebe8);overflow:hidden;"><div style="height:100%;width:'+semPct+'%;background:var(--teal);border-radius:5px;"></div></div>'
+  +     '<div style="display:flex;justify-content:space-between;font-size:var(--fs-2xs);color:var(--text-hint);margin-top:2px;"><span>Sem 1</span><span>Sem 6 · Decolagem</span></div>'
+  +     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;margin-top:12px;">'+marcosHTML+'</div>'
   +   '</div>'
-  +   '<div style="display:'+(exp?'block':'none')+'">'
-  +     '<div style="border:1px solid rgba(13,148,136,.25);border-radius:10px;padding:13px;background:linear-gradient(180deg,rgba(13,148,136,.05),transparent);">'
-  +       '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;"><b style="font-size:var(--fs-md);">Diagnóstico DR-X · 6 semanas</b><span style="font-size:var(--fs-xs);font-weight:700;color:'+(sem>=1&&sem<=6?'var(--teal)':'var(--text-hint)')+';">'+semTxt+'</span>'+(qw?'<span class="badge b-teal" style="margin-left:auto;margin-top:0;">'+icon('zap')+' Quick Win: '+qw+'</span>':'')+'</div>'
-  +       '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;"><span style="font-size:var(--fs-xs);color:var(--text-hint);">Trava primária:</span>'
-  +         '<select class="sel" style="font-size:var(--fs-sm);padding:2px 6px;" onchange="drxSetTravaPrim('+p.id+',this.value)"><option value="" '+(!dx.travaPrim?'selected':'')+'>— definir —</option>'+travaOpts(dx.travaPrim)+'</select>'
-  +         '<span style="font-size:var(--fs-xs);color:var(--text-hint);">Secundárias:</span>'
-  +         '<select class="sel" style="font-size:var(--fs-sm);padding:2px 6px;" onchange="drxSetTravaSec('+p.id+',0,this.value)"><option value="" '+(!sec0?'selected':'')+'>—</option>'+travaOpts(sec0)+'</select>'
-  +         '<select class="sel" style="font-size:var(--fs-sm);padding:2px 6px;" onchange="drxSetTravaSec('+p.id+',1,this.value)"><option value="" '+(!sec1?'selected':'')+'>—</option>'+travaOpts(sec1)+'</select>'
-  +       '</div>'
-  +       '<div style="display:flex;gap:3px;margin-bottom:8px;">'+chain+'</div>'
-  +       '<div style="height:7px;border-radius:5px;background:var(--surface3,#ecebe8);overflow:hidden;"><div style="height:100%;width:'+semPct+'%;background:var(--teal);border-radius:5px;"></div></div>'
-  +       '<div style="display:flex;justify-content:space-between;font-size:var(--fs-2xs);color:var(--text-hint);margin-top:2px;"><span>Sem 1</span><span>Sem 6 · Decolagem</span></div>'
-  +       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;margin-top:12px;">'+marcosHTML+'</div>'
-  +     '</div>'
-  +     droAudBlock(p, hoje)
-  +   '</div>'
+  +   droAudBlock(p, hoje)
   + '</div>';
 }
 
@@ -7307,10 +7804,19 @@ function buildOvVolumePorModelo() {
 // do Capacity, mas SEM os sinalizadores de status (prazo, monetização, cor de "Em andamento"
 // etc.) e só com os filtros de Consultor e Etapa Atual.
 // ── Insights da semana (Healthscore): flags e prazo das entregas, navegando semana a semana ──
-let ovInsightsSemanaOffset = 0; // 0 = semana atual
+// -1 = semana anterior — padrão, porque a semana atual costuma ter auditoria ainda não subida
+// (flag em falso "danger" só por isso), então a coordenadora usa a última semana fechada como
+// referência. "Hoje" (navOvInsightsSemanaHoje) continua pulando pra 0 = semana atual de verdade.
+let ovInsightsSemanaOffset = -1;
 let ovFlagFiltro = ''; // '' = sem filtro; 'Verde'/'Amarelo'/'Vermelho' = filtra a tabela abaixo
 function toggleOvFlagFiltro(cor) {
   ovFlagFiltro = (ovFlagFiltro === cor) ? '' : cor; // clica de novo na mesma = limpa o filtro
+  buildOvGantt();
+  buildOvInsightsSemana();
+}
+let ovPrazoFiltro = ''; // '' = sem filtro; 'noPrazo'/'risco'/'atrasado' = filtra a tabela abaixo
+function toggleOvPrazoFiltro(v) {
+  ovPrazoFiltro = (ovPrazoFiltro === v) ? '' : v; // clica de novo no mesmo = limpa o filtro
   buildOvGantt();
   buildOvInsightsSemana();
 }
@@ -7326,36 +7832,24 @@ function buildOvInsightsSemana() {
   const iniISO = toISOi(inicio), fimISO = toISOi(fim);
   if (label) {
     const fmt = d => String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');
-    label.textContent = fmt(inicio) + ' – ' + fmt(fim) + (ovInsightsSemanaOffset===0 ? ' (atual)' : '');
+    label.textContent = fmt(inicio) + ' – ' + fmt(fim) + (ovInsightsSemanaOffset===0 ? ' (atual)' : ovInsightsSemanaOffset===-1 ? ' (semana passada)' : '');
   }
 
   // Toda entrega (qualquer projeto, qualquer posição) com data REAL dentro dessa semana —
-  // classificada em adiantada/no prazo/atrasada com o mesmo critério da barra de progresso
-  // do Lead Time (prazo = 7 dias após a etapa anterior NA ORDEM DE EXIBIÇÃO daquele projeto).
+  // usada só pra distribuição de score. O prazo virou um critério de PROJETO (prazoStatus,
+  // mais abaixo), não mais de entrega isolada comparada com a etapa anterior +7 dias.
   const entregasDaSemana = [];
   projects.forEach(p => {
     if (isDroFam(p)) return;
     const ent = p.entregas || {};
-    const ordem = ordemCompleta(p);
     [0,1,2,3,4,5,6].forEach(si => {
       const e = ent[si] || ent[String(si)];
       if (!e || !e.real) return;
       if (e.real < iniISO || e.real > fimISO) return;
-      const pos = ordem.indexOf(si);
-      let refDate = null;
-      if (pos === 0 || pos === 1) refDate = p.inicio || null;
-      else { const siAnt = ordem[pos - 1]; refDate = (p.entregas?.[siAnt] || p.entregas?.[String(siAnt)])?.real || null; }
-      const prazo7 = refDate ? addDays(refDate, 7) : null;
-      const atraso = prazo7 ? diffDays(prazo7, e.real) : null;
       const score = (e.score !== undefined && e.score !== '' && !isNaN(parseFloat(e.score))) ? parseFloat(e.score) : null;
-      entregasDaSemana.push({ p, si, atraso, score });
+      entregasDaSemana.push({ p, si, score });
     });
   });
-
-  const adiantadas = entregasDaSemana.filter(x => x.atraso !== null && x.atraso < 0).length;
-  const noPrazo    = entregasDaSemana.filter(x => x.atraso === 0).length;
-  const atrasadas  = entregasDaSemana.filter(x => x.atraso !== null && x.atraso > 0).length;
-  const semRef     = entregasDaSemana.length - adiantadas - noPrazo - atrasadas; // sem etapa anterior pra comparar
 
   // Score das entregas da semana — mesma faixa usada em todo o painel: <55 ruim, 55-69 fez
   // o básico, 70-84 sólido, 85-100 acima do padrão (85+ é "sólido" pra fins de contagem,
@@ -7367,17 +7861,30 @@ function buildOvInsightsSemana() {
   const scoreAcima   = comScore.filter(x => x.score >= 85).length;
   const totalScore   = comScore.length;
 
-  // Flags: TODOS os projetos atualmente ativos (Em andamento, não-DRO, com início) — a flag
-  // é um estado ATUAL do projeto, não histórico por semana, então não muda ao navegar as
-  // semanas (diferente do prazo/score, que são sobre entregas que aconteceram numa semana
-  // específica). Importante: projetos vermelhos por ESTAGNAÇÃO (sem entrega recente) não
-  // podem ficar de fora só porque não tiveram nada registrado nessa semana — são
-  // exatamente os que mais precisam aparecer aqui.
+  // Flags: TODOS os projetos atualmente ativos (Em andamento, não-DRO, com início). Ao navegar
+  // pra uma semana passada, a flag é recalculada como estava no FIM daquela semana (refDate =
+  // segunda seguinte, mesma folga que a regra de estagnação já dá) — assim uma auditoria que
+  // ainda não subiu HOJE não derruba retroativamente uma semana que na época já estava em dia.
+  // Na semana atual, refDate é null e cada projeto usa o hoje real, sem congelar nada.
+  // Projetos vermelhos por ESTAGNAÇÃO (sem entrega recente) não podem ficar de fora só porque
+  // não tiveram nada registrado nessa semana — são exatamente os que mais precisam aparecer aqui.
+  const refDateSemana = refDateParaSemana(ovInsightsSemanaOffset);
   const projetosAtivosAgora = projects.filter(p => !isDroFam(p) && !p.dataReembolso && p.inicio && calcStatus2(p) === 'Em andamento');
   const flags = { Verde: 0, Amarelo: 0, Vermelho: 0 };
-  projetosAtivosAgora.forEach(p => { const f = calcFlagAutomatica(p); if (flags[f] !== undefined) flags[f]++; });
+  projetosAtivosAgora.forEach(p => { const f = calcFlagAutomatica(p, refDateSemana); if (flags[f] !== undefined) flags[f]++; });
   const totalFlags = projetosAtivosAgora.length;
-  const totalPrazo = adiantadas + noPrazo + atrasadas; // exclui as sem referência do total de %
+  // Mesmo critério usado DENTRO da flag (prazoStatus: até 52 dias do início é no prazo,
+  // depois disso é atraso) — antes esse quadro comparava cada entrega isolada com a etapa
+  // anterior +7 dias, um critério diferente do que de fato decide a flag. "Em risco" é o
+  // preditivo (ritmo das entregas projeta estourar os 52 dias, mesmo sem ter estourado ainda)
+  // — é só um AVISO antecipado, não conta como atraso de verdade: NÃO derruba a flag nem entra
+  // como "fora do prazo" pra ela (prazoStatus.ok vem true pro risco). Aqui no card, fica
+  // destacado num bucket à parte só pra dar visibilidade, sem se misturar com "Atrasadas".
+  const prazoStatuses  = projetosAtivosAgora.map(p => prazoStatus(p));
+  const noPrazoCount   = prazoStatuses.filter(st => st.ok === true && !st.risco).length;
+  const riscoCount     = prazoStatuses.filter(st => st.risco).length;
+  const atrasadasCount = prazoStatuses.filter(st => st.ok === false).length;
+  const totalPrazo     = noPrazoCount + riscoCount + atrasadasCount;
 
   const pct = (v, total) => total > 0 ? Math.round(v / total * 100) : 0;
   // Quadradinho grande — usado só na flag principal (card da esquerda). Clicável: filtra a
@@ -7393,11 +7900,18 @@ function buildOvInsightsSemana() {
     + '<div style="font-size:var(--fs-2xs);font-weight:700;color:'+cor+';margin-top:2px;">'+pctVal+'%</div>'
     + '<div style="font-size:var(--fs-3xs);color:var(--text-hint);margin-top:1px;text-transform:uppercase;letter-spacing:.02em;">'+label+'</div>'
     + '</div>';
+  // Mesma cara do quadradinho pequeno, só que clicável — filtra a tabela do Healthscore
+  // abaixo por esse critério de prazo. Clicar de novo no mesmo limpa o filtro.
+  const quadradoPeqClic = (valor, pctVal, cor, label, filtroVal) => '<button type="button" onclick="toggleOvPrazoFiltro(\''+filtroVal+'\')" title="Clique pra filtrar a tabela abaixo só com projetos '+label+'" aria-pressed="'+(ovPrazoFiltro===filtroVal?'true':'false')+'" style="font:inherit;flex:1;min-width:58px;background:var(--surface);border:1px solid '+(ovPrazoFiltro===filtroVal?cor:'var(--border)')+';border-top:2px solid '+cor+';border-radius:5px;padding:6px 4px;text-align:center;cursor:pointer;'+(ovPrazoFiltro===filtroVal?'box-shadow:0 0 0 1.5px '+cor+';':'')+'">'
+    + '<div style="font-size:15px;font-weight:800;color:'+cor+';line-height:1;">'+valor+'</div>'
+    + '<div style="font-size:var(--fs-2xs);font-weight:700;color:'+cor+';margin-top:2px;">'+pctVal+'%</div>'
+    + '<div style="font-size:var(--fs-3xs);color:var(--text-hint);margin-top:1px;text-transform:uppercase;letter-spacing:.02em;">'+label+'</div>'
+    + '</button>';
 
   // Card principal: a flag da semana — o mais importante, fica sozinho à esquerda
   const cardFlags = '<div style="flex:1;min-width:260px;background:var(--surface2);border-radius:var(--r-sm);padding:14px 16px;">'
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
-    + '<div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);">Flags dos projetos ativos agora</div>'
+    + '<div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);">' + (refDateSemana ? 'Flags como estavam no fim dessa semana' : 'Flags dos projetos ativos agora') + '</div>'
     + (ovFlagFiltro ? '<button onclick="toggleOvFlagFiltro(\''+ovFlagFiltro+'\')" style="font-size:var(--fs-2xs);color:var(--accent);background:none;border:none;cursor:pointer;text-decoration:underline;">'+icon('x',{size:10})+' limpar filtro</button>' : '')
     + '</div>'
     + '<div style="display:flex;gap:8px;">'
@@ -7411,11 +7925,14 @@ function buildOvInsightsSemana() {
   // Card de destrinchamento: os dois critérios que COMPÕEM a flag — prazo e score —
   // lado a lado, na mesma largura total do card de flags.
   const cardDestrinche = '<div style="flex:1;min-width:260px;background:var(--surface2);border-radius:var(--r-sm);padding:14px 16px;">'
-    + '<div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:8px;">Composição da flag — prazo</div>'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'
+    + '<div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);">Composição da flag — prazo</div>'
+    + (ovPrazoFiltro ? '<button onclick="toggleOvPrazoFiltro(\''+ovPrazoFiltro+'\')" style="font-size:var(--fs-2xs);color:var(--accent);background:none;border:none;cursor:pointer;text-decoration:underline;">'+icon('x',{size:10})+' limpar filtro</button>' : '')
+    + '</div>'
     + '<div style="display:flex;gap:6px;margin-bottom:12px;">'
-    + quadradoPeq(adiantadas, pct(adiantadas, totalPrazo), 'var(--green)', 'Adiant.')
-    + quadradoPeq(noPrazo, pct(noPrazo, totalPrazo), 'var(--green)', 'No prazo')
-    + quadradoPeq(atrasadas, pct(atrasadas, totalPrazo), 'var(--accent)', 'Atrasadas')
+    + quadradoPeqClic(noPrazoCount, pct(noPrazoCount, totalPrazo), 'var(--green)', 'No prazo', 'noPrazo')
+    + quadradoPeqClic(riscoCount, pct(riscoCount, totalPrazo), 'var(--amber)', 'Em risco', 'risco')
+    + quadradoPeqClic(atrasadasCount, pct(atrasadasCount, totalPrazo), 'var(--accent)', 'Atrasadas', 'atrasado')
     + '</div>'
     + '<div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:8px;">Composição da flag — score</div>'
     + '<div style="display:flex;gap:6px;">'
@@ -7425,13 +7942,20 @@ function buildOvInsightsSemana() {
     + quadradoPeq(scoreAcima, pct(scoreAcima, totalScore), 'var(--green)', 'Acima padrão')
     + '</div>'
     + (entregasDaSemana.length===0 ? '<div style="font-size:var(--fs-sm);color:var(--text-hint);margin-top:10px;">Nenhuma entrega registrada nessa semana.</div>'
-        : '<div style="font-size:var(--fs-2xs);color:var(--text-hint);margin-top:10px;">'
-          + (semRef>0 ? semRef+' sem etapa anterior pra comparar prazo. ' : '')
-          + ((entregasDaSemana.length - totalScore)>0 ? (entregasDaSemana.length - totalScore)+' ainda sem avaliação de score.' : '')
-          + '</div>')
+        : ((entregasDaSemana.length - totalScore)>0 ? '<div style="font-size:var(--fs-2xs);color:var(--text-hint);margin-top:10px;">'
+          + (entregasDaSemana.length - totalScore)+' ainda sem avaliação de score.</div>' : ''))
     + '</div>';
 
   el.innerHTML = '<div style="display:flex;gap:14px;flex-wrap:wrap;">' + cardFlags + cardDestrinche + '</div>';
+}
+
+// Cor determinística por tag — mesma tag sempre a mesma cor, sem precisar cadastrar nada:
+// soma o código de cada char do nome e usa o resto da divisão pra escolher na paleta.
+const TAG_PALETTE = ['#C45B5B','#5B8EC4','#E8A838','#6B8E6B','#8E5BC4','#D4763B','#4FA3A3','#B0559E','#7A8B4F','#5B6BC4'];
+function tagCor(tag) {
+  let h = 0;
+  for (let i = 0; i < tag.length; i++) h = (h + tag.charCodeAt(i) * (i + 1)) % 997;
+  return TAG_PALETTE[h % TAG_PALETTE.length];
 }
 
 function buildOvGantt() {
@@ -7448,23 +7972,51 @@ function buildOvGantt() {
   }
   const consFilter = selCons?.value || '';
   const etapaFilter = document.getElementById('ov-gantt-etapa')?.value ?? '';
+  const selTag = document.getElementById('ov-gantt-tag');
+  if (selTag) {
+    const tags = [...new Set(projects.flatMap(p => p.tags || []))].sort();
+    const curT = selTag.value;
+    selTag.innerHTML = '<option value="">Todas tags</option>' + tags.map(t => '<option' + (t===curT?' selected':'') + '>' + t + '</option>').join('');
+  }
+  const tagFilter = selTag?.value || '';
+  // Mesma folga da navegação semanal do card de flags — numa semana passada, a flag reflete
+  // como estava no fim daquela semana, não o estado live de agora.
+  const refDateSemana = refDateParaSemana(ovInsightsSemanaOffset);
 
-  // Semanas: 6 meses a partir de 1 semana antes da atual (mesmo padrão do Capacity)
+  // Semanas: pra trás, até a Growth do projeto ATIVO mais antigo (ou 1 semana antes de hoje,
+  // o que for mais cedo) — dá pra rolar a barra pra esquerda e ver o retroativo completo de
+  // qualquer projeto em andamento, desde o início. Pra frente, sempre 6 meses a partir de
+  // HOJE (não do início do período) — rolar mais pra trás não pode encurtar a janela futura.
   const hoje = new Date(); hoje.setHours(0,0,0,0);
-  const startRef = new Date(hoje);
-  const dow = startRef.getDay() || 7;
-  startRef.setDate(startRef.getDate() - dow + 1 - 7);
-  const endRef = new Date(startRef);
+  const hojeSeg = new Date(hoje);
+  const dow = hojeSeg.getDay() || 7;
+  hojeSeg.setDate(hojeSeg.getDate() - dow + 1);
+  const startRef = new Date(hojeSeg);
+  startRef.setDate(startRef.getDate() - 7); // fallback: 1 semana antes da atual, como já era
+  projects.forEach(p => {
+    if (isDroFam(p) || !p.inicio || calcStatus2(p) !== 'Em andamento') return;
+    const dIp = parseDate(p.inicio);
+    if (!dIp) return;
+    const dowIp = dIp.getDay() || 7;
+    const segIp = new Date(dIp);
+    segIp.setDate(segIp.getDate() - dowIp + 1); // segunda da semana da Growth desse projeto
+    if (segIp < startRef) startRef.setTime(segIp.getTime());
+  });
+  const endRef = new Date(hojeSeg);
   endRef.setMonth(endRef.getMonth() + 6);
   const semanas = [];
   let cur = new Date(startRef);
   while (cur <= endRef) { semanas.push(new Date(cur)); cur.setDate(cur.getDate() + 7); }
 
-  // Base: projetos não-DRO, com início, e (em andamento OU com alguma etapa datada dentro
-  // do período visível) — assim um projeto que finalizou nessa janela continua aparecendo,
-  // em vez de sumir assim que muda de status.
+  // Base: projetos não-DRO, com início, e (em andamento OU com alguma etapa REAL entre a
+  // segunda passada e hoje) — a grace de "acabou de mudar de status, não sumir na hora" fica
+  // limitada a 1 semana. Não pode usar o período visível inteiro aqui: agora ele recua até a
+  // Growth do mais antigo ainda ativo (pra dar o retroativo rolando a barra pra esquerda), e
+  // usar essa janela inteira traria de volta projeto parado/encerrado há meses só porque uma
+  // entrega antiga dele caiu ali dentro.
   const toISOf6 = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-  const janelaIni = toISOf6(startRef), janelaFim = toISOf6(endRef);
+  const segSemanaPassadaISO = (function() { const d = new Date(hojeSeg); d.setDate(d.getDate() - 7); return toISOf6(d); })();
+  const hojeISOBase = toISOf6(hoje);
   let prjs = projects.filter(p => {
     if (isDroFam(p)) return false;
     if (!p.inicio) return false;
@@ -7472,11 +8024,19 @@ function buildOvGantt() {
     const ent = p.entregas || {};
     return [0,1,2,3,4,5,6].some(i => {
       const e = ent[i] || ent[String(i)];
-      return e && e.real && e.real >= janelaIni && e.real <= janelaFim;
+      return e && e.real && e.real >= segSemanaPassadaISO && e.real <= hojeISOBase;
     });
   });
   if (consFilter) prjs = prjs.filter(p => p.consultor === consFilter);
-  if (ovFlagFiltro) prjs = prjs.filter(p => calcFlagAutomatica(p) === ovFlagFiltro);
+  if (tagFilter) prjs = prjs.filter(p => (p.tags || []).includes(tagFilter));
+  if (ovFlagFiltro) prjs = prjs.filter(p => calcFlagAutomatica(p, refDateSemana) === ovFlagFiltro);
+  if (ovPrazoFiltro) prjs = prjs.filter(p => {
+    const st = prazoStatus(p);
+    if (ovPrazoFiltro === 'noPrazo')  return st.ok === true && !st.risco;
+    if (ovPrazoFiltro === 'risco')    return !!st.risco;
+    if (ovPrazoFiltro === 'atrasado') return st.ok === false;
+    return true;
+  });
   if (etapaFilter !== '') {
     const etapaIdx = parseInt(etapaFilter);
     const diaSem = hoje.getDay();
@@ -7495,7 +8055,19 @@ function buildOvGantt() {
       return dataRef >= segISO && dataRef <= domISO;
     });
   }
-  prjs.sort((a, b) => (a.inicio || '') < (b.inicio || '') ? -1 : 1);
+  const ordemFiltro = document.getElementById('ov-gantt-ordem')?.value || 'inicio';
+  if (ordemFiltro === 'tag') {
+    // Sem tag vai pro final (string vazia não existe, então usa um marcador que ordena
+    // depois de qualquer tag real) — dentro da mesma tag (ou dos sem tag), desempata por início.
+    const primeiraTag = p => (p.tags && p.tags.length) ? [...p.tags].sort()[0] : '￿';
+    prjs.sort((a, b) => {
+      const ta = primeiraTag(a), tb = primeiraTag(b);
+      if (ta !== tb) return ta < tb ? -1 : 1;
+      return (a.inicio || '') < (b.inicio || '') ? -1 : 1;
+    });
+  } else {
+    prjs.sort((a, b) => (a.inicio || '') < (b.inicio || '') ? -1 : 1);
+  }
 
   // "Projetos ativos por semana" — mesma lógica de contagem do Capacity: começa a contar
   // no Kickoff (não no início) quando algum filtro está ativo, pra não contar a semana que
@@ -7579,17 +8151,12 @@ function buildOvGantt() {
       const reaisHere = [0,1,2,3,4,5,6].filter(si => reaisp[si] && reaisp[si] >= sISO && reaisp[si] <= eISO);
       if (reaisHere.length > 0) {
         reaisHere.forEach(si => shown.add(si));
-        // MESMA fórmula da barra de progresso do Lead Time: prazo = data real da etapa
-        // ANTERIOR + 7 dias (ou início + 7d pra Growth/Kickoff) — não é a divisão
-        // proporcional do prazo total, é sempre em relação ao que realmente aconteceu antes.
-        const cores = reaisHere.map(si => {
-          const refDate = (si === 0 || si === 1) ? p.inicio : (entp[si-1] || entp[String(si-1)])?.real;
-          const prazo7 = refDate ? addDays(refDate, 7) : null;
-          const real = reaisp[si];
-          const atraso = prazo7 && real ? diffDays(prazo7, real) : null;
-          return atraso === null ? null : (atraso <= 0 ? 'verde' : 'vermelho');
-        });
-        const corFinal = cores.includes('vermelho') ? 'vermelho' : (cores.length && cores.every(c => c === 'verde') ? 'verde' : null);
+        // Mesmo critério da flag/Insights (prazoStatus: 52 dias, com projeção pelo ritmo das
+        // entregas já feitas) — reconstruído com "hoje" = fim desta semana, pra "risco" (amber)
+        // só pintar a partir da semana em que ele realmente apareceu, sem retroagir pras
+        // semanas anteriores em que o projeto ainda estava genuinamente ok.
+        const stSemana = prazoStatus(p, eISO);
+        const corFinal = stSemana.risco ? 'amber' : stSemana.ok === true ? 'verde' : stSemana.ok === false ? 'vermelho' : null;
         // Score da(s) etapa(s) dessa semana — mostra TODAS, uma por linha, alinhadas com
         // o nome de cada uma (antes só mostrava a pior nota e descartava as outras).
         const scoresAqui = reaisHere.map(si => {
@@ -7638,23 +8205,31 @@ function buildOvGantt() {
 
   const rows = prjs.map(p => {
     const lm = labelsMap[p.id] || {};
-    const flagCor = { Verde: 'var(--green)', Amarelo: 'var(--amber)', Vermelho: 'var(--accent)' }[calcFlagAutomatica(p)] || 'var(--text-hint)';
+    const flagCor = { Verde: 'var(--green)', Amarelo: 'var(--amber)', Vermelho: 'var(--accent)' }[calcFlagAutomatica(p, refDateSemana)] || 'var(--text-hint)';
     const temAnotacao = !!(p.flagManual || p.flagManualMotivo); // cor sobrescrita OU só um comentário deixado
     const flagTitle = temAnotacao
       ? (p.flagManual ? 'Flag manual — motivo: ' : 'Anotação: ') + (p.flagManualMotivo || 'sem motivo informado')
       : 'Flag automática';
+    // Tag automática — não é uma tag manual (p.tags), é calculada na hora a partir de
+    // fcaItens: true se esse projeto tem QUALQUER FCA de projeto ainda não concluída.
+    const temFcaAberta = fcaItens.some(it => it.projetoId && String(it.projetoId) === String(p.id) && !it.concluida);
     return '<tr style="border-bottom:1px solid var(--border);">'
       + '<td style="padding:6px 10px;color:var(--text);font-weight:600;background:var(--surface);position:sticky;left:0;white-space:nowrap;">'
       + '<button type="button" onclick="abrirModalFlag(' + p.id + ',\'healthscore\')" title="' + flagTitle.replace(/"/g,'&quot;') + '" style="font:inherit;padding:0;background:none;border:none;color:' + flagCor + ';font-size:var(--fs-md);margin-right:5px;cursor:pointer;">'+icon('flag')+(temAnotacao ? '<sup style="font-size:var(--fs-3xs);">'+icon('edit',{size:8})+'</sup>' : '') + '</button>'
+      + '<button type="button" onclick="fcaAbrirModalNovoParaProjeto(' + p.id + ')" title="Registrar FCA para esse projeto" style="font:inherit;padding:0;background:none;border:none;color:var(--text-hint);font-size:var(--fs-md);margin-right:5px;cursor:pointer;">'+icon('zap')+'</button>'
       + (p.nome||'—')
       + (temAnotacao ? '<div style="font-size:var(--fs-2xs);font-weight:400;color:var(--text-hint);white-space:normal;max-width:190px;line-height:1.3;margin-top:1px;">' + (p.flagManualMotivo || 'sem motivo informado').replace(/</g,'&lt;') + '</div>' : '')
+      + ((temFcaAberta || (p.tags && p.tags.length)) ? '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:3px;max-width:190px;">'
+          + (temFcaAberta ? '<span title="Tem FCA de projeto em aberto" style="font-size:var(--fs-3xs);font-weight:700;color:#fff;background:var(--amber);border-radius:8px;padding:1px 7px;white-space:nowrap;">'+icon('zap',{size:8})+' FCA aberta</span>' : '')
+          + (p.tags||[]).map(t => '<span style="font-size:var(--fs-3xs);font-weight:700;color:#fff;background:' + tagCor(t) + ';border-radius:8px;padding:1px 7px;white-space:nowrap;">' + t.replace(/</g,'&lt;') + '</span>').join('')
+        + '</div>' : '')
       + '</td>'
       + '<td style="padding:6px 10px;color:var(--text-muted);">' + (p.consultor||'—') + '</td>'
       + semanas.map(s => {
           const sISO = toISOf(s);
           const isAtual = sISO === toISOf(new Date(startRef.getTime())) ? false : (hojeISO >= sISO && hojeISO <= toISOf(new Date(s.getTime()+6*864e5)));
           const cel = lm[sISO] || { text: '', cor: null, score: [] };
-          const bgCor = cel.cor === 'verde' ? 'var(--green)' : cel.cor === 'vermelho' ? 'var(--accent)' : null;
+          const bgCor = cel.cor === 'verde' ? 'var(--green)' : cel.cor === 'vermelho' ? 'var(--accent)' : cel.cor === 'amber' ? 'var(--amber)' : null;
           const scoresArr = Array.isArray(cel.score) ? cel.score : (cel.score !== null && cel.score !== undefined ? [cel.score] : []);
           const temAlgumScore = scoresArr.some(s => s !== null);
           const scoreDourado = scoresArr.some(s => s !== null && s >= 85);
@@ -7685,6 +8260,23 @@ function buildOvGantt() {
 
   wrap.innerHTML = '<table style="border-collapse:collapse;font-size:var(--fs-sm);min-width:100%;">'
     + '<thead>' + header + '</thead><tbody>' + rows + '</tbody></table>';
+
+  // Abre sempre mostrando a semana ATUAL (com uma margem de semanas anteriores visível), em
+  // vez de cair no início do retroativo — o histórico completo (até a Growth do projeto mais
+  // antigo) continua a um arraste de distância pra esquerda.
+  // Roda depois de 2 frames (não na hora): o card de flags/composição FICA ACIMA do Gantt na
+  // mesma página, e ícone SVG + fonte às vezes só terminam de medir a largura real das colunas
+  // depois do primeiro paint — calcular o scroll cedo demais pega uma largura de coluna que
+  // ainda vai mudar, e a semana atual acaba um pouco deslocada (ex: 03/08 cortada pela metade).
+  const posicionarScrollAtual = () => {
+    const weekThs = Array.from(wrap.querySelectorAll('thead th')).slice(2); // pula Projeto/Consultor
+    const idxAtual = semanas.findIndex(s => { const sEnd = new Date(s.getTime()+6*864e5); return hojeISO >= toISOf(s) && hojeISO <= toISOf(sEnd); });
+    if (idxAtual < 0) return;
+    const thAlvo = weekThs[Math.max(0, idxAtual - 3)]; // até 3 semanas de margem antes da atual
+    const stickyWidth = wrap.querySelector('thead th')?.offsetWidth || 0;
+    if (thAlvo) wrap.scrollLeft = Math.max(0, thAlvo.offsetLeft - stickyWidth);
+  };
+  requestAnimationFrame(() => requestAnimationFrame(posicionarScrollAtual));
 }
 
 
@@ -7727,9 +8319,11 @@ function buildOvAnalises(curM) {
   set('ov-andamento-mes', emAndamento.length);
 
   // Reembolsos no mês — conta pela data do pedido de reembolso (evento com data própria)
-  const reembMes = projects.filter(p => { const dr = parseDate(p.dataReembolso); return dr && dr.getMonth() === mesIdx && dr.getFullYear() === mesAno; }).length;
-  set('ov-reembolsos-mes', reembMes);
-  set('ov-reembolsos-motivos', reembMes);
+  const reembMesProjs = projects.filter(p => { const dr = parseDate(p.dataReembolso); return dr && dr.getMonth() === mesIdx && dr.getFullYear() === mesAno; });
+  set('ov-reembolsos-mes', reembMesProjs.length);
+  set('ov-reembolsos-motivos', reembMesProjs.length);
+  const reembNomesEl = document.getElementById('ov-reembolsos-nomes');
+  if (reembNomesEl) reembNomesEl.textContent = reembMesProjs.map(p => p.nome).join(' · ');
 
   // Motivos de perda — volume por motivo, só entre os projetos em andamento no mês
   (function(){
@@ -7778,22 +8372,7 @@ function buildOvAnalises(curM) {
     }).join('');
   }
 
-  // Flags
-  const flagsEl = document.getElementById('ov-flags');
-  if (flagsEl) {
-    const FLAGS = [['Verde','var(--green)','<span class="flag-dot flag-V"></span> Verde'],['Amarelo','var(--amber)','<span class="flag-dot flag-A"></span> Amarelo'],['Vermelho','var(--red)','<span class="flag-dot flag-R"></span> Vermelho']];
-    const total = ativos.length || 1;
-    flagsEl.innerHTML = FLAGS.map(([key,cor,label]) => {
-      const n = ativos.filter(p => p.flag === key).length;
-      const pct = Math.round(n / total * 100);
-      return '<div style="display:flex;align-items:center;gap:8px;">'
-        + '<span style="font-size:var(--fs-sm);min-width:90px;">' + label + '</span>'
-        + '<div style="flex:1;background:var(--surface3);border-radius:3px;height:14px;overflow:hidden;">'
-        + '<div style="height:100%;width:' + pct + '%;background:' + cor + ';border-radius:3px;"></div></div>'
-        + '<span style="font-size:var(--fs-sm);font-weight:600;min-width:50px;text-align:right;">' + n + ' <span style="color:var(--text-hint);font-weight:400;">(' + pct + '%)</span></span>'
-        + '</div>';
-    }).join('');
-  }
+  buildOvTratativas();
 
   // Ticket médio — usa a MONETIZAÇÃO REALIZADA (array monetizacoes[]), por evento de venda
   let somaOT = 0, somaRec = 0, nOT = 0, nRec = 0;
@@ -7907,6 +8486,7 @@ function show(sec) {
     else if (sec === 'auditoria')   buildAuditoria();
     else if (sec === 'aql')         buildAql();
     else if (sec === 'cultura')     buildCultura();
+    else if (sec === 'fca')         buildFca();
   } catch(e) { console.error('show(' + sec + ') erro:', e); }
 }
 
@@ -8414,9 +8994,18 @@ function abrirModalFlag(id, origem) {
   const nomeEl = document.getElementById('flag-modal-nome');
   const selEl = document.getElementById('flag-modal-sel');
   const motivoEl = document.getElementById('flag-modal-motivo');
+  const tagsEl = document.getElementById('flag-modal-tags');
+  const tagsListEl = document.getElementById('flag-modal-tags-list');
   if (nomeEl) nomeEl.textContent = p.nome || 'Editar flag';
   if (selEl) selEl.value = p.flagManual || '';
   if (motivoEl) motivoEl.value = p.flagManualMotivo || '';
+  if (tagsEl) tagsEl.value = (p.tags || []).join(', ');
+  // Sugestões = todas as tags já usadas em qualquer projeto, sem repetir — ajuda a reusar em
+  // vez de criar variação nova ("urgente" vs "Urgente") toda hora.
+  if (tagsListEl) {
+    const todasTags = [...new Set(projects.flatMap(pr => pr.tags || []))].sort();
+    tagsListEl.innerHTML = todasTags.map(t => '<option value="' + t.replace(/"/g, '&quot;') + '">').join('');
+  }
   const modal = document.getElementById('modal-flag-edit');
   if (modal) modal.style.display = 'flex';
 }
@@ -8436,6 +9025,8 @@ async function salvarModalFlag() {
   // só (ex: "sabemos que está vermelho, mas é temporário"), não depende de ter sobrescrito
   // a cor calculada.
   p.flagManualMotivo = motivo;
+  const tagsTxt = (document.getElementById('flag-modal-tags')?.value || '');
+  p.tags = [...new Set(tagsTxt.split(',').map(t => t.trim()).filter(Boolean))];
   upd();
   const origem = _flagModalOrigem;
   fecharModalFlag();
@@ -10723,20 +11314,28 @@ const AUD_DIMS = [
 // Pesos por dimensão — variam por TIPO de entrega, conforme a tabela oficial da skill
 // avaliacao-reunioes-v4. D9 é sempre 30%; o resto muda conforme o que cada entrega prioriza.
 const AUD_PESOS_POR_TIPO = {
-  'Kickoff':                  {d1:6, d2:13, d3:3, d4:13, d5:13, d6:3, d7:6, d8:13, d9:30},
+  'Kickoff':                  {d1:8, d2:16, d3:3, d4:9,  d5:9,  d6:3, d7:6, d8:16, d9:30},
   'Pesquisa de Mercado':      {d1:7, d2:7,  d3:7, d4:14, d5:14, d6:3, d7:7, d8:11, d9:30},
   'Diagnóstico de Vendas':    {d1:7, d2:7,  d3:7, d4:14, d5:14, d6:7, d7:7, d8:7,  d9:30},
-  'Diagnóstico de Mídia Paga':{d1:7, d2:7,  d3:7, d4:14, d5:14, d6:7, d7:7, d8:7,  d9:30},
-  'Análise de Ambientes':     {d1:7, d2:7,  d3:7, d4:14, d5:14, d6:7, d7:7, d8:7,  d9:30},
+  'Diagnóstico de Mídia Paga':{d1:7, d2:7,  d3:7, d4:10, d5:10, d6:11,d7:7, d8:11, d9:30},
+  'Análise de Ambientes':     {d1:11,d2:7,  d3:7, d4:8,  d5:8,  d6:11,d7:7, d8:11, d9:30},
   'Apresentação Final':       {d1:5, d2:5,  d3:5, d4:12, d5:12, d6:12,d7:9, d8:10, d9:30},
 };
-// Fallback pra tipos sem coluna própria na tabela (Reunião de Negociação, Outra) — usa o
-// perfil "Diagnósticos", que é o meio-termo entre as colunas documentadas.
+// D4/D5 pesam menos em Mídia Paga (CPA/ROI já vem em R$ da plataforma), Ambientes
+// (diagnóstico visual/de marca — forçar R$ arrisca número inventado) e Kickoff (reunião de
+// coleta de insumo, sem achado formado ainda pra quantificar); o peso liberado nesses três
+// vai pra D1/D2/D6/D8. Fallback pra tipos sem coluna própria (Reunião de Negociação, Outra):
+// usa o perfil de Vendas, por ser o mais próximo de uma conversa comercial padrão.
 const AUD_PESOS_PADRAO = AUD_PESOS_POR_TIPO['Diagnóstico de Vendas'];
 function audPesosDoTipo(entrega){ return AUD_PESOS_POR_TIPO[entrega] || AUD_PESOS_PADRAO; }
 function audNotaPonderada(scores, entrega){
   const pesos = audPesosDoTipo(entrega);
   return Math.round(AUD_DIMS.reduce((soma, d) => soma + (scores[d.id]||0) * (pesos[d.id]||0), 0) / 100);
+}
+// Bônus de feedback excepcional do cliente (0/10/20) — exceção, não regra: some por cima da
+// ponderada normal (0-100), permitindo nota final até 120. Ver skill, passo 5.
+function audNotaFinal(scores, entrega, bonus){
+  return Math.min(120, audNotaPonderada(scores, entrega) + Math.min(20,Math.max(0,bonus||0)));
 }
 const AUD_GRUPOS = {
   G1:{nome:'Condução & Comunicação', cor:'#1f9d55', ids:['d1','d2','d3']},
@@ -10872,6 +11471,15 @@ function audParseObs(txt){
   return obs;
 }
 function audParseRec(txt){ const m=txt.match(/(?:^|\n)\s*recomenda[çc][aã]o(?:\s+geral)?\s*:\s*([\s\S]*?)(?:\n\n|$)/i); return m?m[1].replace(/\*+/g,'').trim():''; }
+// Bônus de feedback excepcional do cliente (0/10/20, opcional) — a skill escreve numa linha
+// própria tipo "Bônus de feedback: +10 — [evidência]", separada por linha em branco da
+// Recomendação (então audParseRec não a engole). Ausente = 0, sem penalizar quem colou só
+// até a Recomendação manualmente.
+function audParseBonus(txt){
+  const m=txt.match(/(?:^|\n)\s*b[oô]nus\s+de\s+feedback[^\n:]*:\s*\+?\s*(\d{1,3})\s*[—-]?\s*([\s\S]*?)(?:\n\n|$)/i);
+  if(!m) return {valor:0,evidencia:''};
+  return {valor:Math.min(20,Math.max(0,parseInt(m[1])||0)), evidencia:(m[2]||'').replace(/\*+/g,'').trim()};
+}
 function audParseD9(txt, entrega){
   txt=txt.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
   const mB=txt.match(/\nd9[:\s]*\d{1,3}[^\n]*\n([\s\S]*?)(?=\nd[1-8][:\s]|\nRecomenda|$)/i);
@@ -10944,7 +11552,7 @@ function audFormHTML(){
     +   '<option value="gemini">Gemini 2.5 Pro — mais leniente</option>'
     + '</select></div>'
     + '</div>'
-    + '<textarea id="aud-analise" style="display:none;"></textarea>'
+    + '<span id="aud-form-msg" style="display:block;font-size:var(--fs-base);color:var(--text-hint);margin-bottom:10px;"></span>'
     + '<div style="background:var(--surface2);border:1px dashed var(--border);border-radius:var(--r-sm);padding:14px;">'
     + '<label for="aud-arquivo" class="aud-lbl">Envie o arquivo da reunião (.pdf, .txt ou .md) — a ferramenta gera a análise com a IA selecionada acima</label>'
     + '<input type="file" id="aud-arquivo" accept=".pdf,.txt,.md" class="aud-inp">'
@@ -10952,7 +11560,13 @@ function audFormHTML(){
     + '<button id="aud-btn-gerar-claude" class="btn btn-primary" onclick="audGerarComClaude()">'+icon('sparkle')+' Gerar avaliação com IA</button>'
     + '<button class="btn btn-ghost" onclick="audManual()">Preencher manual</button>'
     + '<span id="aud-gerar-msg" style="font-size:var(--fs-base);color:var(--text-hint);"></span>'
-    + '<span id="aud-form-msg" style="font-size:var(--fs-base);color:var(--text-hint);"></span>'
+    + '</div></div>'
+    + '<div style="text-align:center;font-size:var(--fs-sm);color:var(--text-hint);margin:10px 0;">— ou —</div>'
+    + '<div style="background:var(--surface2);border:1px dashed var(--border);border-radius:var(--r-sm);padding:14px;">'
+    + '<label for="aud-analise" class="aud-lbl">Cole o diagnóstico já pronto (gerado fora do painel — do "**Consultor:**" até a "Recomendação:", incluindo a linha "Bônus de feedback:" se houver)</label>'
+    + '<textarea id="aud-analise" rows="10" class="aud-inp" placeholder="Cole aqui o texto completo da avaliação…" style="resize:vertical;"></textarea>'
+    + '<div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center;">'
+    + '<button class="btn btn-primary" onclick="audImportar()">'+icon('check')+' Importar diagnóstico colado</button>'
     + '</div></div>'
     + '<div id="aud-review" style="display:none;margin-top:18px;"></div>';
 }
@@ -10984,16 +11598,16 @@ function audImportar(){
   const txt=(document.getElementById('aud-analise')?.value||'').trim();
   const msg=document.getElementById('aud-form-msg');
   if(txt.length<30){ if(msg){msg.textContent='Cole o texto da análise do Claude.';msg.style.color='var(--accent)';} return; }
-  const scores=audParseScores(txt), obs=audParseObs(txt), rec=audParseRec(txt);
+  const scores=audParseScores(txt), obs=audParseObs(txt), rec=audParseRec(txt), bonus=audParseBonus(txt);
   audReviewD9=audParseD9(txt, document.getElementById('aud-f-tipo')?.value || '');
-  audRenderReview(scores,obs,rec);
+  audRenderReview(scores,obs,rec,bonus);
   if(msg){msg.textContent='✓ Importado — revise e salve.';msg.style.color='var(--green)';}
 }
 function audManual(){
   if(!audIdentOk()) return;
   const scores={},obs={}; AUD_DIMS.forEach(d=>{scores[d.id]=70;obs[d.id]={analise:'',plano:''};});
   audReviewD9={};
-  audRenderReview(scores,obs,'');
+  audRenderReview(scores,obs,'',{valor:0,evidencia:''});
 }
 
 if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -11525,6 +12139,7 @@ async function audFilaProcessarBackground(){
           obs: audParseObs(texto),
           rec: audParseRec(texto),
           d9Itens: audParseD9(texto, item.tipoSugerido||''),
+          bonus: audParseBonus(texto),
         };
         item.status='pronta'; item.progressoLabel=null;
       }catch(err){
@@ -11588,7 +12203,7 @@ function audAbrirRevisaoDoItem(itemId){
   setVal('aud-f-cliente', item.clienteSugerido);
   setVal('aud-f-data', (item.modificadoEm||'').slice(0,10));
   audReviewD9=item.resultado.d9Itens||{};
-  audRenderReview(item.resultado.scores, item.resultado.obs, item.resultado.rec);
+  audRenderReview(item.resultado.scores, item.resultado.obs, item.resultado.rec, item.resultado.bonus);
   document.getElementById('aud-review')?.scrollIntoView({behavior:'smooth', block:'start'});
 }
 
@@ -11649,7 +12264,8 @@ async function audFilaCarregarEstado(){
   }catch(e){ console.warn('audFilaCarregarEstado falhou:', e); }
 }
 
-function audRenderReview(scores,obs,rec){
+function audRenderReview(scores,obs,rec,bonus){
+  bonus = bonus || {valor:0,evidencia:''};
   const entrega=(document.getElementById('aud-f-tipo')?.value||'');
   let html='';
   ['G1','G2','G3'].forEach(gk=>{
@@ -11676,8 +12292,15 @@ function audRenderReview(scores,obs,rec){
     });
   });
   html+='<div style="margin-top:16px;"><label for="aud-rec" class="aud-lbl">Recomendação geral</label><textarea id="aud-rec" class="aud-inp" rows="3" placeholder="Principal recomendação…" style="line-height:1.55;resize:vertical;">'+(rec||'')+'</textarea></div>';
+  html+='<div style="margin-top:16px;padding:14px;background:var(--surface2);border-radius:var(--r-sm);border-left:2px solid var(--green);">'
+    + '<label for="aud-bonus-num" class="aud-lbl">Bônus de feedback excepcional do cliente (0, 10 ou 20 — exceção, não regra)</label>'
+    + '<div style="display:flex;gap:10px;align-items:center;margin-bottom:8px;">'
+    +   '<input type="number" min="0" max="20" step="10" value="'+(bonus.valor||0)+'" id="aud-bonus-num" oninput="audAtualizarMedia()" class="aud-inp" style="width:90px;text-align:center;font-weight:700;">'
+    + '</div>'
+    + '<textarea id="aud-bonus-evidencia" rows="2" class="aud-inp" placeholder="Evidência do feedback excepcional, nas palavras do cliente (deixe vazio se bônus = 0)…" style="resize:vertical;">'+(bonus.evidencia||'')+'</textarea>'
+    + '</div>';
   html+='<div style="margin-top:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">'
-    + '<div style="font-size:var(--fs-md);">Nota geral: <strong id="aud-media" style="font-size:22px;color:var(--accent);">—</strong><span style="font-size:var(--fs-base);color:var(--text-hint);">/100</span></div>'
+    + '<div style="font-size:var(--fs-md);">Nota geral: <strong id="aud-media" style="font-size:22px;color:var(--accent);">—</strong><span id="aud-media-den" style="font-size:var(--fs-base);color:var(--text-hint);">/100</span></div>'
     + (audEditandoId ? '<span style="font-size:var(--fs-sm);color:var(--amber);font-weight:600;">'+icon('edit',{size:11})+' editando avaliação existente</span>' : '')
     + '<button id="aud-btn-salvar" class="btn btn-primary" onclick="audSalvar()">'+(audEditandoId?'Salvar alterações':'Salvar avaliação')+'</button>'
     + '<button class="btn btn-ghost" onclick="audCancelar()">Cancelar</button>'
@@ -11710,7 +12333,14 @@ function audSyncDim(id,from){
   audAtualizarMedia();
 }
 function audGetScores(){ const s={}; AUD_DIMS.forEach(d=>{ const el=document.getElementById('aud-num-'+d.id); s[d.id]=el?Math.min(100,Math.max(0,parseInt(el.value)||0)):70; }); return s; }
-function audAtualizarMedia(){ const s=audGetScores(); const entrega=document.getElementById('aud-f-tipo')?.value||''; const m=audNotaPonderada(s, entrega); const el=document.getElementById('aud-media'); if(el){ el.textContent=m; el.style.color=audClassif(m).cor; } }
+function audGetBonus(){ const el=document.getElementById('aud-bonus-num'); return el?Math.min(20,Math.max(0,parseInt(el.value)||0)):0; }
+function audAtualizarMedia(){
+  const s=audGetScores(); const entrega=document.getElementById('aud-f-tipo')?.value||'';
+  const base=audNotaPonderada(s, entrega); const bonus=audGetBonus(); const total=audNotaFinal(s, entrega, bonus);
+  const el=document.getElementById('aud-media'); const den=document.getElementById('aud-media-den');
+  if(el){ el.textContent=total; el.style.color=audClassif(total).cor; }
+  if(den){ den.textContent = bonus>0 ? (' = '+base+' + '+bonus+' bônus') : '/100'; }
+}
 function audCancelar(){ const rv=document.getElementById('aud-review'); if(rv){rv.style.display='none';rv.innerHTML='';} audEditandoId=null; audFilaRevisandoId=null; }
 
 // Reabre uma avaliação já salva pra edição — reaproveita a mesma tela de revisão usada
@@ -11725,7 +12355,7 @@ function audEditar(id) {
   setVal('aud-f-cliente', a.cliente);
   setVal('aud-f-data', a.data);
   audReviewD9 = a.d9_itens || {};
-  audRenderReview(a.scores || {}, a.observacoes || {}, a.recomendacao || '');
+  audRenderReview(a.scores || {}, a.observacoes || {}, a.recomendacao || '', a.bonusFeedback || {valor:0,evidencia:''});
   document.getElementById('aud-review')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -11837,11 +12467,12 @@ async function audSalvar(){
     if(d.id==='d9') obs.d9={analise:g('aud-analise-d9'),plano:''};
     else obs[d.id]={analise:g('aud-analise-'+d.id),plano:g('aud-plano-'+d.id)};
   });
-  const nota=audNotaPonderada(scores, g('aud-f-tipo'));
   const entregaTipo = g('aud-f-tipo');
+  const bonusFeedback = { valor: audGetBonus(), evidencia: g('aud-bonus-evidencia') };
+  const nota=audNotaFinal(scores, entregaTipo, bonusFeedback.valor);
   const ordemEntrega = ordemDaEntregaPeloTipo(entregaTipo); // deriva do tipo, sem campo extra
   const cliente = g('aud-f-cliente');
-  const dadosAtualizados = { consultor:g('aud-f-consultor'), entrega:entregaTipo, cliente, data:g('aud-f-data'), scores, observacoes:obs, recomendacao:g('aud-rec'), nota, d9_itens:audReviewD9, ordemEntrega };
+  const dadosAtualizados = { consultor:g('aud-f-consultor'), entrega:entregaTipo, cliente, data:g('aud-f-data'), scores, observacoes:obs, recomendacao:g('aud-rec'), nota, bonusFeedback, d9_itens:audReviewD9, ordemEntrega };
   // Só grava driveFileId quando a avaliação nasceu de um item da fila (audFilaRevisandoId
   // setado por audAbrirRevisaoDoItem) — em qualquer outro caso (manual, colar, editar uma
   // avaliação existente) a chave nem entra no objeto, então o merge abaixo preserva o que já
@@ -12487,6 +13118,8 @@ async function sbSave() {
     auditoriasLoaded: _auditoriasLoaded, // trava junto com o resto — ver payload.auditorias abaixo
     fotosLoaded: _fotosLoaded,
     sinaisCulturais: sinaisCulturais,
+    fcaItens: fcaItens,
+    tratativas: tratativas,
     consList: window.CONS_MON || [],
     consColors: window.dotColors || {},
   };
@@ -12589,6 +13222,8 @@ async function sbSave() {
       pdi_data:   JSON.stringify(_snap.pdiData),
       conv_base:  JSON.stringify(_snap.convBaseManual),
       sinais_culturais: JSON.stringify(_snap.sinaisCulturais),
+      fca_itens: JSON.stringify(_snap.fcaItens),
+      tratativas: JSON.stringify(_snap.tratativas),
       consultores: JSON.stringify({list:_snap.consList, colors:_snap.consColors}),
     };
     // Só manda auditorias/fotos se essa aba realmente carregou o valor de verdade (abriu a
@@ -12654,6 +13289,8 @@ async function sbSave() {
         mon_metas: _snap.monMetas, aql_metas: _snap.aqlMetas, cap_data: _snap.capData, cap_manual: _snap.capManual,
         pdi_data: _snap.pdiData, conv_base: _snap.convBaseManual,
         sinais_culturais: _snap.sinaisCulturais,
+        fca_itens: _snap.fcaItens,
+        tratativas: _snap.tratativas,
         consultores: {list:_snap.consList, colors:_snap.consColors},
         saved_at: sbLastSaved.toISOString(), total: _snap.projects.length, table: _snap.table
       };
@@ -12777,12 +13414,13 @@ function _parseMaybe(val, fallback) {
 // Colunas do carregamento padrão. Ficam de fora as duas colunas grandes que só interessam a
 // uma aba específica, ambas lidas sob demanda: `auditorias` (~950KB, ~70% da linha inteira —
 // só na aba Auditoria, ver sbLoadAuditorias()) e `fotos` (~80KB de dataURL base64 — só na aba
-// Performance, ver sbLoadFotos()). `sinais_culturais` só existe em saber_data (ter_data não
-// tem Cultura), por isso entra condicionalmente — nomear uma coluna que não existe faz o
-// PostgREST devolver erro em vez de simplesmente omitir, diferente de select=*.
+// Performance, ver sbLoadFotos()). `sinais_culturais`/`fca_itens`/`tratativas` só existem em
+// saber_data (ter_data não tem Cultura, FCA nem Tratativas), por isso entram condicionalmente —
+// nomear uma coluna que não existe faz o PostgREST devolver erro em vez de simplesmente omitir,
+// diferente de select=*.
 function _sbColsPadrao() {
   const base = 'id,projects,nps_data,csp_manual,cap_data,cap_manual,updated_at,mon_metas,pdi_data,conv_base,consultores,aql_metas';
-  return SB_TABLE === 'saber_data' ? base + ',sinais_culturais' : base;
+  return SB_TABLE === 'saber_data' ? base + ',sinais_culturais,fca_itens,tratativas' : base;
 }
 
 async function sbLoad() {
@@ -12911,6 +13549,12 @@ async function sbLoad() {
       if (row.sinais_culturais) {
         try { const sc = _parseMaybe(row.sinais_culturais, []); if (Array.isArray(sc)) sinaisCulturais = sc; } catch(e){}
       }
+      if (row.fca_itens) {
+        try { const fi = _parseMaybe(row.fca_itens, []); if (Array.isArray(fi)) fcaItens = fi; } catch(e){}
+      }
+      if (row.tratativas) {
+        try { const tr = _parseMaybe(row.tratativas, []); if (Array.isArray(tr)) tratativas = tr; } catch(e){}
+      }
       if (row.consultores) {
         try { const cm = _parseMaybe(row.consultores, {}); if (cm && Array.isArray(cm.list) && cm.list.length) window.CONS_MON = cm.list; if (cm && cm.colors) window.dotColors = Object.assign({}, window.dotColors||{}, cm.colors); } catch(e){}
       }
@@ -12962,6 +13606,8 @@ function _aplicarSnapshot(d) {
   if (d.conv_base)  Object.assign(convBaseManual, d.conv_base);
   if (d.pdi_data)   { try { pdiData = normalizePdi(d.pdi_data); } catch(err){} }
   if (Array.isArray(d.sinais_culturais)) sinaisCulturais = d.sinais_culturais;
+  if (Array.isArray(d.fca_itens)) fcaItens = d.fca_itens;
+  if (Array.isArray(d.tratativas)) tratativas = d.tratativas;
   // auditorias/fotos podem faltar (backup local de uma sessão que não abriu aquelas abas).
   // Marca como carregado de qualquer jeito: buscar no Supabase agora não é opção, ele caiu.
   if (Array.isArray(d.auditorias)) auditorias = d.auditorias;
@@ -13100,6 +13746,8 @@ function _montarSnapshot() {
     fotos: perfFotos,
     auditorias,
     sinais_culturais: sinaisCulturais,
+    fca_itens: fcaItens,
+    tratativas,
     consultores: { list: window.CONS_MON || [], colors: window.dotColors || {} },
     saved_at: new Date().toISOString(),
   };
@@ -13191,6 +13839,8 @@ async function sbReinjetarSnapshot() {
     if (Array.isArray(dados.auditorias)) payload.auditorias = JSON.stringify(dados.auditorias);
     if (dados.fotos && typeof dados.fotos === 'object') payload.fotos = JSON.stringify(dados.fotos);
     if (Array.isArray(dados.sinais_culturais) && SB_TABLE === 'saber_data') payload.sinais_culturais = JSON.stringify(dados.sinais_culturais);
+    if (Array.isArray(dados.fca_itens) && SB_TABLE === 'saber_data') payload.fca_itens = JSON.stringify(dados.fca_itens);
+    if (Array.isArray(dados.tratativas) && SB_TABLE === 'saber_data') payload.tratativas = JSON.stringify(dados.tratativas);
 
     const res = await fetch(SB_URL + '/rest/v1/' + SB_TABLE + '?id=eq.main', {
       method: 'PATCH',
