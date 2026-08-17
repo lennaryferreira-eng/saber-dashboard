@@ -12579,7 +12579,14 @@ async function audSalvar(){
     const p = projects.find(x => x.nome === cliente);
     if (p) {
       if (!p.entregas) p.entregas = {};
-      if (!p.entregas[ordemEntrega]) p.entregas[ordemEntrega] = { real: '', obs: '' };
+      // Se o slot ainda não existe no Lead Time (entrega fora da ordem padrão, ninguém
+      // registrou a data manualmente ainda), usa a própria data da auditoria como "real" — não
+      // dá pra deixar em branco: calcFlagAutomatica ignora qualquer entrega sem data ao
+      // procurar a mais recente, então uma nota "invisível" (sem data) faz a flag cair numa
+      // etapa mais antiga sem nota e acusar Vermelho por atraso que não existe (caso real:
+      // "Biovis"/"Tradicional Bolos e Tortas" — auditoria registrada com nota, slot do Lead
+      // Time criado com data vazia, flag ignorava a nota e via a etapa anterior como vencida).
+      if (!p.entregas[ordemEntrega]) p.entregas[ordemEntrega] = { real: dadosAtualizados.data || '', obs: '' };
       p.entregas[ordemEntrega].score = nota;
       msgExtra = ' Score enviado pro Lead Time (' + nota + ').';
     } else {
