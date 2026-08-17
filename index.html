@@ -938,13 +938,13 @@
       <div class="mcard c-amber"><div class="mlabel">Atraso médio</div><div class="mval" id="lt-avg">—</div><div class="mmeta">dias (onde houve atraso)</div></div>
     </div>
 
-    <!-- Análise de atrasos -->
+    <!-- Flags e composição — mesmos cards do Insights do Healthscore, clicáveis -->
     <div class="card" style="margin-bottom:.8rem;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
-        <div class="card-title" style="margin:0;">Onde concentram os atrasos</div>
+        <div class="card-title" style="margin:0;">Flags e composição</div>
         <span id="lt-analise-limpar"></span>
       </div>
-      <div id="lt-analise" style="display:flex;gap:10px;flex-wrap:wrap;"></div>
+      <div id="lt-analise"></div>
     </div>
 
     <!-- Filtros -->
@@ -9086,13 +9086,24 @@ function buildLeadTime() {
     selMes.innerHTML = '<option value="">Todos</option>' + meses.map(m => '<option' + (m===curM?' selected':'') + '>' + m + '</option>').join('');
   }
 
-  // buildLtAnalise sempre calcula a partir da base (todos os OUTROS filtros aplicados, sem o
-  // próprio filtro de etapa) — senão clicar um quadrado mudaria o denominador dele mesmo. A
-  // tabela abaixo é que recebe o corte extra, via ltAnaliseAtrasadosPorEtapa (populado como
-  // efeito colateral da própria buildLtAnalise, que já roda com a régua de atraso por etapa).
+  // buildLtAnalise sempre calcula a partir da base (todos os OUTROS filtros aplicados, sem os
+  // próprios filtros de flag/prazo) — senão clicar um quadrado mudaria o denominador dele
+  // mesmo. A tabela abaixo é que recebe o corte extra.
   const listaBase = getLtFiltered();
   buildLtAnalise(listaBase);
-  const list = ltAnaliseFiltro === null ? listaBase : listaBase.filter(p => (ltAnaliseAtrasadosPorEtapa[ltAnaliseFiltro]||[]).includes(p.id));
+  let list = listaBase;
+  // Mesma restrição da composição (só "Em andamento" tem flag/prazo significativos) — clicar
+  // um quadrado nunca deveria trazer de volta um Finalizado/Churn antigo só por causa do
+  // "Vermelho" artificial da estagnação.
+  if (ltFlagFiltro) list = list.filter(p => calcStatus2(p) === 'Em andamento' && calcFlagAutomatica(p) === ltFlagFiltro);
+  if (ltPrazoFiltro) list = list.filter(p => {
+    if (calcStatus2(p) !== 'Em andamento') return false;
+    const st = prazoStatus(p);
+    if (ltPrazoFiltro === 'noPrazo')  return st.ok === true && !st.risco;
+    if (ltPrazoFiltro === 'risco')    return !!st.risco;
+    if (ltPrazoFiltro === 'atrasado') return st.ok === false;
+    return true;
+  });
   const countEl = document.getElementById('lt-count');
   if (countEl) countEl.textContent = list.length + ' projeto' + (list.length!==1?'s':'');
 
@@ -9673,71 +9684,104 @@ function buildLeadTimeRec() {
       }).join('');
 }
 
-// Etapa (0-6) selecionada nos quadrados de "Onde concentram os atrasos", ou null. Clicar filtra
-// a tabela abaixo só com os projetos atrasados NESSA etapa — mesmo padrão clicável já usado nos
-// cards de composição do Insights do Healthscore (quadradoGrande/toggleOvFlagFiltro).
-let ltAnaliseFiltro = null;
-// ids dos projetos atrasados em cada etapa, recalculado a cada buildLtAnalise — buildLeadTime
-// lê isso pra filtrar a tabela sem recalcular a mesma coisa duas vezes.
-let ltAnaliseAtrasadosPorEtapa = [[],[],[],[],[],[],[]];
-function toggleLtAnaliseFiltro(si){
-  ltAnaliseFiltro = (ltAnaliseFiltro === si) ? null : si;
-  buildLeadTime();
+// Mesmos dois filtros clicáveis do Insights do Healthscore (ovFlagFiltro/ovPrazoFiltro),
+// agora pro Lead Time: flag (Verde/Amarelo/Vermelho) e prazo (noPrazo/risco/atrasado). Score
+// fica só informativo aqui também — no Healthscore ele nunca foi clicável.
+let ltFlagFiltro = '';
+let ltPrazoFiltro = '';
+function toggleLtFlagFiltro(cor){ ltFlagFiltro = (ltFlagFiltro === cor) ? '' : cor; buildLeadTime(); }
+function toggleLtPrazoFiltro(v){ ltPrazoFiltro = (ltPrazoFiltro === v) ? '' : v; buildLeadTime(); }
+
+// Score mais recente de um projeto — a etapa auditável (não-Growth) mais recente que já tem
+// nota, andando pela ordem cronológica real (ordemCompleta). Mesmo critério que
+// calcFlagAutomatica usa internamente pra decidir scoreOk, só que aqui é só informativo.
+function ltScoreRecente(p) {
+  const ent = p.entregas || {};
+  const ordem = ordemCompleta(p);
+  for (let i = ordem.length - 1; i >= 0; i--) {
+    const si = ordem[i];
+    if (si === 0 || si === '0') continue;
+    const e = ent[si] || ent[String(si)];
+    if (e && e.score !== undefined && e.score !== '' && !isNaN(parseFloat(e.score))) return parseFloat(e.score);
+  }
+  return null;
 }
 
+// Réplica fiel dos cards de análise do Insights do Healthscore (Flags + Composição da flag —
+// prazo/score), só que calculados sobre a lista já filtrada do Lead Time em vez da semana do
+// Healthscore. Mesmos quadradoGrande/quadradoPeq/quadradoPeqClic, clicáveis do mesmo jeito.
 function buildLtAnalise(list) {
   const el = document.getElementById('lt-analise');
   if (!el) return;
 
-  // Para cada etapa: calcula tempo médio entre a referência e a data real
-  // Growth(0) e KickOff(1): referência = p.inicio
-  // Demais: referência = data real da etapa anterior
-  const METAS_LT = [3, 6, 7, 7, 7, 7, 7];
-  const REFS_LT  = ['início','Growthclass','etapa ant.','etapa ant.','etapa ant.','etapa ant.','etapa ant.'];
-  const stats = [0,1,2,3,4,5,6].map(si => {
-    const tempos = [];
-    const atrasadosIds = [];
-    list.forEach(p => {
-      const ent = p.entregas && p.entregas[si];
-      if (!ent?.real) return;
-      let refDate = null;
-      if (si === 0)      refDate = ltInicio(p);
-      else if (si === 1) refDate = p.entregas?.[0]?.real || null;
-      else               refDate = p.entregas?.[si-1]?.real || null;
-      if (!refDate) return;
-      const dias = diffDays(refDate, ent.real);
-      if (dias >= 0) {
-        tempos.push(dias);
-        if (dias > METAS_LT[si]) atrasadosIds.push(p.id);
-      }
-    });
-    const avg = tempos.length > 0 ? Math.round(tempos.reduce((a,b)=>a+b,0) / tempos.length) : null;
-    return { si, avg, total: tempos.length, meta: METAS_LT[si], ref: REFS_LT[si], atrasadosIds };
-  });
+  // calcFlagAutomatica foi feito pra projeto vivo — num Finalizado/Churn antigo, a checagem de
+  // estagnação (sem entrega há mais de uma semana) dispara sempre, porque "sem entrega recente"
+  // é exatamente a definição de projeto que já acabou. Mesma restrição que o Insights do
+  // Healthscore já usa: só entra na composição de flag quem está realmente "Em andamento".
+  const listaFlag = list.filter(p => calcStatus2(p) === 'Em andamento');
 
-  ltAnaliseAtrasadosPorEtapa = stats.map(s => s.atrasadosIds);
+  const flags = { Verde: 0, Amarelo: 0, Vermelho: 0 };
+  listaFlag.forEach(p => { const f = calcFlagAutomatica(p); if (flags[f] !== undefined) flags[f]++; });
+  const totalFlags = listaFlag.length;
 
-  // Quadrado vira botão clicável (mesma pegada visual dos quadradoGrande do Healthscore) — como
-  // cada um já carregava bastante informação (nota, média, barra, registros/meta), coube tudo
-  // no mesmo tamanho de card trocando a barra de progresso pela contagem de atrasados, que é
-  // justamente o que o clique vai filtrar.
-  el.innerHTML = stats.map(s => {
-    const cor = s.avg === null ? 'var(--text-hint)' : s.avg <= s.meta ? 'var(--green)' : 'var(--red)';
-    const ativo = ltAnaliseFiltro === s.si;
-    return '<button type="button" onclick="toggleLtAnaliseFiltro(' + s.si + ')" title="Clique pra filtrar os projetos atrasados nessa etapa" aria-pressed="' + (ativo?'true':'false') + '" style="font:inherit;text-align:left;flex:1;min-width:120px;background:var(--surface2);border:1px solid ' + (ativo?cor:'var(--border)') + ';border-top:2px solid ' + cor + ';border-radius:var(--r);padding:.9rem;cursor:pointer;' + (ativo?'box-shadow:0 0 0 1.5px '+cor+';':'') + '">'
-      + '<div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);margin-bottom:.5rem;">' + SEM_SHORT_LT[s.si] + '</div>'
-      + (s.avg === null
-        ? '<div style="font-size:var(--fs-sm);color:var(--text-hint);">Sem registros</div>'
-        : '<div style="font-size:22px;font-weight:700;color:' + cor + ';">' + s.avg + 'd</div>'
-          + '<div style="font-size:var(--fs-xs);color:var(--text-hint);margin-bottom:.4rem;">média do ' + s.ref + ' · meta ' + s.meta + 'd</div>'
-          + '<div style="font-size:var(--fs-xs);font-weight:600;color:' + (s.atrasadosIds.length?'var(--red)':'var(--text-hint)') + ';">' + s.atrasadosIds.length + ' atrasado' + (s.atrasadosIds.length===1?'':'s') + '</div>'
-          + '<div style="font-size:var(--fs-2xs);color:var(--text-hint);margin-top:.15rem;">' + s.total + ' registros</div>'
-      )
-      + '</button>';
-  }).join('');
+  const prazoStatuses  = listaFlag.map(p => prazoStatus(p));
+  const noPrazoCount   = prazoStatuses.filter(st => st.ok === true && !st.risco).length;
+  const riscoCount     = prazoStatuses.filter(st => st.risco).length;
+  const atrasadasCount = prazoStatuses.filter(st => st.ok === false).length;
+  const totalPrazo     = noPrazoCount + riscoCount + atrasadasCount;
+
+  const scores      = listaFlag.map(p => ltScoreRecente(p)).filter(s => s !== null);
+  const scoreRuim   = scores.filter(s => s < 55).length;
+  const scoreBasico = scores.filter(s => s >= 55 && s < 70).length;
+  const scoreSolido = scores.filter(s => s >= 70 && s < 85).length;
+  const scoreAcima  = scores.filter(s => s >= 85).length;
+  const totalScore  = scores.length;
+
+  const pct = (v, total) => total > 0 ? Math.round(v / total * 100) : 0;
+  const quadradoGrande = (valor, pctVal, cor, label, filtroVal) => '<button type="button" onclick="toggleLtFlagFiltro(\''+filtroVal+'\')" title="Clique pra filtrar a tabela abaixo só com projetos '+label+'" aria-pressed="'+(ltFlagFiltro===filtroVal?'true':'false')+'" style="font:inherit;text-align:center;flex:1;min-width:76px;background:var(--surface);border:1px solid '+(ltFlagFiltro===filtroVal?cor:'var(--border)')+';border-top:3px solid '+cor+';border-radius:6px;padding:10px 6px;cursor:pointer;'+(ltFlagFiltro===filtroVal?'box-shadow:0 0 0 1.5px '+cor+';':'')+'">'
+    + '<div style="font-size:22px;font-weight:800;color:'+cor+';line-height:1;">'+valor+'</div>'
+    + '<div style="font-size:var(--fs-xs);font-weight:700;color:'+cor+';margin-top:3px;">'+pctVal+'%</div>'
+    + '<div style="font-size:var(--fs-2xs);color:var(--text-hint);margin-top:2px;text-transform:uppercase;letter-spacing:.03em;">'+label+'</div>'
+    + '</button>';
+  const quadradoPeq = (valor, pctVal, cor, label) => '<div style="flex:1;min-width:58px;background:var(--surface);border:1px solid var(--border);border-top:2px solid '+cor+';border-radius:5px;padding:6px 4px;text-align:center;">'
+    + '<div style="font-size:15px;font-weight:800;color:'+cor+';line-height:1;">'+valor+'</div>'
+    + '<div style="font-size:var(--fs-2xs);font-weight:700;color:'+cor+';margin-top:2px;">'+pctVal+'%</div>'
+    + '<div style="font-size:var(--fs-3xs);color:var(--text-hint);margin-top:1px;text-transform:uppercase;letter-spacing:.02em;">'+label+'</div>'
+    + '</div>';
+  const quadradoPeqClic = (valor, pctVal, cor, label, filtroVal) => '<button type="button" onclick="toggleLtPrazoFiltro(\''+filtroVal+'\')" title="Clique pra filtrar a tabela abaixo só com projetos '+label+'" aria-pressed="'+(ltPrazoFiltro===filtroVal?'true':'false')+'" style="font:inherit;flex:1;min-width:58px;background:var(--surface);border:1px solid '+(ltPrazoFiltro===filtroVal?cor:'var(--border)')+';border-top:2px solid '+cor+';border-radius:5px;padding:6px 4px;text-align:center;cursor:pointer;'+(ltPrazoFiltro===filtroVal?'box-shadow:0 0 0 1.5px '+cor+';':'')+'">'
+    + '<div style="font-size:15px;font-weight:800;color:'+cor+';line-height:1;">'+valor+'</div>'
+    + '<div style="font-size:var(--fs-2xs);font-weight:700;color:'+cor+';margin-top:2px;">'+pctVal+'%</div>'
+    + '<div style="font-size:var(--fs-3xs);color:var(--text-hint);margin-top:1px;text-transform:uppercase;letter-spacing:.02em;">'+label+'</div>'
+    + '</button>';
+
+  el.innerHTML = '<div style="display:flex;gap:14px;flex-wrap:wrap;">'
+    + '<div style="flex:1;min-width:220px;">'
+    + '<div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:8px;">Flags</div>'
+    + '<div style="display:flex;gap:8px;">'
+    + quadradoGrande(flags.Verde, pct(flags.Verde, totalFlags), 'var(--green)', 'Verde', 'Verde')
+    + quadradoGrande(flags.Amarelo, pct(flags.Amarelo, totalFlags), 'var(--amber)', 'Amarelo', 'Amarelo')
+    + quadradoGrande(flags.Vermelho, pct(flags.Vermelho, totalFlags), 'var(--accent)', 'Vermelho', 'Vermelho')
+    + '</div></div>'
+    + '<div style="flex:1;min-width:280px;">'
+    + '<div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:8px;">Composição da flag — prazo</div>'
+    + '<div style="display:flex;gap:6px;margin-bottom:12px;">'
+    + quadradoPeqClic(noPrazoCount, pct(noPrazoCount, totalPrazo), 'var(--green)', 'No prazo', 'noPrazo')
+    + quadradoPeqClic(riscoCount, pct(riscoCount, totalPrazo), 'var(--amber)', 'Em risco', 'risco')
+    + quadradoPeqClic(atrasadasCount, pct(atrasadasCount, totalPrazo), 'var(--accent)', 'Atrasadas', 'atrasado')
+    + '</div>'
+    + '<div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:8px;">Composição da flag — score</div>'
+    + '<div style="display:flex;gap:6px;">'
+    + quadradoPeq(scoreRuim, pct(scoreRuim, totalScore), 'var(--accent)', 'Ruim')
+    + quadradoPeq(scoreBasico, pct(scoreBasico, totalScore), 'var(--amber)', 'Básico')
+    + quadradoPeq(scoreSolido, pct(scoreSolido, totalScore), 'var(--green)', 'Sólido')
+    + quadradoPeq(scoreAcima, pct(scoreAcima, totalScore), 'var(--green)', 'Acima padrão')
+    + '</div>'
+    + '</div>'
+    + '</div>';
 
   const limparEl = document.getElementById('lt-analise-limpar');
-  if (limparEl) limparEl.innerHTML = ltAnaliseFiltro === null ? '' : '<button onclick="toggleLtAnaliseFiltro(' + ltAnaliseFiltro + ')" style="font-size:var(--fs-2xs);color:var(--accent);background:none;border:none;cursor:pointer;text-decoration:underline;">' + icon('x',{size:10}) + ' limpar filtro</button>';
+  const filtroAtivo = ltFlagFiltro ? { fn: 'toggleLtFlagFiltro', v: ltFlagFiltro } : ltPrazoFiltro ? { fn: 'toggleLtPrazoFiltro', v: ltPrazoFiltro } : null;
+  if (limparEl) limparEl.innerHTML = !filtroAtivo ? '' : '<button onclick="'+filtroAtivo.fn+'(\''+filtroAtivo.v+'\')" style="font-size:var(--fs-2xs);color:var(--accent);background:none;border:none;cursor:pointer;text-decoration:underline;">' + icon('x',{size:10}) + ' limpar filtro</button>';
 }
 
 
