@@ -940,7 +940,10 @@
 
     <!-- Análise de atrasos -->
     <div class="card" style="margin-bottom:.8rem;">
-      <div class="card-title">Onde concentram os atrasos</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
+        <div class="card-title" style="margin:0;">Onde concentram os atrasos</div>
+        <span id="lt-analise-limpar"></span>
+      </div>
       <div id="lt-analise" style="display:flex;gap:10px;flex-wrap:wrap;"></div>
     </div>
 
@@ -9083,7 +9086,13 @@ function buildLeadTime() {
     selMes.innerHTML = '<option value="">Todos</option>' + meses.map(m => '<option' + (m===curM?' selected':'') + '>' + m + '</option>').join('');
   }
 
-  const list = getLtFiltered();
+  // buildLtAnalise sempre calcula a partir da base (todos os OUTROS filtros aplicados, sem o
+  // próprio filtro de etapa) — senão clicar um quadrado mudaria o denominador dele mesmo. A
+  // tabela abaixo é que recebe o corte extra, via ltAnaliseAtrasadosPorEtapa (populado como
+  // efeito colateral da própria buildLtAnalise, que já roda com a régua de atraso por etapa).
+  const listaBase = getLtFiltered();
+  buildLtAnalise(listaBase);
+  const list = ltAnaliseFiltro === null ? listaBase : listaBase.filter(p => (ltAnaliseAtrasadosPorEtapa[ltAnaliseFiltro]||[]).includes(p.id));
   const countEl = document.getElementById('lt-count');
   if (countEl) countEl.textContent = list.length + ' projeto' + (list.length!==1?'s':'');
 
@@ -9258,7 +9267,6 @@ function buildLeadTime() {
       }).join('');
 
   refreshLtCards();
-  buildLtAnalise(list);
 }
 
 // ═══════════════════════════════════
@@ -9665,6 +9673,18 @@ function buildLeadTimeRec() {
       }).join('');
 }
 
+// Etapa (0-6) selecionada nos quadrados de "Onde concentram os atrasos", ou null. Clicar filtra
+// a tabela abaixo só com os projetos atrasados NESSA etapa — mesmo padrão clicável já usado nos
+// cards de composição do Insights do Healthscore (quadradoGrande/toggleOvFlagFiltro).
+let ltAnaliseFiltro = null;
+// ids dos projetos atrasados em cada etapa, recalculado a cada buildLtAnalise — buildLeadTime
+// lê isso pra filtrar a tabela sem recalcular a mesma coisa duas vezes.
+let ltAnaliseAtrasadosPorEtapa = [[],[],[],[],[],[],[]];
+function toggleLtAnaliseFiltro(si){
+  ltAnaliseFiltro = (ltAnaliseFiltro === si) ? null : si;
+  buildLeadTime();
+}
+
 function buildLtAnalise(list) {
   const el = document.getElementById('lt-analise');
   if (!el) return;
@@ -9676,6 +9696,7 @@ function buildLtAnalise(list) {
   const REFS_LT  = ['início','Growthclass','etapa ant.','etapa ant.','etapa ant.','etapa ant.','etapa ant.'];
   const stats = [0,1,2,3,4,5,6].map(si => {
     const tempos = [];
+    const atrasadosIds = [];
     list.forEach(p => {
       const ent = p.entregas && p.entregas[si];
       if (!ent?.real) return;
@@ -9685,26 +9706,38 @@ function buildLtAnalise(list) {
       else               refDate = p.entregas?.[si-1]?.real || null;
       if (!refDate) return;
       const dias = diffDays(refDate, ent.real);
-      if (dias >= 0) tempos.push(dias);
+      if (dias >= 0) {
+        tempos.push(dias);
+        if (dias > METAS_LT[si]) atrasadosIds.push(p.id);
+      }
     });
     const avg = tempos.length > 0 ? Math.round(tempos.reduce((a,b)=>a+b,0) / tempos.length) : null;
-    return { si, avg, total: tempos.length, meta: METAS_LT[si], ref: REFS_LT[si] };
+    return { si, avg, total: tempos.length, meta: METAS_LT[si], ref: REFS_LT[si], atrasadosIds };
   });
 
+  ltAnaliseAtrasadosPorEtapa = stats.map(s => s.atrasadosIds);
+
+  // Quadrado vira botão clicável (mesma pegada visual dos quadradoGrande do Healthscore) — como
+  // cada um já carregava bastante informação (nota, média, barra, registros/meta), coube tudo
+  // no mesmo tamanho de card trocando a barra de progresso pela contagem de atrasados, que é
+  // justamente o que o clique vai filtrar.
   el.innerHTML = stats.map(s => {
     const cor = s.avg === null ? 'var(--text-hint)' : s.avg <= s.meta ? 'var(--green)' : 'var(--red)';
-
-    return '<div style="flex:1;min-width:120px;background:var(--surface2);border:1px solid var(--border);border-top:2px solid ' + cor + ';border-radius:var(--r);padding:.9rem;">'
+    const ativo = ltAnaliseFiltro === s.si;
+    return '<button type="button" onclick="toggleLtAnaliseFiltro(' + s.si + ')" title="Clique pra filtrar os projetos atrasados nessa etapa" aria-pressed="' + (ativo?'true':'false') + '" style="font:inherit;text-align:left;flex:1;min-width:120px;background:var(--surface2);border:1px solid ' + (ativo?cor:'var(--border)') + ';border-top:2px solid ' + cor + ';border-radius:var(--r);padding:.9rem;cursor:pointer;' + (ativo?'box-shadow:0 0 0 1.5px '+cor+';':'') + '">'
       + '<div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);margin-bottom:.5rem;">' + SEM_SHORT_LT[s.si] + '</div>'
       + (s.avg === null
         ? '<div style="font-size:var(--fs-sm);color:var(--text-hint);">Sem registros</div>'
         : '<div style="font-size:22px;font-weight:700;color:' + cor + ';">' + s.avg + 'd</div>'
-          + '<div style="font-size:var(--fs-xs);color:var(--text-hint);margin-bottom:.4rem;">média do ' + s.ref + '</div>'
-          + '<div class="prog-bg"><div class="prog-fill" style="width:' + Math.min(100, Math.round(s.avg/(s.meta*2)*100)) + '%;background:' + cor + ';"></div></div>'
-          + '<div style="font-size:var(--fs-xs);color:var(--text-hint);margin-top:.4rem;">' + s.total + ' registros · meta: ' + s.meta + 'd</div>'
+          + '<div style="font-size:var(--fs-xs);color:var(--text-hint);margin-bottom:.4rem;">média do ' + s.ref + ' · meta ' + s.meta + 'd</div>'
+          + '<div style="font-size:var(--fs-xs);font-weight:600;color:' + (s.atrasadosIds.length?'var(--red)':'var(--text-hint)') + ';">' + s.atrasadosIds.length + ' atrasado' + (s.atrasadosIds.length===1?'':'s') + '</div>'
+          + '<div style="font-size:var(--fs-2xs);color:var(--text-hint);margin-top:.15rem;">' + s.total + ' registros</div>'
       )
-      + '</div>';
+      + '</button>';
   }).join('');
+
+  const limparEl = document.getElementById('lt-analise-limpar');
+  if (limparEl) limparEl.innerHTML = ltAnaliseFiltro === null ? '' : '<button onclick="toggleLtAnaliseFiltro(' + ltAnaliseFiltro + ')" style="font-size:var(--fs-2xs);color:var(--accent);background:none;border:none;cursor:pointer;text-decoration:underline;">' + icon('x',{size:10}) + ' limpar filtro</button>';
 }
 
 
