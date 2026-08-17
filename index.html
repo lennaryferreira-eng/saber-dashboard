@@ -9174,11 +9174,17 @@ function buildLeadTime() {
             + label + '</div>';
         }).join('');
 
+        // Mesma tag automática do Healthscore: true se esse projeto tem QUALQUER FCA de
+        // projeto ainda não concluída (fcaItens é a lista global, populada em outro lugar).
+        const temFcaAbertaLT = fcaItens.some(it => it.projetoId && String(it.projetoId) === String(p.id) && !it.concluida);
         return '<tr>'
           + '<td class="lt-proj-cell">'
           + '<div style="font-size:var(--fs-xs);color:var(--text-hint);">' + (p.consultor||'—') + '</div>'
-          + '<div class="lt-proj-name" title="' + p.nome + '">' + (p.nome||'—') + '</div>'
-          + '<div style="margin-top:2px;">' + convBadge(p) + ' ' + statusBadge2(p) + '</div>'
+          + '<div class="lt-proj-name" title="' + p.nome + '">'
+          + '<button type="button" onclick="fcaAbrirModalNovoParaProjeto(' + p.id + ')" title="Registrar FCA para esse projeto" style="font:inherit;padding:0;background:none;border:none;color:var(--text-hint);font-size:var(--fs-sm);margin-right:4px;cursor:pointer;vertical-align:middle;">'+icon('zap',{size:12})+'</button>'
+          + (p.nome||'—')
+          + '</div>'
+          + '<div style="margin-top:2px;">' + convBadge(p) + ' ' + statusBadge2(p) + (temFcaAbertaLT ? ' <span title="Tem FCA de projeto em aberto" style="font-size:var(--fs-3xs);font-weight:700;color:#fff;background:var(--amber);border-radius:8px;padding:1px 7px;white-space:nowrap;">'+icon('zap',{size:8})+' FCA aberta</span>' : '') + '</div>'
           + '</td>'
           + '<td style="padding:6px 8px;font-size:var(--fs-sm);color:var(--text-muted);white-space:nowrap;">' + (p.gmv || '—') + '</td>'
           + '<td style="padding:6px 8px;">' + tierBadge(p.gmv) + '</td>'
