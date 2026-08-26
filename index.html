@@ -344,7 +344,11 @@
   <div id="ov-pipeline-flags-row" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
     <div class="card" style="margin:0;">
       <div class="card-title">Reembolsos <span id="ov-reemb-mes" style="font-weight:400;color:var(--text-hint);text-transform:none;letter-spacing:0;"></span></div>
-      <div id="ov-reemb-funil"></div>
+      <div style="display:flex;gap:10px;align-items:stretch;">
+        <div id="ov-reemb-tabela" style="flex:1.1;min-width:0;max-height:116px;overflow-y:auto;"></div>
+        <div style="width:1px;background:var(--border);flex:none;"></div>
+        <div id="ov-reemb-funil" style="flex:1;min-width:0;"></div>
+      </div>
     </div>
     <div class="card" style="margin:0;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;">
@@ -2612,15 +2616,37 @@ function tratSetField(id, field, value){
   upd();
   buildOvTratativas(); // finalizado muda quem aparece na tabela
 }
-// Funil de reembolsos na Visão Geral — substitui o antigo card "Pipeline ativo". Alimentado
-// 100% pelos campos dataReembolso/reembolsoStatus do Lead Time (ltSetReembolsoData/
-// ltSetReembolsoStatus). Recebe a lista já filtrada pelo mês da Visão Geral (mesma
-// reembMesProjs usada pelo KPI "Reembolsos" lá em cima, com fallback pro mês atual quando não
-// há filtro) — acompanha o filtro de mês em vez de olhar o histórico inteiro. Revertido conta
-// também como "concedido" (só reverte quem foi concedido antes), por isso as barras só
-// diminuem, nunca crescem, de uma etapa pra próxima.
-// O "menu com os projetos" é um <select> nativo em vez de uma lista expandida — abre por cima
-// do resto da página sem empurrar o card, que é o motivo de manter sempre o mesmo tamanho.
+// Card "Reembolsos" na Visão Geral (substitui o antigo "Pipeline ativo") — dividido ao meio:
+// tabela dos projetos à esquerda (buildOvReembolsosTabela) + funil de status à direita
+// (buildOvReembolsosFunil), sem crescer além do espaço que o card já ocupava (tabela rola por
+// dentro com max-height fixo em vez de esticar o card). Alimentados 100% pelos campos
+// dataReembolso/reembolsoStatus do Lead Time (ltSetReembolsoData/ltSetReembolsoStatus).
+// Recebem a mesma lista já filtrada pelo mês da Visão Geral (reembMesProjs, usada também pelo
+// KPI "Reembolsos" lá em cima) — acompanham o filtro de mês em vez de olhar o histórico inteiro.
+function buildOvReembolsosTabela(lista){
+  const el = document.getElementById('ov-reemb-tabela');
+  if (!el) return;
+  if (!lista.length) { el.innerHTML = '<div style="font-size:var(--fs-sm);color:var(--text-hint);padding:4px 0;">Nenhum reembolso no período.</div>'; return; }
+  const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const STATUS_COR = { '': 'var(--blue)', 'Concedido': 'var(--amber)', 'Revertido': 'var(--accent)' };
+  const STATUS_TIT = { '': 'Solicitado (sem decisão)', 'Concedido': 'Concedido', 'Revertido': 'Revertido' };
+  const ordenados = lista.slice().sort((a,b) => (b.dataReembolso||'').localeCompare(a.dataReembolso||''));
+  const linhas = ordenados.map(p => {
+    const st = p.reembolsoStatus || '';
+    const cor = STATUS_COR[st] || 'var(--text-hint)';
+    return '<tr style="border-bottom:1px solid var(--border);">'
+      + '<td style="padding:3px 5px 3px 0;white-space:nowrap;">'
+      + '<span title="' + STATUS_TIT[st] + '" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:' + cor + ';margin-right:5px;"></span>'
+      + '<span title="' + esc(p.nome) + '" style="font-weight:600;">' + esc(p.nome) + '</span>'
+      + '</td>'
+      + '<td style="padding:3px 5px;color:var(--text-hint);white-space:nowrap;">' + fmtD(p.dataReembolso) + '</td>'
+      + '<td style="padding:3px 0 3px 5px;color:var(--text-muted);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(p.motivo||'') + '">' + esc(p.motivo||'—') + '</td>'
+      + '</tr>';
+  }).join('');
+  el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:var(--fs-2xs);">'
+    + '<thead><tr style="border-bottom:1px solid var(--border);"><th style="text-align:left;padding:2px 5px 2px 0;color:var(--text-hint);font-weight:600;">Projeto</th><th style="text-align:left;padding:2px 5px;color:var(--text-hint);font-weight:600;">Data</th><th style="text-align:left;padding:2px 0 2px 5px;color:var(--text-hint);font-weight:600;">Motivo</th></tr></thead>'
+    + '<tbody>' + linhas + '</tbody></table>';
+}
 function buildOvReembolsosFunil(lista, mesLabel){
   const el = document.getElementById('ov-reemb-funil');
   if (!el) return;
@@ -2630,29 +2656,20 @@ function buildOvReembolsosFunil(lista, mesLabel){
   const concedidos   = solicitados.filter(p => p.reembolsoStatus === 'Concedido' || p.reembolsoStatus === 'Revertido');
   const revertidos   = solicitados.filter(p => p.reembolsoStatus === 'Revertido');
   const etapas = [
-    { label: 'Solicitados', color: 'var(--blue)',  prjs: solicitados },
-    { label: 'Concedidos',  color: 'var(--amber)', prjs: concedidos },
-    { label: 'Revertidos',  color: 'var(--accent)',prjs: revertidos },
+    { label: 'Solicitados', color: 'var(--blue)',  n: solicitados.length },
+    { label: 'Concedidos',  color: 'var(--amber)', n: concedidos.length },
+    { label: 'Revertidos',  color: 'var(--accent)',n: revertidos.length },
   ];
-  const maxC = Math.max(etapas[0].prjs.length, 1);
-  const menuHTML = e => {
-    if (!e.prjs.length) return '';
-    return '<select class="sel" style="font-size:var(--fs-3xs);width:98px;padding:0 3px;height:18px;margin-left:6px;" title="Ver projetos — ' + e.label.toLowerCase() + '">'
-      + '<option>' + e.prjs.length + ' projeto' + (e.prjs.length!==1?'s':'') + '</option>'
-      + e.prjs.map(p => '<option>' + (p.nome||'—').replace(/</g,'&lt;') + '</option>').join('')
-      + '</select>';
-  };
+  const maxC = Math.max(etapas[0].n, 1);
   el.innerHTML = '<div style="display:flex;flex-direction:column;gap:6px;">'
     + etapas.map((e, i) => {
-        const n = e.prjs.length;
-        const pct = Math.max(n ? 8 : 0, Math.round(n / maxC * 100));
-        const pctAnterior = i > 0 && etapas[i-1].prjs.length > 0 ? Math.round(n / etapas[i-1].prjs.length * 100) : null;
+        const pct = Math.max(e.n ? 8 : 0, Math.round(e.n / maxC * 100));
+        const pctAnterior = i > 0 && etapas[i-1].n > 0 ? Math.round(e.n / etapas[i-1].n * 100) : null;
         return '<div>'
-          + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;flex-wrap:nowrap;">'
+          + '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:3px;">'
           + '<span style="font-size:var(--fs-sm);font-weight:600;color:var(--text);">' + e.label + '</span>'
-          + '<span style="font-size:var(--fs-sm);font-weight:700;color:' + e.color + ';">' + n + '</span>'
-          + menuHTML(e)
-          + (pctAnterior !== null ? '<span style="font-size:var(--fs-2xs);color:var(--text-hint);margin-left:auto;white-space:nowrap;">' + pctAnterior + '% do anterior</span>' : '')
+          + '<span style="font-size:var(--fs-sm);font-weight:700;color:' + e.color + ';">' + e.n + '</span>'
+          + (pctAnterior !== null ? '<span style="font-size:var(--fs-2xs);color:var(--text-hint);margin-left:auto;">' + pctAnterior + '% do anterior</span>' : '')
           + '</div>'
           + '<div style="background:var(--surface3);border-radius:var(--r-sm);height:20px;overflow:hidden;">'
           + '<div style="height:100%;width:' + pct + '%;background:' + e.color + ';border-radius:var(--r-sm);opacity:.85;transition:width .5s;"></div>'
@@ -8407,6 +8424,7 @@ function buildOvAnalises(curM) {
       })
     : projects.filter(p => calcStatus2(p) === 'Em andamento');
 
+  buildOvReembolsosTabela(reembMesProjs);
   buildOvReembolsosFunil(reembMesProjs, mesLabel);
   buildOvTratativas();
 
