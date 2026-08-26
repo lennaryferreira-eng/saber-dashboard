@@ -2630,23 +2630,24 @@ function buildOvReembolsosTabela(lista){
   const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const STATUS_COR = { '': 'var(--blue)', 'Concedido': 'var(--amber)', 'Revertido': 'var(--accent)' };
   const ordenados = lista.slice().sort((a,b) => (b.dataReembolso||'').localeCompare(a.dataReembolso||''));
-  const linhas = ordenados.map(p => {
+  // Duas linhas por projeto (nome+status em cima, data+motivo embaixo) em vez de tabela de
+  // colunas fixas — colunas lado a lado não sobravam espaço nenhum pro motivo depois que o
+  // status virou select; assim o motivo usa a largura inteira do card e só trunca se for muito
+  // longo (com o texto completo no title).
+  el.innerHTML = ordenados.map(p => {
     const st = p.reembolsoStatus || '';
     const cor = STATUS_COR[st] || 'var(--text-hint)';
-    const tituloNome = esc(p.nome) + (p.motivo ? ' — motivo: ' + esc(p.motivo) : '');
-    return '<tr style="border-bottom:1px solid var(--border);">'
-      + '<td style="padding:3px 5px 3px 0;font-weight:600;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + tituloNome + '">' + esc(p.nome) + '</td>'
-      + '<td style="padding:3px 5px;color:var(--text-hint);white-space:nowrap;">' + fmtD(p.dataReembolso) + '</td>'
-      + '<td style="padding:3px 0 3px 5px;white-space:nowrap;">'
-      + '<select class="sel" style="font-size:var(--fs-3xs);padding:0 2px;height:17px;border-color:' + cor + ';color:' + cor + ';" title="Marcar como concedido/revertido" onchange="ovSetReembolsoStatus(' + p.id + ',this.value)">'
+    const dataMotivo = fmtD(p.dataReembolso) + (p.motivo ? ' · ' + esc(p.motivo) : '');
+    return '<div style="padding:3px 0;border-bottom:1px solid var(--border);">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">'
+      + '<span style="font-weight:600;font-size:var(--fs-xs);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(p.nome) + '">' + esc(p.nome) + '</span>'
+      + '<select class="sel" style="font-size:var(--fs-3xs);padding:0 2px;height:17px;flex:none;border-color:' + cor + ';color:' + cor + ';" title="Marcar como concedido/revertido" onchange="ovSetReembolsoStatus(' + p.id + ',this.value)">'
       + ['', 'Concedido', 'Revertido'].map(o => '<option value="' + o + '"' + (st === o ? ' selected' : '') + '>' + (o || 'Solicitado') + '</option>').join('')
       + '</select>'
-      + '</td>'
-      + '</tr>';
+      + '</div>'
+      + '<div style="font-size:var(--fs-3xs);color:var(--text-hint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + dataMotivo + '">' + dataMotivo + '</div>'
+      + '</div>';
   }).join('');
-  el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:var(--fs-2xs);">'
-    + '<thead><tr style="border-bottom:1px solid var(--border);"><th style="text-align:left;padding:2px 5px 2px 0;color:var(--text-hint);font-weight:600;">Projeto</th><th style="text-align:left;padding:2px 5px;color:var(--text-hint);font-weight:600;">Data</th><th style="text-align:left;padding:2px 0 2px 5px;color:var(--text-hint);font-weight:600;">Status</th></tr></thead>'
-    + '<tbody>' + linhas + '</tbody></table>';
 }
 function buildOvReembolsosFunil(lista, mesLabel){
   const el = document.getElementById('ov-reemb-funil');
