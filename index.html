@@ -343,11 +343,8 @@
   <!-- Pipeline e Flags -->
   <div id="ov-pipeline-flags-row" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
     <div class="card" style="margin:0;">
-      <div class="card-title">Pipeline ativo</div>
-      <div style="font-size:var(--fs-5xl);font-weight:700;color:var(--blue);" id="ov-pipe-pct">—</div>
-      <div style="font-size:var(--fs-sm);color:var(--text-hint);margin-top:2px;" id="ov-pipe-sub"></div>
-      <div class="prog-bg" style="margin-top:8px;"><div class="prog-fill" id="ov-pipe-bar" style="width:0%;background:var(--blue);"></div></div>
-      <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;" id="ov-pipe-stages"></div>
+      <div class="card-title">Reembolsos</div>
+      <div id="ov-reemb-funil"></div>
     </div>
     <div class="card" style="margin:0;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;">
@@ -2614,6 +2611,40 @@ function tratSetField(id, field, value){
   item[field] = value;
   upd();
   buildOvTratativas(); // finalizado muda quem aparece na tabela
+}
+// Funil de reembolsos na Visão Geral — substitui o antigo card "Pipeline ativo". Alimentado
+// 100% pelos campos dataReembolso/reembolsoStatus do Lead Time (ltSetReembolsoData/
+// ltSetReembolsoStatus). Cumulativo (todo o histórico, não só o mês do filtro) — o card
+// "Reembolsos" ali em cima já cobre "quantos pedidos esse mês"; este aqui mostra o funil
+// completo de decisão. Revertido conta também como "concedido" (só reverte quem foi concedido
+// antes), por isso as barras só diminuem, nunca crescem, de uma etapa pra próxima.
+function buildOvReembolsosFunil(){
+  const el = document.getElementById('ov-reemb-funil');
+  if (!el) return;
+  const solicitados = projects.filter(p => !isDroFam(p) && p.dataReembolso);
+  const concedidos   = solicitados.filter(p => p.reembolsoStatus === 'Concedido' || p.reembolsoStatus === 'Revertido');
+  const revertidos   = solicitados.filter(p => p.reembolsoStatus === 'Revertido');
+  const etapas = [
+    { label: 'Solicitados', color: 'var(--blue)',  n: solicitados.length },
+    { label: 'Concedidos',  color: 'var(--amber)', n: concedidos.length },
+    { label: 'Revertidos',  color: 'var(--accent)',n: revertidos.length },
+  ];
+  const maxC = Math.max(etapas[0].n, 1);
+  el.innerHTML = '<div style="display:flex;flex-direction:column;gap:6px;">'
+    + etapas.map((e, i) => {
+        const pct = Math.max(e.n ? 8 : 0, Math.round(e.n / maxC * 100));
+        const pctAnterior = i > 0 && etapas[i-1].n > 0 ? Math.round(e.n / etapas[i-1].n * 100) : null;
+        return '<div>'
+          + '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:3px;">'
+          + '<span style="font-size:var(--fs-sm);font-weight:600;color:var(--text);">' + e.label + '</span>'
+          + '<span style="font-size:var(--fs-sm);font-weight:700;color:' + e.color + ';">' + e.n + '</span>'
+          + (pctAnterior !== null ? '<span style="font-size:var(--fs-2xs);color:var(--text-hint);margin-left:auto;">' + pctAnterior + '% do anterior</span>' : '')
+          + '</div>'
+          + '<div style="background:var(--surface3);border-radius:var(--r-sm);height:20px;overflow:hidden;">'
+          + '<div style="height:100%;width:' + pct + '%;background:' + e.color + ';border-radius:var(--r-sm);opacity:.85;transition:width .5s;"></div>'
+          + '</div></div>';
+      }).join('')
+    + '</div>';
 }
 // Tabela compacta na Visão Geral — só as ABERTAS (finalizada some da lista, mas continua salva
 // pra histórico). Ícone de editar abre o modal completo; reembolso/atualização/finalizado dá
@@ -8351,30 +8382,16 @@ function buildOvAnalises(curM) {
   const ovMesLbl = document.getElementById('ov-mes-label');
   if (ovMesLbl) ovMesLbl.textContent = mesLabel;
 
-  // Pipeline ativo — se mês selecionado, filtra projetos ativos ou iniciados naquele mês
+  // "Projetos ativos" no recorte do mês (ou "Em andamento" geral, sem mês selecionado) —
+  // usado abaixo em "Projetos por tier".
   const ativos = curM
     ? projects.filter(p => {
         const d = parseDate(p.inicio);
         return d && d.getMonth() === mesIdx && d.getFullYear() === mesAno;
       })
     : projects.filter(p => calcStatus2(p) === 'Em andamento');
-  const comPipe = ativos.filter(p => ETAPAS_PIPE.includes(p.oport));
-  const pipePct = ativos.length > 0 ? Math.round(comPipe.length / ativos.length * 100) : 0;
-  set('ov-pipe-pct', pipePct + '%');
-  const pipeSub = document.getElementById('ov-pipe-sub');
-  if (pipeSub) pipeSub.textContent = comPipe.length + ' de ' + ativos.length + ' projetos ativos com oportunidade';
-  setStyle('ov-pipe-bar', 'width', Math.min(100, pipePct) + '%');
-  const stagesEl = document.getElementById('ov-pipe-stages');
-  if (stagesEl) {
-    const COLORS = {'Mapeado (AQL)':'var(--blue)','Apresentar proposta (SQL)':'var(--blue)','Proposta apresentada (SAL)':'var(--amber)','Follow (COMMIT)':'var(--green)'};
-    const SHORT  = {'Mapeado (AQL)':'AQL','Apresentar proposta (SQL)':'SQL','Proposta apresentada (SAL)':'SAL','Follow (COMMIT)':'COMMIT'};
-    stagesEl.innerHTML = ETAPAS_PIPE.map(e => {
-      const n = ativos.filter(p => p.oport === e).length;
-      if (!n) return '';
-      return '<span style="font-size:var(--fs-xs);font-weight:700;padding:2px 8px;border-radius:20px;border:1px solid ' + COLORS[e] + ';color:' + COLORS[e] + ';">' + SHORT[e] + ': ' + n + '</span>';
-    }).join('');
-  }
 
+  buildOvReembolsosFunil();
   buildOvTratativas();
 
   // Ticket médio — usa a MONETIZAÇÃO REALIZADA (array monetizacoes[]), por evento de venda
@@ -8709,6 +8726,36 @@ function ltSetField(id, field, val) {
   // ao atualizar o próximo contato no Lead Time, registra evento de pipeline
   // Registro automático de AQL/Proposta DESATIVADO — a partir de agora só entra via registro manual na aba AQL.
   // if (field === 'proximoContato') registrarEventoDoLeadTime(p);
+}
+
+// Caixinha de status do reembolso (Concedido/Revertido) — só existe enquanto tiver uma data de
+// pedido registrada. Alimenta 100% o card "Reembolsos" da Visão Geral (funil solicitados >>
+// concedidos >> revertidos).
+function ltReembStatusHTML(p) {
+  if (!p.dataReembolso) return '';
+  const st = p.reembolsoStatus || '';
+  return '<select class="sel" style="font-size:var(--fs-2xs);width:100%;margin-top:3px;" title="Status do reembolso" onchange="ltSetReembolsoStatus(' + p.id + ',this.value)">'
+    + ['', 'Concedido', 'Revertido'].map(o => '<option value="' + o + '"' + (st === o ? ' selected' : '') + '>' + (o || 'Solicitado (sem decisão)') + '</option>').join('')
+    + '</select>';
+}
+// A data e o status ficam em campos separados (dataReembolso/reembolsoStatus) — não dá pra usar
+// ltSetField genérico aqui porque, ao mudar a data, a caixinha de status precisa
+// aparecer/desaparecer na hora, sem reconstruir a linha inteira (mesmo padrão de atualização
+// pontual de _ltScoreBlocksHTML/lt-bar-).
+function ltSetReembolsoData(id, val) {
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!p) return;
+  p.dataReembolso = val;
+  if (!val) p.reembolsoStatus = ''; // limpou a data: reseta a decisão também, não faz sentido ficar "Concedido" sem pedido
+  upd();
+  const el = document.getElementById('lt-reemb-status-' + id);
+  if (el) el.innerHTML = ltReembStatusHTML(p);
+}
+function ltSetReembolsoStatus(id, val) {
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!p) return;
+  p.reembolsoStatus = val;
+  upd();
 }
 function ltShowDateInput(id) {
   const sel  = document.getElementById('lt-sel-' + id);
@@ -9262,7 +9309,8 @@ function buildLeadTime() {
           + '<div style="font-size:var(--fs-2xs);color:var(--text-hint);margin:4px 0 1px;">Pedido de reembolso</div>'
           + '<input type="date" class="sel" style="font-size:var(--fs-xs);width:100%;" '
           + 'value="' + dv(p.dataReembolso) + '" '
-          + 'onchange="ltSetField(' + p.id + ',\'dataReembolso\',this.value)">'
+          + 'onchange="ltSetReembolsoData(' + p.id + ',this.value)">'
+          + '<div id="lt-reemb-status-' + p.id + '">' + ltReembStatusHTML(p) + '</div>'
           + '</td>'
           // Próximo contato
           + '<td style="padding:6px 8px;">'
