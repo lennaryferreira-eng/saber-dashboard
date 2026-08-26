@@ -2629,22 +2629,23 @@ function buildOvReembolsosTabela(lista){
   if (!lista.length) { el.innerHTML = '<div style="font-size:var(--fs-sm);color:var(--text-hint);padding:4px 0;">Nenhum reembolso no período.</div>'; return; }
   const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const STATUS_COR = { '': 'var(--blue)', 'Concedido': 'var(--amber)', 'Revertido': 'var(--accent)' };
-  const STATUS_TIT = { '': 'Solicitado (sem decisão)', 'Concedido': 'Concedido', 'Revertido': 'Revertido' };
   const ordenados = lista.slice().sort((a,b) => (b.dataReembolso||'').localeCompare(a.dataReembolso||''));
   const linhas = ordenados.map(p => {
     const st = p.reembolsoStatus || '';
     const cor = STATUS_COR[st] || 'var(--text-hint)';
+    const tituloNome = esc(p.nome) + (p.motivo ? ' — motivo: ' + esc(p.motivo) : '');
     return '<tr style="border-bottom:1px solid var(--border);">'
-      + '<td style="padding:3px 5px 3px 0;white-space:nowrap;">'
-      + '<span title="' + STATUS_TIT[st] + '" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:' + cor + ';margin-right:5px;"></span>'
-      + '<span title="' + esc(p.nome) + '" style="font-weight:600;">' + esc(p.nome) + '</span>'
-      + '</td>'
+      + '<td style="padding:3px 5px 3px 0;font-weight:600;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + tituloNome + '">' + esc(p.nome) + '</td>'
       + '<td style="padding:3px 5px;color:var(--text-hint);white-space:nowrap;">' + fmtD(p.dataReembolso) + '</td>'
-      + '<td style="padding:3px 0 3px 5px;color:var(--text-muted);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(p.motivo||'') + '">' + esc(p.motivo||'—') + '</td>'
+      + '<td style="padding:3px 0 3px 5px;white-space:nowrap;">'
+      + '<select class="sel" style="font-size:var(--fs-3xs);padding:0 2px;height:17px;border-color:' + cor + ';color:' + cor + ';" title="Marcar como concedido/revertido" onchange="ovSetReembolsoStatus(' + p.id + ',this.value)">'
+      + ['', 'Concedido', 'Revertido'].map(o => '<option value="' + o + '"' + (st === o ? ' selected' : '') + '>' + (o || 'Solicitado') + '</option>').join('')
+      + '</select>'
+      + '</td>'
       + '</tr>';
   }).join('');
   el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:var(--fs-2xs);">'
-    + '<thead><tr style="border-bottom:1px solid var(--border);"><th style="text-align:left;padding:2px 5px 2px 0;color:var(--text-hint);font-weight:600;">Projeto</th><th style="text-align:left;padding:2px 5px;color:var(--text-hint);font-weight:600;">Data</th><th style="text-align:left;padding:2px 0 2px 5px;color:var(--text-hint);font-weight:600;">Motivo</th></tr></thead>'
+    + '<thead><tr style="border-bottom:1px solid var(--border);"><th style="text-align:left;padding:2px 5px 2px 0;color:var(--text-hint);font-weight:600;">Projeto</th><th style="text-align:left;padding:2px 5px;color:var(--text-hint);font-weight:600;">Data</th><th style="text-align:left;padding:2px 0 2px 5px;color:var(--text-hint);font-weight:600;">Status</th></tr></thead>'
     + '<tbody>' + linhas + '</tbody></table>';
 }
 function buildOvReembolsosFunil(lista, mesLabel){
@@ -8790,6 +8791,13 @@ function ltSetReembolsoStatus(id, val) {
   if (!p) return;
   p.reembolsoStatus = val;
   upd();
+}
+// Mesma troca de status, chamada a partir do card "Reembolsos" da Visão Geral — reaproveita
+// ltSetReembolsoStatus (o campo é o mesmo, independente de onde é editado) e só troca o
+// refresh: buildOv() de novo pra tabela/funil refletirem a mudança na hora.
+function ovSetReembolsoStatus(id, val) {
+  ltSetReembolsoStatus(id, val);
+  buildOv();
 }
 function ltShowDateInput(id) {
   const sel  = document.getElementById('lt-sel-' + id);
