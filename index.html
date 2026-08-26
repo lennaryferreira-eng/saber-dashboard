@@ -343,7 +343,7 @@
   <!-- Pipeline e Flags -->
   <div id="ov-pipeline-flags-row" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
     <div class="card" style="margin:0;">
-      <div class="card-title">Reembolsos</div>
+      <div class="card-title">Reembolsos <span id="ov-reemb-mes" style="font-weight:400;color:var(--text-hint);text-transform:none;letter-spacing:0;"></span></div>
       <div id="ov-reemb-funil"></div>
     </div>
     <div class="card" style="margin:0;">
@@ -2614,31 +2614,45 @@ function tratSetField(id, field, value){
 }
 // Funil de reembolsos na Visão Geral — substitui o antigo card "Pipeline ativo". Alimentado
 // 100% pelos campos dataReembolso/reembolsoStatus do Lead Time (ltSetReembolsoData/
-// ltSetReembolsoStatus). Cumulativo (todo o histórico, não só o mês do filtro) — o card
-// "Reembolsos" ali em cima já cobre "quantos pedidos esse mês"; este aqui mostra o funil
-// completo de decisão. Revertido conta também como "concedido" (só reverte quem foi concedido
-// antes), por isso as barras só diminuem, nunca crescem, de uma etapa pra próxima.
-function buildOvReembolsosFunil(){
+// ltSetReembolsoStatus). Recebe a lista já filtrada pelo mês da Visão Geral (mesma
+// reembMesProjs usada pelo KPI "Reembolsos" lá em cima, com fallback pro mês atual quando não
+// há filtro) — acompanha o filtro de mês em vez de olhar o histórico inteiro. Revertido conta
+// também como "concedido" (só reverte quem foi concedido antes), por isso as barras só
+// diminuem, nunca crescem, de uma etapa pra próxima.
+// O "menu com os projetos" é um <select> nativo em vez de uma lista expandida — abre por cima
+// do resto da página sem empurrar o card, que é o motivo de manter sempre o mesmo tamanho.
+function buildOvReembolsosFunil(lista, mesLabel){
   const el = document.getElementById('ov-reemb-funil');
   if (!el) return;
-  const solicitados = projects.filter(p => !isDroFam(p) && p.dataReembolso);
+  const mesEl = document.getElementById('ov-reemb-mes');
+  if (mesEl) mesEl.textContent = mesLabel ? '· ' + mesLabel : '';
+  const solicitados = lista || [];
   const concedidos   = solicitados.filter(p => p.reembolsoStatus === 'Concedido' || p.reembolsoStatus === 'Revertido');
   const revertidos   = solicitados.filter(p => p.reembolsoStatus === 'Revertido');
   const etapas = [
-    { label: 'Solicitados', color: 'var(--blue)',  n: solicitados.length },
-    { label: 'Concedidos',  color: 'var(--amber)', n: concedidos.length },
-    { label: 'Revertidos',  color: 'var(--accent)',n: revertidos.length },
+    { label: 'Solicitados', color: 'var(--blue)',  prjs: solicitados },
+    { label: 'Concedidos',  color: 'var(--amber)', prjs: concedidos },
+    { label: 'Revertidos',  color: 'var(--accent)',prjs: revertidos },
   ];
-  const maxC = Math.max(etapas[0].n, 1);
+  const maxC = Math.max(etapas[0].prjs.length, 1);
+  const menuHTML = e => {
+    if (!e.prjs.length) return '';
+    return '<select class="sel" style="font-size:var(--fs-3xs);width:98px;padding:0 3px;height:18px;margin-left:6px;" title="Ver projetos — ' + e.label.toLowerCase() + '">'
+      + '<option>' + e.prjs.length + ' projeto' + (e.prjs.length!==1?'s':'') + '</option>'
+      + e.prjs.map(p => '<option>' + (p.nome||'—').replace(/</g,'&lt;') + '</option>').join('')
+      + '</select>';
+  };
   el.innerHTML = '<div style="display:flex;flex-direction:column;gap:6px;">'
     + etapas.map((e, i) => {
-        const pct = Math.max(e.n ? 8 : 0, Math.round(e.n / maxC * 100));
-        const pctAnterior = i > 0 && etapas[i-1].n > 0 ? Math.round(e.n / etapas[i-1].n * 100) : null;
+        const n = e.prjs.length;
+        const pct = Math.max(n ? 8 : 0, Math.round(n / maxC * 100));
+        const pctAnterior = i > 0 && etapas[i-1].prjs.length > 0 ? Math.round(n / etapas[i-1].prjs.length * 100) : null;
         return '<div>'
-          + '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:3px;">'
+          + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;flex-wrap:nowrap;">'
           + '<span style="font-size:var(--fs-sm);font-weight:600;color:var(--text);">' + e.label + '</span>'
-          + '<span style="font-size:var(--fs-sm);font-weight:700;color:' + e.color + ';">' + e.n + '</span>'
-          + (pctAnterior !== null ? '<span style="font-size:var(--fs-2xs);color:var(--text-hint);margin-left:auto;">' + pctAnterior + '% do anterior</span>' : '')
+          + '<span style="font-size:var(--fs-sm);font-weight:700;color:' + e.color + ';">' + n + '</span>'
+          + menuHTML(e)
+          + (pctAnterior !== null ? '<span style="font-size:var(--fs-2xs);color:var(--text-hint);margin-left:auto;white-space:nowrap;">' + pctAnterior + '% do anterior</span>' : '')
           + '</div>'
           + '<div style="background:var(--surface3);border-radius:var(--r-sm);height:20px;overflow:hidden;">'
           + '<div style="height:100%;width:' + pct + '%;background:' + e.color + ';border-radius:var(--r-sm);opacity:.85;transition:width .5s;"></div>'
@@ -8393,7 +8407,7 @@ function buildOvAnalises(curM) {
       })
     : projects.filter(p => calcStatus2(p) === 'Em andamento');
 
-  buildOvReembolsosFunil();
+  buildOvReembolsosFunil(reembMesProjs, mesLabel);
   buildOvTratativas();
 
   // Ticket médio — usa a MONETIZAÇÃO REALIZADA (array monetizacoes[]), por evento de venda
