@@ -2655,28 +2655,31 @@ function buildOvReembolsosFunil(lista, mesLabel){
   const mesEl = document.getElementById('ov-reemb-mes');
   if (mesEl) mesEl.textContent = mesLabel ? '· ' + mesLabel : '';
   const solicitados = lista || [];
-  const concedidos   = solicitados.filter(p => p.reembolsoStatus === 'Concedido' || p.reembolsoStatus === 'Revertido');
-  const revertidos   = solicitados.filter(p => p.reembolsoStatus === 'Revertido');
-  const etapas = [
-    { label: 'Solicitados', color: 'var(--blue)',  n: solicitados.length },
-    { label: 'Concedidos',  color: 'var(--amber)', n: concedidos.length },
-    { label: 'Revertidos',  color: 'var(--accent)',n: revertidos.length },
-  ];
-  const maxC = Math.max(etapas[0].n, 1);
-  el.innerHTML = '<div style="display:flex;flex-direction:column;gap:6px;">'
-    + etapas.map((e, i) => {
-        const pct = Math.max(e.n ? 8 : 0, Math.round(e.n / maxC * 100));
-        const pctAnterior = i > 0 && etapas[i-1].n > 0 ? Math.round(e.n / etapas[i-1].n * 100) : null;
-        return '<div>'
-          + '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:3px;">'
-          + '<span style="font-size:var(--fs-sm);font-weight:600;color:var(--text);">' + e.label + '</span>'
-          + '<span style="font-size:var(--fs-sm);font-weight:700;color:' + e.color + ';">' + e.n + '</span>'
-          + (pctAnterior !== null ? '<span style="font-size:var(--fs-2xs);color:var(--text-hint);margin-left:auto;">' + pctAnterior + '% do anterior</span>' : '')
-          + '</div>'
-          + '<div style="background:var(--surface3);border-radius:var(--r-sm);height:20px;overflow:hidden;">'
-          + '<div style="height:100%;width:' + pct + '%;background:' + e.color + ';border-radius:var(--r-sm);opacity:.85;transition:width .5s;"></div>'
-          + '</div></div>';
-      }).join('')
+  // Concedido e Revertido são dois DESFECHOS possíveis pro mesmo pedido, não dois estágios
+  // sequenciais de um funil — um pedido vai de Solicitado pra UM dos dois (reembolsoStatus só
+  // guarda a decisão atual), nunca conta nos dois ao mesmo tempo. Por isso ficam lado a lado,
+  // cada um como % dos solicitados, em vez de empilhados como se um viesse depois do outro.
+  const concedidos = solicitados.filter(p => p.reembolsoStatus === 'Concedido');
+  const revertidos = solicitados.filter(p => p.reembolsoStatus === 'Revertido');
+  const total = solicitados.length;
+  const pctDe = n => total > 0 ? Math.round(n / total * 100) : 0;
+  const quadrado = (label, n, cor) => '<div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-top:2px solid ' + cor + ';border-radius:6px;padding:8px 10px;">'
+    + '<div style="font-size:20px;font-weight:800;color:' + cor + ';line-height:1;">' + n + '</div>'
+    + '<div style="font-size:var(--fs-2xs);color:var(--text-hint);margin-top:4px;">' + label + ' · ' + pctDe(n) + '% dos solicitados</div>'
+    + '</div>';
+  el.innerHTML = '<div style="display:flex;flex-direction:column;gap:8px;">'
+    + '<div>'
+    + '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:3px;">'
+    + '<span style="font-size:var(--fs-sm);font-weight:600;color:var(--text);">Solicitados</span>'
+    + '<span style="font-size:var(--fs-sm);font-weight:700;color:var(--blue);">' + total + '</span>'
+    + '</div>'
+    + '<div style="background:var(--surface3);border-radius:var(--r-sm);height:20px;overflow:hidden;">'
+    + '<div style="height:100%;width:100%;background:var(--blue);border-radius:var(--r-sm);opacity:.85;"></div>'
+    + '</div></div>'
+    + '<div style="display:flex;gap:8px;">'
+    + quadrado('Concedidos', concedidos.length, 'var(--amber)')
+    + quadrado('Revertidos', revertidos.length, 'var(--accent)')
+    + '</div>'
     + '</div>';
 }
 // Tabela compacta na Visão Geral — só as ABERTAS (finalizada some da lista, mas continua salva
@@ -7817,8 +7820,12 @@ function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
   const volumeModeloCard = document.getElementById('ov-volume-modelo-card');
   const convCard = document.getElementById('ov-conv-card');
   const kpiSwipeWrap = document.getElementById('ov-kpi-swipe-wrap');
-  if (pipelineFlagsRow) pipelineFlagsRow.style.display = ehTer ? 'none' : '';
-  if (ticketTierRow)    ticketTierRow.style.display    = ehTer ? 'none' : '';
+  // As duas linhas são display:grid no HTML original — '' (em vez de 'grid') limpava a
+  // propriedade inline inteira e derrubava pra display:block padrão, empilhando os cards em
+  // vez de lado a lado (bug que já existia antes desta mudança, pego de carona aqui porque
+  // afeta em cheio o card "Reembolsos" que está sendo ajustado nesta mesma linha).
+  if (pipelineFlagsRow) pipelineFlagsRow.style.display = ehTer ? 'none' : 'grid';
+  if (ticketTierRow)    ticketTierRow.style.display    = ehTer ? 'none' : 'grid';
   if (healthscoreCard)  healthscoreCard.style.display  = ehTer ? 'none' : '';
   if (volumeModeloCard) volumeModeloCard.style.display = ehTer ? '' : 'none';
   if (convCard) convCard.style.display = ehTer ? 'none' : '';
