@@ -4714,13 +4714,13 @@ function buildDRO(){
 
   if(lista.length===0){ container.innerHTML=resumo+'<p style="color:var(--text-hint);font-size:var(--fs-md);padding:16px 0;">Nenhum projeto DRO/DRX ativo.</p>'; return; }
 
-  // Uma linha por cliente (igual Lead Time) — recolhida por padrão (droExpanded agora nasce
-  // false). Detalhe pesado (trilha de ciclos, cadeia de travas, comitês/marcos com prev/real,
-  // auditorias) continua tudo, só que dentro de uma linha que só existe quando expandida.
-  const th=txt=>'<th style="text-align:left;padding:6px 10px;background:var(--surface2);white-space:nowrap;">'+txt+'</th>';
-  const header='<tr>'+['','Cliente','Progresso','Próximo evento','Auditorias','Oportunidade'].map(th).join('')+'</tr>';
-
-  const linhas = lista.map(p=>{
+  // Feed de cards por cliente — não é mais tabela de colunas. Cada card é o "report rápido da
+  // semana": flag, trava atual e o que tem pra essa semana logo no topo, sem precisar caçar
+  // informação numa grade de 6 colunas. Nasce recolhido (droExpanded=false); clicar em
+  // qualquer parte do card expande o detalhe pesado (trilha de ciclos, cadeia de travas, foco,
+  // comitês/marcos com prev/real, auditorias) — mesmo droDetailDRO/droDetailDRX de sempre, só
+  // que dentro do card em vez de uma linha de tabela.
+  const cards = lista.map(p=>{
     if(p.droExpanded===undefined) p.droExpanded=false;
     const exp=p.droExpanded;
     const isDrx=p.modelo==='DRX';
@@ -4732,50 +4732,59 @@ function buildDRO(){
     const audFeitas=auditorias.filter(a=>a.feita).length;
     const audAtrasCliente=auditorias.filter(a=>{ if(a.feita) return false; const dp=a.dataPrev?parseDate(a.dataPrev):null; return dp&&hoje>dp; }).length;
 
-    let progressoTxt;
+    let travaTxt, progTxt;
     if(isDrx){
       const sem=drxSemana(p);
       const semTxt= sem===0?'não iniciado': sem>=7?'encerrado':('Sem '+sem+'/6');
       const dx=drxInit(p);
-      progressoTxt = semTxt + (dx.travaPrim? ' · '+dx.travaPrim : '');
+      travaTxt = dx.travaPrim || '—';
+      progTxt = semTxt;
     } else {
       const ciclos=droGetCiclos(p);
       const atualIdx=droCicloAtualIdx(ciclos);
       const cicloAtual=ciclos[atualIdx];
       const sem=cicloAtual?droSemana(cicloAtual):0;
       const semTxt= sem===0?'não iniciado': sem>=13?'encerrado':('Sem '+sem+'/12');
-      progressoTxt = 'Ciclo '+(atualIdx+1)+'/'+ciclos.length+' · '+semTxt + (cicloAtual&&cicloAtual.trava? ' · '+cicloAtual.trava : '');
+      travaTxt = (cicloAtual&&cicloAtual.trava) ? cicloAtual.trava : '—';
+      progTxt = 'Ciclo '+(atualIdx+1)+'/'+ciclos.length+' · '+semTxt;
     }
 
     const prox=droProximoEvento(p);
-    let proxHTML='<span style="color:var(--text-hint);">—</span>';
+    let proxHTML='<span style="color:var(--text-hint);">nada previsto</span>';
     if(prox){
       const [pcor,plabel]=STATUS_MAP[prox.status]||['var(--text-hint)','—'];
-      proxHTML='<span title="'+prox.nome+'" style="font-size:var(--fs-xs);font-weight:700;color:'+pcor+';">'+prox.nome+(prox.prev?' · '+fmtD(prox.prev):'')+' · '+plabel+'</span>';
+      proxHTML='<b style="color:'+pcor+';">'+prox.nome+'</b>'+(prox.prev?' · '+fmtD(prox.prev):'')+' · <span style="color:'+pcor+';font-weight:700;">'+plabel+'</span>';
     }
 
     const oportSel=(v)=>'<option value="'+v+'" '+(p.oport===v?'selected':'')+'>'+v+'</option>';
 
-    const linhaCompacta='<tr style="border-bottom:1px solid var(--border);">'
-      + '<td style="padding:8px 6px;text-align:center;"><button type="button" onclick="droToggleExpanded('+p.id+')" title="'+(exp?'Recolher':'Expandir')+'" style="font:inherit;padding:0;background:none;border:none;color:var(--text-hint);cursor:pointer;display:inline-block;transform:rotate('+(exp?'90':'0')+'deg);transition:transform .15s;">▸</button></td>'
-      + '<td style="padding:8px 10px;position:sticky;left:0;background:var(--surface);min-width:190px;">'
-        + '<div style="display:flex;align-items:center;gap:6px;">'+flagHTML(calcFlagAutomatica(p))+'<b>'+p.nome+'</b><span class="badge" style="background:'+corDim+';color:'+cor+';font-size:var(--fs-2xs);margin-top:0;">'+badge+'</span></div>'
-        + '<div style="font-size:var(--fs-xs);color:var(--text-hint);margin-top:2px;">'+(p.consultor||'—')+'</div>'
-      + '</td>'
-      + '<td style="padding:8px 10px;font-size:var(--fs-sm);white-space:nowrap;">'+progressoTxt+'</td>'
-      + '<td style="padding:8px 10px;">'+proxHTML+'</td>'
-      + '<td style="padding:8px 10px;font-size:var(--fs-sm);white-space:nowrap;'+(audAtrasCliente?'color:var(--red);font-weight:700;':'')+'">'+audFeitas+'/'+auditorias.length+(audAtrasCliente?' ('+audAtrasCliente+' atrasada'+(audAtrasCliente>1?'s':'')+')':'')+'</td>'
-      + '<td style="padding:8px 10px;" onclick="event.stopPropagation()">'
-        + '<select class="sel" style="font-size:var(--fs-sm);padding:2px 6px;" onchange="const pr=projects.find(x=>String(x.id)===String('+p.id+'));pr.oport=this.value;upd();"><option value="" '+(!p.oport?'selected':'')+'>Sem oportunidade</option>'+oportSel('Mapeado (AQL)')+oportSel('Apresentar proposta (SQL)')+oportSel('Proposta apresentada (SAL)')+oportSel('Follow (COMMIT)')+'</select>'
-      + '</td>'
-      + '</tr>';
+    const cabecalho = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
+      + '<button type="button" title="'+(exp?'Recolher':'Expandir')+'" style="font:inherit;padding:0;background:none;border:none;color:var(--text-hint);cursor:pointer;flex:none;transform:rotate('+(exp?'90':'0')+'deg);transition:transform .15s;">▸</button>'
+      + flagHTML(calcFlagAutomatica(p))
+      + '<b style="font-size:var(--fs-md);">'+p.nome+'</b>'
+      + '<span class="badge" style="background:'+corDim+';color:'+cor+';font-size:var(--fs-2xs);margin-top:0;">'+badge+'</span>'
+      + '<span style="font-size:var(--fs-xs);color:var(--text-hint);">'+(p.consultor||'—')+'</span>'
+      + '<span style="margin-left:auto;font-size:var(--fs-xs);font-weight:700;padding:2px 10px;border-radius:20px;background:'+corDim+';color:'+cor+';white-space:nowrap;" title="Trava governante atual">'+travaTxt+'</span>'
+      + '</div>';
 
-    const linhaDetalhe = exp ? ('<tr><td colspan="6" style="padding:0 10px 16px;background:var(--surface2);">'+(isDrx?droDetailDRX(p,hoje):droDetailDRO(p,hoje))+'</td></tr>') : '';
+    const corpo = '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-top:8px;padding-left:26px;font-size:var(--fs-sm);">'
+      + '<div><span style="color:var(--text-hint);">Esta semana: </span>'+proxHTML+'</div>'
+      + '<div style="color:var(--text-hint);">'+progTxt+'</div>'
+      + '<div style="'+(audAtrasCliente?'color:var(--red);font-weight:700;':'color:var(--text-hint);')+'">'+audFeitas+'/'+auditorias.length+' auditorias'+(audAtrasCliente?' ('+audAtrasCliente+' atrasada'+(audAtrasCliente>1?'s':'')+')':'')+'</div>'
+      + '<select class="sel" style="font-size:var(--fs-xs);padding:1px 6px;margin-left:auto;" onclick="event.stopPropagation()" onchange="const pr=projects.find(x=>String(x.id)===String('+p.id+'));pr.oport=this.value;upd();"><option value="" '+(!p.oport?'selected':'')+'>Sem oportunidade</option>'+oportSel('Mapeado (AQL)')+oportSel('Apresentar proposta (SQL)')+oportSel('Proposta apresentada (SAL)')+oportSel('Follow (COMMIT)')+'</select>'
+      + '</div>';
 
-    return linhaCompacta + linhaDetalhe;
+    // stopPropagation aqui é essencial: o card inteiro tem onclick de toggle, e o detalhe tem
+    // MUITA coisa clicável dentro (datas de comitê, trava, trilha de ciclos, auditorias) — sem
+    // isso, qualquer clique lá dentro recolheria o card por baixo do dedo.
+    const detalhe = exp ? '<div style="padding-left:26px;" onclick="event.stopPropagation()">'+(isDrx?droDetailDRX(p,hoje):droDetailDRO(p,hoje))+'</div>' : '';
+
+    return '<div class="card" style="margin-bottom:10px;padding:12px 14px;cursor:pointer;'+(exp?'border-color:'+cor+';':'')+'" onclick="droToggleExpanded('+p.id+')">'
+      + cabecalho + corpo + detalhe
+      + '</div>';
   }).join('');
 
-  container.innerHTML = resumo + '<div class="tbl-scroll"><table style="border-collapse:collapse;font-size:var(--fs-sm);width:100%;"><thead>'+header+'</thead><tbody>'+linhas+'</tbody></table></div>';
+  container.innerHTML = resumo + cards;
 }
 
 // Detalhe expandido do DRO — trilha de ciclos, ciclo selecionado (trava governante, cadeia de
