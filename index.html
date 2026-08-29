@@ -610,10 +610,18 @@
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap;">
       <div class="card-title" style="margin:0;">Meta de AQLs do mês — por consultor</div>
     </div>
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;">
       <span style="font-size:var(--fs-sm);color:var(--text-hint);">Meta total do mês selecionado abaixo:</span>
       <input type="number" min="0" step="1" id="aql-meta-total" class="sel" style="width:90px;font-size:var(--fs-base);" placeholder="0" onchange="saveAqlMetaTotal(this.value)">
       <span style="font-size:var(--fs-sm);color:var(--text-hint);">AQLs</span>
+    </div>
+    <!-- Meta de SAL (reuniões feitas) — alimenta o indicador "SAL" do consultor em
+         Performance a partir de setembro/2026. Mesma mecânica de total do squad + % por
+         consultor já usada acima pro AQL, só que guardada em totalSal/cons_NOME_pctSal. -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+      <span style="font-size:var(--fs-sm);color:var(--text-hint);">Meta de SAL (reuniões feitas) do mês:</span>
+      <input type="number" min="0" step="1" id="aql-meta-total-sal" class="sel" style="width:90px;font-size:var(--fs-base);" placeholder="0" onchange="saveAqlMetaTotalSal(this.value)">
+      <span style="font-size:var(--fs-sm);color:var(--text-hint);">reuniões</span>
     </div>
     <div id="aql-meta-chips" style="display:flex;gap:12px;flex-wrap:wrap;"></div>
   </div>
@@ -7041,17 +7049,24 @@ function buildAqlConsolidado() {
 function buildAqlMetas() {
   const mesInfo = _aqlMesAtual();
   const totalInput = document.getElementById('aql-meta-total');
+  const totalInputSal = document.getElementById('aql-meta-total-sal');
   const chips = document.getElementById('aql-meta-chips');
   if (!mesInfo) { if (chips) chips.innerHTML = ''; return; }
   const { label, ano, key: mesKey } = mesInfo;
   const meta = aqlMetas[mesKey] || {};
   if (totalInput) totalInput.value = meta.total || '';
+  if (totalInputSal) totalInputSal.value = meta.totalSal || '';
   const total = meta.total || 0;
+  const totalSal = meta.totalSal || 0;
 
-  // Realizado = cada registro da lista conta como 1 AQL, independente do tipo
+  // Realizado = cada registro da lista conta como 1 AQL, independente do tipo. SAL (reunião
+  // feita) é o mesmo pipeEventos, só olhando o checkbox reuniaoFeita em vez do total bruto.
   const evs = pipeEventosDoMes(label, ano);
-  const porCons = {};
-  evs.forEach(e => { porCons[e.consultor] = (porCons[e.consultor] || 0) + 1; });
+  const porCons = {}, porConsSal = {};
+  evs.forEach(e => {
+    porCons[e.consultor] = (porCons[e.consultor] || 0) + 1;
+    if (e.reuniaoFeita) porConsSal[e.consultor] = (porConsSal[e.consultor] || 0) + 1;
+  });
 
   window.CONS_MON = window.CONS_MON || ['Caio','Leonam','Loma','Camila','Cleiton'];
   const dotColors = window.dotColors || {};
@@ -7067,6 +7082,9 @@ function buildAqlMetas() {
     const metaCons = pct > 0 ? Math.round(total * pct / 100) : 0;
     const real = porCons[nome] || 0;
     const pctAtg = metaCons > 0 ? Math.min(200, Math.round(real / metaCons * 100)) : null;
+    const pctSal = parseFloat(meta['cons_' + nome + '_pctSal'] || 0);
+    const metaConsSal = pctSal > 0 ? Math.round(totalSal * pctSal / 100) : 0;
+    const realSal = porConsSal[nome] || 0;
     const cor = v => v === null ? 'var(--text-hint)' : v >= 100 ? 'var(--green)' : v >= 70 ? 'var(--amber)' : 'var(--red)';
     const dot = dotColors[nome] || 'var(--accent-dim)';
     const status = ritmoInfo ? _aqlRitmoStatus(pctAtg, ritmoInfo.pctTempo) : null;
@@ -7083,6 +7101,13 @@ function buildAqlMetas() {
       + '</div>'
       + '<div style="font-size:var(--fs-xs);color:var(--text-hint);margin-bottom:3px;">Meta: <b style="color:var(--text);">' + (metaCons > 0 ? metaCons : '\u2014') + '</b></div>'
       + '<div style="font-size:var(--fs-xl);font-weight:700;color:' + cor(pctAtg) + ';">' + real + '<span style="font-size:var(--fs-xs);font-weight:400;color:var(--text-hint);"> AQLs' + (pctAtg !== null ? ' \u00b7 ' + pctAtg + '%' : '') + '</span></div>'
+      + '<div style="display:flex;align-items:center;gap:6px;margin:8px 0 6px;padding-top:6px;border-top:1px dashed var(--border);">'
+      + '<span style="font-size:var(--fs-xs);color:var(--text-hint);">% meta SAL:</span>'
+      + '<input type="number" min="0" max="100" step="1" class="sel" style="width:50px;font-size:var(--fs-sm);text-align:center;" value="' + (pctSal || '') + '" onchange="saveAqlMetaConsPctSal(\'' + mesKey + '\',\'' + nome + '\',this)">'
+      + '<span style="font-size:var(--fs-xs);color:var(--text-hint);">%</span>'
+      + '</div>'
+      + '<div style="font-size:var(--fs-xs);color:var(--text-hint);margin-bottom:3px;">Meta SAL: <b style="color:var(--text);">' + (metaConsSal > 0 ? metaConsSal : '\u2014') + '</b></div>'
+      + '<div style="font-size:var(--fs-lg);font-weight:700;color:var(--text);">' + realSal + '<span style="font-size:var(--fs-xs);font-weight:400;color:var(--text-hint);"> reuni\u00f5es feitas</span></div>'
       + '</div>';
   }).join('');
 }
@@ -7143,6 +7168,19 @@ function saveAqlMetaConsPct(mesKey, nome, el) {
   const v = parseFloat(el.value);
   if (!aqlMetas[mesKey]) aqlMetas[mesKey] = {};
   aqlMetas[mesKey]['cons_' + nome + '_pct'] = isNaN(v) ? 0 : v;
+  buildAql(); upd();
+}
+function saveAqlMetaTotalSal(val) {
+  const mesInfo = _aqlMesAtual(); if (!mesInfo) return;
+  if (!aqlMetas[mesInfo.key]) aqlMetas[mesInfo.key] = {};
+  const v = parseFloat(val);
+  aqlMetas[mesInfo.key].totalSal = isNaN(v) ? 0 : v;
+  buildAql(); upd();
+}
+function saveAqlMetaConsPctSal(mesKey, nome, el) {
+  const v = parseFloat(el.value);
+  if (!aqlMetas[mesKey]) aqlMetas[mesKey] = {};
+  aqlMetas[mesKey]['cons_' + nome + '_pctSal'] = isNaN(v) ? 0 : v;
   buildAql(); upd();
 }
 
@@ -10752,6 +10790,15 @@ function buildPerformance() {
   const CONS = isDesigner ? ['Alexandre','Eduardo'] : (window.CONS_MON || ['Caio','Leonam','Loma','Camila','Cleiton']);
   const METAS = { conv: 40, prazo: 80, pdi: 80, nps: 50, npsResp: 60, scoreEntrega: 70 };
 
+  // Score e SAL (consultor) só entram como indicador a partir de setembro/2026 — meses
+  // anteriores continuam com exatamente os mesmos KPIs de sempre (não é retroativo, o que
+  // já foi medido até agosto não muda nem ganha um KPI novo no meio do caminho). mesesEleg é
+  // a janela usada pra somar Score/SAL: o mês filtrado (se elegível) ou, sem filtro, só a
+  // parte do ano-todo que já é setembro em diante.
+  const NOVOS_IND_DESDE = { ano: 2026, idx: 8 }; // setembro (idx 0-based: jan=0 ... set=8)
+  const mesElegivelNovos = m => (m.ano > NOVOS_IND_DESDE.ano) || (m.ano === NOVOS_IND_DESDE.ano && m.idx >= NOVOS_IND_DESDE.idx);
+  const mesesEleg = curM ? (mesElegivelNovos(curM) ? [curM] : []) : ALL_MESES.filter(mesElegivelNovos);
+
   // ── Calcula KPIs por consultor ─────────────────────────────
   const cards = CONS.map(nome => {
     const dotC = window.dotColors || {};
@@ -10858,6 +10905,48 @@ function buildPerformance() {
     const npsValExibicao = npsTemProjetosAptos ? (npsV !== null ? npsV : 0) : null;
     const npsRespExibicao = npsTemProjetosAptos ? (npsRespV !== null ? npsRespV : 0) : null;
     const npsAtingido = npsTemProjetosAptos ? (npsValExibicao >= METAS.nps && npsRespExibicao >= METAS.npsResp) : null;
+
+    // Score (consultor) — mesma ideia do "Score da Entrega" do designer, só que média de
+    // TODAS as entregas do consultor no período (não só uma etapa fixa), excluindo a etapa de
+    // Análise de Ambientes, que é a única que pertence ao designer.
+    let scoreConsultorV = null;
+    if (!isDesigner && mesesEleg.length) {
+      const notasCons = [];
+      projects.forEach(p => {
+        if (isDroFam(p)) return;
+        if (p.consultor !== nome) return;
+        const idxAmbientes = designerEtapas(p).find(i => i !== 1 && i !== 6);
+        const ent = p.entregas || {};
+        [1,2,3,4,5,6].forEach(si => {
+          if (si === idxAmbientes) return;
+          const e = ent[si] || ent[String(si)];
+          if (!e || !e.real) return;
+          const d = parseDate(e.real);
+          if (!d || !mesesEleg.some(m => d.getMonth() === m.idx && d.getFullYear() === m.ano)) return;
+          if (e.score !== undefined && e.score !== '' && !isNaN(parseFloat(e.score))) notasCons.push(parseFloat(e.score));
+        });
+      });
+      scoreConsultorV = notasCons.length ? Math.round(notasCons.reduce((a,b)=>a+b,0) / notasCons.length) : null;
+    }
+
+    // SAL (consultor) — volume de "reuniões feitas" (checkbox reuniaoFeita nos eventos da
+    // aba AQL), com meta configurável por consultor/mês em AQL > Metas (mesmo mecanismo de
+    // total do squad × % do consultor já usado pro AQL). Só conta como KPI se alguém já
+    // configurou uma meta pro período — sem isso, fica de fora em vez de aparecer com meta
+    // zerada e distorcer quem "bateu" o indicador.
+    let salV = null, salMetaCons = null;
+    if (!isDesigner && mesesEleg.length) {
+      let realizado = 0, metaSoma = 0, temMeta = false;
+      mesesEleg.forEach(m => {
+        realizado += pipeEventosDoMes(m.label, m.ano).filter(e => e.consultor === nome && e.reuniaoFeita).length;
+        const metaMes = aqlMetas[m.key] || {};
+        const totalSalMes = metaMes.totalSal || 0;
+        const pctSalMes = parseFloat(metaMes['cons_' + nome + '_pctSal'] || 0);
+        if (totalSalMes > 0 && pctSalMes > 0) { metaSoma += Math.round(totalSalMes * pctSalMes / 100); temMeta = true; }
+      });
+      if (temMeta) { salV = realizado; salMetaCons = metaSoma; }
+    }
+
     const kpis = isDesigner ? [
       { key: 'conv',  label: 'Tx. Conversão', val: convV,  meta: METAS.conv,  lower: false, suffix: '%' },
       { key: 'scoreEntrega', label: 'Score da Entrega', val: scoreEntregaV, meta: METAS.scoreEntrega, lower: false, suffix: '' },
@@ -10870,6 +10959,11 @@ function buildPerformance() {
       { key: 'pdi',   label: 'PDI',            val: pdiV,   meta: METAS.pdi,   lower: false, suffix: '%' },
       { key: 'nps',   label: 'NPS',            val: npsValExibicao, meta: METAS.nps, lower: false, suffix: '', atingidoOverride: npsAtingido,
         extraLabel: npsRespExibicao !== null ? ' · resp ' + npsRespExibicao + '%' : '' },
+      // Score e SAL só existem a partir de setembro/2026 (mesesEleg vazio pra meses
+      // anteriores) — cards de meses antigos nem chegam a montar esses dois objetos, então o
+      // atingidos/totalComDado deles continua exatamente como era antes dessa mudança.
+      ...(mesesEleg.length ? [{ key: 'score', label: 'Score', val: scoreConsultorV, meta: METAS.scoreEntrega, lower: false, suffix: '' }] : []),
+      ...(salMetaCons !== null ? [{ key: 'sal', label: 'SAL', val: salV, meta: salMetaCons, lower: false, suffix: '' }] : []),
     ];
     const kpisComDado = kpis.filter(k => k.val !== null);
     const atingidos   = kpisComDado.filter(k => k.atingidoOverride !== undefined && k.atingidoOverride !== null ? k.atingidoOverride : k.val >= k.meta).length;
