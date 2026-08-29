@@ -609,9 +609,14 @@
   <div class="card" style="margin-bottom:1.2rem;">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap;">
       <div class="card-title" style="margin:0;">Meta de AQLs do mês — por consultor</div>
+      <!-- Mesmo mês do seletor "Registro de Oportunidades" ali embaixo (pev-mes) — só que
+           visível aqui também, porque ninguém achava onde trocar o mês pra definir meta
+           (o texto "mês selecionado abaixo" mandava rolar a página até outro card pra achar
+           o dropdown real). Trocar aqui muda o pev-mes junto, e vice-versa — mesmo estado. -->
+      <select class="base-sel" id="aql-meta-mes" onchange="document.getElementById('pev-mes').value=this.value;buildAql();" style="font-size:var(--fs-sm);margin-left:auto;"></select>
     </div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;">
-      <span style="font-size:var(--fs-sm);color:var(--text-hint);">Meta total do mês selecionado abaixo:</span>
+      <span style="font-size:var(--fs-sm);color:var(--text-hint);">Meta total do mês selecionado acima:</span>
       <input type="number" min="0" step="1" id="aql-meta-total" class="sel" style="width:90px;font-size:var(--fs-base);" placeholder="0" onchange="saveAqlMetaTotal(this.value)">
       <span style="font-size:var(--fs-sm);color:var(--text-hint);">AQLs</span>
     </div>
@@ -7047,6 +7052,18 @@ function buildAqlConsolidado() {
 }
 
 function buildAqlMetas() {
+  // Espelha as opções e o valor do pev-mes aqui — os dois seletores compartilham o mesmo
+  // "mês atual" (_aqlMesAtual só olha o pev-mes), isso aqui é só pra esse dropdown extra
+  // ficar sempre igual ao de baixo, não importa qual dos dois a pessoa mexeu por último.
+  const selMesMeta = document.getElementById('aql-meta-mes');
+  const selMesPev = document.getElementById('pev-mes');
+  if (selMesMeta && selMesPev) {
+    if (!selMesMeta.dataset.init) {
+      selMesMeta.innerHTML = selMesPev.innerHTML;
+      selMesMeta.dataset.init = '1';
+    }
+    selMesMeta.value = selMesPev.value;
+  }
   const mesInfo = _aqlMesAtual();
   const totalInput = document.getElementById('aql-meta-total');
   const totalInputSal = document.getElementById('aql-meta-total-sal');
