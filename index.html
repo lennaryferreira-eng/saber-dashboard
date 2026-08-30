@@ -3288,6 +3288,27 @@ function segundaDaSemana(dataISO) {
   d.setDate(d.getDate() - voltar);
   return d.toISOString().slice(0,10);
 }
+// Sábado da semana (segunda-domingo) que contém dataISO — usado como PRAZO de auditoria: uma
+// entrega feita de segunda a sexta tem até o sábado daquela mesma semana pra ganhar nota antes
+// de virar "vencida" (calcFlagAutomatica). Nunca antes da própria data: se dataISO já é domingo
+// (o único dia que cai DEPOIS do sábado daquela semana), o sábado calculado ficaria antes da
+// entrega — nesse caso o corte vira a própria data, então domingo já nasce praticamente no
+// limite (vence já no dia seguinte, igual uma entrega de sábado).
+function sabadoDaSemana(dataISO) {
+  const sab = addDays(segundaDaSemana(dataISO), 5);
+  return sab < dataISO ? dataISO : sab;
+}
+// Domingo da semana domingo-sábado que contém dataISO — só pra saber quando uma semana inteira
+// (agora domingo a sábado, não mais segunda a domingo) já fechou de vez. Usada na regra de
+// estagnação (nenhuma entrega na semana toda), que não tem "prazo por entrega" como a de cima,
+// só precisa saber se a última semana fechada teve algum registro.
+function domingoDaSemana(dataISO) {
+  const d = parseDate(dataISO);
+  if (!d) return null;
+  const dow = d.getDay(); // 0=domingo...6=sábado
+  d.setDate(d.getDate() - dow);
+  return d.toISOString().slice(0,10);
+}
 
 function calcStatus2(p) {
   if (p.status2 === 'Churn' || p.status2 === 'Pausado') return p.status2;
@@ -3500,12 +3521,12 @@ function calcFlagAutomatica(p, refDateISO) {
   const ent = p.entregas || {};
   const hojeISO = refDateISO || new Date().toISOString().slice(0,10);
   // Projeto estagnado = regra semanal, alinhada ao ritmo real de upload de auditoria
-  // (auditorias sobem ao longo da semana, normalmente até sexta). Verifica se a última
-  // semana de trabalho já encerrada (segunda a domingo) teve NENHUMA entrega registrada —
-  // se sim, é perigo, mesmo que uma entrega tenha chegado logo na segunda desta semana
-  // (isso resolve a pendência de NOTA, mas não apaga uma semana inteira sem nenhum trabalho
-  // registrado — caso real: "Frenecar", zero entrega entre 03/08 e 09/08, só retomou em
-  // 10/08, segunda desta semana). A Decolagem entra na mesma checagem, sem atalho à parte.
+  // (auditorias sobem ao longo da semana, normalmente até sexta, com prazo até sábado).
+  // Verifica se a última semana de trabalho já encerrada (domingo a sábado) teve NENHUMA
+  // entrega registrada — se sim, é perigo, mesmo que uma entrega tenha chegado logo no
+  // domingo desta semana (isso resolve a pendência de NOTA, mas não apaga uma semana inteira
+  // sem nenhum trabalho registrado — caso real: "Frenecar", zero entrega entre 03/08 e 09/08,
+  // só retomou depois). A Decolagem entra na mesma checagem, sem atalho à parte.
   const ordem = ordemCompleta(p);
   // Projeto que já chegou na Decolagem (última etapa) está concluído — não tem mais "semana
   // de trabalho" esperada depois disso, então a regra de estagnação não se aplica mais nele.
@@ -3515,14 +3536,16 @@ function calcFlagAutomatica(p, refDateISO) {
   const decolagem = ent[6] || ent['6'];
   const decolagemAconteceu = !!(decolagem && decolagem.real && decolagem.real <= hojeISO)
     || !!(p.realFim && p.realFim <= hojeISO);
-  const segundaEstaSemana = segundaDaSemana(hojeISO);
-  const segundaSemanaAnterior = addDays(segundaEstaSemana, -7);
+  // Semana domingo-sábado (não mais segunda-domingo) — cobra a partir de domingo, um dia
+  // antes do que cobrava antes (segunda), acompanhando o mesmo ajuste do prazo de auditoria.
+  const domingoEstaSemana = domingoDaSemana(hojeISO);
+  const domingoSemanaAnterior = addDays(domingoEstaSemana, -7);
   // Só cobra atividade da semana passada de projeto que já existia antes dela inteira —
   // senão um projeto recém-iniciado nessa janela cairia aqui só por ainda não ter começado.
-  if (!decolagemAconteceu && p.inicio && p.inicio <= segundaSemanaAnterior) {
+  if (!decolagemAconteceu && p.inicio && p.inicio <= domingoSemanaAnterior) {
     const teveEntregaSemanaPassada = ordem.some(si => {
       const e = ent[si] || ent[String(si)];
-      return e && e.real && e.real >= segundaSemanaAnterior && e.real < segundaEstaSemana;
+      return e && e.real && e.real >= domingoSemanaAnterior && e.real < domingoEstaSemana;
     });
     if (!teveEntregaSemanaPassada) return 'Vermelho';
   }
@@ -3532,12 +3555,13 @@ function calcFlagAutomatica(p, refDateISO) {
   // antiga e ignora uma mais recente com índice menor — foi exatamente isso que mascarou o
   // caso do projeto "Weber Manezes" (nota 79 de uma entrega de 17/07 escondendo a nota 54 de
   // 28/07). No mesmo passe, marca se alguma etapa auditável (Kick off a Decolagem — Growth/
-  // si=0 é só logística, nunca passa pela D1-D9) SEM nota ainda é de semana ANTERIOR à atual:
-  // se a etapa mais recente foi entregue hoje/nesta semana e ainda não tem nota, tudo bem
-  // (tolerância até a segunda atual, mesma folga da regra de estagnação) — mas se ENQUANTO ISSO
-  // uma etapa anterior a ela também segue sem nota há mais de uma semana, isso não pode ficar
-  // escondido só porque não é a mais recente (caso real: "AEC espetinhos" — Vendas entregue
-  // hoje sem nota mascarava Pesquisa de Mercado de 03/08 também sem nota).
+  // si=0 é só logística, nunca passa pela D1-D9) SEM nota já passou do sábado da SUA PRÓPRIA
+  // semana (sabadoDaSemana — cada entrega tem seu próprio prazo, não um corte único do dia de
+  // hoje): se a etapa mais recente foi entregue esta semana e o sábado dela ainda não chegou,
+  // tudo bem — mas se ENQUANTO ISSO uma etapa anterior a ela também já passou do sábado sem
+  // nota, isso não pode ficar escondido só porque não é a mais recente (caso real: "AEC
+  // espetinhos" — Vendas entregue hoje sem nota mascarava Pesquisa de Mercado de 03/08
+  // também sem nota).
   // Nota de etapa ANTIGA só serve pra evitar alarme falso (não força Vermelho enquanto a
   // etapa mais recente ainda está na tolerância) — ela nunca pode CONCEDER Verde. Verde afirma
   // "score ok" da entrega mais recente; usar a nota de uma etapa anterior pra isso faria a flag
@@ -3558,7 +3582,7 @@ function calcFlagAutomatica(p, refDateISO) {
       notaEhDaEtapaMaisRecente = ehAPrimeiraAuditavel;
       break;
     }
-    if (e.real < segundaEstaSemana) etapaAnteriorSemNotaVencida = true;
+    if (hojeISO > sabadoDaSemana(e.real)) etapaAnteriorSemNotaVencida = true;
     ehAPrimeiraAuditavel = false;
   }
   if (etapaAnteriorSemNotaVencida) return 'Vermelho';
