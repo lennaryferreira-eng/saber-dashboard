@@ -3566,7 +3566,10 @@ function calcFlagAutomatica(p, refDateISO) {
   // muito ruim não pode ficar mascarada de Amarelo só porque saiu na data certa.
   if (scoreRecente !== null && scoreRecente < 55) return 'Vermelho';
   const scoreOk = notaEhDaEtapaMaisRecente && scoreRecente !== null && scoreRecente >= 70;
-  const prazoOk = prazoStatus(p).ok === true;
+  // refDateISO também aqui — sem isso, o prazo usado pra decidir a flag sempre olhava "hoje",
+  // mesmo quando a própria flag estava sendo recalculada "como estava" numa semana passada
+  // (refDateISO vindo da navegação de semana do Insights ou do Gantt do Healthscore).
+  const prazoOk = prazoStatus(p, refDateISO).ok === true;
   const atingidos = (scoreOk ? 1 : 0) + (prazoOk ? 1 : 0);
   if (atingidos === 2) return 'Verde';
   if (atingidos === 1) return 'Amarelo';
@@ -8011,7 +8014,11 @@ function buildOvInsightsSemana() {
   // — é só um AVISO antecipado, não conta como atraso de verdade: NÃO derruba a flag nem entra
   // como "fora do prazo" pra ela (prazoStatus.ok vem true pro risco). Aqui no card, fica
   // destacado num bucket à parte só pra dar visibilidade, sem se misturar com "Atrasadas".
-  const prazoStatuses  = projetosAtivosAgora.map(p => prazoStatus(p));
+  // refDateSemana também aqui — sem isso, prazoStatus sempre calculava "como está hoje",
+  // enquanto Flags (calcFlagAutomatica) e Score (filtro por data real dentro da semana) já
+  // reagiam à navegação de semana corretamente. Era por isso que só "Composição da flag —
+  // prazo" ficava parado ao trocar de semana.
+  const prazoStatuses  = projetosAtivosAgora.map(p => prazoStatus(p, refDateSemana));
   const noPrazoCount   = prazoStatuses.filter(st => st.ok === true && !st.risco).length;
   const riscoCount     = prazoStatuses.filter(st => st.risco).length;
   const atrasadasCount = prazoStatuses.filter(st => st.ok === false).length;
