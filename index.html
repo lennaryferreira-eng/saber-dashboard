@@ -4814,14 +4814,28 @@ function buildDRO(){
 
   if(lista.length===0){ container.innerHTML=resumo+'<p style="color:var(--text-hint);font-size:var(--fs-md);padding:16px 0;">Nenhum projeto DRO/DRX ativo.</p>'; return; }
 
-  // Tabela igual Lead Time — uma linha por cliente, colunas fixas, com trava e oportunidade
-  // editáveis direto na linha (sem precisar expandir). Nasce recolhida (droExpanded=false);
-  // o botão ▸ expande o detalhe pesado (trilha de ciclos, cadeia de travas, foco, comitês com
-  // prev/real, auditorias) — mesmo droDetailDRO/droDetailDRX de sempre, dentro de uma linha
-  // colspan.
+  // Tabela igual Lead Time — uma linha por cliente, colunas fixas. "Progresso" é uma barra de
+  // blocos (uma por fase/marco do ciclo atual, igual os blocos de etapa do Lead Time) + barra
+  // fina de semana do ciclo + trava atual (editável). "Registrar entrega" é o mesmo padrão de
+  // duas etapas do Lead Time: escolhe a fase/marco no select, aparece o campo de data.
+  // Auditorias vira um select só (em vez de lista expandida) pra não poluir a linha — ao
+  // escolher uma, aparece um checkbox pontual pra marcar feita/não feita. Nasce recolhida
+  // (droExpanded=false); o botão ▸ ainda expande o detalhe pesado (trilha de ciclos, cadeia de
+  // travas, foco, comitês com prev/real) — mesmo droDetailDRO/droDetailDRX de sempre.
   const th=txt=>'<th style="text-align:left;padding:6px 10px;background:var(--surface2);white-space:nowrap;">'+txt+'</th>';
-  const header='<tr>'+['','Cliente','Trava atual','Próximo evento','Progresso','Auditorias','Oportunidade'].map(th).join('')+'</tr>';
+  const header='<tr>'+['','Cliente','Registrar entrega','Progresso','Auditorias','Oportunidade'].map(th).join('')+'</tr>';
   const travaOpts=(cur)=>DRO_TRAVAS.map(([k,n])=>'<option value="'+k+'" '+(cur===k?'selected':'')+'>'+k+' '+n+'</option>').join('');
+  // Bloco de status de uma fase/marco — mesma cara dos blocos de etapa do Lead Time (30px,
+  // ícone/label branco no fundo colorido, cinza quando ainda não chegou a vez).
+  const blocoStatus = (label, status, tooltip) => {
+    const bg = status==='feito' ? 'var(--green)' : status==='atrasado' ? 'var(--red)' : status==='agora' ? 'var(--amber)' : 'var(--surface3)';
+    const fg = (status==='pendente'||status==='futuro') ? 'var(--text-hint)' : '#fff';
+    const conteudo = status==='feito' ? icon('check',{size:8}) : status==='atrasado' ? icon('warning',{size:8}) : status==='agora' ? '●' : '○';
+    return '<div title="'+tooltip+'" style="flex:1;min-width:44px;height:30px;background:'+bg+';border-radius:3px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;">'
+      + '<span style="color:'+fg+';font-size:9px;line-height:1;">'+conteudo+'</span>'
+      + '<span style="color:'+fg+';font-size:var(--fs-3xs);line-height:1;">'+label+'</span>'
+      + '</div>';
+  };
 
   const linhas = lista.map(p=>{
     if(p.droExpanded===undefined) p.droExpanded=false;
@@ -4832,35 +4846,56 @@ function buildDRO(){
     const badge = isDrx?'DR-X':'DRO';
     const d=droInitData(p);
     const auditorias=d.auditorias||[];
-    const audFeitas=auditorias.filter(a=>a.feita).length;
-    const audAtrasCliente=auditorias.filter(a=>{ if(a.feita) return false; const dp=a.dataPrev?parseDate(a.dataPrev):null; return dp&&hoje>dp; }).length;
 
-    let travaAtual, progTxt, travaSelectHTML;
+    let travaAtual, travaSelectHTML, semTxt, semPct, semTotal, blocosHTML, registrarSelectHTML;
     if(isDrx){
       const sem=drxSemana(p);
-      const semTxt= sem===0?'não iniciado': sem>=7?'encerrado':('Sem '+sem+'/6');
+      semTxt = sem===0?'não iniciado': sem>=7?'encerrado':('Sem '+sem+'/6');
+      semPct = sem<=0?0: sem>=7?100:Math.round(sem/6*100);
+      semTotal = 6;
       const dx=drxInit(p);
       travaAtual = dx.travaPrim || '';
-      progTxt = semTxt;
-      travaSelectHTML = '<select class="sel" style="font-size:var(--fs-sm);padding:2px 4px;" onchange="drxSetTravaPrim('+p.id+',this.value)">'
-        + '<option value="" '+(!travaAtual?'selected':'')+'>— definir —</option>' + travaOpts(travaAtual) + '</select>';
+      travaSelectHTML = '<select class="sel" style="font-size:var(--fs-2xs);padding:1px 3px;" onchange="drxSetTravaPrim('+p.id+',this.value)">'
+        + '<option value="" '+(!travaAtual?'selected':'')+'>trava: — </option>' + travaOpts(travaAtual) + '</select>';
+      blocosHTML = DRX_MARCOS.map(m=>{
+        const mo=dx.marcos[m.k]||{};
+        const stt=drxMarcoStatus(mo,m.sem,sem);
+        const tt=m.nome+' · '+(mo.real?('real '+fmtD(mo.real)):(mo.prev?('prev '+fmtD(mo.prev)):'sem data'));
+        return blocoStatus(m.nome.replace('Kick-off','Kickoff').slice(0,10), stt, tt);
+      }).join('');
+      registrarSelectHTML = '<select class="sel" style="width:100%;font-size:var(--fs-xs);margin-bottom:4px;" id="dro-sel-'+p.id+'" onchange="droMostrarInputData('+p.id+')">'
+        + '<option value="">— selecione —</option>'
+        + DRX_MARCOS.map(m=>{
+            const mo=dx.marcos[m.k]||{};
+            const iconTxt = mo.real?'✓':(mo.prev && parseDate(mo.prev)<hoje?'⚠':'○');
+            return '<option value="drx::'+m.k+'">'+iconTxt+' '+m.nome+(mo.real?' · '+fmtD(mo.real):'')+'</option>';
+          }).join('')
+        + '</select>';
     } else {
       const ciclos=droGetCiclos(p);
       const atualIdx=droCicloAtualIdx(ciclos);
       const cicloAtual=ciclos[atualIdx];
       const sem=cicloAtual?droSemana(cicloAtual):0;
-      const semTxt= sem===0?'não iniciado': sem>=13?'encerrado':('Sem '+sem+'/12');
+      semTxt = 'Ciclo '+(atualIdx+1)+'/'+ciclos.length+' · '+(sem===0?'não iniciado': sem>=13?'encerrado':('Sem '+sem+'/12'));
+      semPct = sem<=0?0: sem>=13?100:Math.round(sem/12*100);
+      semTotal = 12;
       travaAtual = (cicloAtual&&cicloAtual.trava) ? cicloAtual.trava : '';
-      progTxt = 'Ciclo '+(atualIdx+1)+'/'+ciclos.length+' · '+semTxt;
-      travaSelectHTML = '<select class="sel" style="font-size:var(--fs-sm);padding:2px 4px;" onchange="droSetTrava('+p.id+','+atualIdx+',this.value)">'
-        + '<option value="" '+(!travaAtual?'selected':'')+'>— definir —</option>' + travaOpts(travaAtual) + '</select>';
-    }
-
-    const prox=droProximoEvento(p);
-    let proxHTML='<span style="color:var(--text-hint);">—</span>';
-    if(prox){
-      const [pcor,plabel]=STATUS_MAP[prox.status]||['var(--text-hint)','—'];
-      proxHTML='<span title="'+prox.nome+'" style="font-size:var(--fs-xs);font-weight:700;color:'+pcor+';">'+prox.nome+(prox.prev?' · '+fmtD(prox.prev):'')+' · '+plabel+'</span>';
+      travaSelectHTML = '<select class="sel" style="font-size:var(--fs-2xs);padding:1px 3px;" onchange="droSetTrava('+p.id+','+atualIdx+',this.value)">'
+        + '<option value="" '+(!travaAtual?'selected':'')+'>trava: — </option>' + travaOpts(travaAtual) + '</select>';
+      blocosHTML = DRO_FASES.map(f=>{
+        const com=cicloAtual[f.ck]||{};
+        const stt=droComiteStatus(com,f.semFim,sem);
+        const tt=f.cnome+' · '+(com.real?('real '+fmtD(com.real)):(com.prev?('prev '+fmtD(com.prev)):'sem data'));
+        return blocoStatus(f.nome.slice(0,10), stt, tt);
+      }).join('');
+      registrarSelectHTML = '<select class="sel" style="width:100%;font-size:var(--fs-xs);margin-bottom:4px;" id="dro-sel-'+p.id+'" onchange="droMostrarInputData('+p.id+')">'
+        + '<option value="">— selecione —</option>'
+        + DRO_FASES.map(f=>{
+            const com=cicloAtual[f.ck]||{};
+            const iconTxt = com.real?'✓':(com.prev && parseDate(com.prev)<hoje?'⚠':'○');
+            return '<option value="dro:'+atualIdx+':'+f.ck+'">'+iconTxt+' '+f.cnome+(com.real?' · '+fmtD(com.real):'')+'</option>';
+          }).join('')
+        + '</select>';
     }
 
     const oportSel=(v)=>'<option value="'+v+'" '+(p.oport===v?'selected':'')+'>'+v+'</option>';
@@ -4872,21 +4907,88 @@ function buildDRO(){
         + '<div style="font-size:var(--fs-xs);color:var(--text-hint);margin-top:2px;">'+(p.consultor||'—')+'</div>'
         + ((p.tags && p.tags.length) ? '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:3px;max-width:190px;">' + p.tags.map(t => '<span style="font-size:var(--fs-3xs);font-weight:700;color:#fff;background:' + tagCor(t) + ';border-radius:8px;padding:1px 7px;white-space:nowrap;">' + t.replace(/</g,'&lt;') + '</span>').join('') + '</div>' : '')
       + '</td>'
-      + '<td style="padding:6px 8px;">'+travaSelectHTML+'</td>'
-      + '<td style="padding:8px 10px;">'+proxHTML+'</td>'
-      + '<td style="padding:8px 10px;font-size:var(--fs-sm);white-space:nowrap;">'+progTxt+'</td>'
-      + '<td style="padding:8px 10px;font-size:var(--fs-sm);white-space:nowrap;'+(audAtrasCliente?'color:var(--red);font-weight:700;':'')+'">'+audFeitas+'/'+auditorias.length+(audAtrasCliente?' ('+audAtrasCliente+' atrasada'+(audAtrasCliente>1?'s':'')+')':'')+'</td>'
+      + '<td style="padding:8px 10px;min-width:150px;">'
+        + registrarSelectHTML
+        + '<div id="dro-date-row-'+p.id+'" style="display:none;gap:6px;align-items:center;">'
+        + '<input type="date" id="dro-date-'+p.id+'" class="sel" style="font-size:var(--fs-sm);flex:1;" onchange="droSalvarData('+p.id+')">'
+        + '</div>'
+      + '</td>'
+      + '<td style="padding:6px 10px;min-width:180px;">'
+        + travaSelectHTML
+        + '<div style="display:flex;gap:3px;margin-top:4px;">'+blocosHTML+'</div>'
+        + '<div style="background:var(--surface3);border-radius:3px;height:4px;margin-top:4px;overflow:hidden;" title="'+semTxt+'"><div style="height:100%;width:'+semPct+'%;background:'+cor+';"></div></div>'
+      + '</td>'
+      + '<td style="padding:8px 10px;min-width:150px;">'+droAudSelectHTML(p, hoje)+'</td>'
       + '<td style="padding:6px 8px;">'
         + '<select class="sel" style="font-size:var(--fs-sm);padding:2px 6px;" onchange="const pr=projects.find(x=>String(x.id)===String('+p.id+'));pr.oport=this.value;upd();"><option value="" '+(!p.oport?'selected':'')+'>Sem oportunidade</option>'+oportSel('Mapeado (AQL)')+oportSel('Apresentar proposta (SQL)')+oportSel('Proposta apresentada (SAL)')+oportSel('Follow (COMMIT)')+'</select>'
       + '</td>'
       + '</tr>';
 
-    const linhaDetalhe = exp ? ('<tr><td colspan="7" style="padding:0 10px 16px;background:var(--surface2);">'+(isDrx?droDetailDRX(p,hoje):droDetailDRO(p,hoje))+'</td></tr>') : '';
+    const linhaDetalhe = exp ? ('<tr><td colspan="6" style="padding:0 10px 16px;background:var(--surface2);">'+(isDrx?droDetailDRX(p,hoje):droDetailDRO(p,hoje))+'</td></tr>') : '';
 
     return linhaCompacta + linhaDetalhe;
   }).join('');
 
   container.innerHTML = resumo + '<div class="tbl-scroll"><table style="border-collapse:collapse;font-size:var(--fs-sm);width:100%;"><thead>'+header+'</thead><tbody>'+linhas+'</tbody></table></div>';
+}
+
+// "Registrar entrega" da linha compacta do DRO/DRX — mesmo padrão de duas etapas do Lead Time
+// (ltShowDateInput/ltSaveDate): escolhe a fase/marco no select (valor "dro:ci:ck" ou
+// "drx::mk"), aparece o campo de data pré-preenchido com o que já tiver salvo.
+function droMostrarInputData(id){
+  const sel=document.getElementById('dro-sel-'+id);
+  const row=document.getElementById('dro-date-row-'+id);
+  const inp=document.getElementById('dro-date-'+id);
+  if(!sel||!row||!inp) return;
+  const val=sel.value;
+  if(!val){ row.style.display='none'; return; }
+  const p=projects.find(x=>String(x.id)===String(id));
+  if(!p) return;
+  const [tipo, ci, ck]=val.split(':');
+  let real='';
+  if(tipo==='dro'){ real=droInitData(p).ciclos[ci]?.[ck]?.real || ''; }
+  else { real=drxInit(p).marcos[ck]?.real || ''; }
+  inp.value=real;
+  row.style.display='flex';
+}
+function droSalvarData(id){
+  const sel=document.getElementById('dro-sel-'+id);
+  const inp=document.getElementById('dro-date-'+id);
+  if(!sel||!inp) return;
+  const val=sel.value;
+  if(!val) return;
+  const [tipo, ci, ck]=val.split(':');
+  if(tipo==='dro') droSetComite(id, parseInt(ci), ck, 'real', inp.value);
+  else drxSetMarco(id, ck, 'real', inp.value);
+}
+// Auditorias como select só (em vez de lista expandida) — escolher uma revela um checkbox
+// pontual pra marcar feita/não feita, sem precisar abrir o detalhe pesado.
+function droAudSelectHTML(p, hoje){
+  const auditorias=droInitData(p).auditorias||[];
+  if(!auditorias.length) return '<span style="font-size:var(--fs-xs);color:var(--text-hint);">Nenhuma contratada</span>';
+  const feitas=auditorias.filter(a=>a.feita).length;
+  const opts=auditorias.map((a,i)=>{
+    const dp=a.dataPrev?parseDate(a.dataPrev):null;
+    const atras=!a.feita && dp && hoje>dp;
+    const iconTxt=a.feita?'✓':atras?'⚠':'○';
+    return '<option value="'+i+'">'+iconTxt+' '+a.nome+(a.dataPrev?' · '+fmtD(a.dataPrev):'')+'</option>';
+  }).join('');
+  return '<select class="sel" style="width:100%;font-size:var(--fs-xs);" onchange="droMostrarAcaoAuditoria('+p.id+',this.value)">'
+    + '<option value="">'+feitas+'/'+auditorias.length+' auditorias</option>'
+    + opts + '</select>'
+    + '<div id="dro-aud-acao-'+p.id+'"></div>';
+}
+function droMostrarAcaoAuditoria(projId, idx){
+  const el=document.getElementById('dro-aud-acao-'+projId);
+  if(!el) return;
+  if(idx===''){ el.innerHTML=''; return; }
+  const p=projects.find(x=>String(x.id)===String(projId));
+  const a=p?droInitData(p).auditorias[idx]:null;
+  if(!a){ el.innerHTML=''; return; }
+  el.innerHTML='<label style="display:flex;align-items:center;gap:4px;font-size:var(--fs-2xs);margin-top:3px;cursor:pointer;">'
+    + '<input type="checkbox" '+(a.feita?'checked':'')+' onchange="droToggleAuditoria('+projId+','+idx+')" style="accent-color:var(--green);width:13px;height:13px;">'
+    + (a.feita?'Concluída':'Marcar como feita')
+    + '</label>';
 }
 
 // Detalhe expandido do DRO — trilha de ciclos, ciclo selecionado (trava governante, cadeia de
