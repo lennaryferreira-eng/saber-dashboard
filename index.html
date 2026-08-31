@@ -505,22 +505,34 @@
     <span><span style="color:var(--text-hint);">○</span> Pendente/futuro — ainda não chegou a vez</span>
   </div>
 
-  <div class="tbl-filters" style="margin-bottom:1rem;">
+  <div class="lt-filter-bar" style="margin-bottom:1rem;">
+    <span class="base-filter-label">Consultor</span>
     <select class="base-sel" id="dro-f-cons" onchange="buildDRO()">
-      <option value="">Todos consultores</option>
+      <option value="">Todos</option>
     </select>
+    <span class="base-filter-label">Flag</span>
     <select class="base-sel" id="dro-f-flag" onchange="buildDRO()">
-      <option value="">Todas flags</option>
+      <option value="">Todas</option>
       <option>Verde</option>
       <option>Amarelo</option>
       <option>Vermelho</option>
     </select>
+    <span class="base-filter-label">Status</span>
     <select class="base-sel" id="dro-f-status" onchange="buildDRO()">
       <option value="ativos">Ativos</option>
       <option value="finalizados">Finalizados</option>
       <option value="todos">Todos</option>
     </select>
-    <button class="base-clear" onclick="document.getElementById('dro-f-cons').value='';document.getElementById('dro-f-flag').value='';document.getElementById('dro-f-status').value='ativos';buildDRO()">Limpar</button>
+    <span class="base-filter-label">Tag</span>
+    <select class="base-sel" id="dro-f-tag" onchange="buildDRO()"><option value="">Todas</option></select>
+    <span class="base-filter-label">Ordenar por</span>
+    <select class="base-sel" id="dro-f-ordem" onchange="buildDRO()">
+      <option value="nome">Nome</option>
+      <option value="consultor">Consultor</option>
+      <option value="inicio">Início</option>
+      <option value="tag">Tag</option>
+    </select>
+    <button class="base-clear" onclick="document.getElementById('dro-f-cons').value='';document.getElementById('dro-f-flag').value='';document.getElementById('dro-f-status').value='ativos';document.getElementById('dro-f-tag').value='';document.getElementById('dro-f-ordem').value='nome';buildDRO()">Limpar</button>
   </div>
 
   <div id="dro-list"></div>
@@ -4735,12 +4747,37 @@ function buildDRO(){
     const cons=[...new Set(projects.filter(p=>isDroFam(p)).map(p=>p.consultor).filter(Boolean))].sort();
     cons.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;consSelect.appendChild(o);});
   }
+  // Tags — mesmo padrão de filtro/ordenação já usado no Lead Time e no Gantt do Healthscore.
+  const tagSelect=document.getElementById('dro-f-tag');
+  if(tagSelect){
+    const tagsDro=[...new Set(projects.filter(p=>isDroFam(p)).flatMap(p=>p.tags||[]))].sort();
+    const curTag=tagSelect.value;
+    tagSelect.innerHTML='<option value="">Todas</option>'+tagsDro.map(t=>'<option'+(t===curTag?' selected':'')+'>'+t+'</option>').join('');
+  }
   const consFilter=document.getElementById('dro-f-cons')?.value||'';
   const flagFilter=document.getElementById('dro-f-flag')?.value||'';
   const statusFilter=document.getElementById('dro-f-status')?.value||'ativos';
+  const tagFilter=document.getElementById('dro-f-tag')?.value||'';
+  const ordemFiltro=document.getElementById('dro-f-ordem')?.value||'nome';
   const lista=projects.filter(p=> isDroFam(p) &&
     (statusFilter==='todos' || (statusFilter==='finalizados' ? calcStatus2(p)==='Finalizado' : calcStatus2(p)!=='Finalizado')) &&
-    (!consFilter||p.consultor===consFilter) && (!flagFilter||p.flag===flagFilter));
+    (!consFilter||p.consultor===consFilter) && (!flagFilter||p.flag===flagFilter) &&
+    (!tagFilter||(p.tags||[]).includes(tagFilter)));
+  if(ordemFiltro==='tag'){
+    // Sem tag vai pro final — mesmo critério do Lead Time/Gantt.
+    const primeiraTag=p=>(p.tags&&p.tags.length)?[...p.tags].sort()[0]:'￿';
+    lista.sort((a,b)=>{
+      const ta=primeiraTag(a), tb=primeiraTag(b);
+      if(ta!==tb) return ta<tb?-1:1;
+      return (a.nome||'').localeCompare(b.nome||'');
+    });
+  } else if(ordemFiltro==='consultor'){
+    lista.sort((a,b)=>(a.consultor||'').localeCompare(b.consultor||'') || (a.nome||'').localeCompare(b.nome||''));
+  } else if(ordemFiltro==='inicio'){
+    lista.sort((a,b)=>(a.inicio||'')<(b.inicio||'')?1:-1); // mais recente primeiro
+  } else {
+    lista.sort((a,b)=>(a.nome||'').localeCompare(b.nome||''));
+  }
 
   // ── Resumo da carteira ──
   const hoje=new Date(); hoje.setHours(0,0,0,0);
@@ -4777,13 +4814,16 @@ function buildDRO(){
 
   if(lista.length===0){ container.innerHTML=resumo+'<p style="color:var(--text-hint);font-size:var(--fs-md);padding:16px 0;">Nenhum projeto DRO/DRX ativo.</p>'; return; }
 
-  // Feed de cards por cliente — não é mais tabela de colunas. Cada card é o "report rápido da
-  // semana": flag, trava atual e o que tem pra essa semana logo no topo, sem precisar caçar
-  // informação numa grade de 6 colunas. Nasce recolhido (droExpanded=false); clicar em
-  // qualquer parte do card expande o detalhe pesado (trilha de ciclos, cadeia de travas, foco,
-  // comitês/marcos com prev/real, auditorias) — mesmo droDetailDRO/droDetailDRX de sempre, só
-  // que dentro do card em vez de uma linha de tabela.
-  const cards = lista.map(p=>{
+  // Tabela igual Lead Time — uma linha por cliente, colunas fixas, com trava e oportunidade
+  // editáveis direto na linha (sem precisar expandir). Nasce recolhida (droExpanded=false);
+  // o botão ▸ expande o detalhe pesado (trilha de ciclos, cadeia de travas, foco, comitês com
+  // prev/real, auditorias) — mesmo droDetailDRO/droDetailDRX de sempre, dentro de uma linha
+  // colspan.
+  const th=txt=>'<th style="text-align:left;padding:6px 10px;background:var(--surface2);white-space:nowrap;">'+txt+'</th>';
+  const header='<tr>'+['','Cliente','Trava atual','Próximo evento','Progresso','Auditorias','Oportunidade'].map(th).join('')+'</tr>';
+  const travaOpts=(cur)=>DRO_TRAVAS.map(([k,n])=>'<option value="'+k+'" '+(cur===k?'selected':'')+'>'+k+' '+n+'</option>').join('');
+
+  const linhas = lista.map(p=>{
     if(p.droExpanded===undefined) p.droExpanded=false;
     const exp=p.droExpanded;
     const isDrx=p.modelo==='DRX';
@@ -4795,59 +4835,58 @@ function buildDRO(){
     const audFeitas=auditorias.filter(a=>a.feita).length;
     const audAtrasCliente=auditorias.filter(a=>{ if(a.feita) return false; const dp=a.dataPrev?parseDate(a.dataPrev):null; return dp&&hoje>dp; }).length;
 
-    let travaTxt, progTxt;
+    let travaAtual, progTxt, travaSelectHTML;
     if(isDrx){
       const sem=drxSemana(p);
       const semTxt= sem===0?'não iniciado': sem>=7?'encerrado':('Sem '+sem+'/6');
       const dx=drxInit(p);
-      travaTxt = dx.travaPrim || '—';
+      travaAtual = dx.travaPrim || '';
       progTxt = semTxt;
+      travaSelectHTML = '<select class="sel" style="font-size:var(--fs-sm);padding:2px 4px;" onchange="drxSetTravaPrim('+p.id+',this.value)">'
+        + '<option value="" '+(!travaAtual?'selected':'')+'>— definir —</option>' + travaOpts(travaAtual) + '</select>';
     } else {
       const ciclos=droGetCiclos(p);
       const atualIdx=droCicloAtualIdx(ciclos);
       const cicloAtual=ciclos[atualIdx];
       const sem=cicloAtual?droSemana(cicloAtual):0;
       const semTxt= sem===0?'não iniciado': sem>=13?'encerrado':('Sem '+sem+'/12');
-      travaTxt = (cicloAtual&&cicloAtual.trava) ? cicloAtual.trava : '—';
+      travaAtual = (cicloAtual&&cicloAtual.trava) ? cicloAtual.trava : '';
       progTxt = 'Ciclo '+(atualIdx+1)+'/'+ciclos.length+' · '+semTxt;
+      travaSelectHTML = '<select class="sel" style="font-size:var(--fs-sm);padding:2px 4px;" onchange="droSetTrava('+p.id+','+atualIdx+',this.value)">'
+        + '<option value="" '+(!travaAtual?'selected':'')+'>— definir —</option>' + travaOpts(travaAtual) + '</select>';
     }
 
     const prox=droProximoEvento(p);
-    let proxHTML='<span style="color:var(--text-hint);">nada previsto</span>';
+    let proxHTML='<span style="color:var(--text-hint);">—</span>';
     if(prox){
       const [pcor,plabel]=STATUS_MAP[prox.status]||['var(--text-hint)','—'];
-      proxHTML='<b style="color:'+pcor+';">'+prox.nome+'</b>'+(prox.prev?' · '+fmtD(prox.prev):'')+' · <span style="color:'+pcor+';font-weight:700;">'+plabel+'</span>';
+      proxHTML='<span title="'+prox.nome+'" style="font-size:var(--fs-xs);font-weight:700;color:'+pcor+';">'+prox.nome+(prox.prev?' · '+fmtD(prox.prev):'')+' · '+plabel+'</span>';
     }
 
     const oportSel=(v)=>'<option value="'+v+'" '+(p.oport===v?'selected':'')+'>'+v+'</option>';
 
-    const cabecalho = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
-      + '<button type="button" title="'+(exp?'Recolher':'Expandir')+'" style="font:inherit;padding:0;background:none;border:none;color:var(--text-hint);cursor:pointer;flex:none;transform:rotate('+(exp?'90':'0')+'deg);transition:transform .15s;">▸</button>'
-      + flagHTML(calcFlagAutomatica(p))
-      + '<b style="font-size:var(--fs-md);">'+p.nome+'</b>'
-      + '<span class="badge" style="background:'+corDim+';color:'+cor+';font-size:var(--fs-2xs);margin-top:0;">'+badge+'</span>'
-      + '<span style="font-size:var(--fs-xs);color:var(--text-hint);">'+(p.consultor||'—')+'</span>'
-      + '<span style="margin-left:auto;font-size:var(--fs-xs);font-weight:700;padding:2px 10px;border-radius:20px;background:'+corDim+';color:'+cor+';white-space:nowrap;" title="Trava governante atual">'+travaTxt+'</span>'
-      + '</div>';
+    const linhaCompacta='<tr style="border-bottom:1px solid var(--border);">'
+      + '<td style="padding:8px 6px;text-align:center;"><button type="button" onclick="droToggleExpanded('+p.id+')" title="'+(exp?'Recolher':'Expandir')+'" style="font:inherit;padding:0;background:none;border:none;color:var(--text-hint);cursor:pointer;display:inline-block;transform:rotate('+(exp?'90':'0')+'deg);transition:transform .15s;">▸</button></td>'
+      + '<td style="padding:8px 10px;position:sticky;left:0;background:var(--surface);min-width:190px;">'
+        + '<div style="display:flex;align-items:center;gap:6px;">'+flagHTML(calcFlagAutomatica(p))+'<b>'+p.nome+'</b><span class="badge" style="background:'+corDim+';color:'+cor+';font-size:var(--fs-2xs);margin-top:0;">'+badge+'</span></div>'
+        + '<div style="font-size:var(--fs-xs);color:var(--text-hint);margin-top:2px;">'+(p.consultor||'—')+'</div>'
+        + ((p.tags && p.tags.length) ? '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:3px;max-width:190px;">' + p.tags.map(t => '<span style="font-size:var(--fs-3xs);font-weight:700;color:#fff;background:' + tagCor(t) + ';border-radius:8px;padding:1px 7px;white-space:nowrap;">' + t.replace(/</g,'&lt;') + '</span>').join('') + '</div>' : '')
+      + '</td>'
+      + '<td style="padding:6px 8px;">'+travaSelectHTML+'</td>'
+      + '<td style="padding:8px 10px;">'+proxHTML+'</td>'
+      + '<td style="padding:8px 10px;font-size:var(--fs-sm);white-space:nowrap;">'+progTxt+'</td>'
+      + '<td style="padding:8px 10px;font-size:var(--fs-sm);white-space:nowrap;'+(audAtrasCliente?'color:var(--red);font-weight:700;':'')+'">'+audFeitas+'/'+auditorias.length+(audAtrasCliente?' ('+audAtrasCliente+' atrasada'+(audAtrasCliente>1?'s':'')+')':'')+'</td>'
+      + '<td style="padding:6px 8px;">'
+        + '<select class="sel" style="font-size:var(--fs-sm);padding:2px 6px;" onchange="const pr=projects.find(x=>String(x.id)===String('+p.id+'));pr.oport=this.value;upd();"><option value="" '+(!p.oport?'selected':'')+'>Sem oportunidade</option>'+oportSel('Mapeado (AQL)')+oportSel('Apresentar proposta (SQL)')+oportSel('Proposta apresentada (SAL)')+oportSel('Follow (COMMIT)')+'</select>'
+      + '</td>'
+      + '</tr>';
 
-    const corpo = '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-top:8px;padding-left:26px;font-size:var(--fs-sm);">'
-      + '<div><span style="color:var(--text-hint);">Esta semana: </span>'+proxHTML+'</div>'
-      + '<div style="color:var(--text-hint);">'+progTxt+'</div>'
-      + '<div style="'+(audAtrasCliente?'color:var(--red);font-weight:700;':'color:var(--text-hint);')+'">'+audFeitas+'/'+auditorias.length+' auditorias'+(audAtrasCliente?' ('+audAtrasCliente+' atrasada'+(audAtrasCliente>1?'s':'')+')':'')+'</div>'
-      + '<select class="sel" style="font-size:var(--fs-xs);padding:1px 6px;margin-left:auto;" onclick="event.stopPropagation()" onchange="const pr=projects.find(x=>String(x.id)===String('+p.id+'));pr.oport=this.value;upd();"><option value="" '+(!p.oport?'selected':'')+'>Sem oportunidade</option>'+oportSel('Mapeado (AQL)')+oportSel('Apresentar proposta (SQL)')+oportSel('Proposta apresentada (SAL)')+oportSel('Follow (COMMIT)')+'</select>'
-      + '</div>';
+    const linhaDetalhe = exp ? ('<tr><td colspan="7" style="padding:0 10px 16px;background:var(--surface2);">'+(isDrx?droDetailDRX(p,hoje):droDetailDRO(p,hoje))+'</td></tr>') : '';
 
-    // stopPropagation aqui é essencial: o card inteiro tem onclick de toggle, e o detalhe tem
-    // MUITA coisa clicável dentro (datas de comitê, trava, trilha de ciclos, auditorias) — sem
-    // isso, qualquer clique lá dentro recolheria o card por baixo do dedo.
-    const detalhe = exp ? '<div style="padding-left:26px;" onclick="event.stopPropagation()">'+(isDrx?droDetailDRX(p,hoje):droDetailDRO(p,hoje))+'</div>' : '';
-
-    return '<div class="card" style="margin-bottom:10px;padding:12px 14px;cursor:pointer;'+(exp?'border-color:'+cor+';':'')+'" onclick="droToggleExpanded('+p.id+')">'
-      + cabecalho + corpo + detalhe
-      + '</div>';
+    return linhaCompacta + linhaDetalhe;
   }).join('');
 
-  container.innerHTML = resumo + cards;
+  container.innerHTML = resumo + '<div class="tbl-scroll"><table style="border-collapse:collapse;font-size:var(--fs-sm);width:100%;"><thead>'+header+'</thead><tbody>'+linhas+'</tbody></table></div>';
 }
 
 // Detalhe expandido do DRO — trilha de ciclos, ciclo selecionado (trava governante, cadeia de
