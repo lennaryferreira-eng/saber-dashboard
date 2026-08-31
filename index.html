@@ -343,11 +343,12 @@
   <!-- Pipeline e Flags -->
   <div id="ov-pipeline-flags-row" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
     <div class="card" style="margin:0;">
-      <div class="card-title">Pipeline ativo</div>
-      <div style="font-size:var(--fs-5xl);font-weight:700;color:var(--blue);" id="ov-pipe-pct">—</div>
-      <div style="font-size:var(--fs-sm);color:var(--text-hint);margin-top:2px;" id="ov-pipe-sub"></div>
-      <div class="prog-bg" style="margin-top:8px;"><div class="prog-fill" id="ov-pipe-bar" style="width:0%;background:var(--blue);"></div></div>
-      <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;" id="ov-pipe-stages"></div>
+      <div class="card-title">Reembolsos <span id="ov-reemb-mes" style="font-weight:400;color:var(--text-hint);text-transform:none;letter-spacing:0;"></span></div>
+      <div style="display:flex;gap:10px;align-items:stretch;">
+        <div id="ov-reemb-tabela" style="flex:1.1;min-width:0;max-height:116px;overflow-y:auto;"></div>
+        <div style="width:1px;background:var(--border);flex:none;"></div>
+        <div id="ov-reemb-funil" style="flex:1;min-width:0;"></div>
+      </div>
     </div>
     <div class="card" style="margin:0;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;">
@@ -504,22 +505,34 @@
     <span><span style="color:var(--text-hint);">○</span> Pendente/futuro — ainda não chegou a vez</span>
   </div>
 
-  <div class="tbl-filters" style="margin-bottom:1rem;">
+  <div class="lt-filter-bar" style="margin-bottom:1rem;">
+    <span class="base-filter-label">Consultor</span>
     <select class="base-sel" id="dro-f-cons" onchange="buildDRO()">
-      <option value="">Todos consultores</option>
+      <option value="">Todos</option>
     </select>
+    <span class="base-filter-label">Flag</span>
     <select class="base-sel" id="dro-f-flag" onchange="buildDRO()">
-      <option value="">Todas flags</option>
+      <option value="">Todas</option>
       <option>Verde</option>
       <option>Amarelo</option>
       <option>Vermelho</option>
     </select>
+    <span class="base-filter-label">Status</span>
     <select class="base-sel" id="dro-f-status" onchange="buildDRO()">
       <option value="ativos">Ativos</option>
       <option value="finalizados">Finalizados</option>
       <option value="todos">Todos</option>
     </select>
-    <button class="base-clear" onclick="document.getElementById('dro-f-cons').value='';document.getElementById('dro-f-flag').value='';document.getElementById('dro-f-status').value='ativos';buildDRO()">Limpar</button>
+    <span class="base-filter-label">Tag</span>
+    <select class="base-sel" id="dro-f-tag" onchange="buildDRO()"><option value="">Todas</option></select>
+    <span class="base-filter-label">Ordenar por</span>
+    <select class="base-sel" id="dro-f-ordem" onchange="buildDRO()">
+      <option value="nome">Nome</option>
+      <option value="consultor">Consultor</option>
+      <option value="inicio">Início</option>
+      <option value="tag">Tag</option>
+    </select>
+    <button class="base-clear" onclick="document.getElementById('dro-f-cons').value='';document.getElementById('dro-f-flag').value='';document.getElementById('dro-f-status').value='ativos';document.getElementById('dro-f-tag').value='';document.getElementById('dro-f-ordem').value='nome';buildDRO()">Limpar</button>
   </div>
 
   <div id="dro-list"></div>
@@ -599,6 +612,10 @@
 
 <section id="sec-aql" class="section">
   <div class="sec-head"><h2 class="sec-title">AQL</h2><p class="sec-desc">Registro manual de oportunidades (AQL) e propostas levantadas pelo squad. Meta mensal distribuída por consultor.</p></div>
+  <!-- Mesmo padrão de filtro de mês da Visão Geral/Performance (botões lado a lado em vez de
+       select) — um mês só, compartilhado por todos os cards da aba (Consolidado, Metas,
+       Registro, Funil, Gráficos). _aqlMesAtual() lê filters['aql'] direto. -->
+  <div id="aql-filter-bar" class="filter-bar" style="margin-bottom:1rem;"></div>
 
   <div class="card" style="margin-bottom:1.2rem;">
     <div class="card-title" style="margin:0 0 1rem;">Consolidado do squad</div>
@@ -609,10 +626,18 @@
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap;">
       <div class="card-title" style="margin:0;">Meta de AQLs do mês — por consultor</div>
     </div>
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
-      <span style="font-size:var(--fs-sm);color:var(--text-hint);">Meta total do mês selecionado abaixo:</span>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;">
+      <span style="font-size:var(--fs-sm);color:var(--text-hint);">Meta total do mês selecionado no filtro acima:</span>
       <input type="number" min="0" step="1" id="aql-meta-total" class="sel" style="width:90px;font-size:var(--fs-base);" placeholder="0" onchange="saveAqlMetaTotal(this.value)">
       <span style="font-size:var(--fs-sm);color:var(--text-hint);">AQLs</span>
+    </div>
+    <!-- Meta de SAL (reuniões feitas) — alimenta o indicador "SAL" do consultor em
+         Performance a partir de setembro/2026. Usa o MESMO % por consultor de cima
+         (cons_NOME_pct) — só o total do squad é diferente (totalSal em vez de total). -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+      <span style="font-size:var(--fs-sm);color:var(--text-hint);">Meta de SAL (reuniões feitas) do mês:</span>
+      <input type="number" min="0" step="1" id="aql-meta-total-sal" class="sel" style="width:90px;font-size:var(--fs-base);" placeholder="0" onchange="saveAqlMetaTotalSal(this.value)">
+      <span style="font-size:var(--fs-sm);color:var(--text-hint);">reuniões</span>
     </div>
     <div id="aql-meta-chips" style="display:flex;gap:12px;flex-wrap:wrap;"></div>
   </div>
@@ -621,7 +646,6 @@
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap;">
       <div class="card-title" style="margin:0;">Registro de Oportunidades &amp; Propostas</div>
       <div style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:wrap;">
-        <select class="base-sel" id="pev-mes" onchange="buildAql()" style="font-size:var(--fs-sm);"></select>
         <select class="base-sel" id="pev-semana" onchange="buildAql()" style="font-size:var(--fs-sm);"><option value="">Todas as semanas</option></select>
         <select class="base-sel" id="pev-cons" onchange="buildAql()" style="font-size:var(--fs-sm);"><option value="">Todos consultores</option></select>
         <button onclick="openNovoPipeEvento()" class="add-project-btn" style="font-size:var(--fs-sm);">+ Registrar evento</button>
@@ -977,6 +1001,13 @@
         </select>
         <span class="base-filter-label">Mês início</span>
         <select class="base-sel" id="lt-f-mes" onchange="buildLeadTime()"><option value="">Todos</option></select>
+        <span class="base-filter-label">Tag</span>
+        <select class="base-sel" id="lt-f-tag" onchange="buildLeadTime()"><option value="">Todas</option></select>
+        <span class="base-filter-label">Ordenar por</span>
+        <select class="base-sel" id="lt-f-ordem" onchange="buildLeadTime()">
+          <option value="inicio">Início</option>
+          <option value="tag">Tag</option>
+        </select>
         <button class="base-clear" onclick="clearLtFilters()">Limpar</button>
         <span class="base-count" id="lt-count"></span>
       </div>
@@ -1508,6 +1539,24 @@
           </button>
           <div id="perf-prazo-body" style="padding:0 16px 16px;border-top:1px solid var(--border);">
             <div id="perf-prazo-content"></div>
+          </div>
+        </div>
+        <!-- Score (só consultor) -->
+        <div id="perf-score-secao" class="card" style="padding:0;">
+          <button onclick="perfToggle('score')" style="width:100%;text-align:left;padding:12px 16px;background:none;border:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-family:var(--sans);font-size:var(--fs-base);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);">
+            <span>Score</span><span id="perf-score-badge" style="font-size:var(--fs-sm);"></span>
+          </button>
+          <div id="perf-score-body" style="padding:0 16px 16px;border-top:1px solid var(--border);">
+            <div id="perf-score-content"></div>
+          </div>
+        </div>
+        <!-- SAL (só consultor) -->
+        <div id="perf-sal-secao" class="card" style="padding:0;">
+          <button onclick="perfToggle('sal')" style="width:100%;text-align:left;padding:12px 16px;background:none;border:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-family:var(--sans);font-size:var(--fs-base);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);">
+            <span>SAL</span><span id="perf-sal-badge" style="font-size:var(--fs-sm);"></span>
+          </button>
+          <div id="perf-sal-body" style="padding:0 16px 16px;border-top:1px solid var(--border);">
+            <div id="perf-sal-content"></div>
           </div>
         </div>
         <!-- Score da Entrega (só designer) -->
@@ -2649,6 +2698,72 @@ function tratSetField(id, field, value){
   upd();
   buildOvTratativas(); // finalizado muda quem aparece na tabela
 }
+// Card "Reembolsos" na Visão Geral (substitui o antigo "Pipeline ativo") — dividido ao meio:
+// tabela dos projetos à esquerda (buildOvReembolsosTabela) + funil de status à direita
+// (buildOvReembolsosFunil), sem crescer além do espaço que o card já ocupava (tabela rola por
+// dentro com max-height fixo em vez de esticar o card). Alimentados 100% pelos campos
+// dataReembolso/reembolsoStatus do Lead Time (ltSetReembolsoData/ltSetReembolsoStatus).
+// Recebem a mesma lista já filtrada pelo mês da Visão Geral (reembMesProjs, usada também pelo
+// KPI "Reembolsos" lá em cima) — acompanham o filtro de mês em vez de olhar o histórico inteiro.
+function buildOvReembolsosTabela(lista){
+  const el = document.getElementById('ov-reemb-tabela');
+  if (!el) return;
+  if (!lista.length) { el.innerHTML = '<div style="font-size:var(--fs-sm);color:var(--text-hint);padding:4px 0;">Nenhum reembolso no período.</div>'; return; }
+  const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const STATUS_COR = { '': 'var(--blue)', 'Concedido': 'var(--amber)', 'Revertido': 'var(--accent)' };
+  const ordenados = lista.slice().sort((a,b) => (b.dataReembolso||'').localeCompare(a.dataReembolso||''));
+  // Duas linhas por projeto (nome+status em cima, data+motivo embaixo) em vez de tabela de
+  // colunas fixas — colunas lado a lado não sobravam espaço nenhum pro motivo depois que o
+  // status virou select; assim o motivo usa a largura inteira do card e só trunca se for muito
+  // longo (com o texto completo no title).
+  el.innerHTML = ordenados.map(p => {
+    const st = p.reembolsoStatus || '';
+    const cor = STATUS_COR[st] || 'var(--text-hint)';
+    const dataMotivo = fmtD(p.dataReembolso) + (p.motivo ? ' · ' + esc(p.motivo) : '');
+    return '<div style="padding:3px 0;border-bottom:1px solid var(--border);">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">'
+      + '<span style="font-weight:600;font-size:var(--fs-xs);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(p.nome) + '">' + esc(p.nome) + '</span>'
+      + '<select class="sel" style="font-size:var(--fs-3xs);padding:0 2px;height:17px;flex:none;border-color:' + cor + ';color:' + cor + ';" title="Marcar como concedido/revertido" onchange="ovSetReembolsoStatus(' + p.id + ',this.value)">'
+      + ['', 'Concedido', 'Revertido'].map(o => '<option value="' + o + '"' + (st === o ? ' selected' : '') + '>' + (o || 'Solicitado') + '</option>').join('')
+      + '</select>'
+      + '</div>'
+      + '<div style="font-size:var(--fs-3xs);color:var(--text-hint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + dataMotivo + '">' + dataMotivo + '</div>'
+      + '</div>';
+  }).join('');
+}
+function buildOvReembolsosFunil(lista, mesLabel){
+  const el = document.getElementById('ov-reemb-funil');
+  if (!el) return;
+  const mesEl = document.getElementById('ov-reemb-mes');
+  if (mesEl) mesEl.textContent = mesLabel ? '· ' + mesLabel : '';
+  const solicitados = lista || [];
+  // Concedido e Revertido são dois DESFECHOS possíveis pro mesmo pedido, não dois estágios
+  // sequenciais de um funil — um pedido vai de Solicitado pra UM dos dois (reembolsoStatus só
+  // guarda a decisão atual), nunca conta nos dois ao mesmo tempo. Por isso ficam lado a lado,
+  // cada um como % dos solicitados, em vez de empilhados como se um viesse depois do outro.
+  const concedidos = solicitados.filter(p => p.reembolsoStatus === 'Concedido');
+  const revertidos = solicitados.filter(p => p.reembolsoStatus === 'Revertido');
+  const total = solicitados.length;
+  const pctDe = n => total > 0 ? Math.round(n / total * 100) : 0;
+  const quadrado = (label, n, cor) => '<div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-top:2px solid ' + cor + ';border-radius:6px;padding:8px 10px;">'
+    + '<div style="font-size:20px;font-weight:800;color:' + cor + ';line-height:1;">' + n + '</div>'
+    + '<div style="font-size:var(--fs-2xs);color:var(--text-hint);margin-top:4px;">' + label + ' · ' + pctDe(n) + '% dos solicitados</div>'
+    + '</div>';
+  el.innerHTML = '<div style="display:flex;flex-direction:column;gap:8px;">'
+    + '<div>'
+    + '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:3px;">'
+    + '<span style="font-size:var(--fs-sm);font-weight:600;color:var(--text);">Solicitados</span>'
+    + '<span style="font-size:var(--fs-sm);font-weight:700;color:var(--blue);">' + total + '</span>'
+    + '</div>'
+    + '<div style="background:var(--surface3);border-radius:var(--r-sm);height:20px;overflow:hidden;">'
+    + '<div style="height:100%;width:100%;background:var(--blue);border-radius:var(--r-sm);opacity:.85;"></div>'
+    + '</div></div>'
+    + '<div style="display:flex;gap:8px;">'
+    + quadrado('Concedidos', concedidos.length, 'var(--amber)')
+    + quadrado('Revertidos', revertidos.length, 'var(--accent)')
+    + '</div>'
+    + '</div>';
+}
 // Tabela compacta na Visão Geral — só as ABERTAS (finalizada some da lista, mas continua salva
 // pra histórico). Ícone de editar abre o modal completo; reembolso/atualização/finalizado dá
 // pra mexer direto na célula.
@@ -3226,6 +3341,27 @@ function segundaDaSemana(dataISO) {
   d.setDate(d.getDate() - voltar);
   return d.toISOString().slice(0,10);
 }
+// Sábado da semana (segunda-domingo) que contém dataISO — usado como PRAZO de auditoria: uma
+// entrega feita de segunda a sexta tem até o sábado daquela mesma semana pra ganhar nota antes
+// de virar "vencida" (calcFlagAutomatica). Nunca antes da própria data: se dataISO já é domingo
+// (o único dia que cai DEPOIS do sábado daquela semana), o sábado calculado ficaria antes da
+// entrega — nesse caso o corte vira a própria data, então domingo já nasce praticamente no
+// limite (vence já no dia seguinte, igual uma entrega de sábado).
+function sabadoDaSemana(dataISO) {
+  const sab = addDays(segundaDaSemana(dataISO), 5);
+  return sab < dataISO ? dataISO : sab;
+}
+// Domingo da semana domingo-sábado que contém dataISO — só pra saber quando uma semana inteira
+// (agora domingo a sábado, não mais segunda a domingo) já fechou de vez. Usada na regra de
+// estagnação (nenhuma entrega na semana toda), que não tem "prazo por entrega" como a de cima,
+// só precisa saber se a última semana fechada teve algum registro.
+function domingoDaSemana(dataISO) {
+  const d = parseDate(dataISO);
+  if (!d) return null;
+  const dow = d.getDay(); // 0=domingo...6=sábado
+  d.setDate(d.getDate() - dow);
+  return d.toISOString().slice(0,10);
+}
 
 function calcStatus2(p) {
   if (p.status2 === 'Churn' || p.status2 === 'Pausado') return p.status2;
@@ -3438,12 +3574,12 @@ function calcFlagAutomatica(p, refDateISO) {
   const ent = p.entregas || {};
   const hojeISO = refDateISO || new Date().toISOString().slice(0,10);
   // Projeto estagnado = regra semanal, alinhada ao ritmo real de upload de auditoria
-  // (auditorias sobem ao longo da semana, normalmente até sexta). Verifica se a última
-  // semana de trabalho já encerrada (segunda a domingo) teve NENHUMA entrega registrada —
-  // se sim, é perigo, mesmo que uma entrega tenha chegado logo na segunda desta semana
-  // (isso resolve a pendência de NOTA, mas não apaga uma semana inteira sem nenhum trabalho
-  // registrado — caso real: "Frenecar", zero entrega entre 03/08 e 09/08, só retomou em
-  // 10/08, segunda desta semana). A Decolagem entra na mesma checagem, sem atalho à parte.
+  // (auditorias sobem ao longo da semana, normalmente até sexta, com prazo até sábado).
+  // Verifica se a última semana de trabalho já encerrada (domingo a sábado) teve NENHUMA
+  // entrega registrada — se sim, é perigo, mesmo que uma entrega tenha chegado logo no
+  // domingo desta semana (isso resolve a pendência de NOTA, mas não apaga uma semana inteira
+  // sem nenhum trabalho registrado — caso real: "Frenecar", zero entrega entre 03/08 e 09/08,
+  // só retomou depois). A Decolagem entra na mesma checagem, sem atalho à parte.
   const ordem = ordemCompleta(p);
   // Projeto que já chegou na Decolagem (última etapa) está concluído — não tem mais "semana
   // de trabalho" esperada depois disso, então a regra de estagnação não se aplica mais nele.
@@ -3453,14 +3589,16 @@ function calcFlagAutomatica(p, refDateISO) {
   const decolagem = ent[6] || ent['6'];
   const decolagemAconteceu = !!(decolagem && decolagem.real && decolagem.real <= hojeISO)
     || !!(p.realFim && p.realFim <= hojeISO);
-  const segundaEstaSemana = segundaDaSemana(hojeISO);
-  const segundaSemanaAnterior = addDays(segundaEstaSemana, -7);
+  // Semana domingo-sábado (não mais segunda-domingo) — cobra a partir de domingo, um dia
+  // antes do que cobrava antes (segunda), acompanhando o mesmo ajuste do prazo de auditoria.
+  const domingoEstaSemana = domingoDaSemana(hojeISO);
+  const domingoSemanaAnterior = addDays(domingoEstaSemana, -7);
   // Só cobra atividade da semana passada de projeto que já existia antes dela inteira —
   // senão um projeto recém-iniciado nessa janela cairia aqui só por ainda não ter começado.
-  if (!decolagemAconteceu && p.inicio && p.inicio <= segundaSemanaAnterior) {
+  if (!decolagemAconteceu && p.inicio && p.inicio <= domingoSemanaAnterior) {
     const teveEntregaSemanaPassada = ordem.some(si => {
       const e = ent[si] || ent[String(si)];
-      return e && e.real && e.real >= segundaSemanaAnterior && e.real < segundaEstaSemana;
+      return e && e.real && e.real >= domingoSemanaAnterior && e.real < domingoEstaSemana;
     });
     if (!teveEntregaSemanaPassada) return 'Vermelho';
   }
@@ -3470,12 +3608,13 @@ function calcFlagAutomatica(p, refDateISO) {
   // antiga e ignora uma mais recente com índice menor — foi exatamente isso que mascarou o
   // caso do projeto "Weber Manezes" (nota 79 de uma entrega de 17/07 escondendo a nota 54 de
   // 28/07). No mesmo passe, marca se alguma etapa auditável (Kick off a Decolagem — Growth/
-  // si=0 é só logística, nunca passa pela D1-D9) SEM nota ainda é de semana ANTERIOR à atual:
-  // se a etapa mais recente foi entregue hoje/nesta semana e ainda não tem nota, tudo bem
-  // (tolerância até a segunda atual, mesma folga da regra de estagnação) — mas se ENQUANTO ISSO
-  // uma etapa anterior a ela também segue sem nota há mais de uma semana, isso não pode ficar
-  // escondido só porque não é a mais recente (caso real: "AEC espetinhos" — Vendas entregue
-  // hoje sem nota mascarava Pesquisa de Mercado de 03/08 também sem nota).
+  // si=0 é só logística, nunca passa pela D1-D9) SEM nota já passou do sábado da SUA PRÓPRIA
+  // semana (sabadoDaSemana — cada entrega tem seu próprio prazo, não um corte único do dia de
+  // hoje): se a etapa mais recente foi entregue esta semana e o sábado dela ainda não chegou,
+  // tudo bem — mas se ENQUANTO ISSO uma etapa anterior a ela também já passou do sábado sem
+  // nota, isso não pode ficar escondido só porque não é a mais recente (caso real: "AEC
+  // espetinhos" — Vendas entregue hoje sem nota mascarava Pesquisa de Mercado de 03/08
+  // também sem nota).
   // Nota de etapa ANTIGA só serve pra evitar alarme falso (não força Vermelho enquanto a
   // etapa mais recente ainda está na tolerância) — ela nunca pode CONCEDER Verde. Verde afirma
   // "score ok" da entrega mais recente; usar a nota de uma etapa anterior pra isso faria a flag
@@ -3496,7 +3635,7 @@ function calcFlagAutomatica(p, refDateISO) {
       notaEhDaEtapaMaisRecente = ehAPrimeiraAuditavel;
       break;
     }
-    if (e.real < segundaEstaSemana) etapaAnteriorSemNotaVencida = true;
+    if (hojeISO > sabadoDaSemana(e.real)) etapaAnteriorSemNotaVencida = true;
     ehAPrimeiraAuditavel = false;
   }
   if (etapaAnteriorSemNotaVencida) return 'Vermelho';
@@ -3504,7 +3643,10 @@ function calcFlagAutomatica(p, refDateISO) {
   // muito ruim não pode ficar mascarada de Amarelo só porque saiu na data certa.
   if (scoreRecente !== null && scoreRecente < 55) return 'Vermelho';
   const scoreOk = notaEhDaEtapaMaisRecente && scoreRecente !== null && scoreRecente >= 70;
-  const prazoOk = prazoStatus(p).ok === true;
+  // refDateISO também aqui — sem isso, o prazo usado pra decidir a flag sempre olhava "hoje",
+  // mesmo quando a própria flag estava sendo recalculada "como estava" numa semana passada
+  // (refDateISO vindo da navegação de semana do Insights ou do Gantt do Healthscore).
+  const prazoOk = prazoStatus(p, refDateISO).ok === true;
   const atingidos = (scoreOk ? 1 : 0) + (prazoOk ? 1 : 0);
   if (atingidos === 2) return 'Verde';
   if (atingidos === 1) return 'Amarelo';
@@ -4639,12 +4781,37 @@ function buildDRO(){
     const cons=[...new Set(projects.filter(p=>isDroFam(p)).map(p=>p.consultor).filter(Boolean))].sort();
     cons.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;consSelect.appendChild(o);});
   }
+  // Tags — mesmo padrão de filtro/ordenação já usado no Lead Time e no Gantt do Healthscore.
+  const tagSelect=document.getElementById('dro-f-tag');
+  if(tagSelect){
+    const tagsDro=[...new Set(projects.filter(p=>isDroFam(p)).flatMap(p=>p.tags||[]))].sort();
+    const curTag=tagSelect.value;
+    tagSelect.innerHTML='<option value="">Todas</option>'+tagsDro.map(t=>'<option'+(t===curTag?' selected':'')+'>'+t+'</option>').join('');
+  }
   const consFilter=document.getElementById('dro-f-cons')?.value||'';
   const flagFilter=document.getElementById('dro-f-flag')?.value||'';
   const statusFilter=document.getElementById('dro-f-status')?.value||'ativos';
+  const tagFilter=document.getElementById('dro-f-tag')?.value||'';
+  const ordemFiltro=document.getElementById('dro-f-ordem')?.value||'nome';
   const lista=projects.filter(p=> isDroFam(p) &&
     (statusFilter==='todos' || (statusFilter==='finalizados' ? calcStatus2(p)==='Finalizado' : calcStatus2(p)!=='Finalizado')) &&
-    (!consFilter||p.consultor===consFilter) && (!flagFilter||p.flag===flagFilter));
+    (!consFilter||p.consultor===consFilter) && (!flagFilter||p.flag===flagFilter) &&
+    (!tagFilter||(p.tags||[]).includes(tagFilter)));
+  if(ordemFiltro==='tag'){
+    // Sem tag vai pro final — mesmo critério do Lead Time/Gantt.
+    const primeiraTag=p=>(p.tags&&p.tags.length)?[...p.tags].sort()[0]:'￿';
+    lista.sort((a,b)=>{
+      const ta=primeiraTag(a), tb=primeiraTag(b);
+      if(ta!==tb) return ta<tb?-1:1;
+      return (a.nome||'').localeCompare(b.nome||'');
+    });
+  } else if(ordemFiltro==='consultor'){
+    lista.sort((a,b)=>(a.consultor||'').localeCompare(b.consultor||'') || (a.nome||'').localeCompare(b.nome||''));
+  } else if(ordemFiltro==='inicio'){
+    lista.sort((a,b)=>(a.inicio||'')<(b.inicio||'')?1:-1); // mais recente primeiro
+  } else {
+    lista.sort((a,b)=>(a.nome||'').localeCompare(b.nome||''));
+  }
 
   // ── Resumo da carteira ──
   const hoje=new Date(); hoje.setHours(0,0,0,0);
@@ -4681,11 +4848,28 @@ function buildDRO(){
 
   if(lista.length===0){ container.innerHTML=resumo+'<p style="color:var(--text-hint);font-size:var(--fs-md);padding:16px 0;">Nenhum projeto DRO/DRX ativo.</p>'; return; }
 
-  // Uma linha por cliente (igual Lead Time) — recolhida por padrão (droExpanded agora nasce
-  // false). Detalhe pesado (trilha de ciclos, cadeia de travas, comitês/marcos com prev/real,
-  // auditorias) continua tudo, só que dentro de uma linha que só existe quando expandida.
+  // Tabela igual Lead Time — uma linha por cliente, colunas fixas. "Progresso" é uma barra de
+  // blocos (uma por fase/marco do ciclo atual, igual os blocos de etapa do Lead Time) + barra
+  // fina de semana do ciclo + trava atual (editável). "Registrar entrega" é o mesmo padrão de
+  // duas etapas do Lead Time: escolhe a fase/marco no select, aparece o campo de data.
+  // Auditorias vira um select só (em vez de lista expandida) pra não poluir a linha — ao
+  // escolher uma, aparece um checkbox pontual pra marcar feita/não feita. Nasce recolhida
+  // (droExpanded=false); o botão ▸ ainda expande o detalhe pesado (trilha de ciclos, cadeia de
+  // travas, foco, comitês com prev/real) — mesmo droDetailDRO/droDetailDRX de sempre.
   const th=txt=>'<th style="text-align:left;padding:6px 10px;background:var(--surface2);white-space:nowrap;">'+txt+'</th>';
-  const header='<tr>'+['','Cliente','Progresso','Próximo evento','Auditorias','Oportunidade'].map(th).join('')+'</tr>';
+  const header='<tr>'+['','Cliente','Registrar entrega','Progresso','Auditorias','Oportunidade'].map(th).join('')+'</tr>';
+  const travaOpts=(cur)=>DRO_TRAVAS.map(([k,n])=>'<option value="'+k+'" '+(cur===k?'selected':'')+'>'+k+' '+n+'</option>').join('');
+  // Bloco de status de uma fase/marco — mesma cara dos blocos de etapa do Lead Time (30px,
+  // ícone/label branco no fundo colorido, cinza quando ainda não chegou a vez).
+  const blocoStatus = (label, status, tooltip) => {
+    const bg = status==='feito' ? 'var(--green)' : status==='atrasado' ? 'var(--red)' : status==='agora' ? 'var(--amber)' : 'var(--surface3)';
+    const fg = (status==='pendente'||status==='futuro') ? 'var(--text-hint)' : '#fff';
+    const conteudo = status==='feito' ? icon('check',{size:8}) : status==='atrasado' ? icon('warning',{size:8}) : status==='agora' ? '●' : '○';
+    return '<div title="'+tooltip+'" style="flex:1;min-width:44px;height:30px;background:'+bg+';border-radius:3px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;">'
+      + '<span style="color:'+fg+';font-size:9px;line-height:1;">'+conteudo+'</span>'
+      + '<span style="color:'+fg+';font-size:var(--fs-3xs);line-height:1;">'+label+'</span>'
+      + '</div>';
+  };
 
   const linhas = lista.map(p=>{
     if(p.droExpanded===undefined) p.droExpanded=false;
@@ -4696,29 +4880,56 @@ function buildDRO(){
     const badge = isDrx?'DR-X':'DRO';
     const d=droInitData(p);
     const auditorias=d.auditorias||[];
-    const audFeitas=auditorias.filter(a=>a.feita).length;
-    const audAtrasCliente=auditorias.filter(a=>{ if(a.feita) return false; const dp=a.dataPrev?parseDate(a.dataPrev):null; return dp&&hoje>dp; }).length;
 
-    let progressoTxt;
+    let travaAtual, travaSelectHTML, semTxt, semPct, semTotal, blocosHTML, registrarSelectHTML;
     if(isDrx){
       const sem=drxSemana(p);
-      const semTxt= sem===0?'não iniciado': sem>=7?'encerrado':('Sem '+sem+'/6');
+      semTxt = sem===0?'não iniciado': sem>=7?'encerrado':('Sem '+sem+'/6');
+      semPct = sem<=0?0: sem>=7?100:Math.round(sem/6*100);
+      semTotal = 6;
       const dx=drxInit(p);
-      progressoTxt = semTxt + (dx.travaPrim? ' · '+dx.travaPrim : '');
+      travaAtual = dx.travaPrim || '';
+      travaSelectHTML = '<select class="sel" style="font-size:var(--fs-2xs);padding:1px 3px;" onchange="drxSetTravaPrim('+p.id+',this.value)">'
+        + '<option value="" '+(!travaAtual?'selected':'')+'>trava: — </option>' + travaOpts(travaAtual) + '</select>';
+      blocosHTML = DRX_MARCOS.map(m=>{
+        const mo=dx.marcos[m.k]||{};
+        const stt=drxMarcoStatus(mo,m.sem,sem);
+        const tt=m.nome+' · '+(mo.real?('real '+fmtD(mo.real)):(mo.prev?('prev '+fmtD(mo.prev)):'sem data'));
+        return blocoStatus(m.nome.replace('Kick-off','Kickoff').slice(0,10), stt, tt);
+      }).join('');
+      registrarSelectHTML = '<select class="sel" style="width:100%;font-size:var(--fs-xs);margin-bottom:4px;" id="dro-sel-'+p.id+'" onchange="droMostrarInputData('+p.id+')">'
+        + '<option value="">— selecione —</option>'
+        + DRX_MARCOS.map(m=>{
+            const mo=dx.marcos[m.k]||{};
+            const iconTxt = mo.real?'✓':(mo.prev && parseDate(mo.prev)<hoje?'⚠':'○');
+            return '<option value="drx::'+m.k+'">'+iconTxt+' '+m.nome+(mo.real?' · '+fmtD(mo.real):'')+'</option>';
+          }).join('')
+        + '</select>';
     } else {
       const ciclos=droGetCiclos(p);
       const atualIdx=droCicloAtualIdx(ciclos);
       const cicloAtual=ciclos[atualIdx];
       const sem=cicloAtual?droSemana(cicloAtual):0;
-      const semTxt= sem===0?'não iniciado': sem>=13?'encerrado':('Sem '+sem+'/12');
-      progressoTxt = 'Ciclo '+(atualIdx+1)+'/'+ciclos.length+' · '+semTxt + (cicloAtual&&cicloAtual.trava? ' · '+cicloAtual.trava : '');
-    }
-
-    const prox=droProximoEvento(p);
-    let proxHTML='<span style="color:var(--text-hint);">—</span>';
-    if(prox){
-      const [pcor,plabel]=STATUS_MAP[prox.status]||['var(--text-hint)','—'];
-      proxHTML='<span title="'+prox.nome+'" style="font-size:var(--fs-xs);font-weight:700;color:'+pcor+';">'+prox.nome+(prox.prev?' · '+fmtD(prox.prev):'')+' · '+plabel+'</span>';
+      semTxt = 'Ciclo '+(atualIdx+1)+'/'+ciclos.length+' · '+(sem===0?'não iniciado': sem>=13?'encerrado':('Sem '+sem+'/12'));
+      semPct = sem<=0?0: sem>=13?100:Math.round(sem/12*100);
+      semTotal = 12;
+      travaAtual = (cicloAtual&&cicloAtual.trava) ? cicloAtual.trava : '';
+      travaSelectHTML = '<select class="sel" style="font-size:var(--fs-2xs);padding:1px 3px;" onchange="droSetTrava('+p.id+','+atualIdx+',this.value)">'
+        + '<option value="" '+(!travaAtual?'selected':'')+'>trava: — </option>' + travaOpts(travaAtual) + '</select>';
+      blocosHTML = DRO_FASES.map(f=>{
+        const com=cicloAtual[f.ck]||{};
+        const stt=droComiteStatus(com,f.semFim,sem);
+        const tt=f.cnome+' · '+(com.real?('real '+fmtD(com.real)):(com.prev?('prev '+fmtD(com.prev)):'sem data'));
+        return blocoStatus(f.nome.slice(0,10), stt, tt);
+      }).join('');
+      registrarSelectHTML = '<select class="sel" style="width:100%;font-size:var(--fs-xs);margin-bottom:4px;" id="dro-sel-'+p.id+'" onchange="droMostrarInputData('+p.id+')">'
+        + '<option value="">— selecione —</option>'
+        + DRO_FASES.map(f=>{
+            const com=cicloAtual[f.ck]||{};
+            const iconTxt = com.real?'✓':(com.prev && parseDate(com.prev)<hoje?'⚠':'○');
+            return '<option value="dro:'+atualIdx+':'+f.ck+'">'+iconTxt+' '+f.cnome+(com.real?' · '+fmtD(com.real):'')+'</option>';
+          }).join('')
+        + '</select>';
     }
 
     const oportSel=(v)=>'<option value="'+v+'" '+(p.oport===v?'selected':'')+'>'+v+'</option>';
@@ -4728,11 +4939,21 @@ function buildDRO(){
       + '<td style="padding:8px 10px;position:sticky;left:0;background:var(--surface);min-width:190px;">'
         + '<div style="display:flex;align-items:center;gap:6px;">'+flagHTML(calcFlagAutomatica(p))+'<b>'+p.nome+'</b><span class="badge" style="background:'+corDim+';color:'+cor+';font-size:var(--fs-2xs);margin-top:0;">'+badge+'</span></div>'
         + '<div style="font-size:var(--fs-xs);color:var(--text-hint);margin-top:2px;">'+(p.consultor||'—')+'</div>'
+        + ((p.tags && p.tags.length) ? '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:3px;max-width:190px;">' + p.tags.map(t => '<span style="font-size:var(--fs-3xs);font-weight:700;color:#fff;background:' + tagCor(t) + ';border-radius:8px;padding:1px 7px;white-space:nowrap;">' + t.replace(/</g,'&lt;') + '</span>').join('') + '</div>' : '')
       + '</td>'
-      + '<td style="padding:8px 10px;font-size:var(--fs-sm);white-space:nowrap;">'+progressoTxt+'</td>'
-      + '<td style="padding:8px 10px;">'+proxHTML+'</td>'
-      + '<td style="padding:8px 10px;font-size:var(--fs-sm);white-space:nowrap;'+(audAtrasCliente?'color:var(--red);font-weight:700;':'')+'">'+audFeitas+'/'+auditorias.length+(audAtrasCliente?' ('+audAtrasCliente+' atrasada'+(audAtrasCliente>1?'s':'')+')':'')+'</td>'
-      + '<td style="padding:8px 10px;" onclick="event.stopPropagation()">'
+      + '<td style="padding:8px 10px;min-width:150px;">'
+        + registrarSelectHTML
+        + '<div id="dro-date-row-'+p.id+'" style="display:none;gap:6px;align-items:center;">'
+        + '<input type="date" id="dro-date-'+p.id+'" class="sel" style="font-size:var(--fs-sm);flex:1;" onchange="droSalvarData('+p.id+')">'
+        + '</div>'
+      + '</td>'
+      + '<td style="padding:6px 10px;min-width:180px;">'
+        + travaSelectHTML
+        + '<div style="display:flex;gap:3px;margin-top:4px;">'+blocosHTML+'</div>'
+        + '<div style="background:var(--surface3);border-radius:3px;height:4px;margin-top:4px;overflow:hidden;" title="'+semTxt+'"><div style="height:100%;width:'+semPct+'%;background:'+cor+';"></div></div>'
+      + '</td>'
+      + '<td style="padding:8px 10px;min-width:150px;">'+droAudSelectHTML(p, hoje)+'</td>'
+      + '<td style="padding:6px 8px;">'
         + '<select class="sel" style="font-size:var(--fs-sm);padding:2px 6px;" onchange="const pr=projects.find(x=>String(x.id)===String('+p.id+'));pr.oport=this.value;upd();"><option value="" '+(!p.oport?'selected':'')+'>Sem oportunidade</option>'+oportSel('Mapeado (AQL)')+oportSel('Apresentar proposta (SQL)')+oportSel('Proposta apresentada (SAL)')+oportSel('Follow (COMMIT)')+'</select>'
       + '</td>'
       + '</tr>';
@@ -4743,6 +4964,65 @@ function buildDRO(){
   }).join('');
 
   container.innerHTML = resumo + '<div class="tbl-scroll"><table style="border-collapse:collapse;font-size:var(--fs-sm);width:100%;"><thead>'+header+'</thead><tbody>'+linhas+'</tbody></table></div>';
+}
+
+// "Registrar entrega" da linha compacta do DRO/DRX — mesmo padrão de duas etapas do Lead Time
+// (ltShowDateInput/ltSaveDate): escolhe a fase/marco no select (valor "dro:ci:ck" ou
+// "drx::mk"), aparece o campo de data pré-preenchido com o que já tiver salvo.
+function droMostrarInputData(id){
+  const sel=document.getElementById('dro-sel-'+id);
+  const row=document.getElementById('dro-date-row-'+id);
+  const inp=document.getElementById('dro-date-'+id);
+  if(!sel||!row||!inp) return;
+  const val=sel.value;
+  if(!val){ row.style.display='none'; return; }
+  const p=projects.find(x=>String(x.id)===String(id));
+  if(!p) return;
+  const [tipo, ci, ck]=val.split(':');
+  let real='';
+  if(tipo==='dro'){ real=droInitData(p).ciclos[ci]?.[ck]?.real || ''; }
+  else { real=drxInit(p).marcos[ck]?.real || ''; }
+  inp.value=real;
+  row.style.display='flex';
+}
+function droSalvarData(id){
+  const sel=document.getElementById('dro-sel-'+id);
+  const inp=document.getElementById('dro-date-'+id);
+  if(!sel||!inp) return;
+  const val=sel.value;
+  if(!val) return;
+  const [tipo, ci, ck]=val.split(':');
+  if(tipo==='dro') droSetComite(id, parseInt(ci), ck, 'real', inp.value);
+  else drxSetMarco(id, ck, 'real', inp.value);
+}
+// Auditorias como select só (em vez de lista expandida) — escolher uma revela um checkbox
+// pontual pra marcar feita/não feita, sem precisar abrir o detalhe pesado.
+function droAudSelectHTML(p, hoje){
+  const auditorias=droInitData(p).auditorias||[];
+  if(!auditorias.length) return '<span style="font-size:var(--fs-xs);color:var(--text-hint);">Nenhuma contratada</span>';
+  const feitas=auditorias.filter(a=>a.feita).length;
+  const opts=auditorias.map((a,i)=>{
+    const dp=a.dataPrev?parseDate(a.dataPrev):null;
+    const atras=!a.feita && dp && hoje>dp;
+    const iconTxt=a.feita?'✓':atras?'⚠':'○';
+    return '<option value="'+i+'">'+iconTxt+' '+a.nome+(a.dataPrev?' · '+fmtD(a.dataPrev):'')+'</option>';
+  }).join('');
+  return '<select class="sel" style="width:100%;font-size:var(--fs-xs);" onchange="droMostrarAcaoAuditoria('+p.id+',this.value)">'
+    + '<option value="">'+feitas+'/'+auditorias.length+' auditorias</option>'
+    + opts + '</select>'
+    + '<div id="dro-aud-acao-'+p.id+'"></div>';
+}
+function droMostrarAcaoAuditoria(projId, idx){
+  const el=document.getElementById('dro-aud-acao-'+projId);
+  if(!el) return;
+  if(idx===''){ el.innerHTML=''; return; }
+  const p=projects.find(x=>String(x.id)===String(projId));
+  const a=p?droInitData(p).auditorias[idx]:null;
+  if(!a){ el.innerHTML=''; return; }
+  el.innerHTML='<label style="display:flex;align-items:center;gap:4px;font-size:var(--fs-2xs);margin-top:3px;cursor:pointer;">'
+    + '<input type="checkbox" '+(a.feita?'checked':'')+' onchange="droToggleAuditoria('+projId+','+idx+')" style="accent-color:var(--green);width:13px;height:13px;">'
+    + (a.feita?'Concluída':'Marcar como feita')
+    + '</label>';
 }
 
 // Detalhe expandido do DRO — trilha de ciclos, ciclo selecionado (trava governante, cadeia de
@@ -6850,12 +7130,6 @@ function confirmNovaMon() {
 // ════════════════════════════════════════════════════════════════
 const PEV_COR = { 'Oportunidade':'var(--blue)', 'Proposta':'var(--amber)' };
 
-function _pevMesAtualKey() {
-  const hoje = new Date();
-  const m = ALL_MESES.find(x => x.idx === hoje.getMonth() && x.ano === hoje.getFullYear());
-  return m ? (m.label + '/' + m.ano) : (ALL_MESES.length ? ALL_MESES[0].label + '/' + ALL_MESES[0].ano : '');
-}
-
 
 // ═══════════════════════════════════
 //  AQL — meta por consultor + gráfico de evolução (dados: p.pipeEventos, aqlMetas)
@@ -6865,12 +7139,13 @@ const AQL_PALETTE = { 'var(--blue)':'#2f6fed','var(--green)':'#1f9d55','var(--ac
 const AQL_FALLBACK = ['#2f6fed','#1f9d55','#c8102e','#8E5BC4','#c07a10','#0d9488','#db2777','#4f46e5','#65a30d','#c2410c','#0891b2','#607D8B'];
 
 function _aqlMesAtual() {
-  const selMes = document.getElementById('pev-mes');
-  if (!selMes || !selMes.value) return null;
-  const [label, anoStr] = selMes.value.split('/');
-  const ano = parseInt(anoStr);
-  const m = ALL_MESES.find(x => x.label === label && x.ano === ano);
-  return m ? { label, ano, key: m.key } : null;
+  // Lê o mesmo filtro de mês da filter-bar (botões lado a lado, igual Visão Geral/
+  // Performance) em vez de um select — "Ano completo" (filters['aql'] === null) faz o mesmo
+  // que um mês nunca selecionado: retorna null, e quem chama já sabe lidar com isso.
+  const key = filters['aql'];
+  if (!key) return null;
+  const m = ALL_MESES.find(x => x.key === key);
+  return m ? { label: m.label, ano: m.ano, key: m.key } : null;
 }
 
 // Info de ritmo (so faz sentido quando o mes selecionado e o mes corrente)
@@ -6900,7 +7175,8 @@ function _aqlRitmoStatus(pctMeta, pctTempo) {
 }
 
 function buildAql() {
-  buildPipeEventos();  // popula pev-mes/pev-semana/pev-cons e a lista pev-lista
+  buildFilterBar('aql-filter-bar', 'aql', buildAql);
+  buildPipeEventos();  // popula pev-semana/pev-cons e a lista pev-lista
   buildAqlConsolidado();
   buildAqlMetas();
   buildAqlFunil();
@@ -6999,17 +7275,24 @@ function buildAqlConsolidado() {
 function buildAqlMetas() {
   const mesInfo = _aqlMesAtual();
   const totalInput = document.getElementById('aql-meta-total');
+  const totalInputSal = document.getElementById('aql-meta-total-sal');
   const chips = document.getElementById('aql-meta-chips');
   if (!mesInfo) { if (chips) chips.innerHTML = ''; return; }
   const { label, ano, key: mesKey } = mesInfo;
   const meta = aqlMetas[mesKey] || {};
   if (totalInput) totalInput.value = meta.total || '';
+  if (totalInputSal) totalInputSal.value = meta.totalSal || '';
   const total = meta.total || 0;
+  const totalSal = meta.totalSal || 0;
 
-  // Realizado = cada registro da lista conta como 1 AQL, independente do tipo
+  // Realizado = cada registro da lista conta como 1 AQL, independente do tipo. SAL (reunião
+  // feita) é o mesmo pipeEventos, só olhando o checkbox reuniaoFeita em vez do total bruto.
   const evs = pipeEventosDoMes(label, ano);
-  const porCons = {};
-  evs.forEach(e => { porCons[e.consultor] = (porCons[e.consultor] || 0) + 1; });
+  const porCons = {}, porConsSal = {};
+  evs.forEach(e => {
+    porCons[e.consultor] = (porCons[e.consultor] || 0) + 1;
+    if (e.reuniaoFeita) porConsSal[e.consultor] = (porConsSal[e.consultor] || 0) + 1;
+  });
 
   window.CONS_MON = window.CONS_MON || ['Caio','Leonam','Loma','Camila','Cleiton'];
   const dotColors = window.dotColors || {};
@@ -7025,6 +7308,11 @@ function buildAqlMetas() {
     const metaCons = pct > 0 ? Math.round(total * pct / 100) : 0;
     const real = porCons[nome] || 0;
     const pctAtg = metaCons > 0 ? Math.min(200, Math.round(real / metaCons * 100)) : null;
+    // Mesmo % de cima (cons_NOME_pct) — o share de cada consultor é o mesmo pro AQL e pro
+    // SAL, só muda o total (aqlMetas.total vs aqlMetas.totalSal), então não precisa de um
+    // segundo campo de identificação.
+    const metaConsSal = pct > 0 ? Math.round(totalSal * pct / 100) : 0;
+    const realSal = porConsSal[nome] || 0;
     const cor = v => v === null ? 'var(--text-hint)' : v >= 100 ? 'var(--green)' : v >= 70 ? 'var(--amber)' : 'var(--red)';
     const dot = dotColors[nome] || 'var(--accent-dim)';
     const status = ritmoInfo ? _aqlRitmoStatus(pctAtg, ritmoInfo.pctTempo) : null;
@@ -7041,6 +7329,8 @@ function buildAqlMetas() {
       + '</div>'
       + '<div style="font-size:var(--fs-xs);color:var(--text-hint);margin-bottom:3px;">Meta: <b style="color:var(--text);">' + (metaCons > 0 ? metaCons : '\u2014') + '</b></div>'
       + '<div style="font-size:var(--fs-xl);font-weight:700;color:' + cor(pctAtg) + ';">' + real + '<span style="font-size:var(--fs-xs);font-weight:400;color:var(--text-hint);"> AQLs' + (pctAtg !== null ? ' \u00b7 ' + pctAtg + '%' : '') + '</span></div>'
+      + '<div style="margin:8px 0 3px;padding-top:6px;border-top:1px dashed var(--border);font-size:var(--fs-xs);color:var(--text-hint);">Meta SAL (mesmo % acima): <b style="color:var(--text);">' + (metaConsSal > 0 ? metaConsSal : '\u2014') + '</b></div>'
+      + '<div style="font-size:var(--fs-lg);font-weight:700;color:var(--text);">' + realSal + '<span style="font-size:var(--fs-xs);font-weight:400;color:var(--text-hint);"> reuni\u00f5es feitas</span></div>'
       + '</div>';
   }).join('');
 }
@@ -7103,7 +7393,13 @@ function saveAqlMetaConsPct(mesKey, nome, el) {
   aqlMetas[mesKey]['cons_' + nome + '_pct'] = isNaN(v) ? 0 : v;
   buildAql(); upd();
 }
-
+function saveAqlMetaTotalSal(val) {
+  const mesInfo = _aqlMesAtual(); if (!mesInfo) return;
+  if (!aqlMetas[mesInfo.key]) aqlMetas[mesInfo.key] = {};
+  const v = parseFloat(val);
+  aqlMetas[mesInfo.key].totalSal = isNaN(v) ? 0 : v;
+  buildAql(); upd();
+}
 function buildAqlChart() {
   const canvas = document.getElementById('aqlChart');
   if (!canvas || typeof Chart === 'undefined') return;
@@ -7198,12 +7494,9 @@ function buildAqlHistorico() {
 }
 
 function buildPipeEventos() {
-  const selMes = document.getElementById('pev-mes');
-  if (selMes && !selMes.dataset.init) {
-    selMes.innerHTML = ALL_MESES.map(m => `<option value="${m.label}/${m.ano}">${m.label}/${m.ano}</option>`).join('');
-    selMes.value = _pevMesAtualKey();
-    selMes.dataset.init = '1';
-  }
+  // Mês vem da filter-bar compartilhada (aql-filter-bar) — não tem select próprio aqui mais.
+  const mesInfo = _aqlMesAtual();
+  const label = mesInfo?.label, ano = mesInfo?.ano;
   // popula consultores
   const selCons = document.getElementById('pev-cons');
   if (selCons) {
@@ -7211,22 +7504,29 @@ function buildPipeEventos() {
     const cons = [...new Set(projects.map(p => p.consultor).filter(Boolean))].sort();
     selCons.innerHTML = '<option value="">Todos consultores</option>' + cons.map(c => `<option ${c===cur?'selected':''}>${c}</option>`).join('');
   }
-  const [label, anoStr] = (selMes?.value || '').split('/');
-  const ano = parseInt(anoStr);
   const consF = selCons?.value || '';
 
   // semanas do mês — repopula o seletor quando o mês muda
   const selSem = document.getElementById('pev-semana');
-  const semanas = getSemanasDoMes(label, ano);
-  if (selSem && selSem.dataset.mes !== (selMes?.value || '')) {
+  const semanas = mesInfo ? getSemanasDoMes(label, ano) : [];
+  if (selSem && selSem.dataset.mes !== (mesInfo?.key || '')) {
     selSem.innerHTML = '<option value="">Todas as semanas</option>'
       + semanas.map((s, i) => `<option value="${i}">${s.label} · ${s.range}</option>`).join('');
-    selSem.dataset.mes = selMes?.value || '';
+    selSem.dataset.mes = mesInfo?.key || '';
     selSem.value = '';
   }
   const semSel = (selSem && selSem.value !== '') ? semanas[parseInt(selSem.value)] : null;
 
   buildPipeEventosMatriz(label, ano, consF);   // quadro semana a semana (Passo C preenche)
+
+  const lista = document.getElementById('pev-lista');
+  if (!lista) return;
+  // "Ano completo" selecionado na filter-bar — Registro é sempre de um mês específico, então
+  // só pede pra escolher um (mesmo tratamento que Metas já dá pro mesmo caso).
+  if (!mesInfo) {
+    lista.innerHTML = '<div style="font-size:var(--fs-base);color:var(--text-hint);padding:16px 0;">Selecione um mês no filtro acima para ver os registros.</div>';
+    return;
+  }
 
   // lista de eventos do mês (cada evento = 1 linha; cliente pode ter várias)
   let evs = pipeEventosDoMes(label, ano);
@@ -7234,8 +7534,6 @@ function buildPipeEventos() {
   if (semSel) evs = evs.filter(e => { const d = parseDate(e.data); return d && d >= semSel.ini && d <= semSel.fim; });
   evs.sort((a,b) => (a.data||'').localeCompare(b.data||''));
 
-  const lista = document.getElementById('pev-lista');
-  if (!lista) return;
   if (!evs.length) {
     lista.innerHTML = '<div class="tbl-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>Projeto</th><th>Consultor</th><th>Valores (OT / Rec)</th><th>Escopo / Obs</th><th>Reunião</th><th></th></tr></thead><tbody>' + emptyRow(8, 'Nenhum evento registrado em ' + (label||'—')) + '</tbody></table></div>';
     return;
@@ -7395,10 +7693,9 @@ function confirmNovoPipeEvento() {
     obs: document.getElementById('pev-obs').value.trim()
   });
   closeNovoPipeEvento();
-  // garante que o mês exibido seja o do evento criado
-  const selMes = document.getElementById('pev-mes');
+  // garante que o mês exibido no filtro seja o do evento criado
   const dt = parseDate(data);
-  if (selMes && dt) { const mm = ALL_MESES.find(x => x.idx === dt.getMonth() && x.ano === dt.getFullYear()); if (mm) selMes.value = mm.label + '/' + mm.ano; }
+  if (dt) { const mm = ALL_MESES.find(x => x.idx === dt.getMonth() && x.ano === dt.getFullYear()); if (mm) filters['aql'] = mm.key; }
   buildAql(); upd();
 }
 
@@ -7787,8 +8084,12 @@ function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
   const volumeModeloCard = document.getElementById('ov-volume-modelo-card');
   const convCard = document.getElementById('ov-conv-card');
   const kpiSwipeWrap = document.getElementById('ov-kpi-swipe-wrap');
-  if (pipelineFlagsRow) pipelineFlagsRow.style.display = ehTer ? 'none' : '';
-  if (ticketTierRow)    ticketTierRow.style.display    = ehTer ? 'none' : '';
+  // As duas linhas são display:grid no HTML original — '' (em vez de 'grid') limpava a
+  // propriedade inline inteira e derrubava pra display:block padrão, empilhando os cards em
+  // vez de lado a lado (bug que já existia antes desta mudança, pego de carona aqui porque
+  // afeta em cheio o card "Reembolsos" que está sendo ajustado nesta mesma linha).
+  if (pipelineFlagsRow) pipelineFlagsRow.style.display = ehTer ? 'none' : 'grid';
+  if (ticketTierRow)    ticketTierRow.style.display    = ehTer ? 'none' : 'grid';
   if (healthscoreCard)  healthscoreCard.style.display  = ehTer ? 'none' : '';
   if (volumeModeloCard) volumeModeloCard.style.display = ehTer ? '' : 'none';
   if (convCard) convCard.style.display = ehTer ? 'none' : '';
@@ -7919,7 +8220,11 @@ function buildOvInsightsSemana() {
   // — é só um AVISO antecipado, não conta como atraso de verdade: NÃO derruba a flag nem entra
   // como "fora do prazo" pra ela (prazoStatus.ok vem true pro risco). Aqui no card, fica
   // destacado num bucket à parte só pra dar visibilidade, sem se misturar com "Atrasadas".
-  const prazoStatuses  = projetosAtivosAgora.map(p => prazoStatus(p));
+  // refDateSemana também aqui — sem isso, prazoStatus sempre calculava "como está hoje",
+  // enquanto Flags (calcFlagAutomatica) e Score (filtro por data real dentro da semana) já
+  // reagiam à navegação de semana corretamente. Era por isso que só "Composição da flag —
+  // prazo" ficava parado ao trocar de semana.
+  const prazoStatuses  = projetosAtivosAgora.map(p => prazoStatus(p, refDateSemana));
   const noPrazoCount   = prazoStatuses.filter(st => st.ok === true && !st.risco).length;
   const riscoCount     = prazoStatuses.filter(st => st.risco).length;
   const atrasadasCount = prazoStatuses.filter(st => st.ok === false).length;
@@ -8387,30 +8692,17 @@ function buildOvAnalises(curM) {
   const ovMesLbl = document.getElementById('ov-mes-label');
   if (ovMesLbl) ovMesLbl.textContent = mesLabel;
 
-  // Pipeline ativo — se mês selecionado, filtra projetos ativos ou iniciados naquele mês
+  // "Projetos ativos" no recorte do mês (ou "Em andamento" geral, sem mês selecionado) —
+  // usado abaixo em "Projetos por tier".
   const ativos = curM
     ? projects.filter(p => {
         const d = parseDate(p.inicio);
         return d && d.getMonth() === mesIdx && d.getFullYear() === mesAno;
       })
     : projects.filter(p => calcStatus2(p) === 'Em andamento');
-  const comPipe = ativos.filter(p => ETAPAS_PIPE.includes(p.oport));
-  const pipePct = ativos.length > 0 ? Math.round(comPipe.length / ativos.length * 100) : 0;
-  set('ov-pipe-pct', pipePct + '%');
-  const pipeSub = document.getElementById('ov-pipe-sub');
-  if (pipeSub) pipeSub.textContent = comPipe.length + ' de ' + ativos.length + ' projetos ativos com oportunidade';
-  setStyle('ov-pipe-bar', 'width', Math.min(100, pipePct) + '%');
-  const stagesEl = document.getElementById('ov-pipe-stages');
-  if (stagesEl) {
-    const COLORS = {'Mapeado (AQL)':'var(--blue)','Apresentar proposta (SQL)':'var(--blue)','Proposta apresentada (SAL)':'var(--amber)','Follow (COMMIT)':'var(--green)'};
-    const SHORT  = {'Mapeado (AQL)':'AQL','Apresentar proposta (SQL)':'SQL','Proposta apresentada (SAL)':'SAL','Follow (COMMIT)':'COMMIT'};
-    stagesEl.innerHTML = ETAPAS_PIPE.map(e => {
-      const n = ativos.filter(p => p.oport === e).length;
-      if (!n) return '';
-      return '<span style="font-size:var(--fs-xs);font-weight:700;padding:2px 8px;border-radius:20px;border:1px solid ' + COLORS[e] + ';color:' + COLORS[e] + ';">' + SHORT[e] + ': ' + n + '</span>';
-    }).join('');
-  }
 
+  buildOvReembolsosTabela(reembMesProjs);
+  buildOvReembolsosFunil(reembMesProjs, mesLabel);
   buildOvTratativas();
 
   // Ticket médio — usa a MONETIZAÇÃO REALIZADA (array monetizacoes[]), por evento de venda
@@ -8661,9 +8953,10 @@ function ordemCompleta(p) {
 const SEM_COLORS   = ['#6B8E6B','#5B8EC4','#E8A838','#C45B5B','#8E5BC4','#D4763B','#2D7A4F'];
 
 function clearLtFilters() {
-  ['lt-f-cons','lt-f-mon','lt-f-conv','lt-f-mesmon','lt-f-oport','lt-f-mes'].forEach(id => {
+  ['lt-f-cons','lt-f-mon','lt-f-conv','lt-f-mesmon','lt-f-oport','lt-f-mes','lt-f-tag'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
+  const selOrdem = document.getElementById('lt-f-ordem'); if (selOrdem) selOrdem.value = 'inicio';
   buildLeadTime();
 }
 
@@ -8694,7 +8987,21 @@ function getLtFiltered() {
     const m = ALL_MESES.find(x => x.idx === d?.getMonth() && x.ano === d?.getFullYear());
     return m ? (m.label + '/' + m.ano) === fMes : false;
   });
-  list.sort((a,b) => a.inicio > b.inicio ? -1 : 1);
+  const fTag = document.getElementById('lt-f-tag')?.value || '';
+  if (fTag) list = list.filter(p => (p.tags || []).includes(fTag));
+  const fOrdem = document.getElementById('lt-f-ordem')?.value || 'inicio';
+  if (fOrdem === 'tag') {
+    // Mesmo critério do Gantt do Healthscore: sem tag vai pro final, dentro da mesma tag
+    // desempata por início.
+    const primeiraTag = p => (p.tags && p.tags.length) ? [...p.tags].sort()[0] : '￿';
+    list.sort((a, b) => {
+      const ta = primeiraTag(a), tb = primeiraTag(b);
+      if (ta !== tb) return ta < tb ? -1 : 1;
+      return (a.inicio || '') > (b.inicio || '') ? -1 : 1;
+    });
+  } else {
+    list.sort((a,b) => a.inicio > b.inicio ? -1 : 1);
+  }
   return list;
 }
 
@@ -8905,6 +9212,43 @@ function aqlResumoOportHTML(p) {
   return '<button onclick="aqlAbrirProdutos(' + p.id + ',null)" title="Editar produtos da oportunidade" '
     + 'style="margin-top:3px;background:none;border:none;padding:0;color:var(--accent);text-decoration:underline;cursor:pointer;font-size:var(--fs-xs);text-align:left;">'
     + partes.join(' · ') + '</button>';
+}
+
+// Caixinha de status do reembolso (Concedido/Revertido) — só existe enquanto tiver uma data de
+// pedido registrada. Alimenta 100% o card "Reembolsos" da Visão Geral (funil solicitados >>
+// concedidos >> revertidos).
+function ltReembStatusHTML(p) {
+  if (!p.dataReembolso) return '';
+  const st = p.reembolsoStatus || '';
+  return '<select class="sel" style="font-size:var(--fs-2xs);width:100%;margin-top:3px;" title="Status do reembolso" onchange="ltSetReembolsoStatus(' + p.id + ',this.value)">'
+    + ['', 'Concedido', 'Revertido'].map(o => '<option value="' + o + '"' + (st === o ? ' selected' : '') + '>' + (o || 'Solicitado (sem decisão)') + '</option>').join('')
+    + '</select>';
+}
+// A data e o status ficam em campos separados (dataReembolso/reembolsoStatus) — não dá pra usar
+// ltSetField genérico aqui porque, ao mudar a data, a caixinha de status precisa
+// aparecer/desaparecer na hora, sem reconstruir a linha inteira (mesmo padrão de atualização
+// pontual de _ltScoreBlocksHTML/lt-bar-).
+function ltSetReembolsoData(id, val) {
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!p) return;
+  p.dataReembolso = val;
+  if (!val) p.reembolsoStatus = ''; // limpou a data: reseta a decisão também, não faz sentido ficar "Concedido" sem pedido
+  upd();
+  const el = document.getElementById('lt-reemb-status-' + id);
+  if (el) el.innerHTML = ltReembStatusHTML(p);
+}
+function ltSetReembolsoStatus(id, val) {
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!p) return;
+  p.reembolsoStatus = val;
+  upd();
+}
+// Mesma troca de status, chamada a partir do card "Reembolsos" da Visão Geral — reaproveita
+// ltSetReembolsoStatus (o campo é o mesmo, independente de onde é editado) e só troca o
+// refresh: buildOv() de novo pra tabela/funil refletirem a mudança na hora.
+function ovSetReembolsoStatus(id, val) {
+  ltSetReembolsoStatus(id, val);
+  buildOv();
 }
 function ltShowDateInput(id) {
   const sel  = document.getElementById('lt-sel-' + id);
@@ -9319,6 +9663,13 @@ function buildLeadTime() {
     const curD = selDesigner.value;
     selDesigner.innerHTML = '<option value="">Todos</option>' + designersLT.map(d => '<option' + (d===curD?' selected':'') + '>' + d + '</option>').join('');
   }
+  // Mesmas tags manuais (p.tags) já usadas no filtro/ordenação do Gantt do Healthscore
+  const selTagLT = document.getElementById('lt-f-tag');
+  if (selTagLT) {
+    const tagsLT = [...new Set(projects.flatMap(p => p.tags || []))].sort();
+    const curTag = selTagLT.value;
+    selTagLT.innerHTML = '<option value="">Todas</option>' + tagsLT.map(t => '<option' + (t===curTag?' selected':'') + '>' + t + '</option>').join('');
+  }
   const selMes = document.getElementById('lt-f-mes');
   const selMesMon = document.getElementById('lt-f-mesmon');
   if (selMesMon) {
@@ -9442,6 +9793,7 @@ function buildLeadTime() {
           + (p.nome||'—')
           + '</div>'
           + '<div style="margin-top:2px;">' + convBadge(p) + ' ' + statusBadge2(p) + (temFcaAbertaLT ? ' <span title="Tem FCA de projeto em aberto" style="font-size:var(--fs-3xs);font-weight:700;color:#fff;background:var(--amber);border-radius:8px;padding:1px 7px;white-space:nowrap;">'+icon('zap',{size:8})+' FCA aberta</span>' : '') + '</div>'
+          + ((p.tags && p.tags.length) ? '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:3px;max-width:190px;">' + p.tags.map(t => '<span style="font-size:var(--fs-3xs);font-weight:700;color:#fff;background:' + tagCor(t) + ';border-radius:8px;padding:1px 7px;white-space:nowrap;">' + t.replace(/</g,'&lt;') + '</span>').join('') + '</div>' : '')
           + '</td>'
           + '<td style="padding:6px 8px;font-size:var(--fs-sm);color:var(--text-muted);white-space:nowrap;">' + (p.gmv || '—') + '</td>'
           + '<td style="padding:6px 8px;">' + tierBadge(p.gmv) + '</td>'
@@ -9520,7 +9872,8 @@ function buildLeadTime() {
           + '<div style="font-size:var(--fs-2xs);color:var(--text-hint);margin:4px 0 1px;">Pedido de reembolso</div>'
           + '<input type="date" class="sel" style="font-size:var(--fs-xs);width:100%;" '
           + 'value="' + dv(p.dataReembolso) + '" '
-          + 'onchange="ltSetField(' + p.id + ',\'dataReembolso\',this.value)">'
+          + 'onchange="ltSetReembolsoData(' + p.id + ',this.value)">'
+          + '<div id="lt-reemb-status-' + p.id + '">' + ltReembStatusHTML(p) + '</div>'
           + '</td>'
           // Próximo contato
           + '<td style="padding:6px 8px;">'
@@ -10878,6 +11231,21 @@ function perfSetModo(modo) {
   buildPerformance();
 }
 
+// Score e SAL (consultor) só existem a partir de setembro/2026 — meses anteriores continuam
+// com exatamente os mesmos KPIs de sempre (não é retroativo, o que já foi medido até agosto
+// não muda nem ganha KPI novo no meio do caminho). Compartilhado entre buildPerformance (cards
+// do ranking) e perfSelecionaConsultor (detalhamento lá embaixo), pra não ter duas datas de
+// corte que podem divergir.
+const PERF_NOVOS_IND_DESDE = { ano: 2026, idx: 8 }; // setembro (idx 0-based: jan=0 ... set=8)
+function perfMesElegivelNovosInd(m) {
+  return (m.ano > PERF_NOVOS_IND_DESDE.ano) || (m.ano === PERF_NOVOS_IND_DESDE.ano && m.idx >= PERF_NOVOS_IND_DESDE.idx);
+}
+// mesesEleg: janela usada pra somar Score/SAL — o mês filtrado (se elegível) ou, sem filtro,
+// só a parte do ano-todo que já é setembro em diante.
+function perfMesesElegNovosInd(curM) {
+  return curM ? (perfMesElegivelNovosInd(curM) ? [curM] : []) : ALL_MESES.filter(perfMesElegivelNovosInd);
+}
+
 function buildPerformance() {
   buildFilterBar('perf-filter-bar', 'performance', buildPerformance);
   const cur  = filters['performance'];
@@ -10902,6 +11270,8 @@ function buildPerformance() {
 
   const CONS = isDesigner ? ['Alexandre','Eduardo'] : (window.CONS_MON || ['Caio','Leonam','Loma','Camila','Cleiton']);
   const METAS = { conv: 40, prazo: 80, pdi: 80, nps: 50, npsResp: 60, scoreEntrega: 70 };
+
+  const mesesEleg = perfMesesElegNovosInd(curM);
 
   // ── Calcula KPIs por consultor ─────────────────────────────
   const cards = CONS.map(nome => {
@@ -11009,6 +11379,48 @@ function buildPerformance() {
     const npsValExibicao = npsTemProjetosAptos ? (npsV !== null ? npsV : 0) : null;
     const npsRespExibicao = npsTemProjetosAptos ? (npsRespV !== null ? npsRespV : 0) : null;
     const npsAtingido = npsTemProjetosAptos ? (npsValExibicao >= METAS.nps && npsRespExibicao >= METAS.npsResp) : null;
+
+    // Score (consultor) — mesma ideia do "Score da Entrega" do designer, só que média de
+    // TODAS as entregas do consultor no período (não só uma etapa fixa), excluindo a etapa de
+    // Análise de Ambientes, que é a única que pertence ao designer.
+    let scoreConsultorV = null;
+    if (!isDesigner && mesesEleg.length) {
+      const notasCons = [];
+      projects.forEach(p => {
+        if (isDroFam(p)) return;
+        if (p.consultor !== nome) return;
+        const idxAmbientes = designerEtapas(p).find(i => i !== 1 && i !== 6);
+        const ent = p.entregas || {};
+        [1,2,3,4,5,6].forEach(si => {
+          if (si === idxAmbientes) return;
+          const e = ent[si] || ent[String(si)];
+          if (!e || !e.real) return;
+          const d = parseDate(e.real);
+          if (!d || !mesesEleg.some(m => d.getMonth() === m.idx && d.getFullYear() === m.ano)) return;
+          if (e.score !== undefined && e.score !== '' && !isNaN(parseFloat(e.score))) notasCons.push(parseFloat(e.score));
+        });
+      });
+      scoreConsultorV = notasCons.length ? Math.round(notasCons.reduce((a,b)=>a+b,0) / notasCons.length) : null;
+    }
+
+    // SAL (consultor) — volume de "reuniões feitas" (checkbox reuniaoFeita nos eventos da
+    // aba AQL), com meta configurável por consultor/mês em AQL > Metas. Usa o MESMO % do
+    // consultor já usado pro AQL (cons_NOME_pct) — o share de cada um é igual pros dois,
+    // só multiplica pelo total de SAL do mês em vez do total de AQL. Sem meta configurada,
+    // val fica null (mostra "—", não conta como atingido) em vez de ficar de fora do card.
+    let salV = null, salMetaCons = null;
+    if (!isDesigner && mesesEleg.length) {
+      let realizado = 0, metaSoma = 0, temMeta = false;
+      mesesEleg.forEach(m => {
+        realizado += pipeEventosDoMes(m.label, m.ano).filter(e => e.consultor === nome && e.reuniaoFeita).length;
+        const metaMes = aqlMetas[m.key] || {};
+        const totalSalMes = metaMes.totalSal || 0;
+        const pctMes = parseFloat(metaMes['cons_' + nome + '_pct'] || 0);
+        if (totalSalMes > 0 && pctMes > 0) { metaSoma += Math.round(totalSalMes * pctMes / 100); temMeta = true; }
+      });
+      if (temMeta) { salV = realizado; salMetaCons = metaSoma; }
+    }
+
     const kpis = isDesigner ? [
       { key: 'conv',  label: 'Tx. Conversão', val: convV,  meta: METAS.conv,  lower: false, suffix: '%' },
       { key: 'scoreEntrega', label: 'Score da Entrega', val: scoreEntregaV, meta: METAS.scoreEntrega, lower: false, suffix: '' },
@@ -11021,6 +11433,12 @@ function buildPerformance() {
       { key: 'pdi',   label: 'PDI',            val: pdiV,   meta: METAS.pdi,   lower: false, suffix: '%' },
       { key: 'nps',   label: 'NPS',            val: npsValExibicao, meta: METAS.nps, lower: false, suffix: '', atingidoOverride: npsAtingido,
         extraLabel: npsRespExibicao !== null ? ' · resp ' + npsRespExibicao + '%' : '' },
+      // Score e SAL sempre aparecem como indicador (igual PDI já faz quando não tem dado) —
+      // só que val fica null (mostra "—", não entra na conta de atingidos) pra qualquer mês
+      // antes de setembro/2026, ou depois disso quando ainda não tem nota/meta configurada.
+      // scoreConsultorV/salV/salMetaCons já nascem null fora da janela elegível (mesesEleg).
+      { key: 'score', label: 'Score', val: scoreConsultorV, meta: METAS.scoreEntrega, lower: false, suffix: '' },
+      { key: 'sal',   label: 'SAL',   val: salV,            meta: salMetaCons,        lower: false, suffix: '' },
     ];
     const kpisComDado = kpis.filter(k => k.val !== null);
     const atingidos   = kpisComDado.filter(k => k.atingidoOverride !== undefined && k.atingidoOverride !== null ? k.atingidoOverride : k.val >= k.meta).length;
@@ -11327,8 +11745,13 @@ function perfSelecionaConsultor(nome) {
   if (prazoSecao) prazoSecao.style.display = isDesigner ? 'none' : '';
   const scoreEntregaSecao = document.getElementById('perf-scoreentrega-secao');
   if (scoreEntregaSecao) scoreEntregaSecao.style.display = isDesigner ? '' : 'none';
+  // Score e SAL são indicadores só de consultor (mesma regra do Prazo)
+  const scoreSecao = document.getElementById('perf-score-secao');
+  if (scoreSecao) scoreSecao.style.display = isDesigner ? 'none' : '';
+  const salSecao = document.getElementById('perf-sal-secao');
+  if (salSecao) salSecao.style.display = isDesigner ? 'none' : '';
   // Garante que todos os bodies estão abertos
-  ['conv','prazo','nps','pdi','scoreentrega'].forEach(k => {
+  ['conv','prazo','nps','pdi','scoreentrega','score','sal'].forEach(k => {
     const b = document.getElementById('perf-' + k + '-body');
     if (b) { b.style.display = ''; }
     const btn = b?.previousElementSibling;
@@ -11487,6 +11910,98 @@ function perfSelecionaConsultor(nome) {
       </tr></thead>
       <tbody>${prazoRows || '<tr><td colspan="4" style="padding:12px;text-align:center;color:var(--text-hint);font-size:var(--fs-base);">Nenhum projeto no período</td></tr>'}</tbody>
     </table></div>${droDrxBlock}`;
+
+  // ── SCORE (consultor) — mesma janela de elegibilidade (setembro/2026+) do card do ranking.
+  if (!isDesigner) {
+    const mesesElegDet = perfMesesElegNovosInd(curM);
+    const entregasCons = [];
+    prjsCons.forEach(p => {
+      const idxAmbientes = designerEtapas(p).find(i => i !== 1 && i !== 6);
+      const ent = p.entregas || {};
+      [1,2,3,4,5,6].forEach(si => {
+        if (si === idxAmbientes) return;
+        const e = ent[si] || ent[String(si)];
+        if (!e || !e.real) return;
+        const d = parseDate(e.real);
+        if (!d || !mesesElegDet.some(m => d.getMonth() === m.idx && d.getFullYear() === m.ano)) return;
+        entregasCons.push({ nome: p.nome, etapa: nomeEtapaCurto(p, si), data: e.real,
+          score: (e.score !== undefined && e.score !== '' && !isNaN(parseFloat(e.score))) ? parseFloat(e.score) : null });
+      });
+    });
+    entregasCons.sort((a,b) => (b.data||'').localeCompare(a.data||''));
+    const comScoreCons = entregasCons.filter(e => e.score !== null);
+    const mediaScoreCons = comScoreCons.length ? Math.round(comScoreCons.reduce((a,b)=>a+b.score,0) / comScoreCons.length) : null;
+    const corScoreCons = mediaScoreCons !== null ? (mediaScoreCons >= 70 ? 'var(--green)' : 'var(--red)') : 'var(--text-hint)';
+    const scoreBadgeEl = document.getElementById('perf-score-badge');
+    if (scoreBadgeEl) scoreBadgeEl.innerHTML = !mesesElegDet.length
+      ? '<span style="color:var(--text-hint);">indicador a partir de set/2026</span>'
+      : mediaScoreCons !== null
+        ? `<span style="color:${corScoreCons};font-weight:700;">${mediaScoreCons} ${mediaScoreCons>=70?icon('check'):icon('x')} meta 70 (${comScoreCons.length} entrega${comScoreCons.length===1?'':'s'})</span>`
+        : (entregasCons.length ? `<span style="color:var(--text-hint);">${entregasCons.length} entrega(s) sem nota ainda</span>` : '—');
+    const rowsScoreCons = entregasCons.map(e => `<tr>
+      <td style="padding:6px 8px;font-size:var(--fs-base);">${e.nome}</td>
+      <td style="padding:6px 8px;font-size:var(--fs-sm);color:var(--text-hint);">${e.etapa}</td>
+      <td style="padding:6px 8px;font-size:var(--fs-sm);color:var(--text-hint);">${fmtD(e.data)}</td>
+      <td style="padding:6px 8px;font-size:var(--fs-sm);font-weight:700;color:${e.score===null?'var(--text-hint)':e.score>=70?'var(--green)':'var(--red)'};">${e.score===null?'sem nota':e.score}</td>
+    </tr>`).join('');
+    const scoreContentEl = document.getElementById('perf-score-content');
+    if (scoreContentEl) scoreContentEl.innerHTML = !mesesElegDet.length
+      ? '<div style="font-size:var(--fs-base);color:var(--text-hint);padding:12px 0;">Score só passa a ser medido a partir de setembro/2026 — o que já foi avaliado antes disso não entra aqui.</div>'
+      : (entregasCons.length
+        ? `<div class="tbl-scroll"><table style="width:100%;border-collapse:collapse;margin-top:8px;"><thead><tr>
+            <th style="text-align:left;padding:6px 8px;font-size:var(--fs-xs);color:var(--text-hint);text-transform:uppercase;">Projeto</th>
+            <th style="text-align:left;padding:6px 8px;font-size:var(--fs-xs);color:var(--text-hint);text-transform:uppercase;">Etapa</th>
+            <th style="text-align:left;padding:6px 8px;font-size:var(--fs-xs);color:var(--text-hint);text-transform:uppercase;">Data</th>
+            <th style="text-align:left;padding:6px 8px;font-size:var(--fs-xs);color:var(--text-hint);text-transform:uppercase;">Nota</th>
+          </tr></thead><tbody>${rowsScoreCons}</tbody></table></div>`
+        : '<div style="font-size:var(--fs-base);color:var(--text-hint);padding:12px 0;">Nenhuma entrega no período (fora Análise de Ambientes, que é do designer).</div>');
+  }
+
+  // ── SAL (consultor) — mesma meta configurável em AQL > Metas (total × % do consultor).
+  if (!isDesigner) {
+    const mesesElegDet = perfMesesElegNovosInd(curM);
+    const evsSal = [];
+    let metaSalSoma = 0, temMetaSal = false;
+    mesesElegDet.forEach(m => {
+      pipeEventosDoMes(m.label, m.ano).filter(e => e.consultor === nome).forEach(e => evsSal.push(e));
+      const metaMes = aqlMetas[m.key] || {};
+      const totalSalMes = metaMes.totalSal || 0;
+      const pctMes = parseFloat(metaMes['cons_' + nome + '_pct'] || 0);
+      if (totalSalMes > 0 && pctMes > 0) { metaSalSoma += Math.round(totalSalMes * pctMes / 100); temMetaSal = true; }
+    });
+    evsSal.sort((a,b) => (b.data||'').localeCompare(a.data||''));
+    const feitasSal = evsSal.filter(e => e.reuniaoFeita).length;
+    const corSal = temMetaSal ? (feitasSal >= metaSalSoma ? 'var(--green)' : 'var(--red)') : 'var(--text-hint)';
+    const salBadgeEl = document.getElementById('perf-sal-badge');
+    if (salBadgeEl) salBadgeEl.innerHTML = !mesesElegDet.length
+      ? '<span style="color:var(--text-hint);">indicador a partir de set/2026</span>'
+      : temMetaSal
+        ? `<span style="color:${corSal};font-weight:700;">${feitasSal} ${feitasSal>=metaSalSoma?icon('check'):icon('x')} meta ${metaSalSoma}</span>`
+        : '<span style="color:var(--text-hint);">sem meta configurada</span>';
+    const rowsSal = evsSal.map(e => `<tr>
+      <td style="padding:6px 8px;font-size:var(--fs-base);">${e.nome||'—'}</td>
+      <td style="padding:6px 8px;font-size:var(--fs-sm);color:var(--text-hint);">${fmtD(e.data)}</td>
+      <td style="padding:6px 8px;font-size:var(--fs-sm);color:${PEV_COR[e.tipo]||'var(--text)'};font-weight:600;">${e.tipo}</td>
+      <td style="padding:6px 8px;font-size:var(--fs-sm);font-weight:700;color:${e.reuniaoFeita?'var(--green)':'var(--text-hint)'};">${e.reuniaoFeita?(icon('check')+' Feita'):'—'}</td>
+    </tr>`).join('');
+    const salContentEl = document.getElementById('perf-sal-content');
+    if (salContentEl) salContentEl.innerHTML = !mesesElegDet.length
+      ? '<div style="font-size:var(--fs-base);color:var(--text-hint);padding:12px 0;">SAL só passa a ser medido a partir de setembro/2026.</div>'
+      : `<div style="display:flex;gap:12px;margin:12px 0;">
+          <div class="mcard c-gray" style="flex:1;padding:10px 14px;"><div class="mlabel">Registrados</div><div class="mval">${evsSal.length}</div></div>
+          <div class="mcard c-green" style="flex:1;padding:10px 14px;"><div class="mlabel">Reuniões feitas</div><div class="mval">${feitasSal}</div></div>
+          <div class="mcard c-purple" style="flex:1;padding:10px 14px;"><div class="mlabel">Meta</div><div class="mval">${temMetaSal?metaSalSoma:'—'}</div></div>
+        </div>
+        <div class="tbl-scroll"><table style="width:100%;border-collapse:collapse;">
+          <thead><tr style="background:var(--surface2);">
+            <th style="padding:6px 8px;font-size:var(--fs-xs);text-align:left;">Projeto</th>
+            <th style="padding:6px 8px;font-size:var(--fs-xs);text-align:left;">Data</th>
+            <th style="padding:6px 8px;font-size:var(--fs-xs);text-align:left;">Tipo</th>
+            <th style="padding:6px 8px;font-size:var(--fs-xs);text-align:left;">Reunião</th>
+          </tr></thead>
+          <tbody>${rowsSal || '<tr><td colspan="4" style="padding:12px;text-align:center;color:var(--text-hint);font-size:var(--fs-base);">Nenhum evento registrado no período</td></tr>'}</tbody>
+        </table></div>`;
+  }
 
   // ── NPS ───────────────────────────────────────────────────
   // Finalizados no período (filtra pelo realFim ou prevFim)
@@ -11904,10 +12419,11 @@ function audFormHTML(){
     + '</div></div>'
     + '<div style="text-align:center;font-size:var(--fs-sm);color:var(--text-hint);margin:10px 0;">— ou —</div>'
     + '<div style="background:var(--surface2);border:1px dashed var(--border);border-radius:var(--r-sm);padding:14px;">'
-    + '<label for="aud-analise" class="aud-lbl">Cole o diagnóstico já pronto (gerado fora do painel — do "**Consultor:**" até a "Recomendação:", incluindo a linha "Bônus de feedback:" se houver)</label>'
-    + '<textarea id="aud-analise" rows="10" class="aud-inp" placeholder="Cole aqui o texto completo da avaliação…" style="resize:vertical;"></textarea>'
+    + '<label for="aud-analise" class="aud-lbl">Cole aqui o diagnóstico já pronto (gerado fora do painel) OU a transcrição bruta da reunião — os dois botões abaixo tratam o texto de forma diferente, então escolha o que colou</label>'
+    + '<textarea id="aud-analise" rows="10" class="aud-inp" placeholder="Cole aqui o diagnóstico já pronto (do &quot;**Consultor:**&quot; até a &quot;Recomendação:&quot;) ou a transcrição bruta da reunião…" style="resize:vertical;"></textarea>'
     + '<div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center;">'
     + '<button class="btn btn-primary" onclick="audImportar()">'+icon('check')+' Importar diagnóstico colado</button>'
+    + '<button id="aud-btn-gerar-colado" class="btn" onclick="audGerarComTextoColado()">'+icon('sparkle')+' Gerar diagnóstico com IA (colei a transcrição)</button>'
     + '</div></div>'
     + '<div id="aud-review" style="display:none;margin-top:18px;"></div>';
 }
@@ -12089,6 +12605,37 @@ async function audGerarEImportar(transcricao, onProgress){
   const texto=audValidarSaidaIA(await audChamarClaude(transcricao, onProgress));
   document.getElementById('aud-analise').value=texto;
   audImportar();
+}
+
+// Mesmo pipeline de audGerarComClaude (mesma função audGerarEImportar por baixo), só que
+// pegando o texto direto da caixa "Cole o diagnóstico" em vez de extrair de um arquivo
+// enviado — pra quem já tem a transcrição em mãos (colada de outro lugar) e não quer salvar
+// um arquivo só pra fazer upload. audGerarEImportar sobrescreve essa mesma textarea com o
+// resultado no final (é o comportamento normal, mesmo que o upload de arquivo já tinha).
+async function audGerarComTextoColado(){
+  if(!audIdentOk()) return;
+  const transcricao=(document.getElementById('aud-analise')?.value||'').trim();
+  const msg=document.getElementById('aud-form-msg');
+  const btn=document.getElementById('aud-btn-gerar-colado');
+  if(transcricao.length<100){ if(msg){msg.textContent='Cole a transcrição bruta da reunião na caixa acima (texto muito curto pra ser uma transcrição).';msg.style.color='var(--accent)';} return; }
+  btn.disabled=true;
+  btn.textContent='Avaliando…';
+  if(msg){msg.textContent='';msg.style.color='var(--text-hint)';}
+  try{
+    audAtualizaProgresso(5,'Conectando com a IA…');
+    await audGerarEImportar(transcricao, (textoAcumulado)=>{
+      const {frac, label}=audEstimarProgressoAnalise(textoAcumulado);
+      audAtualizaProgresso(frac*100, label);
+    });
+    audAtualizaProgresso(null);
+    if(msg){msg.textContent='✓ Gerado — revise e salve.';msg.style.color='var(--green)';}
+  }catch(err){
+    audAtualizaProgresso(null);
+    if(msg){msg.textContent='Não consegui gerar a avaliação: '+err.message;msg.style.color='var(--accent)';}
+  }finally{
+    btn.disabled=false;
+    btn.innerHTML=icon('sparkle')+' Gerar diagnóstico com IA (colei a transcrição)';
+  }
 }
 
 async function audGerarComClaude(){
