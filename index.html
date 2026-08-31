@@ -989,6 +989,13 @@
         </select>
         <span class="base-filter-label">Mês início</span>
         <select class="base-sel" id="lt-f-mes" onchange="buildLeadTime()"><option value="">Todos</option></select>
+        <span class="base-filter-label">Tag</span>
+        <select class="base-sel" id="lt-f-tag" onchange="buildLeadTime()"><option value="">Todas</option></select>
+        <span class="base-filter-label">Ordenar por</span>
+        <select class="base-sel" id="lt-f-ordem" onchange="buildLeadTime()">
+          <option value="inicio">Início</option>
+          <option value="tag">Tag</option>
+        </select>
         <button class="base-clear" onclick="clearLtFilters()">Limpar</button>
         <span class="base-count" id="lt-count"></span>
       </div>
@@ -8771,9 +8778,10 @@ function ordemCompleta(p) {
 const SEM_COLORS   = ['#6B8E6B','#5B8EC4','#E8A838','#C45B5B','#8E5BC4','#D4763B','#2D7A4F'];
 
 function clearLtFilters() {
-  ['lt-f-cons','lt-f-mon','lt-f-conv','lt-f-mesmon','lt-f-oport','lt-f-mes'].forEach(id => {
+  ['lt-f-cons','lt-f-mon','lt-f-conv','lt-f-mesmon','lt-f-oport','lt-f-mes','lt-f-tag'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
+  const selOrdem = document.getElementById('lt-f-ordem'); if (selOrdem) selOrdem.value = 'inicio';
   buildLeadTime();
 }
 
@@ -8804,7 +8812,21 @@ function getLtFiltered() {
     const m = ALL_MESES.find(x => x.idx === d?.getMonth() && x.ano === d?.getFullYear());
     return m ? (m.label + '/' + m.ano) === fMes : false;
   });
-  list.sort((a,b) => a.inicio > b.inicio ? -1 : 1);
+  const fTag = document.getElementById('lt-f-tag')?.value || '';
+  if (fTag) list = list.filter(p => (p.tags || []).includes(fTag));
+  const fOrdem = document.getElementById('lt-f-ordem')?.value || 'inicio';
+  if (fOrdem === 'tag') {
+    // Mesmo critério do Gantt do Healthscore: sem tag vai pro final, dentro da mesma tag
+    // desempata por início.
+    const primeiraTag = p => (p.tags && p.tags.length) ? [...p.tags].sort()[0] : '￿';
+    list.sort((a, b) => {
+      const ta = primeiraTag(a), tb = primeiraTag(b);
+      if (ta !== tb) return ta < tb ? -1 : 1;
+      return (a.inicio || '') > (b.inicio || '') ? -1 : 1;
+    });
+  } else {
+    list.sort((a,b) => a.inicio > b.inicio ? -1 : 1);
+  }
   return list;
 }
 
@@ -9245,6 +9267,13 @@ function buildLeadTime() {
     const curD = selDesigner.value;
     selDesigner.innerHTML = '<option value="">Todos</option>' + designersLT.map(d => '<option' + (d===curD?' selected':'') + '>' + d + '</option>').join('');
   }
+  // Mesmas tags manuais (p.tags) já usadas no filtro/ordenação do Gantt do Healthscore
+  const selTagLT = document.getElementById('lt-f-tag');
+  if (selTagLT) {
+    const tagsLT = [...new Set(projects.flatMap(p => p.tags || []))].sort();
+    const curTag = selTagLT.value;
+    selTagLT.innerHTML = '<option value="">Todas</option>' + tagsLT.map(t => '<option' + (t===curTag?' selected':'') + '>' + t + '</option>').join('');
+  }
   const selMes = document.getElementById('lt-f-mes');
   const selMesMon = document.getElementById('lt-f-mesmon');
   if (selMesMon) {
@@ -9368,6 +9397,7 @@ function buildLeadTime() {
           + (p.nome||'—')
           + '</div>'
           + '<div style="margin-top:2px;">' + convBadge(p) + ' ' + statusBadge2(p) + (temFcaAbertaLT ? ' <span title="Tem FCA de projeto em aberto" style="font-size:var(--fs-3xs);font-weight:700;color:#fff;background:var(--amber);border-radius:8px;padding:1px 7px;white-space:nowrap;">'+icon('zap',{size:8})+' FCA aberta</span>' : '') + '</div>'
+          + ((p.tags && p.tags.length) ? '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:3px;max-width:190px;">' + p.tags.map(t => '<span style="font-size:var(--fs-3xs);font-weight:700;color:#fff;background:' + tagCor(t) + ';border-radius:8px;padding:1px 7px;white-space:nowrap;">' + t.replace(/</g,'&lt;') + '</span>').join('') + '</div>' : '')
           + '</td>'
           + '<td style="padding:6px 8px;font-size:var(--fs-sm);color:var(--text-muted);white-space:nowrap;">' + (p.gmv || '—') + '</td>'
           + '<td style="padding:6px 8px;">' + tierBadge(p.gmv) + '</td>'
