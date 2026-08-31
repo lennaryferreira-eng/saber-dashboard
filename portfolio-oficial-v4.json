@@ -1,0 +1,487 @@
+{
+ "extraido_em": "2026-08-31",
+ "fonte": "PDFs do Portfólio Oficial V4 (40 páginas)",
+ "total": 39,
+ "por_categoria": {
+  "SABER": 6,
+  "TER": 16,
+  "EXECUTAR": 17
+ },
+ "produtos": [
+  {
+   "titulo": "Manutenção - E-Commerce",
+   "categoria": "EXECUTAR",
+   "valor_base_brl": 883.83,
+   "valor_base_texto": "R$ 883,83",
+   "duracao": "5",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "EXECUTAR 18"
+   ]
+  },
+  {
+   "titulo": "Manutenção de Gestão de Dados (BI)",
+   "categoria": "EXECUTAR",
+   "valor_base_brl": 847.0,
+   "valor_base_texto": "R$ 847,00",
+   "duracao": "1 Semana",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "EXECUTAR 3"
+   ]
+  },
+  {
+   "titulo": "Manutenção de Hubspot",
+   "categoria": "EXECUTAR",
+   "valor_base_brl": 1436.46,
+   "valor_base_texto": "R$ 1.436,46",
+   "duracao": null,
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "EXECUTAR 17"
+   ]
+  },
+  {
+   "titulo": "Manutenção de Kommo CRM",
+   "categoria": "EXECUTAR",
+   "valor_base_brl": 716.34,
+   "valor_base_texto": "R$ 716,34",
+   "duracao": "1 Semana",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "EXECUTAR 1"
+   ]
+  },
+  {
+   "titulo": "Manutenção de Landing Page",
+   "categoria": "EXECUTAR",
+   "valor_base_brl": 620.67,
+   "valor_base_texto": "R$ 620,67",
+   "duracao": "1 Semana",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "EXECUTAR 2"
+   ]
+  },
+  {
+   "titulo": "Manutenção de Site",
+   "categoria": "EXECUTAR",
+   "valor_base_brl": 1228.87,
+   "valor_base_texto": "R$ 1.228,87",
+   "duracao": "1 Semana",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "EXECUTAR 4"
+   ]
+  },
+  {
+   "titulo": "Profissional de Business Intelligence",
+   "categoria": "EXECUTAR",
+   "valor_base_brl": 4957.14,
+   "valor_base_texto": "R$ 4.957,14",
+   "duracao": "Recorrente",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "EXECUTAR 10"
+   ]
+  },
+  {
+   "titulo": "Profissional de CRM",
+   "categoria": "EXECUTAR",
+   "valor_base_brl": 4327.86,
+   "valor_base_texto": "R$ 4.327,86",
+   "duracao": "Recorrente",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "EXECUTAR 16"
+   ]
+  },
+  {
+   "titulo": "Profissional de Designer Gráfico",
+   "categoria": "EXECUTAR",
+   "valor_base_brl": 7707.74,
+   "valor_base_texto": "R$ 7.707,74",
+   "duracao": "Recorrente",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "EXECUTAR 14"
+   ]
+  },
+  {
+   "titulo": "Profissional de Gestão de Mídia Paga",
+   "categoria": "EXECUTAR",
+   "valor_base_brl": 5497.14,
+   "valor_base_texto": "R$ 5.497,14",
+   "duracao": "Recorrente",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "EXECUTAR 13"
+   ]
+  },
+  {
+   "titulo": "Profissional de Pré-Vendas (SDR)",
+   "categoria": "EXECUTAR",
+   "valor_base_brl": 3427.86,
+   "valor_base_texto": "R$ 3.427,86",
+   "duracao": "Recorrente",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "EXECUTAR 11",
+    "EXECUTAR 8"
+   ]
+  },
+  {
+   "titulo": "Profissional de Redação Publicitária",
+   "categoria": "EXECUTAR",
+   "valor_base_brl": 5751.59,
+   "valor_base_texto": "R$ 5.751,59",
+   "duracao": "Recorrente",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "EXECUTAR 15"
+   ]
+  },
+  {
+   "titulo": "Profissional de Sales Enablement",
+   "categoria": "EXECUTAR",
+   "valor_base_brl": 4327.86,
+   "valor_base_texto": "R$ 4.327,86",
+   "duracao": "Recorrente",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "EXECUTAR 9"
+   ]
+  },
+  {
+   "titulo": "Profissional de Social Media",
+   "categoria": "EXECUTAR",
+   "valor_base_brl": 7707.74,
+   "valor_base_texto": "R$ 7.707,74",
+   "duracao": "Recorrente",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "EXECUTAR 12"
+   ]
+  },
+  {
+   "titulo": "Profissional de V4 Food 2.0 - Plano SCALE",
+   "categoria": "EXECUTAR",
+   "valor_base_brl": 17609.38,
+   "valor_base_texto": "R$ 17.609,38",
+   "duracao": "Recorrente",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "EXECUTAR 5"
+   ]
+  },
+  {
+   "titulo": "Profissional de Vendas (BDR)",
+   "categoria": "EXECUTAR",
+   "valor_base_brl": 4277.14,
+   "valor_base_texto": "R$ 4.277,14",
+   "duracao": null,
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "EXECUTAR 7"
+   ]
+  },
+  {
+   "titulo": "Profissional de Web Design",
+   "categoria": "EXECUTAR",
+   "valor_base_brl": 8070.95,
+   "valor_base_texto": "R$ 8.070,95",
+   "duracao": null,
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "EXECUTAR 6"
+   ]
+  },
+  {
+   "titulo": "Análise Consultiva do Time de Vendas",
+   "categoria": "SABER",
+   "valor_base_brl": 17805.16,
+   "valor_base_texto": "R$ 17.805,16",
+   "duracao": "4 Semanas",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "Portfólio de Produtos e Serviços V4 SABER 2"
+   ]
+  },
+  {
+   "titulo": "Diagnóstico de Mídia Paga (Meta e Google Ads) - 50 a 100k",
+   "categoria": "SABER",
+   "valor_base_brl": 15338.75,
+   "valor_base_texto": "R$ 15.338,75",
+   "duracao": "3 Semanas",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "Portfólio de Produtos e Serviços V4 SABER 4"
+   ]
+  },
+  {
+   "titulo": "Diagnóstico e Performance Comercial 360º - Até 6 Vendedores",
+   "categoria": "SABER",
+   "valor_base_brl": 20286.05,
+   "valor_base_texto": "R$ 20.286,05",
+   "duracao": "5 Semanas",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "Portfólio de Produtos e Serviços V4 SABER 1"
+   ]
+  },
+  {
+   "titulo": "Diagnóstico e Planejamento de CRM Marketing - Pro",
+   "categoria": "SABER",
+   "valor_base_brl": 29318.3,
+   "valor_base_texto": "R$ 29.318,30",
+   "duracao": "3 Semanas",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "Portfólio de Produtos e Serviços V4 SABER 3"
+   ]
+  },
+  {
+   "titulo": "Diagnóstico e Planejamento de Marketing e Vendas no Digital",
+   "categoria": "SABER",
+   "valor_base_brl": 34671.35,
+   "valor_base_texto": "R$ 34.671,35",
+   "duracao": "5 Semanas",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "Portfólio de Produtos e Serviços V4 SABER 6"
+   ]
+  },
+  {
+   "titulo": "Diagnóstico e Planejamento de Redes Sociais",
+   "categoria": "SABER",
+   "valor_base_brl": 12171.33,
+   "valor_base_texto": "R$ 12.171,33",
+   "duracao": "4 Semanas",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "Portfólio de Produtos e Serviços V4 SABER 5"
+   ]
+  },
+  {
+   "titulo": "Elaboração de Identidade Visual - MIV",
+   "categoria": "TER",
+   "valor_base_brl": 11108.69,
+   "valor_base_texto": "R$ 11.108,69",
+   "duracao": "2 Semanas",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "Portfólio de Produtos e Serviços V4 TER 15"
+   ]
+  },
+  {
+   "titulo": "Implementação CRM - Kommo Basic",
+   "categoria": "TER",
+   "valor_base_brl": 3656.49,
+   "valor_base_texto": "R$ 3.656,49",
+   "duracao": "3 Semanas",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "Portfólio de Produtos e Serviços V4 TER 10"
+   ]
+  },
+  {
+   "titulo": "Implementação Google Local Service Ads",
+   "categoria": "TER",
+   "valor_base_brl": 4921.88,
+   "valor_base_texto": "R$ 4.921,88",
+   "duracao": "2 Semanas",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "Portfólio de Produtos e Serviços V4 TER 16"
+   ]
+  },
+  {
+   "titulo": "Implementação Google My Business Profile",
+   "categoria": "TER",
+   "valor_base_brl": 3780.0,
+   "valor_base_texto": "R$ 3.780,00",
+   "duracao": "1 Semana",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "Portfólio de Produtos e Serviços V4 TER 17"
+   ]
+  },
+  {
+   "titulo": "Implementação da Plataforma Marketplace",
+   "categoria": "TER",
+   "valor_base_brl": 11012.3,
+   "valor_base_texto": "R$ 11.012,30",
+   "duracao": "3 Semanas",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "Portfólio de Produtos e Serviços V4 TER 7"
+   ]
+  },
+  {
+   "titulo": "Implementação de E-commerce - Pro",
+   "categoria": "TER",
+   "valor_base_brl": 33981.58,
+   "valor_base_texto": "R$ 33.981,58",
+   "duracao": "5 Semanas",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "Portfólio de Produtos e Serviços V4 TER 1"
+   ]
+  },
+  {
+   "titulo": "Implementação de Hubspot CRM for Marketing",
+   "categoria": "TER",
+   "valor_base_brl": 11025.73,
+   "valor_base_texto": "R$ 11.025,73",
+   "duracao": "4 Semanas",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "Portfólio de Produtos e Serviços V4 TER 8"
+   ]
+  },
+  {
+   "titulo": "Implementação de Hubspot CRM for Sales",
+   "categoria": "TER",
+   "valor_base_brl": 10878.87,
+   "valor_base_texto": "R$ 10.878,87",
+   "duracao": "4 Semanas",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "Portfólio de Produtos e Serviços V4 TER 9"
+   ]
+  },
+  {
+   "titulo": "Implementação de Landing Page",
+   "categoria": "TER",
+   "valor_base_brl": 3348.99,
+   "valor_base_texto": "R$ 3.348,99",
+   "duracao": "2 Semanas",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "Portfólio de Produtos e Serviços V4 TER 5"
+   ]
+  },
+  {
+   "titulo": "Implementação de Pack de Criativos - 24 criativos",
+   "categoria": "TER",
+   "valor_base_brl": 10896.81,
+   "valor_base_texto": "R$ 10.896,81",
+   "duracao": "1 Semana",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "Portfólio de Produtos e Serviços V4 TER 11"
+   ]
+  },
+  {
+   "titulo": "Implementação de Pesquisa de Satisfação",
+   "categoria": "TER",
+   "valor_base_brl": 4377.3,
+   "valor_base_texto": "R$ 4.377,30",
+   "duracao": "1 Semana",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "Portfólio de Produtos e Serviços V4 TER 6"
+   ]
+  },
+  {
+   "titulo": "Implementação de Réguas de Relacionamento - Régua de Engajamento (News/Pesquisa)",
+   "categoria": "TER",
+   "valor_base_brl": 3333.29,
+   "valor_base_texto": "R$ 3.333,29",
+   "duracao": "2 Semanas",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "Portfólio de Produtos e Serviços V4 TER 2"
+   ]
+  },
+  {
+   "titulo": "Implementação de SEO",
+   "categoria": "TER",
+   "valor_base_brl": 7586.45,
+   "valor_base_texto": "R$ 7.586,45",
+   "duracao": "3 Semanas",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "Portfólio de Produtos e Serviços V4 TER 12"
+   ]
+  },
+  {
+   "titulo": "Implementação de Setup Inicial de Google Ads",
+   "categoria": "TER",
+   "valor_base_brl": 4752.61,
+   "valor_base_texto": "R$ 4.752,61",
+   "duracao": "2 Semanas",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "Portfólio de Produtos e Serviços V4 TER 14"
+   ]
+  },
+  {
+   "titulo": "Implementação de Setup Inicial de Social Ads",
+   "categoria": "TER",
+   "valor_base_brl": 4461.35,
+   "valor_base_texto": "R$ 4.461,35",
+   "duracao": "2 Semanas",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "Portfólio de Produtos e Serviços V4 TER 13"
+   ]
+  },
+  {
+   "titulo": "Implementação e Gestão de Dados - E-commerce",
+   "categoria": "TER",
+   "valor_base_brl": 9885.49,
+   "valor_base_texto": "R$ 9.885,49",
+   "duracao": "3 Semanas",
+   "status": "Disponível",
+   "pmm_responsavel": "Rafael Corazza",
+   "fontes": [
+    "Portfólio de Produtos e Serviços V4 TER 3"
+   ]
+  }
+ ],
+ "observacoes": [
+  "EXECUTAR 8 e EXECUTAR 11 são o mesmo produto (Profissional de Pré-Vendas SDR) — mantido uma vez.",
+  "Manutenção - E-Commerce traz a duração como \"5\", sem unidade, na origem. Mantido literal.",
+  "3 produtos (Manutenção de Hubspot, Profissional de Vendas BDR, Profissional de Web Design) não têm duração na origem.",
+  "O arquivo TER 4 não veio no lote — a numeração pula de TER 3 para TER 5."
+ ]
+}

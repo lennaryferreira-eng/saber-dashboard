@@ -1358,6 +1358,40 @@
     </div>
   </div>
 </div>
+<!-- Produtos da oportunidade (AQL). Abre quando a coordenadora marca "Mapeado (AQL)" no
+     dropdown de Oportunidade da tabela do Lead Time — ver ltOportChange/aqlAbrirProdutos. -->
+<div class="modal-overlay" id="modal-aql-produtos" onclick="if(event.target===this)aqlProdutosCancelar()">
+  <div class="modal-box" style="max-width:600px;max-height:88vh;display:flex;flex-direction:column;" role="dialog" aria-modal="true" aria-labelledby="aql-prod-titulo">
+    <div class="modal-header">
+      <span class="modal-title" id="aql-prod-titulo">Produtos da oportunidade</span>
+      <button class="modal-close" onclick="aqlProdutosCancelar()" title="Fechar"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+    </div>
+    <div class="modal-body" style="overflow-y:auto;flex:1;">
+      <div id="aql-prod-cliente" style="font-size:var(--fs-sm);color:var(--text-hint);margin-bottom:12px;"></div>
+
+      <label for="aql-prod-busca" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Produtos que vamos oferecer</label>
+      <input id="aql-prod-busca" class="sel" placeholder="Buscar produto&hellip;" oninput="aqlProdutosRender()" style="width:100%;font-size:var(--fs-base);margin-bottom:10px;">
+      <div id="aql-prod-lista" style="border:1px solid var(--border);border-radius:var(--r-sm);padding:8px;max-height:280px;overflow-y:auto;background:var(--surface2);"></div>
+      <div id="aql-prod-contador" style="font-size:var(--fs-sm);color:var(--text-hint);margin:8px 0 16px;"></div>
+
+      <label style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Já tem data marcada para apresentar a proposta?</label>
+      <div style="display:flex;gap:16px;margin-bottom:10px;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);cursor:pointer;"><input type="radio" name="aql-prod-agendada" value="sim" onchange="aqlProdutosAgendaChange()"> Sim</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);cursor:pointer;"><input type="radio" name="aql-prod-agendada" value="nao" onchange="aqlProdutosAgendaChange()"> Não</label>
+      </div>
+      <div id="aql-prod-data-row" style="display:none;margin-bottom:12px;">
+        <label for="aql-prod-data" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Data da apresentação</label>
+        <input type="date" id="aql-prod-data" class="sel" onchange="aqlProdutosAgendaChange()" style="font-size:var(--fs-base);">
+      </div>
+      <div id="aql-prod-msg" style="font-size:var(--fs-sm);color:var(--text-hint);margin-bottom:12px;min-height:16px;"></div>
+
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-primary" id="aql-prod-salvar" onclick="aqlProdutosSalvar()" style="flex:1;border-radius:6px;" disabled>Salvar</button>
+        <button class="btn btn-ghost" onclick="aqlProdutosCancelar()" style="border-radius:6px;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="modal-novo-projeto" onclick="if(event.target===this)closeNovoProj()">
   <div class="modal-box" style="max-width:480px;" role="dialog" aria-modal="true" aria-labelledby="novo-projeto-title">
     <div class="modal-header">
@@ -8712,6 +8746,166 @@ function ltSetField(id, field, val) {
   // Registro automático de AQL/Proposta DESATIVADO — a partir de agora só entra via registro manual na aba AQL.
   // if (field === 'proximoContato') registrarEventoDoLeadTime(p);
 }
+// ── PRODUTOS DA OPORTUNIDADE (AQL) ─────────────────────────────────────────
+// Quando a coordenadora marca "Mapeado (AQL)" no dropdown de Oportunidade da tabela do
+// Lead Time, abre um pop-up pra ela escolher quais produtos do portfólio serão oferecidos
+// e informar se a apresentação da proposta já tem data. A etapa SÓ é gravada no projeto
+// depois que ela salva o pop-up — cancelar devolve o dropdown ao valor anterior, pra não
+// deixar um "Mapeado" sem os produtos por trás.
+//
+// O que fica no projeto: oportProdutos (array de nomes), oportPropostaAgendada ('sim'|'nao')
+// e oportDataProposta (ISO). As colunas de texto livre "Escopos One-time" e "Escopos
+// Recorrente" continuam existindo e NÃO são tocadas — decisão do Leonam em 31/08/2026:
+// o histórico delas fica preservado e daqui pra frente elas ficam vazias.
+let _aqlProdSel = new Set();   // produtos marcados no pop-up aberto
+let _aqlProdProjId = null;     // projeto sendo editado
+let _aqlProdSelectEl = null;   // <select> de origem, pra reverter no cancelar
+
+function ltOportChange(id, sel) {
+  if (sel.value === 'Mapeado (AQL)') { aqlAbrirProdutos(id, sel); return; }
+  ltSetField(id, 'oport', sel.value);
+}
+
+function aqlAbrirProdutos(id, sel) {
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!p) return;
+  _aqlProdProjId = id;
+  _aqlProdSelectEl = sel || null;
+  _aqlProdSel = new Set(Array.isArray(p.oportProdutos) ? p.oportProdutos : []);
+
+  const cli = document.getElementById('aql-prod-cliente');
+  if (cli) cli.textContent = p.nome || '';
+  const busca = document.getElementById('aql-prod-busca');
+  if (busca) busca.value = '';
+
+  // Repõe o que já estava salvo, pra reabrir o pop-up e ajustar sem começar do zero.
+  const ag = p.oportPropostaAgendada || '';
+  document.querySelectorAll('input[name="aql-prod-agendada"]').forEach(r => { r.checked = (r.value === ag); });
+  const dt = document.getElementById('aql-prod-data');
+  if (dt) dt.value = p.oportDataProposta || '';
+
+  aqlProdutosRender();
+  aqlProdutosAgendaChange();
+  const m = document.getElementById('modal-aql-produtos');
+  if (m) m.style.display = 'flex';
+}
+
+function aqlProdutosRender() {
+  const cx = document.getElementById('aql-prod-lista');
+  if (!cx) return;
+  const termo = (document.getElementById('aql-prod-busca')?.value || '').trim().toLowerCase();
+  let html = '';
+  let visiveis = 0;
+
+  Object.keys(AQL_PORTFOLIO).forEach(cat => {
+    const itens = AQL_PORTFOLIO[cat].filter(x => !termo || x.nome.toLowerCase().includes(termo));
+    if (!itens.length) return;
+    visiveis += itens.length;
+    html += '<div style="font-size:var(--fs-xs);font-weight:700;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin:10px 0 6px;">' + cat + '</div>';
+    itens.forEach(x => {
+      // O índice no catálogo é o identificador no DOM — evita ter que escapar nome de
+      // produto (com aspas, parênteses e acento) dentro de atributo onclick.
+      const i = AQL_PORTFOLIO[cat].indexOf(x);
+      const on = _aqlProdSel.has(x.nome);
+      const meta = [x.valor != null ? x.valor.toLocaleString('pt-BR', {style:'currency', currency:'BRL'}) : null, x.duracao].filter(Boolean).join(' · ');
+      html += '<label style="display:flex;align-items:flex-start;gap:8px;padding:5px 4px;border-radius:var(--r-sm);cursor:pointer;' + (on ? 'background:var(--surface3);' : '') + '">'
+        + '<input type="checkbox" ' + (on ? 'checked' : '') + ' onchange="aqlProdutosToggle(\'' + cat + '\',' + i + ')" style="margin-top:2px;flex-shrink:0;">'
+        + '<span style="flex:1;min-width:0;">'
+        + '<span style="font-size:var(--fs-base);">' + x.nome.replace(/</g,'&lt;') + '</span>'
+        + (meta ? '<span style="display:block;font-size:var(--fs-xs);color:var(--text-hint);">' + meta + '</span>' : '')
+        + '</span></label>';
+    });
+  });
+
+  cx.innerHTML = html || '<div style="font-size:var(--fs-sm);color:var(--text-hint);padding:10px;text-align:center;">Nenhum produto com esse termo.</div>';
+  const cont = document.getElementById('aql-prod-contador');
+  if (cont) {
+    const n = _aqlProdSel.size;
+    cont.textContent = n === 0 ? 'Nenhum produto selecionado.'
+      : (n === 1 ? '1 produto selecionado.' : n + ' produtos selecionados.')
+        + (termo ? ' (' + visiveis + ' visíveis com o filtro)' : '');
+  }
+}
+
+function aqlProdutosToggle(cat, i) {
+  const x = (AQL_PORTFOLIO[cat] || [])[i];
+  if (!x) return;
+  if (_aqlProdSel.has(x.nome)) _aqlProdSel.delete(x.nome); else _aqlProdSel.add(x.nome);
+  aqlProdutosRender();
+}
+
+// Regra pedida: enquanto ela não responder se a proposta tem data, o salvar fica travado.
+// Respondeu "não" -> libera. Respondeu "sim" -> só libera com a data preenchida.
+function aqlProdutosAgendaChange() {
+  const sel = document.querySelector('input[name="aql-prod-agendada"]:checked');
+  const row = document.getElementById('aql-prod-data-row');
+  const dt  = document.getElementById('aql-prod-data');
+  const btn = document.getElementById('aql-prod-salvar');
+  const msg = document.getElementById('aql-prod-msg');
+  const resposta = sel ? sel.value : '';
+
+  if (row) row.style.display = resposta === 'sim' ? 'block' : 'none';
+  if (resposta !== 'sim' && dt) dt.value = '';
+
+  let liberado = false, aviso = '';
+  if (!resposta) aviso = 'Responda se a proposta já tem data marcada.';
+  else if (resposta === 'sim' && !(dt && dt.value)) aviso = 'Informe a data da apresentação.';
+  else liberado = true;
+
+  if (btn) btn.disabled = !liberado;
+  if (msg) msg.textContent = aviso;
+}
+
+function aqlProdutosSalvar() {
+  const p = projects.find(x => String(x.id) === String(_aqlProdProjId));
+  if (!p) return;
+  const sel = document.querySelector('input[name="aql-prod-agendada"]:checked');
+  const dt  = document.getElementById('aql-prod-data');
+  if (!sel) return;
+
+  p.oportProdutos = [..._aqlProdSel];
+  p.oportPropostaAgendada = sel.value;
+  p.oportDataProposta = sel.value === 'sim' ? (dt?.value || '') : '';
+  p.oport = 'Mapeado (AQL)';
+
+  aqlProdutosFechar();
+  upd();
+  const consFilter = document.getElementById('conv-f-cons')?.value || '';
+  buildFunil(consFilter);
+  buildLeadTime();
+}
+
+// Cancelar não pode deixar o dropdown mostrando "Mapeado (AQL)" sem nada gravado por trás.
+function aqlProdutosCancelar() {
+  const p = projects.find(x => String(x.id) === String(_aqlProdProjId));
+  if (_aqlProdSelectEl && p) _aqlProdSelectEl.value = p.oport || '—';
+  aqlProdutosFechar();
+}
+
+function aqlProdutosFechar() {
+  const m = document.getElementById('modal-aql-produtos');
+  if (m) m.style.display = 'none';
+  _aqlProdSel = new Set();
+  _aqlProdProjId = null;
+  _aqlProdSelectEl = null;
+}
+
+// Resumo clicável abaixo do dropdown. Sem isso não haveria como reabrir o pop-up pra
+// ajustar: reescolher "Mapeado (AQL)" num <select> que já está nesse valor não dispara
+// onchange, então a seleção ficaria presa depois do primeiro save.
+function aqlResumoOportHTML(p) {
+  if (p.oport !== 'Mapeado (AQL)') return '';
+  const n = Array.isArray(p.oportProdutos) ? p.oportProdutos.length : 0;
+  const partes = [n === 0 ? 'sem produtos' : (n === 1 ? '1 produto' : n + ' produtos')];
+  if (p.oportPropostaAgendada === 'sim' && p.oportDataProposta) {
+    const d = parseDate(p.oportDataProposta);
+    partes.push('proposta ' + (d ? d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'}) : p.oportDataProposta));
+  }
+  else if (p.oportPropostaAgendada === 'nao') partes.push('sem data');
+  return '<button onclick="aqlAbrirProdutos(' + p.id + ',null)" title="Editar produtos da oportunidade" '
+    + 'style="margin-top:3px;background:none;border:none;padding:0;color:var(--accent);text-decoration:underline;cursor:pointer;font-size:var(--fs-xs);text-align:left;">'
+    + partes.join(' · ') + '</button>';
+}
 function ltShowDateInput(id) {
   const sel  = document.getElementById('lt-sel-' + id);
   const row  = document.getElementById('lt-date-row-' + id);
@@ -9039,6 +9233,67 @@ async function salvarModalFlag() {
   else if (origem === 'leadtime') buildLeadTime();
 }
 
+// Portfólio oficial da V4, usado pelo pop-up de produtos da oportunidade (ver
+// aqlAbrirProdutos). Extraído dos 40 PDFs do Portfólio de Produtos e Serviços que o
+// Leonam exportou em 31/08/2026 — NÃO do banco do GrowthOS, que traz uma lista
+// reconciliada e divergente. Se o portfólio mudar, reexporte os PDFs e rode de novo o
+// prompt de extração (prompt-extrair-portfolio.md, na raiz do repositório).
+//
+// Três coisas que valem saber ao mexer aqui:
+//  - POTENCIALIZAR existe na taxonomia da V4 mas está sem nenhum produto, tanto nos
+//    PDFs quanto no GrowthOS. Por isso a categoria não aparece no pop-up.
+//  - "Profissional de Pré-Vendas (SDR)" vinha duplicado na origem (EXECUTAR 8 e 11,
+//    descrição idêntica) e entra aqui uma vez só.
+//  - Valor e duração são do portfólio, para orientar a escolha; o que fica gravado no
+//    projeto é só o nome do produto.
+const AQL_PORTFOLIO = {
+  SABER: [
+    { nome: "Análise Consultiva do Time de Vendas", valor: 17805.16, duracao: "4 Semanas" },
+    { nome: "Diagnóstico de Mídia Paga (Meta e Google Ads) - 50 a 100k", valor: 15338.75, duracao: "3 Semanas" },
+    { nome: "Diagnóstico e Performance Comercial 360º - Até 6 Vendedores", valor: 20286.05, duracao: "5 Semanas" },
+    { nome: "Diagnóstico e Planejamento de CRM Marketing - Pro", valor: 29318.3, duracao: "3 Semanas" },
+    { nome: "Diagnóstico e Planejamento de Marketing e Vendas no Digital", valor: 34671.35, duracao: "5 Semanas" },
+    { nome: "Diagnóstico e Planejamento de Redes Sociais", valor: 12171.33, duracao: "4 Semanas" },
+  ],
+  TER: [
+    { nome: "Elaboração de Identidade Visual - MIV", valor: 11108.69, duracao: "2 Semanas" },
+    { nome: "Implementação CRM - Kommo Basic", valor: 3656.49, duracao: "3 Semanas" },
+    { nome: "Implementação Google Local Service Ads", valor: 4921.88, duracao: "2 Semanas" },
+    { nome: "Implementação Google My Business Profile", valor: 3780.0, duracao: "1 Semana" },
+    { nome: "Implementação da Plataforma Marketplace", valor: 11012.3, duracao: "3 Semanas" },
+    { nome: "Implementação de E-commerce - Pro", valor: 33981.58, duracao: "5 Semanas" },
+    { nome: "Implementação de Hubspot CRM for Marketing", valor: 11025.73, duracao: "4 Semanas" },
+    { nome: "Implementação de Hubspot CRM for Sales", valor: 10878.87, duracao: "4 Semanas" },
+    { nome: "Implementação de Landing Page", valor: 3348.99, duracao: "2 Semanas" },
+    { nome: "Implementação de Pack de Criativos - 24 criativos", valor: 10896.81, duracao: "1 Semana" },
+    { nome: "Implementação de Pesquisa de Satisfação", valor: 4377.3, duracao: "1 Semana" },
+    { nome: "Implementação de Réguas de Relacionamento - Régua de Engajamento (News/Pesquisa)", valor: 3333.29, duracao: "2 Semanas" },
+    { nome: "Implementação de SEO", valor: 7586.45, duracao: "3 Semanas" },
+    { nome: "Implementação de Setup Inicial de Google Ads", valor: 4752.61, duracao: "2 Semanas" },
+    { nome: "Implementação de Setup Inicial de Social Ads", valor: 4461.35, duracao: "2 Semanas" },
+    { nome: "Implementação e Gestão de Dados - E-commerce", valor: 9885.49, duracao: "3 Semanas" },
+  ],
+  EXECUTAR: [
+    { nome: "Manutenção - E-Commerce", valor: 883.83, duracao: "5" },
+    { nome: "Manutenção de Gestão de Dados (BI)", valor: 847.0, duracao: "1 Semana" },
+    { nome: "Manutenção de Hubspot", valor: 1436.46, duracao: null },
+    { nome: "Manutenção de Kommo CRM", valor: 716.34, duracao: "1 Semana" },
+    { nome: "Manutenção de Landing Page", valor: 620.67, duracao: "1 Semana" },
+    { nome: "Manutenção de Site", valor: 1228.87, duracao: "1 Semana" },
+    { nome: "Profissional de Business Intelligence", valor: 4957.14, duracao: "Recorrente" },
+    { nome: "Profissional de CRM", valor: 4327.86, duracao: "Recorrente" },
+    { nome: "Profissional de Designer Gráfico", valor: 7707.74, duracao: "Recorrente" },
+    { nome: "Profissional de Gestão de Mídia Paga", valor: 5497.14, duracao: "Recorrente" },
+    { nome: "Profissional de Pré-Vendas (SDR)", valor: 3427.86, duracao: "Recorrente" },
+    { nome: "Profissional de Redação Publicitária", valor: 5751.59, duracao: "Recorrente" },
+    { nome: "Profissional de Sales Enablement", valor: 4327.86, duracao: "Recorrente" },
+    { nome: "Profissional de Social Media", valor: 7707.74, duracao: "Recorrente" },
+    { nome: "Profissional de V4 Food 2.0 - Plano SCALE", valor: 17609.38, duracao: "Recorrente" },
+    { nome: "Profissional de Vendas (BDR)", valor: 4277.14, duracao: null },
+    { nome: "Profissional de Web Design", valor: 8070.95, duracao: null },
+  ],
+};
+
 function buildLeadTime() {
   // Despacho por coordenação: TER tem sua própria view/tabela de Lead Time.
   if (currentCoord === 'ter') {
@@ -9230,9 +9485,10 @@ function buildLeadTime() {
             })()
           // Oportunidade
           + '<td style="padding:6px 8px;">'
-          + '<select class="sel" style="font-size:var(--fs-sm);width:120px;" onchange="ltSetField(' + p.id + ',\'oport\',this.value)">'
+          + '<select class="sel" style="font-size:var(--fs-sm);width:120px;" onchange="ltOportChange(' + p.id + ', this)">'
           + ['—','Mapeado (AQL)','Apresentar proposta (SQL)','Proposta apresentada (SAL)','Follow (COMMIT)','Sem oportunidade'].map(o => '<option' + ((p.oport||'—')===o?' selected':'') + '>' + o + '</option>').join('')
           + '</select>'
+          + aqlResumoOportHTML(p)
           + '</td>'
           // Escopos One-time
           + '<td style="padding:6px 8px;">'
