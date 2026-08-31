@@ -11992,10 +11992,11 @@ function audFormHTML(){
     + '</div></div>'
     + '<div style="text-align:center;font-size:var(--fs-sm);color:var(--text-hint);margin:10px 0;">— ou —</div>'
     + '<div style="background:var(--surface2);border:1px dashed var(--border);border-radius:var(--r-sm);padding:14px;">'
-    + '<label for="aud-analise" class="aud-lbl">Cole o diagnóstico já pronto (gerado fora do painel — do "**Consultor:**" até a "Recomendação:", incluindo a linha "Bônus de feedback:" se houver)</label>'
-    + '<textarea id="aud-analise" rows="10" class="aud-inp" placeholder="Cole aqui o texto completo da avaliação…" style="resize:vertical;"></textarea>'
+    + '<label for="aud-analise" class="aud-lbl">Cole aqui o diagnóstico já pronto (gerado fora do painel) OU a transcrição bruta da reunião — os dois botões abaixo tratam o texto de forma diferente, então escolha o que colou</label>'
+    + '<textarea id="aud-analise" rows="10" class="aud-inp" placeholder="Cole aqui o diagnóstico já pronto (do &quot;**Consultor:**&quot; até a &quot;Recomendação:&quot;) ou a transcrição bruta da reunião…" style="resize:vertical;"></textarea>'
     + '<div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center;">'
     + '<button class="btn btn-primary" onclick="audImportar()">'+icon('check')+' Importar diagnóstico colado</button>'
+    + '<button id="aud-btn-gerar-colado" class="btn" onclick="audGerarComTextoColado()">'+icon('sparkle')+' Gerar diagnóstico com IA (colei a transcrição)</button>'
     + '</div></div>'
     + '<div id="aud-review" style="display:none;margin-top:18px;"></div>';
 }
@@ -12177,6 +12178,37 @@ async function audGerarEImportar(transcricao, onProgress){
   const texto=audValidarSaidaIA(await audChamarClaude(transcricao, onProgress));
   document.getElementById('aud-analise').value=texto;
   audImportar();
+}
+
+// Mesmo pipeline de audGerarComClaude (mesma função audGerarEImportar por baixo), só que
+// pegando o texto direto da caixa "Cole o diagnóstico" em vez de extrair de um arquivo
+// enviado — pra quem já tem a transcrição em mãos (colada de outro lugar) e não quer salvar
+// um arquivo só pra fazer upload. audGerarEImportar sobrescreve essa mesma textarea com o
+// resultado no final (é o comportamento normal, mesmo que o upload de arquivo já tinha).
+async function audGerarComTextoColado(){
+  if(!audIdentOk()) return;
+  const transcricao=(document.getElementById('aud-analise')?.value||'').trim();
+  const msg=document.getElementById('aud-form-msg');
+  const btn=document.getElementById('aud-btn-gerar-colado');
+  if(transcricao.length<100){ if(msg){msg.textContent='Cole a transcrição bruta da reunião na caixa acima (texto muito curto pra ser uma transcrição).';msg.style.color='var(--accent)';} return; }
+  btn.disabled=true;
+  btn.textContent='Avaliando…';
+  if(msg){msg.textContent='';msg.style.color='var(--text-hint)';}
+  try{
+    audAtualizaProgresso(5,'Conectando com a IA…');
+    await audGerarEImportar(transcricao, (textoAcumulado)=>{
+      const {frac, label}=audEstimarProgressoAnalise(textoAcumulado);
+      audAtualizaProgresso(frac*100, label);
+    });
+    audAtualizaProgresso(null);
+    if(msg){msg.textContent='✓ Gerado — revise e salve.';msg.style.color='var(--green)';}
+  }catch(err){
+    audAtualizaProgresso(null);
+    if(msg){msg.textContent='Não consegui gerar a avaliação: '+err.message;msg.style.color='var(--accent)';}
+  }finally{
+    btn.disabled=false;
+    btn.innerHTML=icon('sparkle')+' Gerar diagnóstico com IA (colei a transcrição)';
+  }
 }
 
 async function audGerarComClaude(){
