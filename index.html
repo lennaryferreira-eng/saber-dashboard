@@ -9584,10 +9584,12 @@ async function salvarModalFlag() {
 // Portfólio oficial da V4, usado pelo pop-up de produtos da oportunidade (ver
 // aqlAbrirProdutos). Extraído de portfolio.v4company.com em 31/08/2026, uma página por
 // produto — NÃO do banco do GrowthOS, que traz uma lista reconciliada e divergente. O
-// catálogo completo, com PMM responsável e a confiança do dado de cada página de origem,
-// está em portfolio-oficial-v4.json na raiz do repositório, e o prompt que gerou a
-// extração está em prompt-extrair-portfolio.md. Se o portfólio mudar, roda o prompt de
-// novo e regenera os dois juntos.
+// catálogo completo está em portfolio-oficial-v4.json na raiz do repositório: além do que
+// o pop-up usa, ele guarda o material de vendas de cada produto (descrição, escopo, formato
+// de entrega, entregáveis, dores, gatilhos, diferenciais e objeções), o PMM responsável, o
+// link da página de origem e um log com os 88 defeitos encontrados na fonte. O prompt que
+// gerou a extração está em prompt-extrair-portfolio.md. Se o portfólio mudar, roda o prompt
+// de novo e regenera os dois juntos.
 //
 // Coisas que valem saber ao mexer aqui:
 //  - DESTRAVA RECEITA é uma quinta categoria, que existe no site da V4 e não estava na
