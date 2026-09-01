@@ -1,487 +1,1244 @@
 {
- "extraido_em": "2026-08-31",
- "fonte": "PDFs do Portfólio Oficial V4 (40 páginas)",
- "total": 39,
- "por_categoria": {
-  "SABER": 6,
-  "TER": 16,
-  "EXECUTAR": 17
- },
- "produtos": [
-  {
-   "titulo": "Manutenção - E-Commerce",
-   "categoria": "EXECUTAR",
-   "valor_base_brl": 883.83,
-   "valor_base_texto": "R$ 883,83",
-   "duracao": "5",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "EXECUTAR 18"
-   ]
+  "extraido_em": "2026-08-31",
+  "origem": "portfolio.v4company.com (páginas /produto/<slug>)",
+  "total": 136,
+  "por_categoria": {
+    "SABER": 14,
+    "TER": 59,
+    "EXECUTAR": 35,
+    "POTENCIALIZAR": 1,
+    "DESTRAVA RECEITA": 27
   },
-  {
-   "titulo": "Manutenção de Gestão de Dados (BI)",
-   "categoria": "EXECUTAR",
-   "valor_base_brl": 847.0,
-   "valor_base_texto": "R$ 847,00",
-   "duracao": "1 Semana",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "EXECUTAR 3"
-   ]
-  },
-  {
-   "titulo": "Manutenção de Hubspot",
-   "categoria": "EXECUTAR",
-   "valor_base_brl": 1436.46,
-   "valor_base_texto": "R$ 1.436,46",
-   "duracao": null,
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "EXECUTAR 17"
-   ]
-  },
-  {
-   "titulo": "Manutenção de Kommo CRM",
-   "categoria": "EXECUTAR",
-   "valor_base_brl": 716.34,
-   "valor_base_texto": "R$ 716,34",
-   "duracao": "1 Semana",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "EXECUTAR 1"
-   ]
-  },
-  {
-   "titulo": "Manutenção de Landing Page",
-   "categoria": "EXECUTAR",
-   "valor_base_brl": 620.67,
-   "valor_base_texto": "R$ 620,67",
-   "duracao": "1 Semana",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "EXECUTAR 2"
-   ]
-  },
-  {
-   "titulo": "Manutenção de Site",
-   "categoria": "EXECUTAR",
-   "valor_base_brl": 1228.87,
-   "valor_base_texto": "R$ 1.228,87",
-   "duracao": "1 Semana",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "EXECUTAR 4"
-   ]
-  },
-  {
-   "titulo": "Profissional de Business Intelligence",
-   "categoria": "EXECUTAR",
-   "valor_base_brl": 4957.14,
-   "valor_base_texto": "R$ 4.957,14",
-   "duracao": "Recorrente",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "EXECUTAR 10"
-   ]
-  },
-  {
-   "titulo": "Profissional de CRM",
-   "categoria": "EXECUTAR",
-   "valor_base_brl": 4327.86,
-   "valor_base_texto": "R$ 4.327,86",
-   "duracao": "Recorrente",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "EXECUTAR 16"
-   ]
-  },
-  {
-   "titulo": "Profissional de Designer Gráfico",
-   "categoria": "EXECUTAR",
-   "valor_base_brl": 7707.74,
-   "valor_base_texto": "R$ 7.707,74",
-   "duracao": "Recorrente",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "EXECUTAR 14"
-   ]
-  },
-  {
-   "titulo": "Profissional de Gestão de Mídia Paga",
-   "categoria": "EXECUTAR",
-   "valor_base_brl": 5497.14,
-   "valor_base_texto": "R$ 5.497,14",
-   "duracao": "Recorrente",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "EXECUTAR 13"
-   ]
-  },
-  {
-   "titulo": "Profissional de Pré-Vendas (SDR)",
-   "categoria": "EXECUTAR",
-   "valor_base_brl": 3427.86,
-   "valor_base_texto": "R$ 3.427,86",
-   "duracao": "Recorrente",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "EXECUTAR 11",
-    "EXECUTAR 8"
-   ]
-  },
-  {
-   "titulo": "Profissional de Redação Publicitária",
-   "categoria": "EXECUTAR",
-   "valor_base_brl": 5751.59,
-   "valor_base_texto": "R$ 5.751,59",
-   "duracao": "Recorrente",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "EXECUTAR 15"
-   ]
-  },
-  {
-   "titulo": "Profissional de Sales Enablement",
-   "categoria": "EXECUTAR",
-   "valor_base_brl": 4327.86,
-   "valor_base_texto": "R$ 4.327,86",
-   "duracao": "Recorrente",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "EXECUTAR 9"
-   ]
-  },
-  {
-   "titulo": "Profissional de Social Media",
-   "categoria": "EXECUTAR",
-   "valor_base_brl": 7707.74,
-   "valor_base_texto": "R$ 7.707,74",
-   "duracao": "Recorrente",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "EXECUTAR 12"
-   ]
-  },
-  {
-   "titulo": "Profissional de V4 Food 2.0 - Plano SCALE",
-   "categoria": "EXECUTAR",
-   "valor_base_brl": 17609.38,
-   "valor_base_texto": "R$ 17.609,38",
-   "duracao": "Recorrente",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "EXECUTAR 5"
-   ]
-  },
-  {
-   "titulo": "Profissional de Vendas (BDR)",
-   "categoria": "EXECUTAR",
-   "valor_base_brl": 4277.14,
-   "valor_base_texto": "R$ 4.277,14",
-   "duracao": null,
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "EXECUTAR 7"
-   ]
-  },
-  {
-   "titulo": "Profissional de Web Design",
-   "categoria": "EXECUTAR",
-   "valor_base_brl": 8070.95,
-   "valor_base_texto": "R$ 8.070,95",
-   "duracao": null,
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "EXECUTAR 6"
-   ]
-  },
-  {
-   "titulo": "Análise Consultiva do Time de Vendas",
-   "categoria": "SABER",
-   "valor_base_brl": 17805.16,
-   "valor_base_texto": "R$ 17.805,16",
-   "duracao": "4 Semanas",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "Portfólio de Produtos e Serviços V4 SABER 2"
-   ]
-  },
-  {
-   "titulo": "Diagnóstico de Mídia Paga (Meta e Google Ads) - 50 a 100k",
-   "categoria": "SABER",
-   "valor_base_brl": 15338.75,
-   "valor_base_texto": "R$ 15.338,75",
-   "duracao": "3 Semanas",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "Portfólio de Produtos e Serviços V4 SABER 4"
-   ]
-  },
-  {
-   "titulo": "Diagnóstico e Performance Comercial 360º - Até 6 Vendedores",
-   "categoria": "SABER",
-   "valor_base_brl": 20286.05,
-   "valor_base_texto": "R$ 20.286,05",
-   "duracao": "5 Semanas",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "Portfólio de Produtos e Serviços V4 SABER 1"
-   ]
-  },
-  {
-   "titulo": "Diagnóstico e Planejamento de CRM Marketing - Pro",
-   "categoria": "SABER",
-   "valor_base_brl": 29318.3,
-   "valor_base_texto": "R$ 29.318,30",
-   "duracao": "3 Semanas",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "Portfólio de Produtos e Serviços V4 SABER 3"
-   ]
-  },
-  {
-   "titulo": "Diagnóstico e Planejamento de Marketing e Vendas no Digital",
-   "categoria": "SABER",
-   "valor_base_brl": 34671.35,
-   "valor_base_texto": "R$ 34.671,35",
-   "duracao": "5 Semanas",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "Portfólio de Produtos e Serviços V4 SABER 6"
-   ]
-  },
-  {
-   "titulo": "Diagnóstico e Planejamento de Redes Sociais",
-   "categoria": "SABER",
-   "valor_base_brl": 12171.33,
-   "valor_base_texto": "R$ 12.171,33",
-   "duracao": "4 Semanas",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "Portfólio de Produtos e Serviços V4 SABER 5"
-   ]
-  },
-  {
-   "titulo": "Elaboração de Identidade Visual - MIV",
-   "categoria": "TER",
-   "valor_base_brl": 11108.69,
-   "valor_base_texto": "R$ 11.108,69",
-   "duracao": "2 Semanas",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "Portfólio de Produtos e Serviços V4 TER 15"
-   ]
-  },
-  {
-   "titulo": "Implementação CRM - Kommo Basic",
-   "categoria": "TER",
-   "valor_base_brl": 3656.49,
-   "valor_base_texto": "R$ 3.656,49",
-   "duracao": "3 Semanas",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "Portfólio de Produtos e Serviços V4 TER 10"
-   ]
-  },
-  {
-   "titulo": "Implementação Google Local Service Ads",
-   "categoria": "TER",
-   "valor_base_brl": 4921.88,
-   "valor_base_texto": "R$ 4.921,88",
-   "duracao": "2 Semanas",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "Portfólio de Produtos e Serviços V4 TER 16"
-   ]
-  },
-  {
-   "titulo": "Implementação Google My Business Profile",
-   "categoria": "TER",
-   "valor_base_brl": 3780.0,
-   "valor_base_texto": "R$ 3.780,00",
-   "duracao": "1 Semana",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "Portfólio de Produtos e Serviços V4 TER 17"
-   ]
-  },
-  {
-   "titulo": "Implementação da Plataforma Marketplace",
-   "categoria": "TER",
-   "valor_base_brl": 11012.3,
-   "valor_base_texto": "R$ 11.012,30",
-   "duracao": "3 Semanas",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "Portfólio de Produtos e Serviços V4 TER 7"
-   ]
-  },
-  {
-   "titulo": "Implementação de E-commerce - Pro",
-   "categoria": "TER",
-   "valor_base_brl": 33981.58,
-   "valor_base_texto": "R$ 33.981,58",
-   "duracao": "5 Semanas",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "Portfólio de Produtos e Serviços V4 TER 1"
-   ]
-  },
-  {
-   "titulo": "Implementação de Hubspot CRM for Marketing",
-   "categoria": "TER",
-   "valor_base_brl": 11025.73,
-   "valor_base_texto": "R$ 11.025,73",
-   "duracao": "4 Semanas",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "Portfólio de Produtos e Serviços V4 TER 8"
-   ]
-  },
-  {
-   "titulo": "Implementação de Hubspot CRM for Sales",
-   "categoria": "TER",
-   "valor_base_brl": 10878.87,
-   "valor_base_texto": "R$ 10.878,87",
-   "duracao": "4 Semanas",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "Portfólio de Produtos e Serviços V4 TER 9"
-   ]
-  },
-  {
-   "titulo": "Implementação de Landing Page",
-   "categoria": "TER",
-   "valor_base_brl": 3348.99,
-   "valor_base_texto": "R$ 3.348,99",
-   "duracao": "2 Semanas",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "Portfólio de Produtos e Serviços V4 TER 5"
-   ]
-  },
-  {
-   "titulo": "Implementação de Pack de Criativos - 24 criativos",
-   "categoria": "TER",
-   "valor_base_brl": 10896.81,
-   "valor_base_texto": "R$ 10.896,81",
-   "duracao": "1 Semana",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "Portfólio de Produtos e Serviços V4 TER 11"
-   ]
-  },
-  {
-   "titulo": "Implementação de Pesquisa de Satisfação",
-   "categoria": "TER",
-   "valor_base_brl": 4377.3,
-   "valor_base_texto": "R$ 4.377,30",
-   "duracao": "1 Semana",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "Portfólio de Produtos e Serviços V4 TER 6"
-   ]
-  },
-  {
-   "titulo": "Implementação de Réguas de Relacionamento - Régua de Engajamento (News/Pesquisa)",
-   "categoria": "TER",
-   "valor_base_brl": 3333.29,
-   "valor_base_texto": "R$ 3.333,29",
-   "duracao": "2 Semanas",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "Portfólio de Produtos e Serviços V4 TER 2"
-   ]
-  },
-  {
-   "titulo": "Implementação de SEO",
-   "categoria": "TER",
-   "valor_base_brl": 7586.45,
-   "valor_base_texto": "R$ 7.586,45",
-   "duracao": "3 Semanas",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "Portfólio de Produtos e Serviços V4 TER 12"
-   ]
-  },
-  {
-   "titulo": "Implementação de Setup Inicial de Google Ads",
-   "categoria": "TER",
-   "valor_base_brl": 4752.61,
-   "valor_base_texto": "R$ 4.752,61",
-   "duracao": "2 Semanas",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "Portfólio de Produtos e Serviços V4 TER 14"
-   ]
-  },
-  {
-   "titulo": "Implementação de Setup Inicial de Social Ads",
-   "categoria": "TER",
-   "valor_base_brl": 4461.35,
-   "valor_base_texto": "R$ 4.461,35",
-   "duracao": "2 Semanas",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "Portfólio de Produtos e Serviços V4 TER 13"
-   ]
-  },
-  {
-   "titulo": "Implementação e Gestão de Dados - E-commerce",
-   "categoria": "TER",
-   "valor_base_brl": 9885.49,
-   "valor_base_texto": "R$ 9.885,49",
-   "duracao": "3 Semanas",
-   "status": "Disponível",
-   "pmm_responsavel": "Rafael Corazza",
-   "fontes": [
-    "Portfólio de Produtos e Serviços V4 TER 3"
-   ]
-  }
- ],
- "observacoes": [
-  "EXECUTAR 8 e EXECUTAR 11 são o mesmo produto (Profissional de Pré-Vendas SDR) — mantido uma vez.",
-  "Manutenção - E-Commerce traz a duração como \"5\", sem unidade, na origem. Mantido literal.",
-  "3 produtos (Manutenção de Hubspot, Profissional de Vendas BDR, Profissional de Web Design) não têm duração na origem.",
-  "O arquivo TER 4 não veio no lote — a numeração pula de TER 3 para TER 5."
- ]
+  "observacoes": [
+    "A categoria DESTRAVA RECEITA vem assim no site; os 27 produtos dela chegaram sem categoria na extração porque o schema só previa SABER/TER/EXECUTAR/POTENCIALIZAR.",
+    "Produtos com status 'Em produção' ainda não estão liberados para venda.",
+    "confianca = qualidade do dado na página de origem, não do produto. 'baixa' quase sempre significa página incompleta no CMS.",
+    "Os textos longos da extração (descrição, escopo, formato de entrega, entregáveis, material de vendas) não estão aqui — este arquivo é o catálogo operacional que alimenta o pop-up de produtos da AQL."
+  ],
+  "produtos": [
+    {
+      "titulo": "Análise Consultiva do Time de Vendas",
+      "categoria": "SABER",
+      "status": "Disponível",
+      "valor_base_brl": 17805.16,
+      "duracao": "4 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Diagnóstico de Mídia Paga (Meta e Google Ads) - 10 a 30k",
+      "categoria": "SABER",
+      "status": "Disponível",
+      "valor_base_brl": 9179.33,
+      "duracao": "3 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Diagnóstico de Mídia Paga (Meta e Google Ads) - 30 a 50k",
+      "categoria": "SABER",
+      "status": "Disponível",
+      "valor_base_brl": 12605.81,
+      "duracao": "3 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Diagnóstico de Mídia Paga (Meta e Google Ads) - 50 a 100k",
+      "categoria": "SABER",
+      "status": "Disponível",
+      "valor_base_brl": 15683.44,
+      "duracao": "3 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Diagnóstico e Performance Comercial 360º - Até 12 Vendedores",
+      "categoria": "SABER",
+      "status": "Disponível",
+      "valor_base_brl": 27206.15,
+      "duracao": "5 Semanas",
+      "pmm_responsavel": "Victor Zirondi",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Diagnóstico e Performance Comercial 360º - Até 25 Vendedores",
+      "categoria": "SABER",
+      "status": "Disponível",
+      "valor_base_brl": 31763.21,
+      "duracao": "5 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Diagnóstico e Performance Comercial 360º - Até 6 Vendedores",
+      "categoria": "SABER",
+      "status": "Disponível",
+      "valor_base_brl": 20286.05,
+      "duracao": "5 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Diagnóstico e Planejamento de CRM Marketing - Basic",
+      "categoria": "SABER",
+      "status": "Disponível",
+      "valor_base_brl": 10156.61,
+      "duracao": "3 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Diagnóstico e Planejamento de CRM Marketing - Pro",
+      "categoria": "SABER",
+      "status": "Disponível",
+      "valor_base_brl": 29318.3,
+      "duracao": "3 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Diagnóstico e Planejamento de Marketing e Vendas no Digital",
+      "categoria": "SABER",
+      "status": "Disponível",
+      "valor_base_brl": 34671.35,
+      "duracao": "5 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Diagnóstico e Planejamento de Redes Sociais",
+      "categoria": "SABER",
+      "status": "Disponível",
+      "valor_base_brl": 12171.33,
+      "duracao": "4 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Estruturação Estratégica 3.0 - E-commerce",
+      "categoria": "SABER",
+      "status": "Disponível",
+      "valor_base_brl": null,
+      "duracao": "30",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Estruturação Estratégica 3.0 - Inside Sales",
+      "categoria": "SABER",
+      "status": "Disponível",
+      "valor_base_brl": 36345.35,
+      "duracao": "30",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Estruturação Estratégica 3.0 - PDV",
+      "categoria": "SABER",
+      "status": "Disponível",
+      "valor_base_brl": null,
+      "duracao": "30",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Construção de Posicionamento Estratégico (Redes Sociais)",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 8358.63,
+      "duracao": "3 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Elaboração de Identidade Visual – Brand Refresh",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 18962.12,
+      "duracao": "3 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Elaboração de Identidade Visual – Branding Completo",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 31289.76,
+      "duracao": "5 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Elaboração de Identidade Visual – Rebranding",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 46467.75,
+      "duracao": "5 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Elaboração de Identidade Visual - MIV",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 11108.69,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Estruturação de Produtos para Marketplace - Até 100 SKUs",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 12218.76,
+      "duracao": "3 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação CRM - GHL Advanced",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 8720.13,
+      "duracao": "3 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação CRM - GHL Basic",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 3472.99,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação CRM - GHL Pro",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 5760.87,
+      "duracao": "3 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Implementação CRM - Kommo Basic",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 3656.49,
+      "duracao": "3 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação CRM - Kommo Pro",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 7489.89,
+      "duracao": "4 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação CRM Marketing - Advanced",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 10460.4,
+      "duracao": "5 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação CRM Marketing - Basic",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 4263.0,
+      "duracao": "3 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação CRM Marketing - Pro",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 6225.7,
+      "duracao": "4 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação CRM Vendas - Advanced",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 11591.5,
+      "duracao": "4 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação CRM Vendas - Basic",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 4145.69,
+      "duracao": "3 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação CRM Vendas - Pro",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 7194.63,
+      "duracao": "3 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação da Plataforma Marketplace",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 11012.3,
+      "duracao": "3 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação de Captação e Edição de Fotos - Advanced",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 20281.23,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Implementação de Captação e Edição de Fotos - Basic",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 8580.68,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Implementação de Captação e Edição de Fotos - Pro",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 12101.03,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Implementação de Captação e Edição de Vídeo - Advanced",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 22742.19,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Implementação de Captação e Edição de Vídeo - Basic",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 9743.18,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Implementação de Captação e Edição de Vídeo - Pro",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 16968.11,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Implementação de Chatbot - Advanced",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 10241.05,
+      "duracao": "3 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação de Chatbot - Basic",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 5925.2,
+      "duracao": "3 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação de Chatbot - Pro",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 7115.9,
+      "duracao": "3 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação de E-commerce - Advanced",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 44662.92,
+      "duracao": "5 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Implementação de E-commerce - Basic",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 22051.51,
+      "duracao": "35",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Implementação de E-commerce - Pro",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 30951.83,
+      "duracao": "5 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Implementação de Hubspot CRM for Marketing",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 11025.73,
+      "duracao": "4 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Implementação de Hubspot CRM for Sales",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 10878.87,
+      "duracao": "4 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação de Landing Page",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 3348.99,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Implementação de Pack de Criativos - 12 criativos",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 6626.94,
+      "duracao": "1 Semana",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Implementação de Pack de Criativos - 24 criativos",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 10896.81,
+      "duracao": "1 Semana",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Implementação de Pack de Criativos - 8 criativos",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 5160.52,
+      "duracao": "1 Semana",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação de Pesquisa de Satisfação",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 4377.3,
+      "duracao": "1 Semana",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Implementação de Produtos para E-commerce - Até 100 SKUs",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 12762.2,
+      "duracao": "3 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Implementação de Produtos para E-commerce - Até 50 SKUs",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 8638.97,
+      "duracao": "3 semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Implementação de Produtos para Marketplace - Até 50 SKUs",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 8919.32,
+      "duracao": "3 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação de Réguas de Relacionamento - Régua Abandono de Carrinho",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 3628.65,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação de Réguas de Relacionamento - Régua Anti-No-Show",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 3234.83,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação de Réguas de Relacionamento - Régua Cadência de Fechamento",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 3825.56,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação de Réguas de Relacionamento - Régua de Conversão de Pagamentos",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 3924.02,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação de Réguas de Relacionamento - Régua de Engajamento (News/Pesquisa)",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 3333.29,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação de Réguas de Relacionamento - Régua de Monetização de Base Ativa",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 3924.02,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação de SEO",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 7586.45,
+      "duracao": "3 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação de Setup Inicial de Google Ads",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 4752.61,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação de Setup Inicial de Social Ads",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 4461.35,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação de Site - Advanced",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 60593.1,
+      "duracao": "5 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Implementação de Site - Basic",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 18264.5,
+      "duracao": "5 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Implementação de Site - Pro",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 32439.3,
+      "duracao": "5 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Implementação de Traqueamento Completo",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 6649.05,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação e Gestão de Dados - CRM",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 8032.99,
+      "duracao": "3 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Implementação e Gestão de Dados - E-commerce",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 9885.49,
+      "duracao": "3 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Implementação e Gestão de Dados - Mídia",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 5435.16,
+      "duracao": "3 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Implementação Google Local Service Ads",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 4921.88,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação Google Meu Negócio",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 3392.19,
+      "duracao": "1 Semana",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Implementação Google My Business Profile",
+      "categoria": "TER",
+      "status": "Disponível",
+      "valor_base_brl": 3780.0,
+      "duracao": "1 Semana",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Combo Performance - E-commerce - Invest. Mídia 15–50K",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": null,
+      "duracao": "30",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Combo Performance - E-commerce - Invest. Mídia 2–5K",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": null,
+      "duracao": "30",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Combo Performance - E-commerce - Invest. Mídia 50K+",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": null,
+      "duracao": "30",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Combo Performance - E-commerce - Invest. Mídia 5–15K",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": null,
+      "duracao": "30",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Combo Performance - Inside Sales - Invest. Mídia 15–50K",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": null,
+      "duracao": "30",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Combo Performance - Inside Sales - Invest. Mídia 2- 5K",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": null,
+      "duracao": "30",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Combo Performance - Inside Sales - Invest. Mídia 50K+",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": null,
+      "duracao": "30",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Combo Performance - Inside Sales - Invest. Mídia 5–15K",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": null,
+      "duracao": "30",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Combo Performance - PDV - Invest. Mídia 15–50K",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": null,
+      "duracao": "30",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Combo Performance - PDV - Invest. Mídia 2–5K",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": null,
+      "duracao": "30",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Combo Performance - PDV - Invest. Mídia 50K+",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": null,
+      "duracao": "30",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Combo Performance - PDV - Invest. Mídia 5–15K",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": null,
+      "duracao": "30",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Combo Performance - Social Media - 12 Postagens/Mês",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": null,
+      "duracao": null,
+      "pmm_responsavel": null,
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Manutenção - CRM (Marketing)",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": 992.01,
+      "duracao": "1 Semana",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Manutenção - CRM (Vendas)",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": 865.43,
+      "duracao": "1 Semana",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Manutenção - E-Commerce",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": 883.83,
+      "duracao": "5",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Manutenção de Gestão de Dados (BI)",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": 847.0,
+      "duracao": "1 Semana",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Manutenção de GHL CRM",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": 716.34,
+      "duracao": "Recorrente",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Manutenção de Hubspot",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": 1436.46,
+      "duracao": null,
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Manutenção de Kommo CRM",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": 716.34,
+      "duracao": "1 Semana",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Manutenção de Landing Page",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": 620.67,
+      "duracao": "1 Semana",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Manutenção de Site",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": 1228.87,
+      "duracao": "1 Semana",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Profissional de Audiovisual",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": 6120.95,
+      "duracao": "Recorrente",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Profissional de Business Intelligence",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": 4957.14,
+      "duracao": "Recorrente",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Profissional de CRM",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": 4327.86,
+      "duracao": "Recorrente",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Profissional de Designer Gráfico",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": 7707.74,
+      "duracao": "Recorrente",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Profissional de Gestão de Mídia Paga",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": 5497.14,
+      "duracao": "Recorrente",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Profissional de Marketplace",
+      "categoria": "EXECUTAR",
+      "status": "Em produção",
+      "valor_base_brl": 5497.14,
+      "duracao": "Recorrente",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Profissional de Pré-Vendas (SDR)",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": 3427.86,
+      "duracao": "Recorrente",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Profissional de Redação Publicitária",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": 5751.59,
+      "duracao": "Recorrente",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Profissional de Sales Enablement",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": 4327.86,
+      "duracao": "Recorrente",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Profissional de SEO",
+      "categoria": "EXECUTAR",
+      "status": "Em produção",
+      "valor_base_brl": 5497.14,
+      "duracao": "Recorrente",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Profissional de Social Media",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": 7707.74,
+      "duracao": "Recorrente",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "alta"
+    },
+    {
+      "titulo": "Profissional de Vendas (BDR)",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": 4277.14,
+      "duracao": null,
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Profissional de Web Design",
+      "categoria": "EXECUTAR",
+      "status": "Disponível",
+      "valor_base_brl": 8070.95,
+      "duracao": null,
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "media"
+    },
+    {
+      "titulo": "Black Box",
+      "categoria": "POTENCIALIZAR",
+      "status": "Disponível",
+      "valor_base_brl": null,
+      "duracao": null,
+      "pmm_responsavel": null,
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Auditoria técnica comercial - Fechamento - Até 12 Vendedores",
+      "categoria": "DESTRAVA RECEITA",
+      "status": "Disponível",
+      "valor_base_brl": 8867.91,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Auditoria técnica comercial - Fechamento - Até 6 Vendedores",
+      "categoria": "DESTRAVA RECEITA",
+      "status": "Disponível",
+      "valor_base_brl": 7005.52,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Auditoria técnica comercial - Pré-vendas - Até 12 Pré-Vendedores",
+      "categoria": "DESTRAVA RECEITA",
+      "status": "Disponível",
+      "valor_base_brl": 6994.38,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Auditoria técnica comercial - Pré-vendas - Até 6 Pré-Vendedores",
+      "categoria": "DESTRAVA RECEITA",
+      "status": "Disponível",
+      "valor_base_brl": 5554.24,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Auditoria técnica das campanhas (Google Ads) - Acima de R$50 mil",
+      "categoria": "DESTRAVA RECEITA",
+      "status": "Disponível",
+      "valor_base_brl": 8888.13,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Auditoria técnica das campanhas (Google Ads) - Até R$10 mil",
+      "categoria": "DESTRAVA RECEITA",
+      "status": "Disponível",
+      "valor_base_brl": 5228.88,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Auditoria técnica das campanhas (Google Ads) - de R$10 a 25 mil",
+      "categoria": "DESTRAVA RECEITA",
+      "status": "Disponível",
+      "valor_base_brl": 6734.75,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Auditoria técnica das campanhas (Google Ads) - de R$25 a 50 mil",
+      "categoria": "DESTRAVA RECEITA",
+      "status": "Disponível",
+      "valor_base_brl": 7814.44,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Auditoria técnica das campanhas (Meta Ads) - Acima de R$50 mil",
+      "categoria": "DESTRAVA RECEITA",
+      "status": "Disponível",
+      "valor_base_brl": 7793.13,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Auditoria técnica das campanhas (Meta Ads) - Até 10 mil",
+      "categoria": "DESTRAVA RECEITA",
+      "status": "Disponível",
+      "valor_base_brl": 4482.25,
+      "duracao": "2 Sem",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Auditoria técnica das campanhas (Meta Ads) - de R$10 a 25 mil",
+      "categoria": "DESTRAVA RECEITA",
+      "status": "Disponível",
+      "valor_base_brl": 5826.38,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Auditoria técnica das campanhas (Meta Ads) - de R$25 a 50 mil",
+      "categoria": "DESTRAVA RECEITA",
+      "status": "Disponível",
+      "valor_base_brl": 6680.0,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Auditoria Técnica de Ambientes (CRO / SEO) — Marketplace",
+      "categoria": "DESTRAVA RECEITA",
+      "status": "Disponível",
+      "valor_base_brl": 7090.66,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Auditoria técnica de ambientes (CRO / SEO) E-commerce",
+      "categoria": "DESTRAVA RECEITA",
+      "status": "Disponível",
+      "valor_base_brl": 9020.0,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Auditoria técnica de ambientes (CRO / SEO) Inside Sales - Até 1 Página",
+      "categoria": "DESTRAVA RECEITA",
+      "status": "Disponível",
+      "valor_base_brl": 6630.5,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Auditoria técnica de ambientes (CRO / SEO) Inside Sales - Até 3 Páginas",
+      "categoria": "DESTRAVA RECEITA",
+      "status": "Disponível",
+      "valor_base_brl": 8387.0,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Auditoria técnica de ambientes (CRO / SEO) Inside Sales - Até 5 Páginas",
+      "categoria": "DESTRAVA RECEITA",
+      "status": "Disponível",
+      "valor_base_brl": 8387.0,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Auditoria técnica de Criativos Ads & Mensagens",
+      "categoria": "DESTRAVA RECEITA",
+      "status": "Disponível",
+      "valor_base_brl": 6566.19,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Auditoria técnica de CRM Marketing",
+      "categoria": "DESTRAVA RECEITA",
+      "status": "Disponível",
+      "valor_base_brl": 9487.78,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Auditoria técnica de Pós-Venda/CS",
+      "categoria": "DESTRAVA RECEITA",
+      "status": "Disponível",
+      "valor_base_brl": 9149.89,
+      "duracao": "3 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Auditoria Técnica de Redes Sociais - Até 2 Redes Sociais",
+      "categoria": "DESTRAVA RECEITA",
+      "status": "Disponível",
+      "valor_base_brl": 5577.16,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Auditoria Técnica de Redes Sociais - Até 5 Redes Sociais",
+      "categoria": "DESTRAVA RECEITA",
+      "status": "Disponível",
+      "valor_base_brl": 7687.19,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Auditoria Técnica de Traqueamento Completo",
+      "categoria": "DESTRAVA RECEITA",
+      "status": "Disponível",
+      "valor_base_brl": 6282.81,
+      "duracao": "2 Semanas",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Destrava Receita - Estratégico [DR-E]",
+      "categoria": "DESTRAVA RECEITA",
+      "status": "Disponível",
+      "valor_base_brl": 371678.13,
+      "duracao": "12 meses",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Destrava Receita - Operacional [DR-O]",
+      "categoria": "DESTRAVA RECEITA",
+      "status": "Disponível",
+      "valor_base_brl": 70053.75,
+      "duracao": "12 meses",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Destrava Receita - Raio-X",
+      "categoria": "DESTRAVA RECEITA",
+      "status": "Disponível",
+      "valor_base_brl": 33656.25,
+      "duracao": "45",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    },
+    {
+      "titulo": "Destrava Receita - Tático [DR-T]",
+      "categoria": "DESTRAVA RECEITA",
+      "status": "Disponível",
+      "valor_base_brl": 160981.25,
+      "duracao": "12 meses",
+      "pmm_responsavel": "Rafael Corazza",
+      "confianca": "baixa"
+    }
+  ]
 }
