@@ -1154,6 +1154,108 @@
   </div>
 </section>
 
+<section id="sec-trilhas" class="section">
+<div id="trilhas-app">
+  <nav class="tl-rail" aria-label="Progresso da trilha">
+    <div class="tl-rail-inner">
+      <button class="tl-rail-btn" data-target="trilhas-onboarding"><span class="tl-dot"></span>Onboarding</button>
+      <button class="tl-rail-btn" data-target="trilhas-produtos"><span class="tl-dot"></span>Produto</button>
+      <button class="tl-rail-btn" data-target="trilhas-trilha"><span class="tl-dot"></span>Trilha</button>
+    </div>
+  </nav>
+
+  <div id="trilhas-jornada">
+    <div class="tl-split-stage" id="trilhas-split-stage">
+      <div class="tl-pane tl-pane-onboarding" id="trilhas-onboarding">
+        <div class="tl-pane-inner">
+          <div class="tl-hero-route" aria-hidden="true">
+            <svg viewBox="0 0 600 34" preserveAspectRatio="none">
+              <line class="tl-track" x1="4" y1="17" x2="596" y2="17"/>
+              <circle class="tl-station now" cx="20" cy="17" r="6"/>
+              <circle class="tl-station" cx="220" cy="17" r="6"/>
+              <circle class="tl-station" cx="420" cy="17" r="6"/>
+              <circle class="tl-station" cx="580" cy="17" r="6"/>
+              <text x="20" y="8" text-anchor="middle">HOJE</text>
+              <text x="580" y="8" text-anchor="middle">GO-LIVE</text>
+            </svg>
+          </div>
+
+          <p class="tl-eyebrow tl-reveal">Etapa 1 · Padrão pra qualquer escopo</p>
+          <h1 style="font-size:clamp(30px,3.6vw,46px);letter-spacing:-.01em;margin:10px 0 16px;" class="tl-reveal">A rota de cada cliente TER</h1>
+          <p class="tl-sub tl-reveal" style="color:var(--text-muted);font-size:15px;">
+            Antes da trilha se abrir por produto, todo cliente passa pelos mesmos 4 passos —
+            o que muda depois é só o cronograma semana a semana.
+          </p>
+
+          <div class="tl-checklist" style="margin-top:36px;">
+            <div class="tl-check-item tl-reveal">
+              <span class="tl-num">01</span>
+              <span class="tl-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/><circle cx="12" cy="8" r="4"/></svg></span>
+              <div><h3>Boas-vindas &amp; apresentação do time</h3><p>Contrato assinado, consultor responsável confirmado e apresentado ao cliente.</p></div>
+            </div>
+            <div class="tl-check-item tl-reveal">
+              <span class="tl-num">02</span>
+              <span class="tl-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span>
+              <div><h3>Levantamento de acessos</h3><p>CRM, ferramentas de venda e contas necessárias liberadas para o time TER.</p></div>
+            </div>
+            <div class="tl-check-item tl-reveal">
+              <span class="tl-num">03</span>
+              <span class="tl-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 12l3 3 5-6"/><circle cx="12" cy="12" r="9"/></svg></span>
+              <div><h3>Alinhamento de escopo</h3><p>Reunião de abertura confirma expectativas, entregáveis e limites do que foi contratado.</p></div>
+            </div>
+            <div class="tl-check-item tl-reveal">
+              <span class="tl-num">04</span>
+              <span class="tl-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3v18M5 4h11l-2.5 3.5L16 11H5"/></svg></span>
+              <div><h3>Definição do produto</h3><p>Marca o início da trilha específica — cada produto TER tem um cronograma próprio.</p></div>
+            </div>
+          </div>
+
+          <div class="tl-hero-cta tl-reveal">
+            <button class="tl-btn-primary" data-target="trilhas-produtos">
+              Escolher produto
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M13 6l6 6-6 6M5 12h14"/></svg>
+            </button>
+            <span class="tl-hint">ou role a página</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="tl-pane tl-pane-produtos" id="trilhas-produtos">
+        <div class="tl-pane-inner">
+          <div class="tl-chapter-head" style="margin-bottom:24px;">
+            <p class="tl-eyebrow">Etapa 2 · Escolha</p>
+            <h2>Qual produto o cliente fechou?</h2>
+            <p class="tl-sub" style="font-size:13.5px;">Cada card abre uma trilha diferente na Etapa 3 — semanal e fixa, contínua, ou sob medida.</p>
+          </div>
+          <div class="tl-prod-grid" id="trilhas-prod-grid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-trilha" id="trilhas-trilha">
+    <div class="tl-wrap">
+      <div class="tl-trilha-head-row">
+        <div class="tl-chapter-head tl-reveal" style="margin-bottom:0;">
+          <p class="tl-eyebrow">Etapa 3 · Trilha</p>
+          <h2 id="trilhas-titulo">Escolha um produto</h2>
+          <p class="tl-sub" id="trilhas-sub-txt">Volte pra Etapa 2 e clique em um card pra ver o cronograma aqui.</p>
+        </div>
+        <button class="tl-back-link" data-target="trilhas-produtos" id="trilhas-back" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
+          Trocar produto
+        </button>
+      </div>
+      <div id="trilhas-body"></div>
+    </div>
+  </div>
+
+  <div class="tl-footer">
+    <p>TRILHA GENÉRICA DE REFERÊNCIA PRA APRESENTAR O PROCESSO COMERCIAL TER AO CLIENTE</p>
+  </div>
+</div>
+</section>
+
 <section id="sec-capacity" class="section">
 <div id="cap-saber-view">
   <div class="sec-head">
@@ -3002,6 +3104,7 @@ const ICONS = {
   undo:'<path d="M3 8a5 5 0 119 3.5"/><path d="M3 12V8h4"/>',
   cornerLeft:'<path d="M6 3L2 7l4 4"/><path d="M2 7h7a4 4 0 014 4v2"/>',
   coin:'<circle cx="8" cy="8" r="6.5"/><path d="M8 4.5v7M6 6.2c0-.9.9-1.5 2-1.5s2 .5 2 1.3-1 1-2 1.2-2 .4-2 1.3.9 1.3 2 1.3 2-.6 2-1.5"/>',
+  route:'<circle cx="3.5" cy="12.5" r="2"/><circle cx="12.5" cy="3.5" r="2"/><path d="M5 11L11 5" stroke-dasharray="1.6 1.8"/>',
 };
 // Sidebar de navegação (substitui a barra de abas horizontal) — ícone + nome por extenso
 // em cada item. Mantém as mesmas classes/ids que updateCoordUI()/updatePerfilNavVisibility()
@@ -3023,6 +3126,7 @@ const SIDEBAR_NAV = [
   { group: 'gestao', label: 'Gestão', items: [
     { id: 'leadtime', label: 'Lead Time', icon: 'calendar', extraClass: 'ter-ok', elId: 'nav-btn-leadtime' },
     { id: 'recorrentes', label: 'Escopos Recorrentes', icon: 'link', extraClass: 'ter-only', hiddenByDefault: true },
+    { id: 'trilhas', label: 'Trilhas', icon: 'route', extraClass: 'ter-only', hiddenByDefault: true },
     { id: 'dro', label: 'DRO/DRX', icon: 'refresh' },
     { id: 'pipeline', label: 'Pipeline', icon: 'arrowUp' },
     { id: 'monetizacao', label: 'Monetização', icon: 'coin' },
@@ -8804,6 +8908,7 @@ function show(sec) {
     else if (sec === 'conversao')   { calcConv(); buildFunil(document.getElementById('conv-f-cons')?.value || ''); }
     else if (sec === 'leadtime')    buildLeadTime();
     else if (sec === 'recorrentes') buildLeadTimeRec();
+    else if (sec === 'trilhas')     window.trilhasReset && window.trilhasReset();
     else if (sec === 'dro')         buildDRO();
     else if (sec === 'pipeline')    buildPipeline();
     else if (sec === 'monetizacao') calcMon();
@@ -15013,6 +15118,207 @@ projects = []; // dados carregados do Supabase
 
 // Backup local a cada 30min removido
 
+// ═══════════════════════════════════
+//  ABA "TRILHAS" (TER) — jornada comercial em scroll
+//  Onboarding padrão → escolha de produto (split-screen) → trilha
+//  semanal/mensal do produto. Conteúdo genérico/informativo, uso
+//  interno do time (não lê dado de projeto real). Ver #trilhas-app
+//  em css/styles.css pro CSS escopado.
+// ═══════════════════════════════════
+(function() {
+  const PRODUTOS = [
+    { id: 'kommo-basic', nome: 'CRM Kommo basic', tipo: 'fixo', desc: 'Setup essencial do Kommo — funil, campos e integrações básicas.',
+      dias: 21, diasPorEtapa: 7, etapas: ['Configurações iniciais', 'Reunião inicial', 'Automações I e Treinamento'] },
+    { id: 'kommo-pro', nome: 'CRM Kommo PRO', tipo: 'fixo', desc: 'Implantação completa do Kommo, com automações avançadas de funil.',
+      dias: 35, diasPorEtapa: 7, etapas: ['Configurações iniciais', 'Reunião inicial', 'Automações I e Treinamento', 'Automações II e Relatórios', 'Entrega final'] },
+    { id: 'sales-enablement', nome: 'Sales Enablement', tipo: 'fixo', desc: 'Estruturação do processo comercial e capacitação do time de vendas.',
+      dias: 35, diasPorEtapa: 7, etapas: ['Configurações iniciais', 'Reunião inicial', 'Automações I e Treinamento', 'Automações II e Relatórios', 'Entrega final'] },
+    { id: 'diagnostico-360', nome: 'Diagnóstico 360', tipo: 'fixo', desc: 'Raio-x completo da operação comercial, semana a semana.',
+      dias: 45, diasPorEtapa: 9, etapas: ['Semana 1', 'Semana 2', 'Semana 3', 'Semana 4', 'Semana 5'] },
+    { id: 'treinamentos', nome: 'Treinamentos (avulsos)', tipo: 'pontual',
+      desc: 'Capacitações pontuais sob medida — sem grade fixa de semanas.' },
+    { id: 'manutencao-crm', nome: 'Manutenção de CRM', tipo: 'recorrente',
+      desc: 'Acompanhamento recorrente do CRM já implantado.' },
+    { id: 'profissional-crm', nome: 'Profissional de CRM', tipo: 'recorrente',
+      desc: 'Gestão contínua do CRM como serviço, sem data de entrega final.' },
+  ];
+  const TL_TAG_LABEL = { fixo: 'cronograma fixo', recorrente: 'ciclo contínuo', pontual: 'sob medida' };
+  const tlReduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function tlBuildGrid() {
+    const grid = document.getElementById('trilhas-prod-grid');
+    if (!grid || grid.dataset.built) return;
+    grid.dataset.built = '1';
+    PRODUTOS.forEach(p => {
+      const card = document.createElement('button');
+      card.className = 'tl-prod-card';
+      card.dataset.id = p.id;
+      const durTxt = p.tipo === 'fixo'
+        ? `${p.etapas.length} semanas · ${p.dias} dias`
+        : p.tipo === 'recorrente' ? 'sem data de fim' : 'cronograma sob demanda';
+      card.innerHTML = `
+        <span class="tl-prod-tag ${p.tipo}">${TL_TAG_LABEL[p.tipo]}</span>
+        <h3>${p.nome}</h3>
+        <p class="tl-desc">${p.desc}</p>
+        <span class="tl-dur">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+          ${durTxt}
+        </span>`;
+      card.addEventListener('click', () => tlSelectProduto(p.id));
+      grid.appendChild(card);
+    });
+  }
+
+  function tlSelectProduto(id) {
+    const p = PRODUTOS.find(x => x.id === id);
+    if (!p) return;
+    document.querySelectorAll('#trilhas-app .tl-prod-card').forEach(c => c.classList.toggle('selected', c.dataset.id === id));
+    document.getElementById('trilhas-titulo').textContent = p.nome;
+    document.getElementById('trilhas-back').style.display = 'inline-flex';
+    const body = document.getElementById('trilhas-body');
+    const subEl = document.getElementById('trilhas-sub-txt');
+
+    if (p.tipo === 'fixo') {
+      subEl.textContent = `${p.etapas.length} semanas · ${p.dias} dias corridos, do início ao entregável final.`;
+      body.innerHTML = tlBuildRoute(p);
+    } else if (p.tipo === 'recorrente') {
+      subEl.textContent = 'Sem data de entrega final — roda em ciclos mensais enquanto o contrato estiver ativo.';
+      body.innerHTML = tlBuildLoop();
+    } else {
+      subEl.textContent = 'Sem grade semanal fixa — cada encontro é agendado conforme o escopo pontual combinado.';
+      body.innerHTML = `<div class="tl-empty-state">Cronograma sob medida: as entregas são registradas uma a uma, com nome e data próprios, à medida que acontecem — não seguem um template de semanas.</div>`;
+    }
+    tlObserveReveals(body);
+    const trilhaEl = document.getElementById('trilhas-trilha');
+    if (trilhaEl) trilhaEl.scrollIntoView({ behavior: tlReduceMotion() ? 'auto' : 'smooth', block: 'start' });
+  }
+
+  function tlBuildRoute(p) {
+    const n = p.etapas.length;
+    const totalDias = p.dias;
+    const w = 900, pad = 40, usable = w - pad * 2;
+    const cx = i => pad + (usable * (i + 0.5) / n);
+    const boundaryX = totalDias > 30 ? pad + usable * (30 / totalDias) : null;
+
+    let stations = '';
+    let cards = '';
+    for (let i = 0; i < n; i++) {
+      const dStart = i * p.diasPorEtapa + 1;
+      const dEnd = Math.min((i + 1) * p.diasPorEtapa, totalDias);
+      stations += `<circle class="tl-station" cx="${cx(i)}" cy="30" r="7"/><text x="${cx(i)}" y="14" text-anchor="middle">SEM ${String(i + 1).padStart(2, '0')}</text>`;
+      cards += `<div class="tl-station-card tl-reveal">
+        <span class="tl-wk">SEM ${String(i + 1).padStart(2, '0')}</span>
+        <span class="tl-days">DIAS ${dStart}–${dEnd}</span>
+        <span class="tl-name">${p.etapas[i]}</span>
+      </div>`;
+    }
+
+    const boundary = boundaryX ? `<line x1="${boundaryX}" y1="6" x2="${boundaryX}" y2="54" stroke="var(--border-md)" stroke-width="1.5" stroke-dasharray="3 4"/>` : '';
+    const monthNote = totalDias > 30
+      ? `<div class="tl-month-note"><span class="tl-swatch"></span>A linha tracejada marca a virada do dia 30 — a trilha atravessa pro segundo mês.</div>`
+      : `<div class="tl-month-note"><span class="tl-swatch"></span>Toda a trilha cabe dentro do primeiro mês corrido.</div>`;
+
+    return `
+      <div class="tl-route-shell">
+        <div class="tl-route-track">
+          <svg class="tl-route-svg" viewBox="0 0 ${w} 60" preserveAspectRatio="none">
+            <line x1="${pad}" y1="30" x2="${w - pad}" y2="30" stroke="var(--border-md)" stroke-width="2"/>
+            ${boundary}
+            <g fill="var(--surface)" stroke="var(--accent)" stroke-width="2">${stations}</g>
+          </svg>
+        </div>
+        ${monthNote}
+        <div class="tl-stations">${cards}</div>
+      </div>`;
+  }
+
+  function tlBuildLoop() {
+    const steps = ['Configuração inicial', 'Acompanhamento mensal', 'Otimização &amp; relatório'];
+    const cx = 150, cy = 150, r = 100;
+    let nodes = '', labels = '';
+    steps.forEach((s, i) => {
+      const a = (Math.PI * 2 * i) / steps.length - Math.PI / 2;
+      const x = cx + r * Math.cos(a), y = cy + r * Math.sin(a);
+      nodes += `<circle cx="${x}" cy="${y}" r="8" fill="var(--surface)" stroke="var(--accent)" stroke-width="2.4"/>`;
+      const lx = cx + (r + 34) * Math.cos(a), ly = cy + (r + 34) * Math.sin(a);
+      labels += `<text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="middle">${s}</text>`;
+    });
+    return `
+      <div class="tl-loop-wrap tl-reveal">
+        <svg class="tl-loop-svg" viewBox="0 0 300 300">
+          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--border-md)" stroke-width="2" stroke-dasharray="2 7"/>
+          <path d="M ${cx + r - 14} ${cy - 30} A ${r} ${r} 0 0 1 ${cx + r} ${cy}" fill="none" stroke="var(--accent)" stroke-width="2.4" marker-end="url(#trilhas-arrow-marker)"/>
+          <defs><marker id="trilhas-arrow-marker" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="var(--accent)"/></marker></defs>
+          ${nodes}
+          <g style="font-family:var(--tl-mono);font-size:11px;font-weight:600;fill:var(--text-muted);">${labels}</g>
+        </svg>
+        <p class="tl-loop-caption">O ciclo se repete a cada mês enquanto o cliente estiver ativo — não existe uma etapa final que encerra o produto.</p>
+      </div>`;
+  }
+
+  const tlRevealIo = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); tlRevealIo.unobserve(e.target); } });
+  }, { threshold: 0.15 });
+  function tlObserveReveals(root) { root.querySelectorAll('.tl-reveal:not(.in)').forEach(el => tlRevealIo.observe(el)); }
+
+  function tlSetRailActive(key) {
+    document.querySelectorAll('#trilhas-app .tl-rail-btn').forEach(b => b.classList.toggle('active', b.dataset.target === key));
+  }
+
+  function tlTriggerSplit() {
+    const stage = document.getElementById('trilhas-split-stage');
+    if (!stage || stage.classList.contains('split')) return;
+    stage.classList.add('split');
+    tlSetRailActive('trilhas-produtos');
+  }
+
+  let tlInited = false;
+  function tlInit() {
+    if (tlInited) return;
+    tlInited = true;
+    tlBuildGrid();
+    const appEl = document.getElementById('trilhas-app');
+    if (appEl) tlObserveReveals(appEl);
+
+    document.querySelectorAll('#trilhas-app [data-target]').forEach(el => {
+      el.addEventListener('click', () => {
+        const id = el.dataset.target;
+        if (id === 'trilhas-produtos') tlTriggerSplit();
+        const target = document.getElementById(id);
+        if (target) target.scrollIntoView({ behavior: tlReduceMotion() ? 'auto' : 'smooth', block: id === 'trilhas-trilha' ? 'start' : 'center' });
+      });
+    });
+
+    const jornadaEl = document.getElementById('trilhas-jornada');
+    const trilhaEl = document.getElementById('trilhas-trilha');
+    if (jornadaEl) {
+      const splitAutoIo = new IntersectionObserver((entries) => {
+        entries.forEach(e => { if (e.isIntersecting) { tlTriggerSplit(); splitAutoIo.unobserve(jornadaEl); } });
+      }, { threshold: 0, rootMargin: '0px 0px -55% 0px' });
+      splitAutoIo.observe(jornadaEl);
+    }
+    const railIo = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (!e.isIntersecting) return;
+        const stage = document.getElementById('trilhas-split-stage');
+        if (e.target === trilhaEl) tlSetRailActive('trilhas-trilha');
+        else if (e.target === jornadaEl) tlSetRailActive(stage && stage.classList.contains('split') ? 'trilhas-produtos' : 'trilhas-onboarding');
+      });
+    }, { threshold: 0.5 });
+    if (jornadaEl) railIo.observe(jornadaEl);
+    if (trilhaEl) railIo.observe(trilhaEl);
+  }
+
+  // Chamado por show('trilhas') toda vez que a aba é aberta — reinicializa (idempotente,
+  // via tlInited) e sempre volta pro topo com o onboarding em tela cheia.
+  window.trilhasReset = function() {
+    tlInit();
+    const stage = document.getElementById('trilhas-split-stage');
+    if (stage) stage.classList.remove('split');
+    tlSetRailActive('trilhas-onboarding');
+    window.scrollTo(0, 0);
+  };
+})();
 </script>
 </body>
 </html>

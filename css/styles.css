@@ -472,3 +472,107 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
   }
 }
 
+/* ============================================================
+   ABA "TRILHAS" (TER) — jornada comercial em scroll: onboarding
+   padrão → escolha de produto (split-screen 50/50) → trilha
+   semanal/mensal do produto escolhido. Tudo prefixado #trilhas-app
+   / .tl-* pra nunca vazar estilo pro resto do painel (nem herdar
+   dele além dos tokens de --cor/--fonte já compartilhados).
+   ============================================================ */
+#trilhas-app{ --tl-accent-ink:#fff; --tl-mono:ui-monospace,'SF Mono','IBM Plex Mono',monospace; position:relative; }
+#trilhas-app h1,#trilhas-app h2,#trilhas-app h3{font-family:var(--serif);font-weight:800;text-wrap:balance;}
+#trilhas-app a,#trilhas-app button{font-family:inherit;}
+#trilhas-app :focus-visible{outline:2px solid var(--accent);outline-offset:3px;}
+#trilhas-app .tl-eyebrow{font-family:var(--tl-mono);font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);}
+#trilhas-app .tl-wrap{max-width:1040px;margin:0 auto;padding:0 32px;}
+@media (max-width:640px){#trilhas-app .tl-wrap{padding:0 20px;}}
+
+#trilhas-app .tl-rail{position:sticky;top:0;z-index:5;display:flex;justify-content:center;padding:14px 0;background:linear-gradient(var(--bg) 65%, transparent);}
+#trilhas-app .tl-rail-inner{display:flex;align-items:center;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:5px;box-shadow:var(--shadow-sm);}
+#trilhas-app .tl-rail-btn{display:flex;align-items:center;gap:8px;border:none;background:none;cursor:pointer;padding:8px 16px;border-radius:999px;font-family:var(--tl-mono);font-size:11px;font-weight:600;letter-spacing:.06em;color:var(--text-hint);transition:color .2s,background .2s;}
+#trilhas-app .tl-rail-btn .tl-dot{width:6px;height:6px;border-radius:50%;background:var(--border-md);transition:background .2s,transform .2s;flex:none;}
+#trilhas-app .tl-rail-btn.active{color:var(--text);background:var(--surface2);}
+#trilhas-app .tl-rail-btn.active .tl-dot{background:var(--accent);transform:scale(1.3);}
+#trilhas-app .tl-rail-btn:hover{color:var(--text);}
+
+#trilhas-app .tl-chapter-head{margin-bottom:36px;}
+#trilhas-app .tl-chapter-head h2{font-size:clamp(24px,2.6vw,32px);letter-spacing:-.01em;margin-top:6px;}
+#trilhas-app .tl-chapter-head .tl-sub{color:var(--text-muted);font-size:13.5px;margin-top:10px;max-width:56ch;}
+
+#trilhas-app .tl-reveal{opacity:0;transform:translateY(14px);transition:opacity .5s ease,transform .5s ease;}
+#trilhas-app .tl-reveal.in{opacity:1;transform:translateY(0);}
+
+#trilhas-app .tl-split-stage{display:flex;min-height:100vh;position:relative;}
+#trilhas-app .tl-pane{min-height:100vh;overflow:hidden;transition:width .65s cubic-bezier(.65,0,.35,1), opacity .5s ease .05s;}
+#trilhas-app .tl-pane-onboarding{width:100%;background:radial-gradient(600px 300px at 85% 8%, var(--accent-dim), transparent 60%), var(--bg);}
+#trilhas-app .tl-pane-produtos{width:0%;opacity:0;pointer-events:none;background:var(--surface2);border-left:1px solid var(--border);}
+#trilhas-app .tl-split-stage.split .tl-pane-onboarding{width:50%;}
+#trilhas-app .tl-split-stage.split .tl-pane-produtos{width:50%;opacity:1;pointer-events:auto;}
+#trilhas-app .tl-pane-inner{padding:40px 40px 60px;max-width:560px;margin:0 auto;}
+#trilhas-app .tl-pane-produtos .tl-pane-inner{max-width:640px;}
+@media (max-width:760px){
+  #trilhas-app .tl-split-stage{flex-direction:column;}
+  #trilhas-app .tl-pane,#trilhas-app .tl-split-stage.split .tl-pane{width:100% !important;opacity:1 !important;pointer-events:auto !important;min-height:auto;}
+  #trilhas-app .tl-pane-produtos{border-left:none;border-top:1px solid var(--border);}
+}
+
+#trilhas-app .tl-hero-route{position:relative;height:34px;margin:8px 0 44px;}
+#trilhas-app .tl-hero-route svg{width:100%;height:100%;display:block;overflow:visible;}
+#trilhas-app .tl-hero-route .tl-track{stroke:var(--border-md);stroke-width:2;fill:none;stroke-dasharray:1 8;stroke-linecap:round;}
+#trilhas-app .tl-hero-route .tl-station{fill:var(--surface);stroke:var(--border-md);stroke-width:2;}
+#trilhas-app .tl-hero-route .tl-station.now{fill:var(--accent);stroke:var(--accent);}
+#trilhas-app .tl-hero-route text{font-family:var(--tl-mono);font-size:9px;font-weight:600;fill:var(--text-hint);letter-spacing:.04em;}
+
+#trilhas-app .tl-checklist{display:flex;flex-direction:column;border-top:1px solid var(--border);}
+#trilhas-app .tl-check-item{display:grid;grid-template-columns:52px 32px 1fr;gap:18px;align-items:flex-start;padding:22px 0;border-bottom:1px solid var(--border);}
+#trilhas-app .tl-check-item .tl-num{font-family:var(--tl-mono);font-size:12px;font-weight:600;color:var(--text-hint);padding-top:3px;}
+#trilhas-app .tl-check-item .tl-ico{width:32px;height:32px;border-radius:9px;background:var(--surface2);display:flex;align-items:center;justify-content:center;color:var(--accent);flex:none;}
+#trilhas-app .tl-check-item .tl-ico svg{width:16px;height:16px;}
+#trilhas-app .tl-check-item h3{font-family:var(--sans);font-size:16px;font-weight:700;margin-bottom:5px;}
+#trilhas-app .tl-check-item p{color:var(--text-muted);font-size:13.5px;max-width:60ch;}
+
+#trilhas-app .tl-hero-cta{margin-top:38px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+#trilhas-app .tl-btn-primary{display:inline-flex;align-items:center;gap:9px;background:var(--accent);color:var(--tl-accent-ink);border:none;border-radius:999px;padding:13px 24px;font-weight:700;font-size:14px;cursor:pointer;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s;}
+#trilhas-app .tl-btn-primary:hover{transform:translateY(-1px);box-shadow:var(--shadow-md);}
+#trilhas-app .tl-btn-primary svg{width:15px;height:15px;}
+#trilhas-app .tl-hero-cta .tl-hint{font-size:12.5px;color:var(--text-hint);}
+
+#trilhas-app .tl-prod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;}
+#trilhas-app .tl-prod-card{text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;cursor:pointer;transition:border-color .15s,transform .15s,box-shadow .15s;display:flex;flex-direction:column;gap:12px;min-height:168px;}
+#trilhas-app .tl-prod-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:var(--shadow-md);}
+#trilhas-app .tl-prod-card.selected{border-color:var(--accent);background:var(--accent-dim);}
+#trilhas-app .tl-prod-tag{align-self:flex-start;font-family:var(--tl-mono);font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:4px 9px;border-radius:999px;}
+#trilhas-app .tl-prod-tag.fixo{background:var(--surface3);color:var(--text-muted);}
+#trilhas-app .tl-prod-tag.recorrente{background:var(--amber-dim);color:var(--amber);}
+#trilhas-app .tl-prod-tag.pontual{background:var(--accent-dim);color:var(--accent);}
+#trilhas-app .tl-prod-card h3{font-family:var(--sans);font-size:15.5px;font-weight:700;line-height:1.25;}
+#trilhas-app .tl-prod-card .tl-desc{color:var(--text-muted);font-size:12.5px;flex:1;}
+#trilhas-app .tl-prod-card .tl-dur{font-family:var(--tl-mono);font-size:11px;color:var(--text-hint);display:flex;align-items:center;gap:6px;padding-top:10px;border-top:1px solid var(--border);}
+
+#trilhas-app .tl-trilha{background:linear-gradient(180deg, var(--bg) 0%, var(--surface2) 100%);padding:70px 0 64px;}
+#trilhas-app .tl-trilha-head-row{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:8px;}
+#trilhas-app .tl-back-link{display:inline-flex;align-items:center;gap:6px;background:none;border:none;font-family:var(--tl-mono);font-size:11px;font-weight:600;letter-spacing:.05em;color:var(--text-hint);cursor:pointer;padding:6px 0;}
+#trilhas-app .tl-back-link:hover{color:var(--accent);}
+#trilhas-app .tl-back-link svg{width:12px;height:12px;}
+
+#trilhas-app .tl-empty-state{border:1.5px dashed var(--border-md);border-radius:16px;padding:44px 28px;text-align:center;color:var(--text-hint);font-size:13.5px;}
+
+#trilhas-app .tl-route-shell{margin-top:20px;}
+#trilhas-app .tl-route-track{position:relative;padding:6px 0 30px;}
+#trilhas-app .tl-route-svg{width:100%;height:120px;display:block;overflow:visible;}
+#trilhas-app .tl-route-svg text{font-family:var(--tl-mono);font-size:10px;font-weight:600;fill:var(--text-hint);letter-spacing:.03em;}
+#trilhas-app .tl-stations{display:grid;gap:12px;margin-top:6px;}
+#trilhas-app .tl-station-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;display:grid;grid-template-columns:auto auto 1fr;gap:16px;align-items:center;}
+#trilhas-app .tl-station-card .tl-wk{font-family:var(--tl-mono);font-size:12px;font-weight:700;color:var(--accent);white-space:nowrap;}
+#trilhas-app .tl-station-card .tl-days{font-family:var(--tl-mono);font-size:11px;color:var(--text-hint);white-space:nowrap;}
+#trilhas-app .tl-station-card .tl-name{font-size:14px;font-weight:600;}
+#trilhas-app .tl-month-note{margin-top:16px;font-family:var(--tl-mono);font-size:11px;color:var(--text-hint);display:flex;align-items:center;gap:8px;}
+#trilhas-app .tl-month-note .tl-swatch{width:10px;height:10px;border-radius:2px;background:var(--accent);}
+
+#trilhas-app .tl-loop-wrap{display:flex;flex-direction:column;align-items:center;gap:24px;padding:20px 0 8px;}
+#trilhas-app .tl-loop-svg{width:100%;max-width:420px;height:auto;}
+#trilhas-app .tl-loop-caption{text-align:center;color:var(--text-muted);font-size:13px;max-width:44ch;}
+
+#trilhas-app .tl-footer{padding:30px 0 10px;text-align:center;}
+#trilhas-app .tl-footer p{color:var(--text-hint);font-size:11px;font-family:var(--tl-mono);}
+
