@@ -1043,7 +1043,7 @@
 </div>
 
 <div id="lt-ter-view" style="display:none;">
-  <div class="sec-head"><h2 class="sec-title">Escopos One-time</h2><p class="sec-desc">Só projetos marcados como <b>One time</b> na Base de Projetos. CRM Kommo basic usa 3 semanas de acompanhamento; os demais modelos usam 5. Marque o check quando a etapa acontecer e sinalize se houve reunião.</p></div>
+  <div class="sec-head"><h2 class="sec-title">Escopos One-time</h2><p class="sec-desc">Só projetos marcados como <b>One time</b> na Base de Projetos. CRM Kommo basic usa 3 semanas de acompanhamento; os demais modelos usam 5. Clique no bloco da etapa quando ela acontecer (cinza → verde); o ícone no canto sinaliza se houve reunião.</p></div>
 
   <div class="card" style="padding:.7rem 1.1rem;margin-bottom:.8rem;">
     <div class="lt-filter-bar" style="margin-bottom:0;">
@@ -3224,6 +3224,7 @@ function showPrompt(msg, opts) {
     document.getElementById('confirm-modal-msg').textContent = msg;
     const inputEl = document.getElementById('confirm-modal-input');
     inputEl.style.display = '';
+    inputEl.type = opts.inputType || 'text'; // 'date' pra prompts rápidos de data sem precisar de um modal próprio
     inputEl.value = opts.defaultValue || '';
     inputEl.placeholder = opts.placeholder || '';
     const okBtn = document.getElementById('confirm-modal-ok');
@@ -10287,22 +10288,25 @@ function ltTerSetFeito(id, si, val) {
   buildLeadTimeTer();
   upd();
 }
-function ltTerSetReuniao(id, si, val) {
+// Um clique só: liga a reunião e já pergunta a data (opcional, pode pular); clicar de novo
+// desliga. Pra trocar a data de uma reunião já marcada, desliga e liga de novo.
+async function ltTerToggleReuniao(id, si) {
   const p = projects.find(x => String(x.id) === String(id));
   if (!p) return;
   const ent = ltTerEntregas(p)[si];
   if (!ent) return;
-  ent.reuniao = !!val;
-  if (!val) ent.dataReuniao = ''; // desmarcou reunião → some a data também
+  if (ent.reuniao) {
+    ent.reuniao = false;
+    ent.dataReuniao = '';
+    buildLeadTimeTer();
+    upd();
+    return;
+  }
+  ent.reuniao = true;
   buildLeadTimeTer();
-  upd();
-}
-function ltTerSetDataReuniao(id, si, val) {
-  const p = projects.find(x => String(x.id) === String(id));
-  if (!p) return;
-  const ent = ltTerEntregas(p)[si];
-  if (!ent) return;
-  ent.dataReuniao = val || '';
+  const data = await showPrompt('Data da reunião (opcional):', { inputType: 'date', confirmLabel: 'Salvar', cancelLabel: 'Pular' });
+  ent.dataReuniao = data || '';
+  buildLeadTimeTer();
   upd();
 }
 
@@ -10329,37 +10333,42 @@ function buildLeadTimeTer() {
         const nSem = _ltNumSemanas(p);
         const semIdxs = Array.from({length: nSem}, (_, i) => i);
 
-        // Coluna "Etapas": pontual mantém o formulário de nome+data livre (a própria
-        // adição já É o registro); template fixo vira check "aconteceu" + check "houve
-        // reunião" (com data só quando marcado) — sem mais dropdown pra escolher a etapa.
-        const etapasHTML = ehPontual
-          ? '<div style="display:flex;gap:4px;margin-bottom:6px;">'
-            + '<input type="text" id="lt-pontual-nome-' + p.id + '" class="sel" style="font-size:var(--fs-sm);flex:1;min-width:0;" placeholder="Nome da entrega">'
-            + '<input type="date" id="lt-pontual-data-' + p.id + '" class="sel" style="font-size:var(--fs-sm);width:120px;">'
-            + '<button onclick="ltAddEntregaPontual(\'' + p.id + '\')" title="Adicionar entrega pontual" style="padding:0 10px;border:none;border-radius:var(--r-sm);background:var(--accent);color:#fff;font-size:var(--fs-lg);font-weight:700;cursor:pointer;">+</button>'
-            + '</div>'
-            + (entregas.length
-                ? '<div style="display:flex;flex-direction:column;gap:4px;max-height:120px;overflow-y:auto;">' + entregas.map((ent, si) =>
-                    '<div style="display:flex;align-items:center;gap:6px;font-size:var(--fs-xs);background:var(--surface2);border-radius:var(--r-sm);padding:4px 8px;">'
-                    + '<span style="flex:1;color:var(--text);">' + (ent.nome || 'Entrega ' + (si+1)) + '</span>'
-                    + '<span style="color:var(--text-hint);white-space:nowrap;">' + (ent.real ? fmtD(ent.real) : '—') + '</span>'
-                    + '<button type="button" onclick="ltRemoveEntregaPontual(\'' + p.id + '\',' + si + ')" title="Remover essa entrega" style="background:none;border:none;cursor:pointer;color:var(--text-hint);">' + icon('x',{size:10}) + '</button>'
-                    + '</div>'
-                  ).join('') + '</div>'
-                : '<div style="font-size:var(--fs-xs);color:var(--text-hint);">Nenhuma entrega registrada ainda.</div>')
+        // Coluna "Etapas": volta ao formato compacto lado a lado (a checklist vertical
+        // deixava a linha do projeto grande demais). Cada etapa é um bloco: clique nele
+        // alterna "aconteceu" (cinza/verde); o ícone no canto alterna "houve reunião" e,
+        // ao ligar, pergunta a data (opcional) sem precisar abrir espaço extra na linha.
+        const etapasBlocks = ehPontual
+          ? entregas.map((ent, si) => {
+              const nome = (ent.nome || 'Entrega ' + (si+1)).replace(/</g,'&lt;').replace(/>/g,'&gt;');
+              const tooltip = nome + (ent.real ? ' · ' + fmtD(ent.real) : '');
+              return '<div title="' + tooltip.replace(/"/g,'&quot;') + '" style="flex:1;min-height:34px;background:var(--green);border:1px solid var(--green);border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;text-align:center;padding:3px 14px 3px 2px;position:relative;">'
+                + '<div style="font-size:var(--fs-2xs);font-weight:700;color:#fff;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">' + nome + '</div>'
+                + '<button type="button" onclick="ltRemoveEntregaPontual(\'' + p.id + '\',' + si + ')" title="Remover essa entrega" style="position:absolute;top:1px;right:1px;background:none;border:none;padding:1px;color:rgba(255,255,255,.85);cursor:pointer;">' + icon('x',{size:9}) + '</button>'
+                + '</div>';
+            }).join('')
           : semIdxs.map(si => {
               const ent = entregas[si] || {};
               const nome = nomeEtapaTerCurto(p, si);
               const feito = !!ent.feito;
               const reuniao = !!ent.reuniao;
-              return '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:4px 0;' + (si > 0 ? 'border-top:1px solid var(--border);' : '') + '" title="' + nomeEtapaTer(p, si).replace(/"/g,'&quot;') + '">'
-                + '<label style="display:flex;align-items:center;gap:5px;font-size:var(--fs-xs);font-weight:600;color:' + (feito ? 'var(--green)' : 'var(--text)') + ';cursor:pointer;flex:1;min-width:88px;">'
-                + '<input type="checkbox" ' + (feito?'checked':'') + ' onchange="ltTerSetFeito(\'' + p.id + '\',' + si + ',this.checked)" style="cursor:pointer;">' + nome + '</label>'
-                + '<label style="display:flex;align-items:center;gap:4px;font-size:var(--fs-2xs);color:var(--text-hint);cursor:pointer;white-space:nowrap;">'
-                + '<input type="checkbox" ' + (reuniao?'checked':'') + ' onchange="ltTerSetReuniao(\'' + p.id + '\',' + si + ',this.checked)" style="cursor:pointer;">Reunião</label>'
-                + (reuniao ? '<input type="date" class="sel" style="font-size:var(--fs-2xs);width:118px;padding:2px 4px;" value="' + (ent.dataReuniao||'') + '" onchange="ltTerSetDataReuniao(\'' + p.id + '\',' + si + ',this.value)">' : '')
+              const bg = feito ? 'var(--green)' : 'var(--surface3)';
+              const borderCor = feito ? 'var(--green)' : 'var(--border)';
+              const nomeCor = feito ? '#fff' : 'var(--text-hint)';
+              const tooltip = [nomeEtapaTer(p, si), feito ? 'aconteceu' : 'ainda não aconteceu',
+                reuniao ? ('reunião' + (ent.dataReuniao ? ' em ' + fmtD(ent.dataReuniao) : ' marcada, sem data')) : 'sem reunião registrada'].join(' · ');
+              return '<div title="' + tooltip.replace(/"/g,'&quot;') + '" onclick="ltTerSetFeito(\'' + p.id + '\',' + si + ',' + (!feito) + ')" style="flex:1;min-height:34px;background:' + bg + ';border:1px solid ' + borderCor + ';border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;text-align:center;padding:3px 14px 3px 2px;position:relative;cursor:pointer;transition:background .2s;">'
+                + '<div style="font-size:var(--fs-2xs);font-weight:700;color:' + nomeCor + ';line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">' + nome + '</div>'
+                + '<button type="button" onclick="event.stopPropagation();ltTerToggleReuniao(\'' + p.id + '\',' + si + ')" title="Alternar se houve reunião" style="position:absolute;top:1px;right:1px;background:none;border:none;padding:1px;color:' + nomeCor + ';opacity:' + (reuniao?'1':'.35') + ';cursor:pointer;">' + icon('users',{size:9}) + '</button>'
                 + '</div>';
             }).join('');
+        const etapasHTML = '<div style="display:flex;gap:3px;">' + etapasBlocks + '</div>'
+          + (ehPontual
+              ? '<div style="display:flex;gap:4px;margin-top:5px;">'
+                + '<input type="text" id="lt-pontual-nome-' + p.id + '" class="sel" style="font-size:var(--fs-sm);flex:1;min-width:0;" placeholder="Nome da entrega">'
+                + '<input type="date" id="lt-pontual-data-' + p.id + '" class="sel" style="font-size:var(--fs-sm);width:110px;">'
+                + '<button onclick="ltAddEntregaPontual(\'' + p.id + '\')" title="Adicionar entrega pontual" style="padding:0 10px;border:none;border-radius:var(--r-sm);background:var(--accent);color:#fff;font-size:var(--fs-lg);font-weight:700;cursor:pointer;">+</button>'
+                + '</div>'
+              : '');
 
         return '<tr>'
           + '<td class="lt-proj-cell">'
