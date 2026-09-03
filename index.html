@@ -6093,7 +6093,7 @@ function renderBase() {
 //  BASE DE PROJETOS — TER (schema próprio, independente da SABER)
 // ═══════════════════════════════════
 const TER_MODELOS = ['CRM Kommo basic','CRM Kommo PRO','Manutenção de CRM','Profissional de CRM','Sales Enablement','Diagnóstico 360','Treinamentos (avulsos)'];
-const TER_STATUS  = ['Em andamento','Finalizado','Início em breve','Pausado','Cancelado'];
+const TER_STATUS  = ['Em andamento','Finalizado','Início em breve','Pausado','Cancelado','Interrompido'];
 
 // Prazo simples: compara prevFim x realFim (se concluído) ou prevFim x hoje (se em aberto).
 // Não usa a janela de 45 dias da SABER — cada modelo da TER tem prazo próprio, definido manualmente.
@@ -10238,7 +10238,7 @@ function getLtTerFiltered() {
   const fStatus= document.getElementById('ltt-f-status')?.value || 'Ativos';
   return projects.filter(p => {
     if (p.recorrencia !== 'One time') return false; // Escopos One-time: só projetos marcados como One time
-    if (fStatus === 'Ativos' && (p.status2 === 'Finalizado' || p.status2 === 'Cancelado')) return false;
+    if (fStatus === 'Ativos' && (p.status2 === 'Finalizado' || p.status2 === 'Cancelado' || p.status2 === 'Interrompido')) return false;
     if (fStatus === 'Finalizados' && p.status2 !== 'Finalizado') return false;
     if (fCons && p.consultor !== fCons) return false;
     if (fConv && p.conv !== fConv) return false;
@@ -10256,6 +10256,17 @@ function ltSetFieldTer(id, f, val) {
   const p = projects.find(x => String(x.id) === String(id));
   if (!p) return;
   p[f] = val;
+  buildLeadTimeTer();
+  upd();
+}
+
+// Preencher a data de perda já marca o projeto como Interrompido (some do filtro Ativos) —
+// não precisa trocar o status à parte em Base de Projetos.
+function ltTerSetDataPerda(id, val) {
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!p) return;
+  p.dataPerda = val || '';
+  if (val) p.status2 = 'Interrompido';
   buildLeadTimeTer();
   upd();
 }
@@ -10399,7 +10410,8 @@ function buildLeadTimeTer() {
           + '<option value="">—</option>' + ['Monetizado','Não monetizado'].map(o => '<option' + ((p.conv||'')===o?' selected':'') + '>' + o + '</option>').join('')
           + '</select></td>'
           + '<td style="padding:6px 8px;">'
-          + '<input type="text" class="sel" style="font-size:var(--fs-sm);width:100%;" placeholder="Motivo" value="' + (p.motivo||'') + '" onchange="ltSetFieldTer(' + p.id + ',\'motivo\',this.value)"></td>'
+          + '<input type="text" class="sel" style="font-size:var(--fs-sm);width:100%;margin-bottom:4px;" placeholder="Motivo" value="' + (p.motivo||'') + '" onchange="ltSetFieldTer(' + p.id + ',\'motivo\',this.value)">'
+          + '<input type="date" class="sel" style="font-size:var(--fs-sm);width:100%;" value="' + (p.dataPerda||'') + '" title="Preencher marca o projeto como Interrompido" onchange="ltTerSetDataPerda(\'' + p.id + '\',this.value)"></td>'
           + '<td style="padding:6px 8px;">'
           + '<input type="date" class="sel" style="font-size:var(--fs-sm);width:100%;" value="' + (p.proximoContato||'') + '" onchange="ltSetFieldTer(' + p.id + ',\'proximoContato\',this.value)"></td>'
           + '</tr>';
@@ -10852,7 +10864,7 @@ function buildGanttTer() {
   const STATUS_COLOR_TER = p => {
     const s = p.status2 || '';
     if (s === 'Pausado')  return 'var(--amber)';
-    if (s === 'Cancelado') return 'var(--red)';
+    if (s === 'Cancelado' || s === 'Interrompido') return 'var(--red)';
     if (s === 'Finalizado') return 'var(--text-hint)';
     return 'var(--blue)'; // Em andamento / Início em breve / default
   };
