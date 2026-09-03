@@ -1335,48 +1335,64 @@
 <div id="cap-ter-view" style="display:none;">
   <div class="sec-head">
     <h2 class="sec-title">Capacity — TER</h2>
-    <p class="sec-desc">Planejamento de capacidade por semana — semanas e status a partir do Lead Time da TER (5 entregas).</p>
+    <p class="sec-desc">One-time e Recorrente têm ritmos diferentes — um é uma linha do tempo até a entrega, o outro é uma rotina que se repete. Por isso são duas visões separadas.</p>
   </div>
 
-  <div class="card">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:1rem;">
-      <div class="card-title" style="margin-bottom:0;">Andamento dos projetos</div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        <span style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Consultor</span>
-        <select class="base-sel" id="gantt-ter-cons-filter" onchange="buildGanttTer()"><option value="">Todos</option></select>
-        <span style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Status</span>
-        <select class="base-sel" id="gantt-ter-status-filter" onchange="buildGanttTer()">
-          <option value="">Todos</option>
-          <option>Em andamento</option>
-          <option>Finalizado</option>
-          <option>Início em breve</option>
-          <option>Pausado</option>
-          <option>Cancelado</option>
-        </select>
-        <span style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Mês início</span>
-        <select class="base-sel" id="gantt-ter-mes-filter" onchange="buildGanttTer()"><option value="">Todos</option></select>
-        <span style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Período</span>
-        <select class="base-sel" id="gantt-ter-period" onchange="buildGanttTer()">
-          <option value="3">3 meses</option>
-          <option value="6" selected>6 meses</option>
-          <option value="12">12 meses</option>
-        </select>
+  <div style="display:flex;gap:2px;background:var(--surface2);border-radius:999px;padding:3px;width:fit-content;margin-bottom:1rem;">
+    <button id="cap-ter-tab-onetime" class="filter-btn active" onclick="switchCapTerSub('onetime')">One-time</button>
+    <button id="cap-ter-tab-rec" class="filter-btn" onclick="switchCapTerSub('rec')">Recorrente</button>
+  </div>
+
+  <div id="cap-ter-onetime">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:1rem;">
+        <div class="card-title" style="margin-bottom:0;">Andamento dos projetos</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <span style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Consultor</span>
+          <select class="base-sel" id="gantt-ter-cons-filter" onchange="buildGanttTer()"><option value="">Todos</option></select>
+          <span style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Status</span>
+          <select class="base-sel" id="gantt-ter-status-filter" onchange="buildGanttTer()">
+            <option value="">Todos</option>
+            <option>Em andamento</option>
+            <option>Finalizado</option>
+            <option>Início em breve</option>
+            <option>Pausado</option>
+            <option>Cancelado</option>
+            <option>Interrompido</option>
+          </select>
+          <span style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Mês início</span>
+          <select class="base-sel" id="gantt-ter-mes-filter" onchange="buildGanttTer()"><option value="">Todos</option></select>
+          <span style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Período</span>
+          <select class="base-sel" id="gantt-ter-period" onchange="buildGanttTer()">
+            <option value="3">3 meses</option>
+            <option value="6" selected>6 meses</option>
+            <option value="12">12 meses</option>
+          </select>
+        </div>
+      </div>
+      <div id="carga-semanal-ter" style="margin-bottom:1.2rem;"></div>
+      <div class="gantt-wrap">
+        <table class="gantt-table"><thead id="gantt-ter-thead"></thead><tbody id="gantt-ter-tbody"></tbody></table>
+      </div>
+      <div style="display:flex;gap:16px;margin-top:.75rem;flex-wrap:wrap;">
+        <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:14px;height:8px;border-radius:2px;background:var(--blue);display:inline-block;opacity:.85;"></span>Em andamento</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:14px;height:8px;border-radius:2px;background:var(--text-hint);display:inline-block;opacity:.85;"></span>Finalizado</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:14px;height:8px;border-radius:2px;background:var(--amber);display:inline-block;opacity:.85;"></span>Pausado</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:8px;height:8px;border-radius:50%;background:#4ade80;border:1.5px solid rgba(0,0,0,.2);display:inline-block;"></span>Entrega no prazo</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:8px;height:8px;border-radius:50%;background:#f87171;border:1.5px solid rgba(0,0,0,.2);display:inline-block;"></span>Entrega atrasada</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:8px;height:8px;border-radius:50%;background:#fff;border:1.5px solid rgba(0,0,0,.2);display:inline-block;"></span>Pendente</span>
       </div>
     </div>
-    <div id="carga-semanal-ter" style="margin-bottom:1.2rem;"></div>
-    <div class="gantt-wrap">
-      <table class="gantt-table"><thead id="gantt-ter-thead"></thead><tbody id="gantt-ter-tbody"></tbody></table>
-    </div>
-    <div style="display:flex;gap:16px;margin-top:.75rem;flex-wrap:wrap;">
-      <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:14px;height:8px;border-radius:2px;background:var(--blue);display:inline-block;opacity:.85;"></span>Em andamento</span>
-      <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:14px;height:8px;border-radius:2px;background:var(--text-hint);display:inline-block;opacity:.85;"></span>Finalizado</span>
-      <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:14px;height:8px;border-radius:2px;background:var(--amber);display:inline-block;opacity:.85;"></span>Pausado</span>
-      <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:8px;height:8px;border-radius:50%;background:#4ade80;border:1.5px solid rgba(0,0,0,.2);display:inline-block;"></span>Entrega no prazo</span>
-      <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:8px;height:8px;border-radius:50%;background:#f87171;border:1.5px solid rgba(0,0,0,.2);display:inline-block;"></span>Entrega atrasada</span>
-      <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:8px;height:8px;border-radius:50%;background:#fff;border:1.5px solid rgba(0,0,0,.2);display:inline-block;"></span>Pendente</span>
+    <div id="carga-consultor-ter" style="margin-top:1.6rem;padding-top:1.2rem;border-top:1px solid var(--border);"></div>
+  </div>
+
+  <div id="cap-ter-recorrente" style="display:none;">
+    <div class="card">
+      <div class="card-title">Ciclo atual por projeto</div>
+      <p style="font-size:var(--fs-sm);color:var(--text-hint);margin:-4px 0 1rem;">Etapas do ciclo (semanal ou mensal, conforme o produto) — clique num bloco pra marcar que aconteceu. Quando fechar todas, "Reiniciar ciclo" começa o próximo do zero.</p>
+      <div id="cap-ter-rec-tbody"></div>
     </div>
   </div>
-  <div id="carga-consultor-ter" style="margin-top:1.6rem;padding-top:1.2rem;border-top:1px solid var(--border);"></div>
 </div>
 </section>
 
@@ -10737,11 +10753,24 @@ function buildCapHistTable() {
   tbody.innerHTML = rows;
 }
 
+// Qual sub-aba do Capacity da TER está ativa — 'onetime' (Gantt de linha do tempo) ou
+// 'rec' (ciclo recorrente que se repete). Persiste só durante a sessão, não precisa salvar.
+let capTerSub = 'onetime';
+function switchCapTerSub(which) {
+  capTerSub = which;
+  const showOnetime = which === 'onetime';
+  document.getElementById('cap-ter-tab-onetime')?.classList.toggle('active', showOnetime);
+  document.getElementById('cap-ter-tab-rec')?.classList.toggle('active', !showOnetime);
+  const elOt = document.getElementById('cap-ter-onetime'); if (elOt) elOt.style.display = showOnetime ? '' : 'none';
+  const elRec = document.getElementById('cap-ter-recorrente'); if (elRec) elRec.style.display = showOnetime ? 'none' : '';
+  if (showOnetime) buildGanttTer(); else buildCapacityRec();
+}
+
 function buildCapacity() {
   if (currentCoord === 'ter') {
     const sv = document.getElementById('cap-saber-view'); if (sv) sv.style.display = 'none';
     const tv = document.getElementById('cap-ter-view');   if (tv) tv.style.display = '';
-    buildGanttTer();
+    switchCapTerSub(capTerSub);
     return;
   } else {
     const sv = document.getElementById('cap-saber-view'); if (sv) sv.style.display = '';
@@ -11000,6 +11029,84 @@ function buildCargaSemanal(prjsAll, semanasExt, campo, elId, titulo, rotuloColun
           + '</tr>';
       }).join('')
     + '</tbody></table></div></div>';
+}
+
+// ═══════════════════════════════════
+//  CAPACITY — TER RECORRENTE (ciclo semanal/mensal que se repete, igual o padrão validado
+//  na aba Trilhas — não é uma linha do tempo com fim, é uma rotina que reinicia sozinha
+//  quando a coordenadora fecha todas as etapas do ciclo atual)
+// ═══════════════════════════════════
+// Template fixo por modelo — mesma lógica de TER_NOMES_POR_MODELO no Lead Time one-time.
+// Nomes ainda são genéricos ("Etapa 1..4") até a coordenadora passar o conteúdo real de
+// cada ciclo; a cadência (semanal/mensal) e o nº de etapas já refletem o que foi combinado.
+const TER_CICLO_RECORRENTE = {
+  'Manutenção de CRM':   { cadencia: 'semanal', etapas: ['Etapa 1','Etapa 2','Etapa 3','Etapa 4'] },
+  'Profissional de CRM': { cadencia: 'semanal', etapas: ['Etapa 1','Etapa 2','Etapa 3','Etapa 4'] },
+};
+function recCicloTemplate(p) {
+  return TER_CICLO_RECORRENTE[p.modelo] || { cadencia: 'mensal', etapas: ['Etapa 1','Etapa 2','Etapa 3','Etapa 4'] };
+}
+// Estado do ciclo atual mora no próprio projeto (p.recCiclo) — salva junto com o resto de
+// `projects`, sem precisar de nenhuma coluna nova no Supabase. Se o template mudar de
+// tamanho (a coordenadora ajustou o nº de etapas), reinicia o ciclo em vez de desalinhar
+// os índices com etapas que já não existem mais.
+function recCicloState(p) {
+  const tpl = recCicloTemplate(p);
+  if (!p.recCiclo || !Array.isArray(p.recCiclo.etapas) || p.recCiclo.etapas.length !== tpl.etapas.length) {
+    const numAnterior = (p.recCiclo && p.recCiclo.num) || 1;
+    p.recCiclo = { num: numAnterior, etapas: tpl.etapas.map(() => false), inicio: (p.recCiclo && p.recCiclo.inicio) || p.inicio || new Date().toISOString().slice(0,10) };
+  }
+  return p.recCiclo;
+}
+function recCicloToggle(id, si) {
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!p) return;
+  const st = recCicloState(p);
+  st.etapas[si] = !st.etapas[si];
+  buildCapacityRec();
+  upd();
+}
+async function recCicloReiniciar(id) {
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!p) return;
+  if (!(await showConfirm('Fechar o ciclo ' + (recCicloState(p).num) + ' e começar o próximo do zero?'))) return;
+  const tpl = recCicloTemplate(p);
+  const st = recCicloState(p);
+  st.num = (st.num || 1) + 1;
+  st.etapas = tpl.etapas.map(() => false);
+  st.inicio = new Date().toISOString().slice(0,10);
+  buildCapacityRec();
+  upd();
+}
+
+function buildCapacityRec() {
+  const el = document.getElementById('cap-ter-rec-tbody');
+  if (!el) return;
+  const list = projects.filter(p => p.recorrencia === 'Recorrente' && p.status2 !== 'Finalizado' && p.status2 !== 'Cancelado' && p.status2 !== 'Interrompido');
+  if (!list.length) {
+    el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-hint);font-size:var(--fs-base);">Nenhum projeto recorrente ativo</div>';
+    return;
+  }
+  el.innerHTML = list.map(p => {
+    const tpl = recCicloTemplate(p);
+    const st = recCicloState(p);
+    const todasFeitas = st.etapas.every(Boolean);
+    const blocks = tpl.etapas.map((nome, si) => {
+      const feito = !!st.etapas[si];
+      return '<div onclick="recCicloToggle(\'' + p.id + '\',' + si + ')" title="' + nome.replace(/"/g,'&quot;') + ' · ' + (feito?'aconteceu':'ainda não') + '" style="flex:1;min-height:34px;background:' + (feito?'var(--green)':'var(--surface3)') + ';border:1px solid ' + (feito?'var(--green)':'var(--border)') + ';border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;text-align:center;padding:3px 4px;cursor:pointer;transition:background .2s;">'
+        + '<div style="font-size:var(--fs-2xs);font-weight:700;color:' + (feito?'#fff':'var(--text-hint)') + ';line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">' + nome + '</div>'
+        + '</div>';
+    }).join('');
+    return '<div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border);">'
+      + '<div style="min-width:170px;">'
+      + '<div style="font-size:var(--fs-xs);color:var(--text-hint);">' + (p.consultor||'—') + ' · ' + tpl.cadencia + '</div>'
+      + '<div style="font-weight:600;color:var(--text);">' + (p.nome||'—') + '</div>'
+      + '<div style="font-size:var(--fs-2xs);color:var(--text-hint);">ciclo ' + (st.num||1) + ' · desde ' + fmtD(st.inicio) + '</div>'
+      + '</div>'
+      + '<div style="display:flex;gap:3px;flex:1;">' + blocks + '</div>'
+      + '<button onclick="recCicloReiniciar(\'' + p.id + '\')" title="Fechar esse ciclo e começar o próximo"' + (todasFeitas ? '' : ' style="opacity:.4;"') + ' class="base-clear">' + icon('refresh',{size:11}) + ' Reiniciar ciclo</button>'
+      + '</div>';
+  }).join('');
 }
 
 // Data de fim "real" efetiva de um projeto — usa realFim se preenchido, senão cai pra data
