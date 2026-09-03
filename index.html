@@ -10828,6 +10828,7 @@ function buildGanttTer() {
   // filtra projetos com início dentro da janela (usa terFimRef como fim de referência —
   // ver comentário na função: recorrente sem prazo de contrato não soma +30d, fica sempre ativo)
   let prjs = projects.filter(p => {
+    if (p.recorrencia === 'Recorrente') return false; // Capacity One-time: recorrente tem a própria sub-aba
     if (!p.inicio) return false;
     const dI = parseDate(p.inicio);
     const dFRaw = terFimRef(p);
