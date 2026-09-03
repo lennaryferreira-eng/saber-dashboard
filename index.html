@@ -6211,6 +6211,19 @@ function prevFimCalculadoTer(p) {
   return addDays(p.inicio, nSem * diasPorEtapaTer(p));
 }
 
+// Fim de referência do projeto TER pro Gantt/Capacity: entrega real > previsto (one-time)
+// > prazo do contrato (recorrente) > se for recorrente sem nenhuma data (cadastro antigo,
+// de antes do prazo de contrato existir), trata como sempre ativo em vez de supor +30 dias
+// — essa suposição de +30d era o motivo de recorrentes mais antigos sumirem do Capacity
+// depois de ~5 semanas mesmo continuando ativos.
+function terFimRef(p) {
+  if (p.realFim) return p.realFim;
+  if (p.prevFim) return p.prevFim;
+  if (p.prazoContrato) return p.prazoContrato;
+  if (p.recorrencia === 'Recorrente') return addDays(new Date().toISOString().slice(0,10), 3650);
+  return '';
+}
+
 function setFieldTer(el) {
   const id = el.dataset.id;
   const f  = el.dataset.f;
@@ -10783,11 +10796,12 @@ function buildGanttTer() {
     selMes.innerHTML = '<option value="">Todos</option>' + meses.map(m => '<option' + (m===curM?' selected':'') + '>' + m + '</option>').join('');
   }
 
-  // filtra projetos com início dentro da janela (usa realFim||prevFim||início+30d como fim de referência)
+  // filtra projetos com início dentro da janela (usa terFimRef como fim de referência —
+  // ver comentário na função: recorrente sem prazo de contrato não soma +30d, fica sempre ativo)
   let prjs = projects.filter(p => {
     if (!p.inicio) return false;
     const dI = parseDate(p.inicio);
-    const dFRaw = p.realFim || p.prevFim;
+    const dFRaw = terFimRef(p);
     const dF = dFRaw ? parseDate(dFRaw) : new Date(dI.getTime() + 30 * 864e5);
     return dF >= startRef && dI <= endRef;
   });
@@ -10800,16 +10814,16 @@ function buildGanttTer() {
   });
   prjs.sort((a,b) => (a.inicio||'') < (b.inicio||'') ? -1 : 1);
 
-  buildCargaSemanal(prjs, semanas);
+  function ativoNaSemana(p, sDate) {
+    const dIp = parseDate(p.inicio); if (!dIp) return false;
+    const sEnd = new Date(sDate.getTime() + 6*864e5);
+    const dFRaw = terFimRef(p);
+    const dFp = dFRaw ? parseDate(dFRaw) : new Date(dIp.getTime() + 30*864e5);
+    return dIp <= sEnd && dFp >= sDate;
+  }
+  buildCargaSemanal(prjs, semanas, 'consultor', 'carga-consultor-ter', 'Carga por consultor — semana a semana', 'Consultor', (p, seg, dom) => ativoNaSemana(p, seg));
   const cargaDiv = document.getElementById('carga-semanal-ter');
   if (cargaDiv) {
-    function ativoNaSemana(p, sDate) {
-      const dIp = parseDate(p.inicio); if (!dIp) return false;
-      const sEnd = new Date(sDate.getTime() + 6*864e5);
-      const dFRaw = p.realFim || p.prevFim;
-      const dFp = dFRaw ? parseDate(dFRaw) : new Date(dIp.getTime() + 30*864e5);
-      return dIp <= sEnd && dFp >= sDate;
-    }
     const maxCarga = Math.max(...semanas.map(s => prjs.filter(p => ativoNaSemana(p, s)).length), 1);
     cargaDiv.innerHTML = '<div style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);margin-bottom:6px;">Projetos ativos por semana</div>'
       + '<div style="overflow-x:auto;"><div style="display:flex;gap:3px;min-width:max-content;">'
@@ -10871,7 +10885,7 @@ function buildGanttTer() {
 
   tbody.innerHTML = prjs.map(p => {
     const dIp = parseDate(p.inicio);
-    const dFRaw = p.realFim || p.prevFim;
+    const dFRaw = terFimRef(p);
     const dFp = dFRaw ? parseDate(dFRaw) : new Date(dIp.getTime() + 30*864e5);
     const ehPontual = _ehPontual(p);
     const entregas = ehPontual ? entregasPontuais(p) : ltTerEntregas(p);
