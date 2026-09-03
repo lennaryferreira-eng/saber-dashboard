@@ -15126,6 +15126,20 @@ projects = []; // dados carregados do Supabase
 //  em css/styles.css pro CSS escopado.
 // ═══════════════════════════════════
 (function() {
+  // Onboarding bifurcado por origem do cliente + rampa de 4 semanas, comum aos 3
+  // produtos 'ramp' abaixo (mapeado com a coordenadora num fluxograma à parte). As
+  // porcentagens são a forma da rampa (confirmada); o que cada semana contém na
+  // prática ainda não foi definido, então o rótulo de cada uma fica "Em breve" até
+  // a coordenadora passar o conteúdo real — só a semana final é nomeada, porque
+  // "Business Review" já é o marco confirmado que fecha o ciclo.
+  const TL_RAMP_PADRAO = {
+    branches: [
+      { origem: 'Cliente veio de handover — já tinha outro escopo ativo', reuniao: 'Reunião de handover + Kickoff' },
+      { origem: 'Cliente veio direto da aquisição — sem escopo anterior', reuniao: 'Reunião de boas-vindas + Kickoff' },
+    ],
+    convergencia: 'Semana 2 · Reunião de apresentação do planejamento do mês',
+    ramp: [20, 45, 75, 100],
+  };
   const PRODUTOS = [
     { id: 'kommo-basic', nome: 'CRM Kommo basic', tipo: 'fixo', desc: 'Setup essencial do Kommo — funil, campos e integrações básicas.',
       dias: 21, diasPorEtapa: 7, etapas: ['Configurações iniciais', 'Reunião inicial', 'Automações I e Treinamento'] },
@@ -15141,51 +15155,14 @@ projects = []; // dados carregados do Supabase
     // numa reunião de planejamento na semana 2, e a execução é uma rampa de intensidade
     // crescente em 4 semanas fechando em Business Review. Nos dois recorrentes esse
     // ciclo de 4 semanas se repete todo mês; no Sales Enablement acontece uma vez só.
+    // O que cada semana da execução contém na prática ainda não foi definido — fica
+    // "Em breve" até a coordenadora passar o conteúdo real de cada uma.
     { id: 'manutencao-crm', nome: 'Manutenção de CRM', tipo: 'ramp', ciclico: true,
-      desc: 'Acompanhamento recorrente do CRM já implantado.',
-      onboarding: {
-        branches: [
-          { origem: 'Cliente veio de handover — já tinha outro escopo ativo', reuniao: 'Reunião de handover + Kickoff' },
-          { origem: 'Cliente veio direto da aquisição — sem escopo anterior', reuniao: 'Reunião de boas-vindas + Kickoff' },
-        ],
-        convergencia: 'Semana 2 · Reunião de apresentação do planejamento do mês',
-      },
-      ramp: [
-        { semana: 1, pct: 20, label: 'Otimizações diárias e semanais' },
-        { semana: 2, pct: 45, label: '+ Alinhamentos quinzenais com o gestor' },
-        { semana: 3, pct: 75, label: '+ Revisões estratégicas de funil' },
-        { semana: 4, pct: 100, label: 'Business Review + gestão completa da base' },
-      ] },
+      desc: 'Acompanhamento recorrente do CRM já implantado.', onboarding: TL_RAMP_PADRAO },
     { id: 'profissional-crm', nome: 'Profissional de CRM', tipo: 'ramp', ciclico: true,
-      desc: 'Gestão contínua do CRM como serviço, sem data de entrega final.',
-      onboarding: {
-        branches: [
-          { origem: 'Cliente veio de handover — já tinha outro escopo ativo', reuniao: 'Reunião de handover + Kickoff' },
-          { origem: 'Cliente veio direto da aquisição — sem escopo anterior', reuniao: 'Reunião de boas-vindas + Kickoff' },
-        ],
-        convergencia: 'Semana 2 · Reunião de apresentação do planejamento do mês',
-      },
-      ramp: [
-        { semana: 1, pct: 20, label: 'Otimizações diárias e semanais' },
-        { semana: 2, pct: 45, label: '+ Alinhamentos quinzenais com gestores comerciais' },
-        { semana: 3, pct: 75, label: '+ Revisão de materiais de apoio' },
-        { semana: 4, pct: 100, label: 'Business Review + participação em rituais internos' },
-      ] },
+      desc: 'Gestão contínua do CRM como serviço, sem data de entrega final.', onboarding: TL_RAMP_PADRAO },
     { id: 'sales-enablement', nome: 'Sales Enablement', tipo: 'ramp', ciclico: false,
-      desc: 'Estruturação do processo comercial e capacitação do time de vendas.',
-      onboarding: {
-        branches: [
-          { origem: 'Cliente veio de handover — já tinha outro escopo ativo', reuniao: 'Reunião de handover + Kickoff' },
-          { origem: 'Cliente veio direto da aquisição — sem escopo anterior', reuniao: 'Reunião de boas-vindas + Kickoff' },
-        ],
-        convergencia: 'Semana 2 · Reunião de apresentação do planejamento do mês',
-      },
-      ramp: [
-        { semana: 1, pct: 20, label: 'Otimizações diárias e semanais' },
-        { semana: 2, pct: 45, label: '+ Revisão de materiais de apoio' },
-        { semana: 3, pct: 75, label: '+ Treinamentos e rituais internos' },
-        { semana: 4, pct: 100, label: 'Business Review + enablement completo' },
-      ] },
+      desc: 'Estruturação do processo comercial e capacitação do time de vendas.', onboarding: TL_RAMP_PADRAO },
   ];
   const tlReduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -15300,14 +15277,16 @@ projects = []; // dados carregados do Supabase
         <span class="tl-branch-reuniao">${b.reuniao}</span>
       </div>`).join('');
 
-    const rampCols = p.ramp.map((r, i) => {
-      const isFinal = i === p.ramp.length - 1;
+    const ramp = p.onboarding.ramp;
+    const rampCols = ramp.map((pct, i) => {
+      const isFinal = i === ramp.length - 1;
+      const label = isFinal ? 'Business Review' : 'Em breve';
       return `
       <div class="tl-ramp-col${isFinal ? ' final' : ''} tl-reveal">
-        <span class="tl-ramp-pct">${r.pct}%</span>
-        <div class="tl-ramp-bar-track"><div class="tl-ramp-bar" style="height:${r.pct}%"></div></div>
-        <span class="tl-ramp-wk">SEM ${r.semana}</span>
-        <span class="tl-ramp-label">${r.label}</span>
+        <span class="tl-ramp-pct">${pct}%</span>
+        <div class="tl-ramp-bar-track"><div class="tl-ramp-bar" style="height:${pct}%"></div></div>
+        <span class="tl-ramp-wk">SEM ${i + 1}</span>
+        <span class="tl-ramp-label">${label}</span>
       </div>`;
     }).join('');
 
