@@ -15131,19 +15131,73 @@ projects = []; // dados carregados do Supabase
       dias: 21, diasPorEtapa: 7, etapas: ['Configurações iniciais', 'Reunião inicial', 'Automações I e Treinamento'] },
     { id: 'kommo-pro', nome: 'CRM Kommo PRO', tipo: 'fixo', desc: 'Implantação completa do Kommo, com automações avançadas de funil.',
       dias: 35, diasPorEtapa: 7, etapas: ['Configurações iniciais', 'Reunião inicial', 'Automações I e Treinamento', 'Automações II e Relatórios', 'Entrega final'] },
-    { id: 'sales-enablement', nome: 'Sales Enablement', tipo: 'fixo', desc: 'Estruturação do processo comercial e capacitação do time de vendas.',
-      dias: 35, diasPorEtapa: 7, etapas: ['Configurações iniciais', 'Reunião inicial', 'Automações I e Treinamento', 'Automações II e Relatórios', 'Entrega final'] },
     { id: 'diagnostico-360', nome: 'Diagnóstico 360', tipo: 'fixo', desc: 'Raio-x completo da operação comercial, semana a semana.',
       dias: 45, diasPorEtapa: 9, etapas: ['Semana 1', 'Semana 2', 'Semana 3', 'Semana 4', 'Semana 5'] },
     { id: 'treinamentos', nome: 'Treinamentos (avulsos)', tipo: 'pontual',
       desc: 'Capacitações pontuais sob medida — sem grade fixa de semanas.' },
-    { id: 'manutencao-crm', nome: 'Manutenção de CRM', tipo: 'recorrente',
-      desc: 'Acompanhamento recorrente do CRM já implantado.' },
-    { id: 'profissional-crm', nome: 'Profissional de CRM', tipo: 'recorrente',
-      desc: 'Gestão contínua do CRM como serviço, sem data de entrega final.' },
+    // Manutenção de CRM, Profissional de CRM e Sales Enablement seguem o mesmo desenho
+    // macro (mapeado com a coordenadora num fluxograma à parte): onboarding se bifurca
+    // pela origem do cliente (handover de outro escopo vs. aquisição direta), converge
+    // numa reunião de planejamento na semana 2, e a execução é uma rampa de intensidade
+    // crescente em 4 semanas fechando em Business Review. Nos dois recorrentes esse
+    // ciclo de 4 semanas se repete todo mês; no Sales Enablement acontece uma vez só.
+    { id: 'manutencao-crm', nome: 'Manutenção de CRM', tipo: 'ramp', ciclico: true,
+      desc: 'Acompanhamento recorrente do CRM já implantado.',
+      onboarding: {
+        branches: [
+          { origem: 'Cliente veio de handover — já tinha outro escopo ativo', reuniao: 'Reunião de handover + Kickoff' },
+          { origem: 'Cliente veio direto da aquisição — sem escopo anterior', reuniao: 'Reunião de boas-vindas + Kickoff' },
+        ],
+        convergencia: 'Semana 2 · Reunião de apresentação do planejamento do mês',
+      },
+      ramp: [
+        { semana: 1, pct: 20, label: 'Otimizações diárias e semanais' },
+        { semana: 2, pct: 45, label: '+ Alinhamentos quinzenais com o gestor' },
+        { semana: 3, pct: 75, label: '+ Revisões estratégicas de funil' },
+        { semana: 4, pct: 100, label: 'Business Review + gestão completa da base' },
+      ] },
+    { id: 'profissional-crm', nome: 'Profissional de CRM', tipo: 'ramp', ciclico: true,
+      desc: 'Gestão contínua do CRM como serviço, sem data de entrega final.',
+      onboarding: {
+        branches: [
+          { origem: 'Cliente veio de handover — já tinha outro escopo ativo', reuniao: 'Reunião de handover + Kickoff' },
+          { origem: 'Cliente veio direto da aquisição — sem escopo anterior', reuniao: 'Reunião de boas-vindas + Kickoff' },
+        ],
+        convergencia: 'Semana 2 · Reunião de apresentação do planejamento do mês',
+      },
+      ramp: [
+        { semana: 1, pct: 20, label: 'Otimizações diárias e semanais' },
+        { semana: 2, pct: 45, label: '+ Alinhamentos quinzenais com gestores comerciais' },
+        { semana: 3, pct: 75, label: '+ Revisão de materiais de apoio' },
+        { semana: 4, pct: 100, label: 'Business Review + participação em rituais internos' },
+      ] },
+    { id: 'sales-enablement', nome: 'Sales Enablement', tipo: 'ramp', ciclico: false,
+      desc: 'Estruturação do processo comercial e capacitação do time de vendas.',
+      onboarding: {
+        branches: [
+          { origem: 'Cliente veio de handover — já tinha outro escopo ativo', reuniao: 'Reunião de handover + Kickoff' },
+          { origem: 'Cliente veio direto da aquisição — sem escopo anterior', reuniao: 'Reunião de boas-vindas + Kickoff' },
+        ],
+        convergencia: 'Semana 2 · Reunião de apresentação do planejamento do mês',
+      },
+      ramp: [
+        { semana: 1, pct: 20, label: 'Otimizações diárias e semanais' },
+        { semana: 2, pct: 45, label: '+ Revisão de materiais de apoio' },
+        { semana: 3, pct: 75, label: '+ Treinamentos e rituais internos' },
+        { semana: 4, pct: 100, label: 'Business Review + enablement completo' },
+      ] },
   ];
-  const TL_TAG_LABEL = { fixo: 'cronograma fixo', recorrente: 'ciclo contínuo', pontual: 'sob medida' };
   const tlReduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Tag/duração do card em Etapa 2 — 'ramp' pega a cor de 'recorrente' quando o ciclo se
+  // repete todo mês, ou de 'fixo' quando acontece uma vez só (Sales Enablement).
+  function tlTagInfo(p) {
+    if (p.tipo === 'fixo') return { cls: 'fixo', label: 'cronograma fixo', dur: `${p.etapas.length} semanas · ${p.dias} dias` };
+    if (p.tipo === 'pontual') return { cls: 'pontual', label: 'sob medida', dur: 'cronograma sob demanda' };
+    return p.ciclico
+      ? { cls: 'recorrente', label: 'ciclo contínuo', dur: 'ciclo mensal, sem data de fim' }
+      : { cls: 'fixo', label: 'cronograma fixo', dur: '6 semanas · onboarding + ramp-up' };
+  }
 
   function tlBuildGrid() {
     const grid = document.getElementById('trilhas-prod-grid');
@@ -15153,16 +15207,14 @@ projects = []; // dados carregados do Supabase
       const card = document.createElement('button');
       card.className = 'tl-prod-card';
       card.dataset.id = p.id;
-      const durTxt = p.tipo === 'fixo'
-        ? `${p.etapas.length} semanas · ${p.dias} dias`
-        : p.tipo === 'recorrente' ? 'sem data de fim' : 'cronograma sob demanda';
+      const tag = tlTagInfo(p);
       card.innerHTML = `
-        <span class="tl-prod-tag ${p.tipo}">${TL_TAG_LABEL[p.tipo]}</span>
+        <span class="tl-prod-tag ${tag.cls}">${tag.label}</span>
         <h3>${p.nome}</h3>
         <p class="tl-desc">${p.desc}</p>
         <span class="tl-dur">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
-          ${durTxt}
+          ${tag.dur}
         </span>`;
       card.addEventListener('click', () => tlSelectProduto(p.id));
       grid.appendChild(card);
@@ -15181,9 +15233,11 @@ projects = []; // dados carregados do Supabase
     if (p.tipo === 'fixo') {
       subEl.textContent = `${p.etapas.length} semanas · ${p.dias} dias corridos, do início ao entregável final.`;
       body.innerHTML = tlBuildRoute(p);
-    } else if (p.tipo === 'recorrente') {
-      subEl.textContent = 'Sem data de entrega final — roda em ciclos mensais enquanto o contrato estiver ativo.';
-      body.innerHTML = tlBuildLoop();
+    } else if (p.tipo === 'ramp') {
+      subEl.textContent = p.ciclico
+        ? 'Onboarding de 2 semanas + ciclo de execução de 4 semanas que se repete todo mês, sempre fechando em Business Review.'
+        : 'Onboarding de 2 semanas + ramp-up de 4 semanas até o Business Review final — 6 semanas ao todo.';
+      body.innerHTML = tlBuildRamp(p);
     } else {
       subEl.textContent = 'Sem grade semanal fixa — cada encontro é agendado conforme o escopo pontual combinado.';
       body.innerHTML = `<div class="tl-empty-state">Cronograma sob medida: as entregas são registradas uma a uma, com nome e data próprios, à medida que acontecem — não seguem um template de semanas.</div>`;
@@ -15232,27 +15286,47 @@ projects = []; // dados carregados do Supabase
       </div>`;
   }
 
-  function tlBuildLoop() {
-    const steps = ['Configuração inicial', 'Acompanhamento mensal', 'Otimização &amp; relatório'];
-    const cx = 150, cy = 150, r = 100;
-    let nodes = '', labels = '';
-    steps.forEach((s, i) => {
-      const a = (Math.PI * 2 * i) / steps.length - Math.PI / 2;
-      const x = cx + r * Math.cos(a), y = cy + r * Math.sin(a);
-      nodes += `<circle cx="${x}" cy="${y}" r="8" fill="var(--surface)" stroke="var(--accent)" stroke-width="2.4"/>`;
-      const lx = cx + (r + 34) * Math.cos(a), ly = cy + (r + 34) * Math.sin(a);
-      labels += `<text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="middle">${s}</text>`;
-    });
+  const tlIcoArrowDown = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 4v14M6 12l6 6 6-6"/></svg>';
+  const tlIcoRefresh = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19.5 12a7.5 7.5 0 10-2.2 5.3"/><path d="M19.5 6.5v5h-5"/></svg>';
+
+  // Onboarding bifurcado por origem do cliente + rampa de intensidade em 4 semanas
+  // fechando em Business Review — desenho macro validado com a coordenadora num
+  // fluxograma à parte, comum aos 3 produtos do tipo 'ramp'.
+  function tlBuildRamp(p) {
+    const branches = p.onboarding.branches.map(b => `
+      <div class="tl-branch-card tl-reveal">
+        <span class="tl-branch-origem">${b.origem}</span>
+        <span class="tl-branch-arrow">${tlIcoArrowDown}</span>
+        <span class="tl-branch-reuniao">${b.reuniao}</span>
+      </div>`).join('');
+
+    const rampCols = p.ramp.map((r, i) => {
+      const isFinal = i === p.ramp.length - 1;
+      return `
+      <div class="tl-ramp-col${isFinal ? ' final' : ''} tl-reveal">
+        <span class="tl-ramp-pct">${r.pct}%</span>
+        <div class="tl-ramp-bar-track"><div class="tl-ramp-bar" style="height:${r.pct}%"></div></div>
+        <span class="tl-ramp-wk">SEM ${r.semana}</span>
+        <span class="tl-ramp-label">${r.label}</span>
+      </div>`;
+    }).join('');
+
+    const cicloNote = p.ciclico
+      ? `<div class="tl-month-note">${tlIcoRefresh}Esse ciclo de 4 semanas se repete todo mês enquanto o contrato estiver ativo.</div>`
+      : `<div class="tl-month-note"><span class="tl-swatch"></span>6 semanas do início ao Business Review — 2 de onboarding + 4 de ramp-up.</div>`;
+
     return `
-      <div class="tl-loop-wrap tl-reveal">
-        <svg class="tl-loop-svg" viewBox="0 0 300 300">
-          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--border-md)" stroke-width="2" stroke-dasharray="2 7"/>
-          <path d="M ${cx + r - 14} ${cy - 30} A ${r} ${r} 0 0 1 ${cx + r} ${cy}" fill="none" stroke="var(--accent)" stroke-width="2.4" marker-end="url(#trilhas-arrow-marker)"/>
-          <defs><marker id="trilhas-arrow-marker" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="var(--accent)"/></marker></defs>
-          ${nodes}
-          <g style="font-family:var(--tl-mono);font-size:11px;font-weight:600;fill:var(--text-muted);">${labels}</g>
-        </svg>
-        <p class="tl-loop-caption">O ciclo se repete a cada mês enquanto o cliente estiver ativo — não existe uma etapa final que encerra o produto.</p>
+      <div class="tl-ramp-shell">
+        <p class="tl-ramp-phase-label tl-reveal">Onboarding · Semana 1–2</p>
+        <div class="tl-branch-row">${branches}</div>
+        <div class="tl-branch-converge tl-reveal">
+          <span class="tl-branch-converge-arrow">${tlIcoArrowDown}</span>
+          <div class="tl-converge-card">${p.onboarding.convergencia}</div>
+        </div>
+
+        <p class="tl-ramp-phase-label tl-reveal" style="margin-top:34px;">Execução · Semana 1–4</p>
+        <div class="tl-ramp-row">${rampCols}</div>
+        ${cicloNote}
       </div>`;
   }
 
