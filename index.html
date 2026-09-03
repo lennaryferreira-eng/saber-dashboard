@@ -6236,7 +6236,9 @@ function terFimRef(p) {
   if (p.realFim) return p.realFim;
   if (p.prevFim) return p.prevFim;
   if (p.prazoContrato) return p.prazoContrato;
-  if (p.recorrencia === 'Recorrente') return addDays(new Date().toISOString().slice(0,10), 3650);
+  // Recorrente e Pontual (Treinamentos avulsos) não têm data calculável — nenhum dos dois
+  // segue um template de fim fixo — então, sem uma data real, tratam como sempre ativo.
+  if (p.recorrencia === 'Recorrente' || _ehPontual(p)) return addDays(new Date().toISOString().slice(0,10), 3650);
   return '';
 }
 
@@ -10825,15 +10827,21 @@ function buildGanttTer() {
     selMes.innerHTML = '<option value="">Todos</option>' + meses.map(m => '<option' + (m===curM?' selected':'') + '>' + m + '</option>').join('');
   }
 
-  // filtra projetos com início dentro da janela (usa terFimRef como fim de referência —
-  // ver comentário na função: recorrente sem prazo de contrato não soma +30d, fica sempre ativo)
+  // Filtra projetos pra janela visível. Projeto ATIVO (não Finalizado/Cancelado/
+  // Interrompido) sempre aparece, independente da conta de fim calculada — um projeto
+  // atrasado (fim calculado já passou) é justamente o que uma visão de capacity precisa
+  // mostrar, não esconder. Só quem já terminou é que segue a regra de "saiu da janela
+  // recente" — senão projeto finalizado há anos nunca sumiria da tela.
   let prjs = projects.filter(p => {
     if (p.recorrencia === 'Recorrente') return false; // Capacity One-time: recorrente tem a própria sub-aba
     if (!p.inicio) return false;
     const dI = parseDate(p.inicio);
+    if (dI > endRef) return false;
+    const ativo = p.status2 !== 'Finalizado' && p.status2 !== 'Cancelado' && p.status2 !== 'Interrompido';
+    if (ativo) return true;
     const dFRaw = terFimRef(p);
     const dF = dFRaw ? parseDate(dFRaw) : new Date(dI.getTime() + 30 * 864e5);
-    return dF >= startRef && dI <= endRef;
+    return dF >= startRef;
   });
   if (consFilter)   prjs = prjs.filter(p => p.consultor === consFilter);
   if (statusFilter) prjs = prjs.filter(p => p.status2 === statusFilter);
@@ -10921,34 +10929,42 @@ function buildGanttTer() {
     const entregas = ehPontual ? entregasPontuais(p) : ltTerEntregas(p);
     const cor = STATUS_COLOR_TER(p);
 
+    // Etapa pendente (não marcada como feito) mais próxima — mostrada na semana de HOJE,
+    // não na semana teórica calculada por semDataPlanejadaTer. Com o checklist por bloco
+    // (Escopos One-time), o "previsto" de uma etapa atrasada podia ficar em uma semana já
+    // fora da janela visível do Gantt, e só a etapa marcada aparecia — dando a impressão de
+    // que faltavam entregas previstas. Toda etapa marcada continua no seu lugar de sempre.
+    let proximaPendenteSi = -1;
+    if (!ehPontual) {
+      for (let si = 0; si < _ltNumSemanas(p); si++) {
+        if (!(entregas[si] || {}).feito) { proximaPendenteSi = si; break; }
+      }
+    }
+
     const cells = semanas.map(s => {
       const sEnd = new Date(s.getTime() + 6*864e5);
       const naJanela = dIp <= sEnd && dFp >= s;
-      // entrega cujo real (ou planejado, se ainda pendente) cai nessa semana — vira um
-      // badge colorido com o nome dentro, igual o padrão da SABER (não um pontinho com
-      // legenda embaixo). Pontual não tem data "planejada" (não segue template fixo) —
-      // só aparece quando a entrega realmente foi registrada com uma data.
+      // entrega marcada como feito (ou registrada, no caso pontual) cujo "real" cai nessa
+      // semana — vira um badge colorido com o nome dentro, igual o padrão da SABER (não um
+      // pontinho com legenda embaixo).
       let badge = '';
       for (let si = 0; si < _ltNumSemanas(p); si++) {
         const ent = entregas[si] || {};
+        if (!ent.real) continue;
+        const dRef = parseDate(ent.real);
+        if (!dRef || dRef < s || dRef > sEnd) continue;
         const nome = ehPontual ? (ent.nome || 'Entrega ' + (si+1)) : nomeEtapaTerCurto(p, si);
         const nomeCompl = ehPontual ? (ent.nome || 'Entrega ' + (si+1)) : nomeEtapaTer(p, si);
-        const plan = ehPontual ? null : semDataPlanejadaTer(p, si);
-        const dataRef = ent.real || plan;
-        if (!dataRef) continue;
-        const dRef = parseDate(dataRef);
-        if (!dRef || dRef < s || dRef > sEnd) continue;
-        let badgeCor, tooltip;
-        if (ent.real) {
-          const atraso = plan ? diffDays(plan, ent.real) : null;
-          badgeCor = (atraso === null || atraso <= 0) ? 'var(--green)' : 'var(--accent)';
-          tooltip = nomeCompl + (atraso !== null && atraso > 0 ? ' ⚠ +' + atraso + 'd' : ' ✓ no prazo') + ' · realizado: ' + fmtD(ent.real);
-        } else {
-          badgeCor = 'var(--blue)'; // ainda não aconteceu — planejada
-          tooltip = nomeCompl + ' · previsto: ' + fmtD(plan);
-        }
-        badge = '<div title="' + tooltip + '" style="background:' + badgeCor + ';color:#fff;font-size:var(--fs-3xs);font-weight:700;padding:3px 3px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + nome + '</div>';
+        badge = '<div title="' + nomeCompl + ' ✓ aconteceu · ' + fmtD(ent.real) + '" style="background:var(--green);color:#fff;font-size:var(--fs-3xs);font-weight:700;padding:3px 3px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + nome + '</div>';
         break;
+      }
+      // Nenhuma etapa feita cai nessa semana — se for a semana de hoje, mostra a próxima
+      // etapa pendente (sinaliza o que falta, mesmo que o "previsto" original já tenha passado).
+      if (!badge && proximaPendenteSi >= 0 && hoje >= s && hoje <= sEnd) {
+        const nome = nomeEtapaTerCurto(p, proximaPendenteSi);
+        const nomeCompl = nomeEtapaTer(p, proximaPendenteSi);
+        const plan = semDataPlanejadaTer(p, proximaPendenteSi);
+        badge = '<div title="' + nomeCompl + ' · próxima etapa pendente' + (plan ? ' (previsto ' + fmtD(plan) + ')' : '') + '" style="background:var(--blue);color:#fff;font-size:var(--fs-3xs);font-weight:700;padding:3px 3px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + nome + '</div>';
       }
       return '<td style="text-align:center;padding:4px 2px;">'
         + (naJanela && !badge ? '<div style="height:8px;background:' + cor + ';border-radius:2px;opacity:.85;"></div>' : '')
