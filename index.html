@@ -1097,11 +1097,13 @@
 </section>
 
 <section id="sec-recorrentes" class="section">
-  <div class="sec-head"><h2 class="sec-title">Escopos Recorrentes</h2><p class="sec-desc">Projetos recorrentes da TER — sem progresso fixo. Registre o que aconteceu em cada semana do projeto.</p></div>
+  <div class="sec-head"><h2 class="sec-title">Escopos Recorrentes</h2><p class="sec-desc">Só projetos marcados como <b>Recorrente</b> na Base de Projetos. Escolha o mês acima da tabela — as etapas mostradas são as rotinas semanais do modelo (Manutenção/Profissional de CRM/Sales Enablement), divididas semana a semana dentro daquele mês. Clique no bloco da etapa quando ela acontecer (cinza → verde).</p></div>
 
   <div class="mgrid mg4" style="margin-bottom:.8rem;">
     <div class="mcard c-blue"><div class="mlabel">Projetos</div><div class="mval" id="ltr-total">0</div></div>
   </div>
+
+  <div id="ltr-mes-filter-bar" class="filter-bar" style="margin-bottom:.8rem;"></div>
 
   <div class="card" style="padding:.7rem 1.1rem;margin-bottom:.8rem;">
     <div class="lt-filter-bar" style="margin-bottom:0;">
@@ -1131,7 +1133,8 @@
           <th style="min-width:90px;">GMV</th>
           <th style="min-width:80px;">Tier</th>
           <th>Início</th><th>Previsto</th>
-          <th style="min-width:280px;">Registrar o que aconteceu na semana</th>
+          <th style="min-width:260px;">Etapas</th>
+          <th style="min-width:200px;">Observação do projeto</th>
           <th style="min-width:80px;">Flag</th>
           <th style="min-width:130px;">Oportunidade</th>
           <th style="min-width:160px;">Escopos One-time</th>
@@ -10343,7 +10346,10 @@ function ltTerSetDataPerda(id, val) {
   if (!p) return;
   p.dataPerda = val || '';
   if (val) p.status2 = 'Interrompido';
+  // Chamado tanto do Escopos One-time quanto do Escopos Recorrente — re-renderiza os dois
+  // pra não deixar a tabela que não disparou a edição com a linha desatualizada.
   buildLeadTimeTer();
+  buildLeadTimeRec();
   upd();
 }
 
@@ -10495,13 +10501,10 @@ function buildLeadTimeTer() {
 }
 
 // ═══════════════════════════════════
-//  ESCOPOS RECORRENTES — TER (sem progresso fixo; registro livre do que aconteceu em cada semana)
+//  ESCOPOS RECORRENTES — TER (mesmo formato do Escopos One-time; a coluna "Etapas" mostra
+//  as rotinas semanais do modelo — recCicloTemplate/recSemanaState, mesmo motor do Capacity
+//  → Recorrente — divididas semana a semana dentro do mês escolhido no filtro acima)
 // ═══════════════════════════════════
-function ltRecRegistros(p) {
-  if (!p.registrosSemanais || !Array.isArray(p.registrosSemanais)) p.registrosSemanais = [];
-  return p.registrosSemanais;
-}
-
 function getLtRecFiltered() {
   const fCons = document.getElementById('ltr-f-cons')?.value || '';
   const fConv = document.getElementById('ltr-f-conv')?.value || '';
@@ -10527,30 +10530,6 @@ function ltSetFieldRec(id, f, val) {
   upd();
 }
 
-// Adiciona um novo registro semanal (data + o que aconteceu) — substitui o campo "observação" fixo
-async function ltRecAdd(id) {
-  const p = projects.find(x => String(x.id) === String(id));
-  if (!p) return;
-  const dataInp = document.getElementById('lt-rec-data-' + id);
-  const notaInp = document.getElementById('lt-rec-nota-' + id);
-  const data = dataInp?.value || '';
-  const nota = (notaInp?.value || '').trim();
-  if (!data || !nota) { await showAlert('Preencha a data e o que aconteceu nessa semana antes de adicionar.'); return; }
-  ltRecRegistros(p).push({ data, nota });
-  if (dataInp) dataInp.value = '';
-  if (notaInp) notaInp.value = '';
-  buildLeadTimeRec();
-  upd();
-}
-async function ltRecRemover(id, idx) {
-  const p = projects.find(x => String(x.id) === String(id));
-  if (!p) return;
-  if (!(await showConfirm('Excluir este registro semanal?'))) return;
-  ltRecRegistros(p).splice(idx, 1);
-  buildLeadTimeRec();
-  upd();
-}
-
 function buildLeadTimeRec() {
   const selCons = document.getElementById('ltr-f-cons');
   if (selCons) {
@@ -10558,6 +10537,11 @@ function buildLeadTimeRec() {
     const curC = selCons.value;
     selCons.innerHTML = '<option value="">Todos</option>' + cons.map(c => '<option' + (c===curC?' selected':'') + '>' + c + '</option>').join('');
   }
+
+  buildFilterBar('ltr-mes-filter-bar', 'ltrMes', buildLeadTimeRec);
+  const mesKey = filters['ltrMes'];
+  const mObj = mesKey ? ALL_MESES.find(m => m.key === mesKey) : null;
+  const nSemanas = mObj ? numSemanasMes(mObj) : 0;
 
   const list = getLtRecFiltered();
   const countEl = document.getElementById('ltr-count');
@@ -10568,19 +10552,42 @@ function buildLeadTimeRec() {
   if (!tbody) return;
 
   tbody.innerHTML = list.length === 0
-    ? '<tr><td colspan="13" style="text-align:center;padding:24px;color:var(--text-hint);font-size:var(--fs-base);">Nenhum projeto recorrente encontrado</td></tr>'
+    ? '<tr><td colspan="14" style="text-align:center;padding:24px;color:var(--text-hint);font-size:var(--fs-base);">Nenhum projeto recorrente encontrado</td></tr>'
     : list.map(p => {
-        const regs = ltRecRegistros(p).slice().sort((a,b) => (b.data||'').localeCompare(a.data||''));
-        const listaHTML = regs.length
-          ? regs.map((r, i) => {
-              const idxReal = ltRecRegistros(p).indexOf(r);
-              return '<div style="display:flex;gap:6px;align-items:flex-start;padding:4px 0;border-bottom:1px solid var(--border);font-size:var(--fs-xs);">'
-                + '<span style="color:var(--text-hint);white-space:nowrap;">' + fmtD(r.data) + '</span>'
-                + '<span style="flex:1;color:var(--text-muted);">' + (r.nota||'').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</span>'
-                + '<button onclick="ltRecRemover(' + p.id + ',' + idxReal + ')" title="Excluir" style="background:none;border:none;cursor:pointer;color:var(--text-hint);font-size:var(--fs-sm);">'+icon('x')+'</button>'
-                + '</div>';
-            }).join('')
-          : '<div style="font-size:var(--fs-xs);color:var(--text-hint);padding:4px 0;">Nenhum registro ainda.</div>';
+        const tpl = recCicloTemplate(p);
+        const dedTier = terExigeDedicacao(p) ? TER_DEDICACAO_TIERS[p.nivelDedicacao] : null;
+        const dedTxt = terExigeDedicacao(p)
+          ? (dedTier ? (p.nivelDedicacao + ' · ' + dedTier.cadencia) : 'Dedicação não definida')
+          : '';
+
+        // Etapas: mesmo bloco compacto do Escopos One-time (nome curto, cinza→verde ao
+        // clicar), só que agrupado em uma linha por semana do mês selecionado — sem isso
+        // (uma linha só com todas as rotinas juntas) ficaria impossível saber em qual
+        // semana cada rotina foi marcada.
+        let etapasHTML;
+        if (!mObj) {
+          etapasHTML = '<div style="font-size:var(--fs-xs);color:var(--text-hint);">Selecione um mês acima.</div>';
+        } else {
+          const st = recSemanaState(p, mesKey);
+          etapasHTML = (dedTxt ? '<div style="font-size:var(--fs-2xs);font-weight:700;color:' + (dedTier?'var(--accent)':'var(--amber)') + ';margin-bottom:4px;">' + dedTxt + '</div>' : '')
+            + Array.from({ length: nSemanas }, (_, si) => {
+                const semState = st[si] || [];
+                const blocks = tpl.etapas.map((nome, ei) => {
+                  const feito = !!semState[ei];
+                  const bg = feito ? 'var(--green)' : 'var(--surface3)';
+                  const borderCor = feito ? 'var(--green)' : 'var(--border)';
+                  const nomeCor = feito ? '#fff' : 'var(--text-hint)';
+                  const tooltip = (nome + ' · Semana ' + (si+1) + ' · ' + (feito ? 'aconteceu' : 'ainda não aconteceu')).replace(/"/g,'&quot;');
+                  return '<div title="' + tooltip + '" onclick="recSemanaToggle(\'' + p.id + '\',\'' + mesKey + '\',' + si + ',' + ei + ')" style="flex:1;min-height:28px;background:' + bg + ';border:1px solid ' + borderCor + ';border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;text-align:center;padding:2px 3px;cursor:pointer;transition:background .2s;">'
+                    + '<div style="font-size:var(--fs-3xs);font-weight:700;color:' + nomeCor + ';line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">' + nome + '</div>'
+                    + '</div>';
+                }).join('');
+                return '<div style="display:flex;gap:3px;align-items:center;margin-bottom:3px;">'
+                  + '<span style="font-size:var(--fs-3xs);color:var(--text-hint);width:15px;flex-shrink:0;">S' + (si+1) + '</span>'
+                  + '<div style="display:flex;gap:3px;flex:1;">' + blocks + '</div>'
+                  + '</div>';
+              }).join('');
+        }
 
         return '<tr>'
           + '<td class="lt-proj-cell">'
@@ -10590,14 +10597,12 @@ function buildLeadTimeRec() {
           + '<td style="padding:6px 8px;font-size:var(--fs-sm);color:var(--text-muted);white-space:nowrap;">' + (p.gmv || '—') + '</td>'
           + '<td style="padding:6px 8px;">' + tierBadge(p.gmv) + '</td>'
           + '<td class="lt-date-cell">' + fmtD(p.inicio) + '</td>'
-          + '<td class="lt-date-cell">' + fmtD(p.prevFim) + '</td>'
+          + '<td class="lt-date-cell">' + fmtD(p.prazoContrato) + '</td>'
           + '<td style="padding:8px 10px;">'
-          + '<div style="display:flex;gap:4px;align-items:center;margin-bottom:6px;">'
-          + '<input type="date" id="lt-rec-data-' + p.id + '" class="sel" style="font-size:var(--fs-sm);">'
-          + '<button onclick="ltRecAdd(' + p.id + ')" style="font-size:var(--fs-sm);padding:4px 10px;border:none;border-radius:14px;background:var(--accent);color:#fff;cursor:pointer;white-space:nowrap;">+ Add</button>'
-          + '</div>'
-          + '<textarea id="lt-rec-nota-' + p.id + '" class="sel" rows="2" style="width:100%;font-size:var(--fs-sm);resize:vertical;margin-bottom:6px;" placeholder="O que aconteceu nesta semana…"></textarea>'
-          + '<div style="max-height:110px;overflow-y:auto;">' + listaHTML + '</div>'
+          + etapasHTML
+          + '</td>'
+          + '<td style="padding:8px 10px;">'
+          + '<textarea id="lt-obs-rec-' + p.id + '" class="sel" rows="2" style="width:100%;font-size:var(--fs-sm);resize:vertical;" placeholder="Observação do projeto…" onblur="ltSetFieldTer(\'' + p.id + '\',\'obsTer\',this.value)">' + (p.obsTer||'').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</textarea>'
           + '</td>'
           + '<td style="padding:6px 8px;text-align:center;">' + flagSelectHTML(p.flag, "onchange=\"ltSetFieldRec('" + p.id + "','flag',this.value)\"") + '</td>'
           + '<td style="padding:6px 8px;">'
@@ -10613,7 +10618,8 @@ function buildLeadTimeRec() {
           + '<option value="">—</option>' + ['Monetizado','Não monetizado'].map(o => '<option' + ((p.conv||'')===o?' selected':'') + '>' + o + '</option>').join('')
           + '</select></td>'
           + '<td style="padding:6px 8px;">'
-          + '<input type="text" class="sel" style="font-size:var(--fs-sm);width:100%;" placeholder="Motivo" value="' + (p.motivo||'') + '" onchange="ltSetFieldRec(' + p.id + ',\'motivo\',this.value)"></td>'
+          + '<input type="text" class="sel" style="font-size:var(--fs-sm);width:100%;margin-bottom:4px;" placeholder="Motivo" value="' + (p.motivo||'') + '" onchange="ltSetFieldRec(' + p.id + ',\'motivo\',this.value)">'
+          + '<input type="date" class="sel" style="font-size:var(--fs-sm);width:100%;" value="' + (p.dataPerda||'') + '" title="Preencher marca o projeto como Interrompido" onchange="ltTerSetDataPerda(\'' + p.id + '\',this.value)"></td>'
           + '<td style="padding:6px 8px;">'
           + '<input type="date" class="sel" style="font-size:var(--fs-sm);width:100%;" value="' + (p.proximoContato||'') + '" onchange="ltSetFieldRec(' + p.id + ',\'proximoContato\',this.value)"></td>'
           + '</tr>';
