@@ -1388,10 +1388,16 @@
 
   <div id="cap-ter-recorrente" style="display:none;">
     <div class="card">
-      <div class="card-title">Rotinas semanais por projeto</div>
-      <p style="font-size:var(--fs-sm);color:var(--text-hint);margin:-4px 0 1rem;">Rotinas de cada produto divididas nas semanas do mês selecionado — clique numa célula pra marcar que aconteceu. Fica registrado por mês, dá pra voltar em qualquer mês anterior.</p>
-      <div id="cap-ter-rec-filter-bar" class="filter-bar"></div>
-      <div id="cap-ter-rec-tbody" style="margin-top:1rem;"></div>
+      <div class="card-title">Entregas previstas — semana a semana</div>
+      <p style="font-size:var(--fs-sm);color:var(--text-hint);margin:-4px 0 1rem;">Igual ao Gantt de One-time, mas só com as semanas do mês selecionado acima — cada quadradinho é uma rotina daquele produto; passe o mouse pra ver qual, clique pra marcar que aconteceu.</p>
+      <div id="cap-ter-rec-filter-bar" class="filter-bar" style="margin-bottom:1rem;"></div>
+      <div class="gantt-wrap">
+        <table class="gantt-table"><thead id="cap-ter-rec-thead"></thead><tbody id="cap-ter-rec-tbody"></tbody></table>
+      </div>
+      <div style="display:flex;gap:16px;margin-top:.75rem;flex-wrap:wrap;">
+        <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:9px;height:9px;border-radius:2px;background:var(--green);display:inline-block;"></span>Rotina aconteceu</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:9px;height:9px;border-radius:2px;background:var(--surface3);border:1px solid var(--border);display:inline-block;"></span>Pendente</span>
+      </div>
     </div>
   </div>
 </div>
@@ -11165,47 +11171,71 @@ function recSemanaToggle(id, mesKey, si, ei) {
   upd();
 }
 
+// Gantt da Recorrente: mesma linguagem visual do Gantt One-time (uma linha por projeto,
+// colunas = semanas, badge pequeno por célula) — mas com escopo de só um mês por vez (as
+// colunas são as semanas do mês escolhido no filtro, não uma janela rolante de N meses) e,
+// em vez de UMA etapa por semana, cada célula carrega um cluster de quadradinhos pequenos —
+// um por rotina do modelo (recCicloTemplate) — pra não deixar a linha do projeto crescer
+// desproporcionalmente quando o modelo tem muitas rotinas (Profissional de CRM tem 8).
 function buildCapacityRec() {
-  const el = document.getElementById('cap-ter-rec-tbody');
-  if (!el) return;
-  buildFilterBar('cap-ter-rec-filter-bar', 'capTerRec', 'buildCapacityRec');
+  const thead = document.getElementById('cap-ter-rec-thead');
+  const tbody = document.getElementById('cap-ter-rec-tbody');
+  if (!thead || !tbody) return;
+  buildFilterBar('cap-ter-rec-filter-bar', 'capTerRec', buildCapacityRec);
   const mesKey = filters['capTerRec'];
   if (!mesKey) {
-    el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-hint);font-size:var(--fs-base);">Selecione um mês acima pra ver o registro semanal de rotinas.</div>';
-    return;
-  }
-  const list = projects.filter(p => p.recorrencia === 'Recorrente' && p.status2 !== 'Finalizado' && p.status2 !== 'Cancelado' && p.status2 !== 'Interrompido');
-  if (!list.length) {
-    el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-hint);font-size:var(--fs-base);">Nenhum projeto recorrente ativo</div>';
+    thead.innerHTML = '';
+    tbody.innerHTML = '<tr><td style="text-align:center;color:var(--text-hint);padding:20px;font-size:var(--fs-base);">Selecione um mês acima pra ver as entregas previstas.</td></tr>';
     return;
   }
   const mObj = ALL_MESES.find(m => m.key === mesKey);
   const nSemanas = mObj ? numSemanasMes(mObj) : 4;
-  const headerCols = Array.from({ length: nSemanas }, (_, si) => '<th style="min-width:44px;text-align:center;font-size:var(--fs-2xs);color:var(--text-hint);font-weight:700;padding:4px;">S' + (si + 1) + '</th>').join('');
-  el.innerHTML = list.map(p => {
+  const diasMes = mObj ? diasNoMes(mObj.ano, mObj.idx) : 28;
+  const semanaLabel = si => {
+    const ini = si * 7 + 1;
+    const fim = Math.min(ini + 6, diasMes);
+    return ini.toString().padStart(2,'0') + '-' + fim.toString().padStart(2,'0');
+  };
+
+  thead.innerHTML = '<tr>'
+    + '<th style="min-width:160px;text-align:left;padding:5px 8px;">Projeto</th>'
+    + '<th style="min-width:80px;text-align:left;padding:5px 8px;">Consultor</th>'
+    + Array.from({ length: nSemanas }, (_, si) => '<th style="min-width:64px;text-align:center;padding:5px 4px;">Semana ' + (si + 1) + '<div style="font-size:var(--fs-3xs);color:var(--text-hint);font-weight:400;">' + semanaLabel(si) + '</div></th>').join('')
+    + '</tr>';
+
+  const list = projects.filter(p => p.recorrencia === 'Recorrente' && p.status2 !== 'Finalizado' && p.status2 !== 'Cancelado' && p.status2 !== 'Interrompido');
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="' + (nSemanas + 2) + '" style="text-align:center;color:var(--text-hint);padding:20px;font-size:var(--fs-base);">Nenhum projeto recorrente ativo</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = list.map(p => {
     const tpl = recCicloTemplate(p);
     const st = recSemanaState(p, mesKey);
     const dedTier = terExigeDedicacao(p) ? TER_DEDICACAO_TIERS[p.nivelDedicacao] : null;
     const dedTxt = terExigeDedicacao(p)
       ? (dedTier ? (p.nivelDedicacao + ' · ' + dedTier.cadencia) : 'Dedicação não definida')
       : '';
-    const rows = tpl.etapas.map((nome, ei) => {
-      const cells = Array.from({ length: nSemanas }, (_, si) => {
-        const feito = !!(st[si] && st[si][ei]);
-        return '<td style="text-align:center;padding:3px;">'
-          + '<div onclick="recSemanaToggle(\'' + p.id + '\',\'' + mesKey + '\',' + si + ',' + ei + ')" title="' + nome.replace(/"/g,'&quot;') + ' · Semana ' + (si + 1) + ' · ' + (feito ? 'aconteceu' : 'ainda não') + '" style="width:26px;height:26px;margin:0 auto;border-radius:6px;cursor:pointer;background:' + (feito ? 'var(--green)' : 'var(--surface3)') + ';border:1px solid ' + (feito ? 'var(--green)' : 'var(--border)') + ';"></div>'
-          + '</td>';
+    const cells = Array.from({ length: nSemanas }, (_, si) => {
+      const semState = st[si] || [];
+      const dots = tpl.etapas.map((nome, ei) => {
+        const feito = !!semState[ei];
+        return '<div onclick="recSemanaToggle(\'' + p.id + '\',\'' + mesKey + '\',' + si + ',' + ei + ')" title="' + nome.replace(/"/g,'&quot;') + ' · Semana ' + (si + 1) + ' · ' + (feito ? 'aconteceu' : 'pendente') + '" style="width:8px;height:8px;border-radius:2px;cursor:pointer;background:' + (feito ? 'var(--green)' : 'var(--surface3)') + ';border:1px solid ' + (feito ? 'var(--green)' : 'var(--border)') + ';"></div>';
       }).join('');
-      return '<tr><td style="font-size:var(--fs-2xs);color:var(--text-hint);padding:3px 10px 3px 0;white-space:nowrap;">' + nome + '</td>' + cells + '</tr>';
+      const doneCount = semState.filter(Boolean).length;
+      return '<td style="text-align:center;padding:4px 3px;">'
+        + '<div style="display:flex;flex-wrap:wrap;gap:2px;justify-content:center;max-width:52px;margin:0 auto;">' + dots + '</div>'
+        + '<div style="font-size:var(--fs-3xs);color:var(--text-hint);margin-top:2px;">' + doneCount + '/' + tpl.etapas.length + '</div>'
+        + '</td>';
     }).join('');
-    return '<div style="padding:14px 0;border-bottom:1px solid var(--border);">'
-      + '<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px;">'
-      + '<div style="font-weight:600;color:var(--text);">' + (p.nome||'—') + '</div>'
-      + '<div style="font-size:var(--fs-xs);color:var(--text-hint);">' + (p.consultor||'—') + ' · ' + p.modelo + '</div>'
-      + (dedTxt ? '<div style="font-size:var(--fs-2xs);font-weight:700;color:' + (dedTier?'var(--accent)':'var(--amber)') + ';">' + dedTxt + '</div>' : '')
-      + '</div>'
-      + '<div style="overflow-x:auto;"><table style="border-collapse:collapse;"><thead><tr><th></th>' + headerCols + '</tr></thead><tbody>' + rows + '</tbody></table></div>'
-      + '</div>';
+    return '<tr>'
+      + '<td style="padding:5px 8px;white-space:nowrap;">'
+      + '<div style="font-size:var(--fs-sm);font-weight:600;color:var(--text);">' + (p.nome||'—') + '</div>'
+      + (dedTxt ? '<div style="font-size:var(--fs-3xs);font-weight:700;color:' + (dedTier?'var(--accent)':'var(--amber)') + ';">' + dedTxt + '</div>' : '')
+      + '</td>'
+      + '<td style="padding:5px 8px;font-size:var(--fs-xs);color:var(--text-hint);white-space:nowrap;">' + (p.consultor||'—') + '</td>'
+      + cells
+      + '</tr>';
   }).join('');
 }
 
