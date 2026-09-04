@@ -10554,25 +10554,29 @@ function buildLeadTimeRec() {
   tbody.innerHTML = list.length === 0
     ? '<tr><td colspan="14" style="text-align:center;padding:24px;color:var(--text-hint);font-size:var(--fs-base);">Nenhum projeto recorrente encontrado</td></tr>'
     : list.map(p => {
-        const tpl = recCicloTemplate(p);
         const dedTier = terExigeDedicacao(p) ? TER_DEDICACAO_TIERS[p.nivelDedicacao] : null;
         const dedTxt = terExigeDedicacao(p)
           ? (dedTier ? (p.nivelDedicacao + ' · ' + dedTier.cadencia) : 'Dedicação não definida')
           : '';
 
         // Etapas: mesmo bloco compacto do Escopos One-time (nome curto, cinza→verde ao
-        // clicar), só que agrupado em uma linha por semana do mês selecionado — sem isso
-        // (uma linha só com todas as rotinas juntas) ficaria impossível saber em qual
-        // semana cada rotina foi marcada.
+        // clicar), agrupado em uma linha por semana do mês selecionado. Não é a mesma rotina
+        // toda semana pra quem exige dedicação (Profissional de CRM/Sales Enablement) — é o
+        // total de tarefas do mês (definido pelo nível de dedicação) dividido entre as
+        // semanas, então cada linha de semana pode ter uma quantidade diferente de blocos.
+        // Manutenção de CRM continua com a mesma lista fixa toda semana (recSemanaTarefas
+        // já trata essa diferença).
         let etapasHTML;
         if (!mObj) {
           etapasHTML = '<div style="font-size:var(--fs-xs);color:var(--text-hint);">Selecione um mês acima.</div>';
         } else {
+          const porSemana = recSemanaTarefas(p, mesKey);
           const st = recSemanaState(p, mesKey);
           etapasHTML = (dedTxt ? '<div style="font-size:var(--fs-2xs);font-weight:700;color:' + (dedTier?'var(--accent)':'var(--amber)') + ';margin-bottom:4px;">' + dedTxt + '</div>' : '')
             + Array.from({ length: nSemanas }, (_, si) => {
+                const tarefasSemana = porSemana[si] || [];
                 const semState = st[si] || [];
-                const blocks = tpl.etapas.map((nome, ei) => {
+                const blocks = tarefasSemana.map((nome, ei) => {
                   const feito = !!semState[ei];
                   const bg = feito ? 'var(--green)' : 'var(--surface3)';
                   const borderCor = feito ? 'var(--green)' : 'var(--border)';
@@ -10584,7 +10588,7 @@ function buildLeadTimeRec() {
                 }).join('');
                 return '<div style="display:flex;gap:3px;align-items:center;margin-bottom:3px;">'
                   + '<span style="font-size:var(--fs-3xs);color:var(--text-hint);width:15px;flex-shrink:0;">S' + (si+1) + '</span>'
-                  + '<div style="display:flex;gap:3px;flex:1;">' + blocks + '</div>'
+                  + '<div style="display:flex;gap:3px;flex:1;">' + (blocks || '<span style="font-size:var(--fs-3xs);color:var(--text-hint);">—</span>') + '</div>'
                   + '</div>';
               }).join('');
         }
@@ -11149,22 +11153,62 @@ function recCicloTemplate(p) {
 // o que é mais simples de ler numa grade fixa do que semanas ISO cortadas na virada do mês.
 function diasNoMes(ano, idxMes) { return new Date(ano, idxMes + 1, 0).getDate(); }
 function numSemanasMes(m) { return Math.ceil(diasNoMes(m.ano, m.idx) / 7); }
-// Estado por mês mora no próprio projeto (p.recSemanas = { mesKey: [[bool por etapa], ...] })
-// — salva junto com o resto de `projects`, sem precisar de nenhuma coluna nova no Supabase.
-// Se o template de etapas mudou de tamanho (a coordenadora ajustou o nº de rotinas do
-// modelo), preserva o que já tinha e completa/corta pra não desalinhar os índices.
-function recSemanaState(p, mesKey) {
+
+// Quantidade de tarefas do MÊS inteiro por nível de dedicação — só vale pra modelos que
+// exigem dedicação (Profissional de CRM, Sales Enablement...). Manutenção de CRM não entra
+// aqui: a POP marca as 3 rotinas dela como cadência semanal fixa, então repetem toda semana
+// igual (recTarefasDoMes trata isso à parte). Números de referência — ajustar se a
+// coordenadora passar volumes mais precisos por produto.
+const TER_DEDICACAO_QTD_TAREFAS = { '10%': 5, '15%': 8, '25%': 12, '50%': 20, '100%': 30 };
+
+// Lista de tarefas do projeto pro mês inteiro. Manutenção de CRM (ou qualquer modelo sem
+// exigência de dedicação): a mesma lista do template, repetida toda semana — é cadência
+// semanal fixa. Profissional de CRM/Sales Enablement: NÃO é "toda rotina toda semana" — é um
+// total de tarefas do mês (de acordo com o nível de dedicação) que se repete ciclicamente
+// pelos nomes do template até completar esse total, e depois se divide entre as semanas
+// (recSemanaTarefas) — ex: nível 10% = 5 tarefas no mês inteiro, não 5 por semana.
+function recTarefasDoMes(p) {
   const tpl = recCicloTemplate(p);
+  if (!terExigeDedicacao(p)) return tpl.etapas.slice();
+  const qtd = TER_DEDICACAO_QTD_TAREFAS[p.nivelDedicacao] || 0;
+  if (!qtd) return [];
+  return Array.from({ length: qtd }, (_, i) => tpl.etapas[i % tpl.etapas.length]);
+}
+// Divide a lista de tarefas do mês entre as semanas o mais igual possível — sobra vai pras
+// primeiras semanas (5 tarefas / 4 semanas = [2,1,1,1]). Pra modelo sem dedicação (Manutenção
+// de CRM), recTarefasDoMes já devolve a lista fixa, e aqui ela só se repete em toda semana
+// (não se divide) — mantém o comportamento de cadência semanal fixa que já existia.
+function recSemanaTarefas(p, mesKey) {
   const mObj = ALL_MESES.find(m => m.key === mesKey);
   const nSemanas = mObj ? numSemanasMes(mObj) : 4;
+  const tarefas = recTarefasDoMes(p);
+  if (!terExigeDedicacao(p)) return Array.from({ length: nSemanas }, () => tarefas.slice());
+  const base = Math.floor(tarefas.length / nSemanas);
+  const resto = tarefas.length % nSemanas;
+  const porSemana = [];
+  let cursor = 0;
+  for (let si = 0; si < nSemanas; si++) {
+    const qtd = base + (si < resto ? 1 : 0);
+    porSemana.push(tarefas.slice(cursor, cursor + qtd));
+    cursor += qtd;
+  }
+  return porSemana;
+}
+// Estado por mês mora no próprio projeto (p.recSemanas = { mesKey: [[bool por tarefa da
+// semana], ...] }) — salva junto com o resto de `projects`, sem precisar de nenhuma coluna
+// nova no Supabase. Se a distribuição de tarefas mudou de tamanho numa semana (a coordenadora
+// trocou o nível de dedicação, ou o template do modelo mudou), preserva o que já tinha e
+// completa/corta pra não desalinhar os índices dentro daquela semana.
+function recSemanaState(p, mesKey) {
+  const porSemana = recSemanaTarefas(p, mesKey);
   if (!p.recSemanas) p.recSemanas = {};
-  let semanas = Array.isArray(p.recSemanas[mesKey]) ? p.recSemanas[mesKey] : [];
-  semanas = semanas.slice(0, nSemanas).map(sem => {
-    const s = (Array.isArray(sem) ? sem : []).slice(0, tpl.etapas.length);
-    while (s.length < tpl.etapas.length) s.push(false);
+  const anterior = Array.isArray(p.recSemanas[mesKey]) ? p.recSemanas[mesKey] : [];
+  const semanas = porSemana.map((tarefasSemana, si) => {
+    const prev = Array.isArray(anterior[si]) ? anterior[si] : [];
+    const s = prev.slice(0, tarefasSemana.length);
+    while (s.length < tarefasSemana.length) s.push(false);
     return s;
   });
-  while (semanas.length < nSemanas) semanas.push(tpl.etapas.map(() => false));
   p.recSemanas[mesKey] = semanas;
   return semanas;
 }
@@ -11173,7 +11217,10 @@ function recSemanaToggle(id, mesKey, si, ei) {
   if (!p) return;
   const st = recSemanaState(p, mesKey);
   st[si][ei] = !st[si][ei];
+  // Chamado tanto do Capacity → Recorrente quanto do Escopos Recorrentes — atualiza os dois
+  // pra não deixar a tabela que não disparou o clique com a linha desatualizada.
   buildCapacityRec();
+  buildLeadTimeRec();
   upd();
 }
 
@@ -11216,22 +11263,25 @@ function buildCapacityRec() {
   }
 
   tbody.innerHTML = list.map(p => {
-    const tpl = recCicloTemplate(p);
+    const porSemana = recSemanaTarefas(p, mesKey);
     const st = recSemanaState(p, mesKey);
     const dedTier = terExigeDedicacao(p) ? TER_DEDICACAO_TIERS[p.nivelDedicacao] : null;
     const dedTxt = terExigeDedicacao(p)
       ? (dedTier ? (p.nivelDedicacao + ' · ' + dedTier.cadencia) : 'Dedicação não definida')
       : '';
     const cells = Array.from({ length: nSemanas }, (_, si) => {
+      const tarefasSemana = porSemana[si] || [];
       const semState = st[si] || [];
-      const dots = tpl.etapas.map((nome, ei) => {
+      const dots = tarefasSemana.map((nome, ei) => {
         const feito = !!semState[ei];
         return '<div onclick="recSemanaToggle(\'' + p.id + '\',\'' + mesKey + '\',' + si + ',' + ei + ')" title="' + nome.replace(/"/g,'&quot;') + ' · Semana ' + (si + 1) + ' · ' + (feito ? 'aconteceu' : 'pendente') + '" style="width:8px;height:8px;border-radius:2px;cursor:pointer;background:' + (feito ? 'var(--green)' : 'var(--surface3)') + ';border:1px solid ' + (feito ? 'var(--green)' : 'var(--border)') + ';"></div>';
       }).join('');
       const doneCount = semState.filter(Boolean).length;
       return '<td style="text-align:center;padding:4px 3px;">'
-        + '<div style="display:flex;flex-wrap:wrap;gap:2px;justify-content:center;max-width:52px;margin:0 auto;">' + dots + '</div>'
-        + '<div style="font-size:var(--fs-3xs);color:var(--text-hint);margin-top:2px;">' + doneCount + '/' + tpl.etapas.length + '</div>'
+        + (tarefasSemana.length
+            ? '<div style="display:flex;flex-wrap:wrap;gap:2px;justify-content:center;max-width:52px;margin:0 auto;">' + dots + '</div>'
+              + '<div style="font-size:var(--fs-3xs);color:var(--text-hint);margin-top:2px;">' + doneCount + '/' + tarefasSemana.length + '</div>'
+            : '<div style="font-size:var(--fs-3xs);color:var(--text-hint);">—</div>')
         + '</td>';
     }).join('');
     return '<tr>'
