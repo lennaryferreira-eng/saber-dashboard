@@ -271,7 +271,7 @@
       <table>
         <thead>
           <tr>
-            <th style="width:36px;min-width:36px;">#</th><th style="min-width:160px;">Projeto</th><th>Modelo</th><th>Consultor</th><th>Recorrência</th><th>GMV (R$)</th><th>Tier</th><th>Fee (R$)</th>
+            <th style="width:36px;min-width:36px;">#</th><th style="min-width:160px;">Projeto</th><th>Modelo</th><th>Consultor</th><th>Recorrência</th><th>Dedicação</th><th>GMV (R$)</th><th>Tier</th><th>Fee (R$)</th>
             <th>Dt. Início</th><th>Dt. Prev. Conclusão</th><th>Dt. Conclusão Real</th>
             <th>Prazo</th><th>Flag</th>
             <th>Status</th>
@@ -1922,7 +1922,7 @@
         </div>
         <div>
           <label for="npt-modelo" style="display:block;font-size:var(--fs-xs);font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">Modelo *</label>
-          <select id="npt-modelo" class="sel" style="width:100%;font-size:var(--fs-lg);">
+          <select id="npt-modelo" class="sel" style="width:100%;font-size:var(--fs-lg);" onchange="nptToggleRecorrencia()">
             <option>CRM Kommo basic</option>
             <option>CRM Kommo PRO</option>
             <option>Manutenção de CRM</option>
@@ -1961,6 +1961,18 @@
           <label for="npt-prazo-contrato" style="display:block;font-size:var(--fs-xs);font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">Prazo do contrato *</label>
           <input id="npt-prazo-contrato" type="date" class="sel" style="width:100%;font-size:var(--fs-lg);">
           <div style="font-size:var(--fs-xs);color:var(--text-hint);padding-top:5px;">Serviço recorrente não tem entrega única — este é o prazo/vigência do contrato, pra não deixar o projeto sem nenhuma data de referência.</div>
+        </div>
+        <div id="npt-dedicacao-wrap" style="display:none;">
+          <label for="npt-dedicacao" style="display:block;font-size:var(--fs-xs);font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">Nível de dedicação *</label>
+          <select id="npt-dedicacao" class="sel" style="width:100%;font-size:var(--fs-lg);">
+            <option value="">Selecione...</option>
+            <option>10%</option>
+            <option>15%</option>
+            <option>25%</option>
+            <option>50%</option>
+            <option>100%</option>
+          </select>
+          <div style="font-size:var(--fs-xs);color:var(--text-hint);padding-top:5px;">Define o volume de rotinas e a cadência de contato com o cliente ao longo do contrato (todos os modelos recorrentes exigem, exceto Manutenção de CRM).</div>
         </div>
         <div style="display:flex;gap:10px;align-items:center;margin-top:6px;">
           <button class="btn btn-primary" onclick="salvarNovoProjTer()">Criar projeto</button>
@@ -6111,6 +6123,20 @@ function renderBase() {
 const TER_MODELOS = ['CRM Kommo basic','CRM Kommo PRO','Manutenção de CRM','Profissional de CRM','Sales Enablement','Diagnóstico 360','Treinamentos (avulsos)'];
 const TER_STATUS  = ['Em andamento','Finalizado','Início em breve','Pausado','Cancelado','Interrompido'];
 
+// Nível de dedicação — todo modelo recorrente exige, exceto Manutenção de CRM (rotina fixa,
+// não varia por dedicação). Define o volume de rotinas e a cadência de contato com o cliente
+// (ver TER_DEDICACAO_TIERS, usado no Capacity → Recorrente). Fonte: POPs de Profissional de
+// CRM e Sales Enablement — as duas tabelas de horas/overhead/cadência são idênticas entre si.
+const TER_DEDICACAO_NIVEIS = ['10%','15%','25%','50%','100%'];
+const TER_DEDICACAO_TIERS = {
+  '10%':  { horasMes: 16,  cadencia: 'Revisão mensal simples' },
+  '15%':  { horasMes: 24,  cadencia: 'Alinhamentos quinzenais' },
+  '25%':  { horasMes: 40,  cadencia: 'Reuniões semanais' },
+  '50%':  { horasMes: 80,  cadencia: 'Participação em revisões/rituais estratégicos' },
+  '100%': { horasMes: 160, cadencia: 'Gestão completa da operação' },
+};
+function terExigeDedicacao(p) { return p.recorrencia === 'Recorrente' && p.modelo !== 'Manutenção de CRM'; }
+
 // Prazo simples: compara prevFim x realFim (se concluído) ou prevFim x hoje (se em aberto).
 // Não usa a janela de 45 dias da SABER — cada modelo da TER tem prazo próprio, definido manualmente.
 function prazoStatusTer(p) {
@@ -6198,6 +6224,9 @@ function renderBaseTer() {
       + '<td style="padding:4px 8px;"><select class="sel" style="font-size:var(--fs-sm);padding:2px 4px;" data-f="recorrencia" data-id="' + p.id + '" onchange="setFieldTer(this)">'
         + '<option ' + (p.recorrencia==='One time'?'selected':'') + '>One time</option>'
         + '<option ' + (p.recorrencia==='Recorrente'?'selected':'') + '>Recorrente</option></select></td>'
+      + (terExigeDedicacao(p)
+          ? '<td style="padding:4px 8px;"><select class="sel" style="font-size:var(--fs-sm);padding:2px 4px;" data-f="nivelDedicacao" data-id="' + p.id + '" onchange="setFieldTer(this)"><option value="">—</option>' + TER_DEDICACAO_NIVEIS.map(n => '<option ' + (p.nivelDedicacao===n?'selected':'') + '>' + n + '</option>').join('') + '</select></td>'
+          : '<td style="color:var(--text-hint);text-align:center;">—</td>')
       + '<td contenteditable="true" data-f="gmv" data-id="' + p.id + '" onblur="setFieldTer(this)" style="min-width:90px;">' + (p.gmv||'—') + '</td>'
       + '<td style="padding:6px 10px;text-align:center;">' + tierBadge(p.gmv) + '</td>'
       + '<td contenteditable="true" data-f="fee" data-id="' + p.id + '" onblur="setFieldTer(this)" style="min-width:90px;">' + (p.fee||'—') + '</td>'
@@ -6264,6 +6293,9 @@ function setFieldTer(el) {
   if (f === 'inicio' || f === 'modelo' || f === 'recorrencia') {
     p.prevFim = prevFimCalculadoTer(p);
   }
+  // Deixou de exigir nível de dedicação (virou One time ou mudou pra Manutenção de CRM) —
+  // limpa o valor antigo pra não ficar um dado morto associado a um projeto que não usa mais.
+  if ((f === 'modelo' || f === 'recorrencia') && !terExigeDedicacao(p)) p.nivelDedicacao = '';
   renderBaseTer();
   upd();
 }
@@ -6279,13 +6311,16 @@ async function removerProjTer(id) {
 // não segue um template de semanas com fim natural).
 function nptToggleRecorrencia() {
   const rec = document.getElementById('npt-recorrencia')?.value === 'Recorrente';
+  const modelo = document.getElementById('npt-modelo')?.value || '';
   const elOt  = document.getElementById('npt-prazo-ot');
   const elRec = document.getElementById('npt-prazo-rec');
+  const elDed = document.getElementById('npt-dedicacao-wrap');
   if (elOt)  elOt.style.display  = rec ? 'none' : '';
   if (elRec) elRec.style.display = rec ? '' : 'none';
+  if (elDed) elDed.style.display = (rec && modelo !== 'Manutenção de CRM') ? '' : 'none';
 }
 function openNovoProjTer() {
-  ['npt-nome','npt-consultor','npt-gmv','npt-fee','npt-inicio','npt-prazo-contrato'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  ['npt-nome','npt-consultor','npt-gmv','npt-fee','npt-inicio','npt-prazo-contrato','npt-dedicacao'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
   const rec = document.getElementById('npt-recorrencia'); if (rec) rec.value = 'One time';
   nptToggleRecorrencia();
   const msg = document.getElementById('npt-msg'); if (msg) msg.textContent = '';
@@ -6302,10 +6337,12 @@ function salvarNovoProjTer() {
   const recorrencia = document.getElementById('npt-recorrencia')?.value || '';
   const inicio = document.getElementById('npt-inicio')?.value || '';
   const prazoContrato = document.getElementById('npt-prazo-contrato')?.value || '';
+  const nivelDedicacao = document.getElementById('npt-dedicacao')?.value || '';
   // Toda entrada de projeto já precisa sair com uma data de conclusão/prazo de referência —
   // sem isso as outras abas (Escopos One-time, filtros, prazo) ficam com célula vazia/suja.
   if (recorrencia === 'Recorrente') {
     if (!prazoContrato) { if (msg) msg.textContent = 'Informe o prazo do contrato — obrigatório pra projeto recorrente.'; return; }
+    if (modelo !== 'Manutenção de CRM' && !nivelDedicacao) { if (msg) msg.textContent = 'Informe o nível de dedicação — obrigatório pra esse modelo recorrente.'; return; }
   } else if (!_ehPontual({ modelo })) {
     if (!inicio) { if (msg) msg.textContent = 'Informe a data de início — é a partir dela que o prazo previsto é calculado.'; return; }
   }
@@ -6319,6 +6356,7 @@ function salvarNovoProjTer() {
     fee: document.getElementById('npt-fee')?.value || '',
     inicio,
     prazoContrato: recorrencia === 'Recorrente' ? prazoContrato : '',
+    nivelDedicacao: (recorrencia === 'Recorrente' && modelo !== 'Manutenção de CRM') ? nivelDedicacao : '',
     prevFim: '',
     realFim: '',
     flag: '',
@@ -11061,11 +11099,33 @@ function buildCargaSemanal(prjsAll, semanasExt, campo, elId, titulo, rotuloColun
 //  quando a coordenadora fecha todas as etapas do ciclo atual)
 // ═══════════════════════════════════
 // Template fixo por modelo — mesma lógica de TER_NOMES_POR_MODELO no Lead Time one-time.
-// Nomes ainda são genéricos ("Etapa 1..4") até a coordenadora passar o conteúdo real de
-// cada ciclo; a cadência (semanal/mensal) e o nº de etapas já refletem o que foi combinado.
+// Etapas = rotinas de cadência SEMANAL de cada POP (as diárias e mensais de cada produto
+// não entram aqui — o ciclo desta tela é semanal; tracking diário/mensal fica pra depois
+// se a coordenadora pedir). Manutenção de CRM não varia por dedicação (rotina fixa); os
+// outros dois usam o mesmo conjunto de rotinas centrais pra qualquer nível de dedicação —
+// o que muda com a dedicação é o volume de cada entrega e a cadência de contato com o
+// cliente (ver TER_DEDICACAO_TIERS, mostrado como selo ao lado do projeto nesta tela).
 const TER_CICLO_RECORRENTE = {
-  'Manutenção de CRM':   { cadencia: 'semanal', etapas: ['Etapa 1','Etapa 2','Etapa 3','Etapa 4'] },
-  'Profissional de CRM': { cadencia: 'semanal', etapas: ['Etapa 1','Etapa 2','Etapa 3','Etapa 4'] },
+  'Manutenção de CRM': {
+    cadencia: 'semanal',
+    etapas: ['Sanitização e funil', 'Fluxos de automação', 'Backups e dados'],
+  },
+  'Profissional de CRM': {
+    cadencia: 'semanal',
+    etapas: [
+      'Limpeza de dados', 'Pipelines e etapas', 'Fluxos e automações',
+      'Integrações', 'Dashboards e relatórios', 'Segmentação de base',
+      'Suporte a Mkt/Vendas', 'Comunicação c/ cliente',
+    ],
+  },
+  'Sales Enablement': {
+    cadencia: 'semanal',
+    etapas: [
+      'Materiais de apoio à venda', 'Treinamentos/workshops', 'Métricas de performance',
+      'Playbooks e processos', 'Ferramentas de apoio', 'Alinhamento Mkt/Vendas/BI',
+      'Comunicação c/ cliente',
+    ],
+  },
 };
 function recCicloTemplate(p) {
   return TER_CICLO_RECORRENTE[p.modelo] || { cadencia: 'mensal', etapas: ['Etapa 1','Etapa 2','Etapa 3','Etapa 4'] };
@@ -11115,19 +11175,24 @@ function buildCapacityRec() {
     const tpl = recCicloTemplate(p);
     const st = recCicloState(p);
     const todasFeitas = st.etapas.every(Boolean);
+    const dedTier = terExigeDedicacao(p) ? TER_DEDICACAO_TIERS[p.nivelDedicacao] : null;
+    const dedTxt = terExigeDedicacao(p)
+      ? (dedTier ? (p.nivelDedicacao + ' · ' + dedTier.cadencia) : 'Dedicação não definida')
+      : '';
     const blocks = tpl.etapas.map((nome, si) => {
       const feito = !!st.etapas[si];
-      return '<div onclick="recCicloToggle(\'' + p.id + '\',' + si + ')" title="' + nome.replace(/"/g,'&quot;') + ' · ' + (feito?'aconteceu':'ainda não') + '" style="flex:1;min-height:34px;background:' + (feito?'var(--green)':'var(--surface3)') + ';border:1px solid ' + (feito?'var(--green)':'var(--border)') + ';border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;text-align:center;padding:3px 4px;cursor:pointer;transition:background .2s;">'
+      return '<div onclick="recCicloToggle(\'' + p.id + '\',' + si + ')" title="' + nome.replace(/"/g,'&quot;') + ' · ' + (feito?'aconteceu':'ainda não') + '" style="flex:1 1 76px;min-height:34px;background:' + (feito?'var(--green)':'var(--surface3)') + ';border:1px solid ' + (feito?'var(--green)':'var(--border)') + ';border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;text-align:center;padding:3px 4px;cursor:pointer;transition:background .2s;">'
         + '<div style="font-size:var(--fs-2xs);font-weight:700;color:' + (feito?'#fff':'var(--text-hint)') + ';line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">' + nome + '</div>'
         + '</div>';
     }).join('');
-    return '<div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border);">'
+    return '<div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;">'
       + '<div style="min-width:170px;">'
       + '<div style="font-size:var(--fs-xs);color:var(--text-hint);">' + (p.consultor||'—') + ' · ' + tpl.cadencia + '</div>'
       + '<div style="font-weight:600;color:var(--text);">' + (p.nome||'—') + '</div>'
+      + (dedTxt ? '<div style="font-size:var(--fs-2xs);font-weight:700;color:' + (dedTier?'var(--accent)':'var(--amber)') + ';">' + dedTxt + '</div>' : '')
       + '<div style="font-size:var(--fs-2xs);color:var(--text-hint);">ciclo ' + (st.num||1) + ' · desde ' + fmtD(st.inicio) + '</div>'
       + '</div>'
-      + '<div style="display:flex;gap:3px;flex:1;">' + blocks + '</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:3px;flex:1;min-width:260px;">' + blocks + '</div>'
       + '<button onclick="recCicloReiniciar(\'' + p.id + '\')" title="Fechar esse ciclo e começar o próximo"' + (todasFeitas ? '' : ' style="opacity:.4;"') + ' class="base-clear">' + icon('refresh',{size:11}) + ' Reiniciar ciclo</button>'
       + '</div>';
   }).join('');
