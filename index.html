@@ -10928,44 +10928,51 @@ function buildGanttTer() {
     const ehPontual = _ehPontual(p);
     const entregas = ehPontual ? entregasPontuais(p) : ltTerEntregas(p);
     const cor = STATUS_COLOR_TER(p);
+    const idxSemana = d => semanas.findIndex(s => d >= s && d <= new Date(s.getTime()+6*864e5));
 
-    // Etapa pendente (não marcada como feito) mais próxima — mostrada na semana de HOJE,
-    // não na semana teórica calculada por semDataPlanejadaTer. Com o checklist por bloco
-    // (Escopos One-time), o "previsto" de uma etapa atrasada podia ficar em uma semana já
-    // fora da janela visível do Gantt, e só a etapa marcada aparecia — dando a impressão de
-    // que faltavam entregas previstas. Toda etapa marcada continua no seu lugar de sempre.
-    let proximaPendenteSi = -1;
-    if (!ehPontual) {
-      for (let si = 0; si < _ltNumSemanas(p); si++) {
-        if (!(entregas[si] || {}).feito) { proximaPendenteSi = si; break; }
+    // Monta TODAS as etapas do projeto na linha do tempo, não só "a atual": as já feitas
+    // ficam na semana em que foram marcadas (histórico), e as pendentes — em ordem — são
+    // espalhadas a partir da semana de hoje, uma por semana, pulando semanas já ocupadas.
+    // Sem isso, quando o projeto está atrasado o "previsto" de todo mundo cai no passado
+    // fora da janela visível, e só a etapa marcada mais recente aparecia.
+    const badgeBySemana = {};
+    const greenBadge = (nome, tooltip) => '<div title="' + tooltip.replace(/"/g,'&quot;') + '" style="background:var(--green);color:#fff;font-size:var(--fs-3xs);font-weight:700;padding:3px 3px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + nome + '</div>';
+    const blueBadge  = (nome, tooltip) => '<div title="' + tooltip.replace(/"/g,'&quot;') + '" style="background:var(--blue);color:#fff;font-size:var(--fs-3xs);font-weight:700;padding:3px 3px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + nome + '</div>';
+
+    if (ehPontual) {
+      entregas.forEach((ent, si) => {
+        if (!ent.real) return;
+        const idx = idxSemana(parseDate(ent.real));
+        if (idx < 0 || badgeBySemana[idx] !== undefined) return;
+        const nome = ent.nome || 'Entrega ' + (si+1);
+        badgeBySemana[idx] = greenBadge(nome, nome + ' · ' + fmtD(ent.real));
+      });
+    } else {
+      const n = _ltNumSemanas(p);
+      for (let si = 0; si < n; si++) {
+        const ent = entregas[si] || {};
+        if (!ent.feito || !ent.real) continue;
+        const idx = idxSemana(parseDate(ent.real));
+        if (idx < 0) continue;
+        badgeBySemana[idx] = greenBadge(nomeEtapaTerCurto(p, si), nomeEtapaTer(p, si) + ' ✓ aconteceu · ' + fmtD(ent.real));
+      }
+      let cursor = idxSemana(hoje);
+      if (cursor < 0) cursor = 0;
+      for (let si = 0; si < n; si++) {
+        const ent = entregas[si] || {};
+        if (ent.feito) continue;
+        while (cursor < semanas.length && badgeBySemana[cursor] !== undefined) cursor++;
+        if (cursor >= semanas.length) break;
+        const plan = semDataPlanejadaTer(p, si);
+        badgeBySemana[cursor] = blueBadge(nomeEtapaTerCurto(p, si), nomeEtapaTer(p, si) + ' · pendente' + (plan ? ' (previsto ' + fmtD(plan) + ')' : ''));
+        cursor++;
       }
     }
 
-    const cells = semanas.map(s => {
+    const cells = semanas.map((s, wi) => {
       const sEnd = new Date(s.getTime() + 6*864e5);
       const naJanela = dIp <= sEnd && dFp >= s;
-      // entrega marcada como feito (ou registrada, no caso pontual) cujo "real" cai nessa
-      // semana — vira um badge colorido com o nome dentro, igual o padrão da SABER (não um
-      // pontinho com legenda embaixo).
-      let badge = '';
-      for (let si = 0; si < _ltNumSemanas(p); si++) {
-        const ent = entregas[si] || {};
-        if (!ent.real) continue;
-        const dRef = parseDate(ent.real);
-        if (!dRef || dRef < s || dRef > sEnd) continue;
-        const nome = ehPontual ? (ent.nome || 'Entrega ' + (si+1)) : nomeEtapaTerCurto(p, si);
-        const nomeCompl = ehPontual ? (ent.nome || 'Entrega ' + (si+1)) : nomeEtapaTer(p, si);
-        badge = '<div title="' + nomeCompl + ' ✓ aconteceu · ' + fmtD(ent.real) + '" style="background:var(--green);color:#fff;font-size:var(--fs-3xs);font-weight:700;padding:3px 3px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + nome + '</div>';
-        break;
-      }
-      // Nenhuma etapa feita cai nessa semana — se for a semana de hoje, mostra a próxima
-      // etapa pendente (sinaliza o que falta, mesmo que o "previsto" original já tenha passado).
-      if (!badge && proximaPendenteSi >= 0 && hoje >= s && hoje <= sEnd) {
-        const nome = nomeEtapaTerCurto(p, proximaPendenteSi);
-        const nomeCompl = nomeEtapaTer(p, proximaPendenteSi);
-        const plan = semDataPlanejadaTer(p, proximaPendenteSi);
-        badge = '<div title="' + nomeCompl + ' · próxima etapa pendente' + (plan ? ' (previsto ' + fmtD(plan) + ')' : '') + '" style="background:var(--blue);color:#fff;font-size:var(--fs-3xs);font-weight:700;padding:3px 3px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + nome + '</div>';
-      }
+      const badge = badgeBySemana[wi] || '';
       return '<td style="text-align:center;padding:4px 2px;">'
         + (naJanela && !badge ? '<div style="height:8px;background:' + cor + ';border-radius:2px;opacity:.85;"></div>' : '')
         + badge
