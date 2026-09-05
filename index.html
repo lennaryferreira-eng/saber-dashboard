@@ -918,19 +918,6 @@
     <div><h2 class="sec-title">Monetização</h2><p class="sec-desc">Receita por consultor — 2026.</p></div>
     <button class="add-project-btn" onclick="openNovaMon()">+ Nova monetização</button>
   </div>
-  <div class="mgrid mg4">
-    <div class="mcard c-gray"><div class="mlabel">Receita total 2026</div><div class="mval" id="mon-total" style="font-size:var(--fs-2xl);">R$ 0</div></div>
-    <div class="mcard c-gray"><div class="mlabel">Consultores ativos</div><div class="mval" id="mon-cons">0</div></div>
-    <div class="mcard c-gray"><div class="mlabel">Projetos monetizados</div><div class="mval" id="mon-count">0</div></div>
-    <div class="mcard c-gray"><div class="mlabel">Ticket médio</div><div class="mval" id="mon-ticket" style="font-size:var(--fs-2xl);">—</div></div>
-  </div>
-  <div class="card" style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
-    <div><div class="mlabel" style="margin-bottom:3px;">Meta anual (R$)</div><div class="mval-edit" contenteditable="true" id="mon-meta" onblur="calcMon()">A definir</div></div>
-    <div style="flex:1;min-width:180px;">
-      <div style="display:flex;justify-content:space-between;font-size:var(--fs-sm);color:var(--text-hint);margin-bottom:4px;"><span>Progresso</span><span id="mon-pct">—</span></div>
-      <div class="prog-bg" style="height:6px;"><div class="prog-fill" id="mon-meta-bar" style="width:0%;background:var(--accent)"></div></div>
-    </div>
-  </div>
   <div class="card">
     <div class="card-title">Por consultor</div>
     <div id="filter-bar-mon" class="filter-bar"></div>
@@ -8013,9 +8000,8 @@ function calcMon() {
   let projsMon = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && p.conv === 'Monetizado' && (p.monetizacoes||[]).length);
   if (consLock) projsMon = projsMon.filter(p => p.consultor === consLock);
 
-  let total = 0, count = 0, totalOT = 0, totalRec = 0;
+  let total = 0, totalOT = 0, totalRec = 0;
   const consMap = {};
-  const projetosNoFiltro = new Set();
 
   // realizado por mês/tipo (tabela de metas) — itera TODA monetização (só do consultor, se travado)
   const realPorMes = {}, realOTPorMes = {}, realRecPorMes = {};
@@ -8045,12 +8031,10 @@ function calcMon() {
   projsMon.forEach(p => {
     const eventos = (p.monetizacoes||[]).filter(eventoNoFiltro);
     if (curM && eventos.length === 0) return;
-    projetosNoFiltro.add(p.id);
 
     eventos.forEach((m, i) => {
       const vOT = monPV(m.valorOT), vRec = monPV(m.valorRec);
       total += vOT + vRec; totalOT += vOT; totalRec += vRec;
-      if (vOT > 0 || vRec > 0 || m.mesMon) count++;
       if (p.consultor) {
         if (!consMap[p.consultor]) consMap[p.consultor] = {t:0, ot:0, rec:0, n:0};
         consMap[p.consultor].n++;
@@ -8076,12 +8060,8 @@ function calcMon() {
 
   tbody.innerHTML = html || emptyRow(10, 'Nenhuma monetização registrada ainda');
 
-  set('mon-total',  BRL(totalOT + totalRec));
   const elOT = document.getElementById('mon-real-ot-val'); if (elOT) elOT.textContent = BRL(totalOT);
   const elRec = document.getElementById('mon-real-rec-val'); if (elRec) elRec.textContent = BRL(totalRec);
-  set('mon-cons',   Object.keys(consMap).filter(c=>c).length);
-  set('mon-count',  projetosNoFiltro.size);
-  set('mon-ticket', count > 0 ? BRL((totalOT + totalRec) / count) : '—');
   set('ov-mon',  BRL(total)); set('ov2-mon', BRL(total));
 
   // chips por consultor — se travado, só o próprio; senão, o squad inteiro
@@ -8103,10 +8083,14 @@ function calcMon() {
       const dot    = (window.dotColors||{})[nome] || 'var(--accent-dim)';
       const mesKey = curM?.key || '';
       const metaC  = monMetas[mesKey] || {};
-      const pctOT  = parseFloat(metaC['cons_' + nome + '_pct_ot']  || 0);
-      const pctRec = parseFloat(metaC['cons_' + nome + '_pct_rec'] || 0);
-      const metaOT  = pctOT  > 0 ? Math.round(metaMonOT  * pctOT  / 100) : (parseFloat(metaC['cons_' + nome + '_ot'])  || 0);
-      const metaRec = pctRec > 0 ? Math.round(metaMonRec * pctRec / 100) : (parseFloat(metaC['cons_' + nome + '_rec']) || 0);
+      // % de meta único por consultor — One Time e Recorrente usavam dois campos
+      // separados, mas na prática sempre saíam com o mesmo número, então virou um só
+      // (aplica pros dois). Se ainda tiver dado antigo salvo separado por OT/Rec (cadastros
+      // de antes dessa mudança) e o campo único ainda não foi preenchido, cai pro valor de
+      // OT como ponto de partida, em vez de resetar pra 0.
+      const pctUnico = parseFloat(metaC['cons_' + nome + '_pct'] ?? metaC['cons_' + nome + '_pct_ot'] ?? metaC['cons_' + nome + '_pct_rec'] ?? 0) || 0;
+      const metaOT  = pctUnico > 0 ? Math.round(metaMonOT  * pctUnico / 100) : (parseFloat(metaC['cons_' + nome + '_ot'])  || 0);
+      const metaRec = pctUnico > 0 ? Math.round(metaMonRec * pctUnico / 100) : (parseFloat(metaC['cons_' + nome + '_rec']) || 0);
       const metaTot = metaOT + metaRec;
       const realOT  = d.ot || 0;
       const realRec = d.rec || 0;
@@ -8121,14 +8105,9 @@ function calcMon() {
       const prog = pct => pct !== null
         ? '<div class="prog-bg" style="height:3px;margin-top:4px;"><div class="prog-fill" style="width:' + Math.min(100,pct) + '%;background:' + cor(pct) + ';"></div></div>'
         : '';
-      const bloco = (label, colorLabel, pctField, pctFieldKey, metaVal, realVal, pctAtg, tick) =>
+      const bloco = (label, colorLabel, metaVal, realVal, pctAtg, tick) =>
         '<div style="padding:8px 0;border-bottom:1px solid var(--border)">'
         + '<div style="font-size:var(--fs-2xs);font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:' + colorLabel + ';margin-bottom:6px;">' + label + '</div>'
-        + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">'
-        + '<span style="font-size:var(--fs-xs);color:var(--text-hint);white-space:nowrap;">% meta:</span>'
-        + '<input type="number" min="0" max="100" step="1" class="sel" style="width:52px;font-size:var(--fs-sm);text-align:center;" placeholder="0" value="' + (pctField||'') + '" onchange="saveMonMetaConsKey(\'' + mesKey + '\',\'' + pctFieldKey + '\',this)">'
-        + '<span style="font-size:var(--fs-xs);color:var(--text-hint);">%</span>'
-        + '</div>'
         + '<div style="font-size:var(--fs-xs);color:var(--text-hint);margin-bottom:3px;">Meta: <b style="color:var(--text);">' + (metaVal > 0 ? BRL(metaVal) : '—') + '</b></div>'
         + '<div style="font-size:var(--fs-sm);font-weight:600;color:' + cor(pctAtg) + ';margin-bottom:2px;">Realizado: ' + BRL(realVal) + (pctAtg !== null ? ' · ' + pctAtg + '%' : '') + '</div>'
         + '<div style="font-size:var(--fs-xs);color:var(--text-hint);margin-bottom:2px;">Ticket médio: <b style="color:var(--text-muted);">' + tick + '</b></div>'
@@ -8139,8 +8118,13 @@ function calcMon() {
         + '<div style="width:28px;height:28px;border-radius:50%;background:' + dot + ';opacity:.15;display:flex;align-items:center;justify-content:center;font-size:var(--fs-base);font-weight:700;color:var(--text);flex-shrink:0;">' + nome[0] + '</div>'
         + '<div><div style="font-size:var(--fs-md);font-weight:700;">' + nome + '</div><div style="font-size:var(--fs-xs);color:var(--text-hint);">' + nProj + ' proj.</div></div>'
         + '</div>'
-        + bloco('One Time','var(--accent)',pctOT,'cons_'+nome+'_pct_ot',metaOT,realOT,pctAtgOT,tickOT)
-        + bloco('Recorrente','var(--blue)',pctRec,'cons_'+nome+'_pct_rec',metaRec,realRec,pctAtgRec,tickRec)
+        + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border);">'
+        + '<span style="font-size:var(--fs-xs);color:var(--text-hint);white-space:nowrap;">% meta:</span>'
+        + '<input type="number" min="0" max="100" step="1" class="sel" style="width:52px;font-size:var(--fs-sm);text-align:center;" placeholder="0" value="' + (pctUnico||'') + '" onchange="saveMonMetaConsKey(\'' + mesKey + '\',\'cons_' + nome + '_pct\',this)">'
+        + '<span style="font-size:var(--fs-xs);color:var(--text-hint);">% (One Time e Recorrente)</span>'
+        + '</div>'
+        + bloco('One Time','var(--accent)',metaOT,realOT,pctAtgOT,tickOT)
+        + bloco('Recorrente','var(--blue)',metaRec,realRec,pctAtgRec,tickRec)
         + '<div style="padding-top:8px;">'
         + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">'
         + '<span style="font-size:var(--fs-2xs);font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Total</span>'
