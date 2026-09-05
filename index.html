@@ -3876,6 +3876,17 @@ function prazoVerdictMes(p) {
 // Régua: deadline = início + 52 dias. O atraso (✗) começa A PARTIR DA DATA do deadline e conta
 // em todos os meses cobertos pelo período [deadline → finalização real, ou hoje se aberto].
 // No mês da finalização real, usa o veredito real. Antes do deadline, fica no prazo (✓).
+//
+// MÊS JÁ FECHADO (mEnd < hoje): nunca mais usa "hoje" pra decidir o veredito — só a projeção
+// (deadline = início + 52 dias) e, se já existir, a finalização real. Antes disso, um projeto
+// sem "Conclusão Real"/Decolagem preenchida ficava com o veredito de meses passados recalculado
+// toda vez a partir de "hoje" (que só cresce) — quando a coordenadora enfim registrava a
+// finalização, o "endpoint" da conta mudava de "hoje" pra essa data real, e como normalmente é
+// bem mais cedo que "hoje", isso podia excluir retroativamente meses que já apareciam contados.
+// Com a projeção sozinha, o veredito de um mês fechado nunca mais muda depois — só o início do
+// projeto (que já define o deadline) ou uma finalização registrada ANTES daquele mês (projeto
+// já tinha acabado, não faz sentido contar esse mês pra ele) mexem nisso, e ambos são correções
+// de dado, não “o tempo passando”.
 function prazoStatusNoMes(p, mIdx, mAno) {
   const base = prazoStatus(p);
   if (base.ok === null || !p.inicio) return base;   // DRO/sem dados
@@ -3888,15 +3899,24 @@ function prazoStatusNoMes(p, mIdx, mAno) {
   const dFim = fim ? parseDate(fim) : null;
   // mês da finalização real → veredito real (✓ no prazo ou ✗ fora, com os dias)
   if (dFim && dFim.getMonth() === mIdx && dFim.getFullYear() === mAno) return base;
-  // atraso: o período [deadline, fim/hoje] cobre este mês?
+
+  if (mEnd < hoje) {
+    // Mês fechado — só projeção. Projeto já tinha terminado antes desse mês: nem entra na conta.
+    if (dFim && dFim < mStart) return { ok: null, dias: base.dias, html: '<span style="color:var(--text-hint)">—</span>' };
+    if (deadline > mEnd) return { ok: true, dias: base.dias, html: '<span class="badge b-green" style="margin-top:0">'+icon('check')+' em execução</span>' };
+    return { ok: false, dias: base.dias, html: '<span class="badge b-red" style="margin-top:0">'+icon('x')+' atrasado</span>' };
+  }
+
+  // Mês ainda em andamento (ou futuro) — segue acompanhando em tempo real com "hoje",
+  // igual antes, até esse mês fechar de vez.
   const endpoint = dFim || hoje;
   const overdue = (endpoint > deadline) && (deadline <= mEnd) && (endpoint >= mStart);
   if (overdue) return { ok: false, dias: base.dias, html: '<span class="badge b-red" style="margin-top:0">'+icon('x')+' atrasado</span>' };
   return { ok: true, dias: base.dias, html: '<span class="badge b-green" style="margin-top:0">'+icon('check')+' em execução</span>' };
 }
 
-// O projeto deve aparecer no card do mês mIdx/mAno?
-// = meses de execução (mesesAtivos) + mês da finalização real + meses cobertos pelo atraso.
+// O projeto deve aparecer no card do mês mIdx/mAno? Mesma trava de "mês fechado" da função
+// acima — pra não sumir/aparecer projeto do card de um mês passado só porque "hoje" mudou.
 function prazoNoMesCard(p, mIdx, mAno) {
   if (isDroFam(p) || !p.inicio) return false;
   // Interrompido (reembolso): aparece nos meses de execução até o mês do reembolso; sem meses de atraso.
@@ -3914,6 +3934,11 @@ function prazoNoMesCard(p, mIdx, mAno) {
   const fim = dataFimReal(p);
   const dFim = fim ? parseDate(fim) : null;
   if (dFim && dFim.getMonth() === mIdx && dFim.getFullYear() === mAno) return true;  // mês da finalização
+
+  if (mEnd < hoje) {
+    if (dFim && dFim < mStart) return false; // já tinha terminado antes desse mês
+    return deadline <= mEnd;                 // projeção: prazo já tinha estourado até o fim do mês?
+  }
   const endpoint = dFim || hoje;
   return (endpoint > deadline) && (deadline <= mEnd) && (endpoint >= mStart);          // mês de atraso
 }
