@@ -651,7 +651,7 @@
         <button onclick="openNovoPipeEvento()" class="add-project-btn" style="font-size:var(--fs-sm);">+ Registrar evento</button>
       </div>
     </div>
-    <p style="font-size:var(--fs-sm);color:var(--text-hint);margin:-0.5rem 0 1rem;">Histórico datado de oportunidades levantadas e propostas apresentadas — registro manual. Não altera o Pipe da Semana.</p>
+    <p style="font-size:var(--fs-sm);color:var(--text-hint);margin:-0.5rem 0 1rem;">Uma linha por oportunidade — nasce sozinha quando você registra ou avança uma etapa no Lead Time (o botão aqui é só pra lançar algo retroativo, que não passou por lá). A coluna "Histórico" mostra a evolução dela até a conversão ou não; editar etapa/contato/valor aqui reflete no Lead Time também.</p>
     <div id="pev-lista"></div>
   </div>
 
@@ -4072,11 +4072,11 @@ function buildPipeline() {
 
   // Fonte ÚNICA: as oportunidades do Lead Time (p.oportunidades) — é o que é acompanhado
   // no dia a dia. A AQL não é lida aqui diretamente; em vez disso, registrar/avançar uma
-  // oportunidade no Lead Time já GERA o evento na AQL automaticamente (ver oportSetEtapa/
-  // aqlProdutosSalvar/updPipeEvento), então não tem trabalho duplicado. Cada oportunidade
-  // aberta de cada projeto vira uma linha própria aqui — um projeto com 2 oportunidades em
-  // etapas diferentes aparece 2x, uma em cada etapa (upsell e cross-sell rodando em paralelo
-  // não são a "mesma" coisa no funil).
+  // oportunidade no Lead Time já GERA o histórico na AQL automaticamente (ver oportSetEtapa/
+  // aqlProdutosSalvar/_oportAplicarGatilhos), então não tem trabalho duplicado. Cada
+  // oportunidade aberta de cada projeto vira uma linha própria aqui — um projeto com 2
+  // oportunidades em etapas diferentes aparece 2x, uma em cada etapa (upsell e cross-sell
+  // rodando em paralelo não são a "mesma" coisa no funil).
   let oports = [];
   ativos.forEach(p => {
     oportunidadesDe(p).forEach(o => {
@@ -7760,7 +7760,7 @@ function buildPipeEventos() {
   }
   const semSel = (selSem && selSem.value !== '') ? semanas[parseInt(selSem.value)] : null;
 
-  buildPipeEventosMatriz(label, ano, consF);   // quadro semana a semana (Passo C preenche)
+  buildPipeEventosMatriz(label, ano, consF);   // quadro semana a semana (continua lendo os eventos por trás)
 
   const lista = document.getElementById('pev-lista');
   if (!lista) return;
@@ -7771,29 +7771,53 @@ function buildPipeEventos() {
     return;
   }
 
-  // lista de eventos do mês (cada evento = 1 linha; cliente pode ter várias)
-  let evs = pipeEventosDoMes(label, ano);
-  if (consF) evs = evs.filter(e => e.consultor === consF);
-  if (semSel) evs = evs.filter(e => { const d = parseDate(e.data); return d && d >= semSel.ini && d <= semSel.fim; });
-  evs.sort((a,b) => (a.data||'').localeCompare(b.data||''));
+  // Uma linha por OPORTUNIDADE (não por evento) — mostra o estado atual dela, editável ali
+  // mesmo (mesmas ações do Lead Time), com a evolução completa (histórico de quando passou
+  // por cada etapa) visível dentro da própria linha — em vez de duplicar registro a cada
+  // mudança de etapa. Filtra pelo mês em que a oportunidade foi LEVANTADA (criadaEm).
+  const mesIdxAtual = (_MES_ORDEM[label] || 0) - 1;
+  let linhas = [];
+  projects.forEach(p => {
+    if (isDroFam(p)) return;
+    if (consF && p.consultor !== consF) return;
+    oportunidadesDe(p).forEach(o => {
+      const d = parseDate(o.criadaEm);
+      if (!d || d.getMonth() !== mesIdxAtual || d.getFullYear() !== ano) return;
+      if (semSel && !(d >= semSel.ini && d <= semSel.fim)) return;
+      linhas.push({ p, o });
+    });
+  });
+  linhas.sort((a,b) => (a.o.criadaEm||'').localeCompare(b.o.criadaEm||''));
 
-  if (!evs.length) {
-    lista.innerHTML = '<div class="tbl-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>Projeto</th><th>Consultor</th><th>Valores (OT / Rec)</th><th>Escopo / Obs</th><th>Reunião</th><th></th></tr></thead><tbody>' + emptyRow(8, 'Nenhum evento registrado em ' + (label||'—')) + '</tbody></table></div>';
+  const THEAD = '<tr><th>Criada em</th><th>Projeto</th><th>Consultor</th><th>Etapa</th><th>Próx. contato</th><th>Valores (OT / Rec)</th><th>Histórico</th><th>Status</th><th></th></tr>';
+  if (!linhas.length) {
+    lista.innerHTML = '<div class="tbl-wrap"><table><thead>' + THEAD + '</thead><tbody>' + emptyRow(9, 'Nenhuma oportunidade levantada em ' + (label||'—')) + '</tbody></table></div>';
     return;
   }
-  const tipoSel = (e) => `<select class="sel" style="font-size:var(--fs-xs);width:118px;color:${PEV_COR[e.tipo]||'var(--text)'};font-weight:600;" onchange="updPipeEvento('${e.projId}','${e.id}','tipo',this.value)">`
-    + ['Oportunidade','Proposta'].map(t => `<option ${e.tipo===t?'selected':''}>${t}</option>`).join('') + '</select>';
-  const rows = evs.map(e => `<tr>
-    <td><input type="date" class="sel" style="font-size:var(--fs-xs);width:120px;" value="${dv(e.data)}" onchange="updPipeEvento('${e.projId}','${e.id}','data',this.value)"></td>
-    <td>${tipoSel(e)}</td>
-    <td>${e.nome||'—'}</td>
-    <td>${e.consultor||'—'}</td>
-    <td style="white-space:nowrap;"><input class="sel" style="font-size:var(--fs-xs);width:78px;" placeholder="OT" value="${dv(e.valorOT)}" onblur="updPipeEvento('${e.projId}','${e.id}','valorOT',this.value)"> <input class="sel" style="font-size:var(--fs-xs);width:78px;" placeholder="Rec" value="${dv(e.valorRec)}" onblur="updPipeEvento('${e.projId}','${e.id}','valorRec',this.value)"></td>
-    <td><input class="sel" style="font-size:var(--fs-xs);width:160px;" placeholder="—" value="${(dv(e.escopo)+(e.obs?(' · '+e.obs):'')).replace(/"/g,'&quot;')}" onblur="updPipeEvento('${e.projId}','${e.id}','escopo',this.value)"></td>
-    <td style="text-align:center;"><input type="checkbox" ${e.reuniaoFeita?'checked':''} title="Reunião feita" onchange="updPipeEvento('${e.projId}','${e.id}','reuniaoFeita',this.checked)" style="accent-color:var(--green);width:16px;height:16px;cursor:pointer;"></td>
-    <td style="text-align:center;"><button class="sel" style="font-size:var(--fs-base);line-height:1;padding:3px 8px;cursor:pointer;color:var(--text-hint);" title="Remover" onclick="delPipeEvento('${e.projId}','${e.id}')">${icon('x')}</button></td>
-  </tr>`).join('');
-  lista.innerHTML = '<div class="tbl-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>Projeto</th><th>Consultor</th><th>Valores (OT / Rec)</th><th>Escopo / Obs</th><th>Reunião</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  const oCoresReg = {'Mapeado (AQL)':'var(--blue)','Apresentar proposta (SQL)':'var(--blue)','Proposta apresentada (SAL)':'var(--amber)','Follow (COMMIT)':'var(--green)'};
+  const rows = linhas.map(({p, o}) => {
+    const cor = oCoresReg[o.etapa] || 'var(--text-hint)';
+    const historico = (p.pipeEventos||[]).filter(e => e.linkOportId === o.id).sort((a,b)=>(a.data||'').localeCompare(b.data||''));
+    const historicoTxt = historico.length
+      ? historico.map(e => (e.tipo==='Proposta'?'SQL':'AQL') + ' ' + fmtD(e.data) + (e.reuniaoFeita?' ✓ reunião':'')).join(' → ')
+      : '—';
+    const statusTxt = o.fechadaEm ? ('Encerrada ' + fmtD(o.fechadaEm)) : 'Aberta';
+    return `<tr>
+      <td style="white-space:nowrap;font-size:var(--fs-xs);color:var(--text-hint);">${fmtD(o.criadaEm)}</td>
+      <td>${p.nome||'—'}</td>
+      <td>${p.consultor||'—'}</td>
+      <td><select class="sel" style="font-size:var(--fs-xs);width:150px;color:${cor};font-weight:600;" onchange="oportSetEtapa(${p.id},'${o.id}',this.value)">${ETAPAS_OPORT.map(e=>`<option ${o.etapa===e?'selected':''}>${e}</option>`).join('')}</select></td>
+      <td><input type="date" class="sel" style="font-size:var(--fs-xs);width:120px;" value="${dv(o.proximoContato)}" onchange="oportSetCampo(${p.id},'${o.id}','proximoContato',this.value)"></td>
+      <td style="white-space:nowrap;"><input class="sel" style="font-size:var(--fs-xs);width:78px;" placeholder="OT" value="${dv(o.valorOT)}" onblur="oportSetCampo(${p.id},'${o.id}','valorOT',this.value)"> <input class="sel" style="font-size:var(--fs-xs);width:78px;" placeholder="Rec" value="${dv(o.valorRec)}" onblur="oportSetCampo(${p.id},'${o.id}','valorRec',this.value)"></td>
+      <td style="font-size:var(--fs-2xs);color:var(--text-hint);white-space:nowrap;">${historicoTxt}</td>
+      <td style="font-size:var(--fs-xs);font-weight:600;color:${o.fechadaEm?'var(--text-hint)':'var(--green)'};white-space:nowrap;">${statusTxt}</td>
+      <td style="text-align:center;white-space:nowrap;">
+        ${o.fechadaEm ? '' : `<button class="sel" style="font-size:var(--fs-base);line-height:1;padding:3px 6px;cursor:pointer;color:var(--text-hint);" title="Encerrar" onclick="oportFechar(${p.id},'${o.id}')">${icon('check')}</button>`}
+        <button class="sel" style="font-size:var(--fs-base);line-height:1;padding:3px 6px;cursor:pointer;color:var(--text-hint);" title="Excluir" onclick="oportRemover(${p.id},'${o.id}')">${icon('x')}</button>
+      </td>
+    </tr>`;
+  }).join('');
+  lista.innerHTML = '<div class="tbl-wrap"><table><thead>' + THEAD + '</thead><tbody>' + rows + '</tbody></table></div>';
 }
 
 // Passo C — quadro de controle semana a semana (semana × consultor × tipo)
@@ -7845,62 +7869,6 @@ function buildPipeEventosMatriz(label, ano, consF) {
     + '<tr style="border-top:2px solid var(--border);">' + totRow + '</tr></tbody></table></div>';
 }
 
-// Sincroniza a oportunidade principal do Lead Time sempre que um evento de AQL/Proposta é
-// criado manualmente na aba AQL — Proposta -> "Apresentar proposta (SQL)", Oportunidade ->
-// "Mapeado (AQL)". Registro manual não escolhe qual oportunidade do projeto está afetando
-// (não tem como saber, se houver mais de uma aberta), então usa/cria a principal.
-function syncLeadTimeFromAqlEvento(p, ev) {
-  if (!p || !ev) return;
-  const etapaAlvo = ev.tipo === 'Proposta' ? 'Apresentar proposta (SQL)' : 'Mapeado (AQL)';
-  let o = oportPrincipal(p);
-  if (!o) {
-    o = {
-      id: oportNovaId(), etapa: etapaAlvo, proximoContato: '', valorOT: '', valorRec: '',
-      produtos: [], propostaAgendada: '', dataProposta: '',
-      criadaEm: new Date().toISOString().slice(0,10), fechadaEm: '',
-    };
-    oportunidadesDe(p).push(o);
-  } else {
-    o.etapa = etapaAlvo;
-  }
-  ev.linkOportId = o.id;
-  if (ev.escopo) p.escopos = ev.escopo;
-  if (ev.data) o.proximoContato = ev.data;
-  sincronizarOportMirror(p);
-}
-
-function addPipeEventoObj(projId, ev) {
-  const p = projects.find(x => String(x.id) === String(projId));
-  if (!p) return null;
-  ensurePipeEventos(p);
-  const novo = novoPipeEvento(ev);
-  p.pipeEventos.push(novo);
-  syncLeadTimeFromAqlEvento(p, novo);
-  return p;
-}
-function delPipeEvento(projId, evId) {
-  const p = projects.find(x => String(x.id) === String(projId));
-  if (!p || !Array.isArray(p.pipeEventos)) return;
-  p.pipeEventos = p.pipeEventos.filter(e => String(e.id) !== String(evId));
-  buildAql(); upd();
-}
-function updPipeEvento(projId, evId, field, val) {
-  const p = projects.find(x => String(x.id) === String(projId));
-  if (!p || !Array.isArray(p.pipeEventos)) return;
-  const e = p.pipeEventos.find(x => String(x.id) === String(evId));
-  if (!e) return;
-  e[field] = val;
-  // Marcar "Reunião feita" numa Proposta avança essa oportunidade sozinha pra "Proposta
-  // apresentada (SAL)" — evita ter que atualizar a AQL e o Lead Time separadamente. Usa a
-  // oportunidade ligada a esse evento (linkOportId); eventos antigos, de antes da lista
-  // existir, caem na principal do projeto.
-  if (field === 'reuniaoFeita' && val === true && e.tipo === 'Proposta') {
-    const o = (e.linkOportId && oportunidadesDe(p).find(x => x.id === e.linkOportId)) || oportPrincipal(p);
-    if (o) { o.etapa = 'Proposta apresentada (SAL)'; sincronizarOportMirror(p); }
-  }
-  buildAql(); upd();
-}
-
 // Modal
 function openNovoPipeEvento() {
   const dl = document.getElementById('pev-proj-list');
@@ -7916,6 +7884,10 @@ function openNovoPipeEvento() {
   setTimeout(() => document.getElementById('pev-proj')?.focus(), 50);
 }
 function closeNovoPipeEvento() { const m = document.getElementById('modal-pipe-evento'); if (m) m.style.display = 'none'; }
+// Registro manual — usado quando a oportunidade não passou pelo Lead Time (ex: lançar algo
+// retroativo). Cria uma oportunidade de verdade em oportunidades[] (não um evento solto) —
+// mesma régua de tudo o mais: uma linha por oportunidade, com histórico embutido, editável
+// dali em diante pelo Lead Time ou por essa própria lista.
 function confirmNovoPipeEvento() {
   const err = document.getElementById('pev-erro');
   const showErr = msg => { if (err) { err.textContent = msg; err.style.display='block'; } };
@@ -7923,18 +7895,28 @@ function confirmNovoPipeEvento() {
   if (!p) return showErr('Selecione um projeto válido da lista.');
   const data = document.getElementById('pev-data').value;
   if (!data) return showErr('Informe a data do evento.');
-  addPipeEventoObj(p.id, {
-    tipo: document.getElementById('pev-tipo').value,
-    data: data,
-    valorOT: document.getElementById('pev-ot').value.trim(),
-    valorRec: document.getElementById('pev-rec').value.trim(),
-    escopo: document.getElementById('pev-escopo').value.trim(),
-    obs: document.getElementById('pev-obs').value.trim()
-  });
+  const tipo = document.getElementById('pev-tipo').value;
+  const etapaAlvo = tipo === 'Proposta' ? 'Apresentar proposta (SQL)' : 'Mapeado (AQL)';
+  const valorOT = document.getElementById('pev-ot').value.trim();
+  const valorRec = document.getElementById('pev-rec').value.trim();
+  const escopo = document.getElementById('pev-escopo').value.trim();
+
+  const o = {
+    id: oportNovaId(), etapa: etapaAlvo, proximoContato: '', valorOT, valorRec,
+    produtos: [], propostaAgendada: '', dataProposta: '',
+    criadaEm: data, fechadaEm: '',
+  };
+  oportunidadesDe(p).push(o);
+  if (escopo) p.escopos = escopo;
+  _oportAplicarGatilhos(p, o, null, data);
+  sincronizarOportMirror(p);
+
   closeNovoPipeEvento();
   // garante que o mês exibido no filtro seja o do evento criado
   const dt = parseDate(data);
   if (dt) { const mm = ALL_MESES.find(x => x.idx === dt.getMonth() && x.ano === dt.getFullYear()); if (mm) filters['aql'] = mm.key; }
+  buildLeadTime();
+  if (document.getElementById('pipe-funil')) buildPipeline();
   buildAql(); upd();
 }
 
@@ -9357,12 +9339,13 @@ function oportAdicionar(projId) {
 // Compartilhado entre oportSetEtapa (dropdown no Lead Time) e aqlProdutosSalvar (pop-up de
 // produtos) — os dois precisam do mesmo comportamento pra não duplicar/perder registro
 // conforme o caminho usado pra mudar a etapa.
-function _oportAplicarGatilhos(p, o, etapaAnterior) {
+function _oportAplicarGatilhos(p, o, etapaAnterior, dataEvento) {
+  const hoje = dataEvento || new Date().toISOString().slice(0,10);
   ensurePipeEventos(p);
   if (o.etapa === 'Mapeado (AQL)' && etapaAnterior !== 'Mapeado (AQL)') {
     const jaTem = p.pipeEventos.some(e => e.linkOportId === o.id && e.tipo === 'Oportunidade');
     if (!jaTem) p.pipeEventos.push(novoPipeEvento({
-      tipo: 'Oportunidade', data: new Date().toISOString().slice(0,10), origem: 'auto',
+      tipo: 'Oportunidade', data: hoje, origem: 'auto',
       valorOT: o.valorOT, valorRec: o.valorRec, escopo: p.escopos || '',
       obs: 'Gerado pelo Lead Time', linkOportId: o.id,
     }));
@@ -9370,7 +9353,7 @@ function _oportAplicarGatilhos(p, o, etapaAnterior) {
   if (o.etapa === 'Apresentar proposta (SQL)' && etapaAnterior !== 'Apresentar proposta (SQL)') {
     const jaTem = p.pipeEventos.some(e => e.linkOportId === o.id && e.tipo === 'Proposta');
     if (!jaTem) p.pipeEventos.push(novoPipeEvento({
-      tipo: 'Proposta', data: new Date().toISOString().slice(0,10), origem: 'auto',
+      tipo: 'Proposta', data: hoje, origem: 'auto',
       valorOT: o.valorOT, valorRec: o.valorRec, escopo: p.escopos || '',
       obs: 'Gerado pelo Lead Time', linkOportId: o.id,
     }));
