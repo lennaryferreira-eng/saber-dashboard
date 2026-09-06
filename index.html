@@ -9348,7 +9348,37 @@ function _oportRefresh(p) {
 // só entra na lista de verdade quando ela salva (cancelar não cria nada).
 function oportAdicionar(projId) {
   _aqlProdIsNovo = true;
-  aqlAbrirProdutos(projId, null, null);
+  aqlAbrirProdutos(projId, null, null, true);
+}
+
+// Gatilhos de registro na AQL — mesma régua de antes (GATILHOS/registrarEventoDoLeadTime),
+// agora por oportunidade em vez de por projeto, e só na TRANSIÇÃO de etapa (não a cada
+// edição de próximo contato, que era o motivo do registro automático ter sido desligado).
+// Compartilhado entre oportSetEtapa (dropdown no Lead Time) e aqlProdutosSalvar (pop-up de
+// produtos) — os dois precisam do mesmo comportamento pra não duplicar/perder registro
+// conforme o caminho usado pra mudar a etapa.
+function _oportAplicarGatilhos(p, o, etapaAnterior) {
+  ensurePipeEventos(p);
+  if (o.etapa === 'Mapeado (AQL)' && etapaAnterior !== 'Mapeado (AQL)') {
+    const jaTem = p.pipeEventos.some(e => e.linkOportId === o.id && e.tipo === 'Oportunidade');
+    if (!jaTem) p.pipeEventos.push(novoPipeEvento({
+      tipo: 'Oportunidade', data: new Date().toISOString().slice(0,10), origem: 'auto',
+      valorOT: o.valorOT, valorRec: o.valorRec, escopo: p.escopos || '',
+      obs: 'Gerado pelo Lead Time', linkOportId: o.id,
+    }));
+  }
+  if (o.etapa === 'Apresentar proposta (SQL)' && etapaAnterior !== 'Apresentar proposta (SQL)') {
+    const jaTem = p.pipeEventos.some(e => e.linkOportId === o.id && e.tipo === 'Proposta');
+    if (!jaTem) p.pipeEventos.push(novoPipeEvento({
+      tipo: 'Proposta', data: new Date().toISOString().slice(0,10), origem: 'auto',
+      valorOT: o.valorOT, valorRec: o.valorRec, escopo: p.escopos || '',
+      obs: 'Gerado pelo Lead Time', linkOportId: o.id,
+    }));
+  }
+  if (o.etapa === 'Proposta apresentada (SAL)' && etapaAnterior !== 'Proposta apresentada (SAL)') {
+    const ev = p.pipeEventos.find(e => e.linkOportId === o.id && e.tipo === 'Proposta');
+    if (ev) ev.reuniaoFeita = true;
+  }
 }
 
 function oportSetEtapa(projId, opId, etapa) {
@@ -9356,25 +9386,12 @@ function oportSetEtapa(projId, opId, etapa) {
   if (!p) return;
   const o = oportunidadesDe(p).find(x => x.id === opId);
   if (!o) return;
-  if (etapa === 'Mapeado (AQL)') { _aqlProdIsNovo = false; aqlAbrirProdutos(projId, null, opId); return; }
+  // Selecionar "Mapeado (AQL)" sempre passa pelo pop-up de produtos, novo ou não — é onde
+  // ela escolhe os produtos e diz se a proposta já tem data (o que já avança pra SQL sozinho).
+  if (etapa === 'Mapeado (AQL)') { _aqlProdIsNovo = false; aqlAbrirProdutos(projId, null, opId, true); return; }
   const etapaAnterior = o.etapa;
   o.etapa = etapa;
-  ensurePipeEventos(p);
-  // Gatilhos de registro na AQL — mesma régua de antes (GATILHOS/registrarEventoDoLeadTime),
-  // agora por oportunidade em vez de por projeto, e só na TRANSIÇÃO de etapa (não a cada
-  // edição de próximo contato, que era o motivo do registro automático ter sido desligado).
-  if (etapa === 'Apresentar proposta (SQL)' && etapaAnterior !== 'Apresentar proposta (SQL)') {
-    const jaTem = p.pipeEventos.some(e => e.linkOportId === opId && e.tipo === 'Proposta');
-    if (!jaTem) p.pipeEventos.push(novoPipeEvento({
-      tipo: 'Proposta', data: new Date().toISOString().slice(0,10), origem: 'auto',
-      valorOT: o.valorOT, valorRec: o.valorRec, escopo: p.escopos || '',
-      obs: 'Gerado pelo Lead Time', linkOportId: opId,
-    }));
-  }
-  if (etapa === 'Proposta apresentada (SAL)') {
-    const ev = p.pipeEventos.find(e => e.linkOportId === opId && e.tipo === 'Proposta');
-    if (ev) ev.reuniaoFeita = true;
-  }
+  _oportAplicarGatilhos(p, o, etapaAnterior);
   _oportRefresh(p);
 }
 
@@ -9415,11 +9432,16 @@ function oportunidadesHTML(p) {
   const oCores = {'Mapeado (AQL)':'var(--blue)','Apresentar proposta (SQL)':'var(--blue)','Proposta apresentada (SAL)':'var(--amber)','Follow (COMMIT)':'var(--green)'};
   const cards = abertas.map(o => {
     const cor = oCores[o.etapa] || 'var(--text-hint)';
-    const resumoProdutos = o.etapa === 'Mapeado (AQL)'
-      ? '<button type="button" onclick="aqlAbrirProdutos(' + p.id + ',null,\'' + o.id + '\')" style="display:block;margin-bottom:4px;background:none;border:none;padding:0;color:var(--accent);text-decoration:underline;cursor:pointer;font-size:var(--fs-3xs);text-align:left;">'
-        + (Array.isArray(o.produtos) && o.produtos.length ? (o.produtos.length + ' produto' + (o.produtos.length!==1?'s':'')) : 'sem produtos')
-        + '</button>'
-      : '';
+    // Sempre visível, não só em "Mapeado (AQL)" — os produtos oferecidos continuam relevantes
+    // depois que a oportunidade avança (SQL/SAL/COMMIT); escondiam ao mudar de etapa, dando a
+    // impressão de que a seleção tinha sumido, quando só o link de edição é que desaparecia.
+    const partesResumo = [Array.isArray(o.produtos) && o.produtos.length ? (o.produtos.length + ' produto' + (o.produtos.length!==1?'s':'')) : 'sem produtos'];
+    if (o.propostaAgendada === 'sim' && o.dataProposta) {
+      const dpp = parseDate(o.dataProposta);
+      partesResumo.push('proposta ' + (dpp ? dpp.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'}) : o.dataProposta));
+    } else if (o.propostaAgendada === 'nao') partesResumo.push('sem data');
+    const resumoProdutos = '<button type="button" onclick="aqlAbrirProdutos(' + p.id + ',null,\'' + o.id + '\',false)" title="Editar produtos da oportunidade" style="display:block;margin-bottom:4px;background:none;border:none;padding:0;color:var(--accent);text-decoration:underline;cursor:pointer;font-size:var(--fs-3xs);text-align:left;">'
+      + partesResumo.join(' · ') + '</button>';
     return '<div style="background:var(--surface2);border:1px solid var(--border);border-left:3px solid ' + cor + ';border-radius:var(--r-sm);padding:6px 7px;margin-bottom:5px;">'
       + '<div style="display:flex;align-items:center;gap:3px;margin-bottom:4px;">'
       + '<select class="sel" style="font-size:var(--fs-2xs);flex:1;padding:2px 3px;min-width:0;" onchange="oportSetEtapa(' + p.id + ',\'' + o.id + '\',this.value)">'
@@ -9455,12 +9477,18 @@ let _aqlProdSel = new Set();      // produtos marcados no pop-up aberto
 let _aqlProdProjId = null;        // projeto sendo editado
 let _aqlProdOportId = null;       // id da oportunidade sendo editada (null = criando uma nova)
 let _aqlProdIsNovo = false;       // true = essa oportunidade ainda não existe em oportunidades[]
+// true = essa abertura veio de selecionar "Mapeado (AQL)" no dropdown de etapa (quer MUDAR
+// a etapa pra Mapeado, ou até adiantar pra SQL se a proposta já tiver data); false = só
+// editando os produtos de uma oportunidade já existente pelo link de resumo — nesse caso a
+// etapa atual dela (SQL/SAL/COMMIT) não pode ser mexida, só os produtos/data da proposta.
+let _aqlProdMudarEtapa = true;
 
-function aqlAbrirProdutos(id, sel, opId) {
+function aqlAbrirProdutos(id, sel, opId, mudarEtapa) {
   const p = projects.find(x => String(x.id) === String(id));
   if (!p) return;
   _aqlProdProjId = id;
   _aqlProdOportId = opId || null;
+  _aqlProdMudarEtapa = mudarEtapa !== false;
   const o = opId ? oportunidadesDe(p).find(x => x.id === opId) : null;
   _aqlProdSel = new Set(o && Array.isArray(o.produtos) ? o.produtos : []);
 
@@ -9561,23 +9589,35 @@ function aqlProdutosSalvar() {
   const produtos = [..._aqlProdSel];
   const propostaAgendada = sel.value;
   const dataProposta = sel.value === 'sim' ? (dt?.value || '') : '';
+  // Se a proposta já tem data marcada, não faz sentido a oportunidade ficar em "Mapeado" —
+  // ela já avança direto pra "Apresentar proposta (SQL)", com o próximo contato do card já
+  // vindo preenchido com essa data.
+  const etapaResultante = propostaAgendada === 'sim' ? 'Apresentar proposta (SQL)' : 'Mapeado (AQL)';
 
+  let o, etapaAnterior;
   if (_aqlProdIsNovo) {
-    const nova = {
-      id: oportNovaId(), etapa: 'Mapeado (AQL)', proximoContato: '', valorOT: '', valorRec: '',
-      produtos, propostaAgendada, dataProposta,
+    o = {
+      id: oportNovaId(), etapa: etapaResultante,
+      proximoContato: etapaResultante === 'Apresentar proposta (SQL)' ? dataProposta : '',
+      valorOT: '', valorRec: '', produtos, propostaAgendada, dataProposta,
       criadaEm: new Date().toISOString().slice(0,10), fechadaEm: '',
     };
-    oportunidadesDe(p).push(nova);
-    ensurePipeEventos(p);
-    p.pipeEventos.push(novoPipeEvento({
-      tipo: 'Oportunidade', data: new Date().toISOString().slice(0,10), origem: 'auto',
-      obs: 'Gerado pelo Lead Time', linkOportId: nova.id,
-    }));
+    etapaAnterior = null;
+    oportunidadesDe(p).push(o);
   } else {
-    const o = oportunidadesDe(p).find(x => x.id === _aqlProdOportId);
-    if (o) { o.etapa = 'Mapeado (AQL)'; o.produtos = produtos; o.propostaAgendada = propostaAgendada; o.dataProposta = dataProposta; }
+    o = oportunidadesDe(p).find(x => x.id === _aqlProdOportId);
+    if (!o) { aqlProdutosFechar(); return; }
+    o.produtos = produtos; o.propostaAgendada = propostaAgendada; o.dataProposta = dataProposta;
+    // Só mexe na etapa se essa abertura veio de fato pra MUDAR a etapa (dropdown) — editando
+    // produtos pelo link de resumo (mudarEtapa=false) numa oportunidade já em SQL/SAL/COMMIT,
+    // isso não deve rebaixar ela de volta pra Mapeado.
+    etapaAnterior = o.etapa;
+    if (_aqlProdMudarEtapa) {
+      o.etapa = etapaResultante;
+      if (etapaResultante === 'Apresentar proposta (SQL)') o.proximoContato = dataProposta || o.proximoContato;
+    }
   }
+  _oportAplicarGatilhos(p, o, etapaAnterior);
 
   aqlProdutosFechar();
   _oportRefresh(p);
@@ -9599,6 +9639,7 @@ function aqlProdutosFechar() {
   _aqlProdProjId = null;
   _aqlProdOportId = null;
   _aqlProdIsNovo = false;
+  _aqlProdMudarEtapa = true;
 }
 
 // Caixinha de status do reembolso (Concedido/Revertido) — só existe enquanto tiver uma data de
