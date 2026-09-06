@@ -978,13 +978,12 @@
       <option>Monetizado</option>
       <option>Não monetizado</option>
     </select>
-    <span class="base-filter-label">Oportunidade</span>
-<span class="base-filter-label">Mês Mon.</span>
+    <span class="base-filter-label">Mês Mon.</span>
     <select class="base-sel" id="lt-f-mesmon" onchange="buildLeadTime()"><option value="">Todos</option></select>
     <span class="base-filter-label">Oportunidade</span>
     <select class="base-sel" id="lt-f-oport" onchange="buildLeadTime()">
           <option value="">Todas</option>
-          <option>Mapeado</option><option>Proposta feita</option><option>Follow</option><option>Sem oportunidade</option>
+          <option>Mapeado (AQL)</option><option>Apresentar proposta (SQL)</option><option>Proposta apresentada (SAL)</option><option>Follow (COMMIT)</option>
         </select>
         <span class="base-filter-label">Mês início</span>
         <select class="base-sel" id="lt-f-mes" onchange="buildLeadTime()"><option value="">Todos</option></select>
@@ -1014,14 +1013,11 @@
           <th style="min-width:260px;">Progresso</th>
           <th style="min-width:80px;">Flag</th>
           <th style="min-width:290px;">Score entrega</th>
-          <th style="min-width:130px;">Oportunidade</th>
+          <th style="min-width:180px;">Oportunidades</th>
           <th style="min-width:160px;">Escopos One-time</th>
           <th style="min-width:160px;">Escopos Recorrente</th>
           <th style="min-width:130px;">Conversão</th>
           <th style="min-width:130px;">Motivo perda</th>
-          <th style="min-width:110px;">Próx. Contato</th>
-          <th style="min-width:110px;">Valor prev. OT</th>
-          <th style="min-width:110px;">Valor prev. Rec</th>
         </tr>
       </thead>
       <tbody id="lt-tbody"></tbody>
@@ -1496,8 +1492,8 @@
     </div>
   </div>
 </div>
-<!-- Produtos da oportunidade (AQL). Abre quando a coordenadora marca "Mapeado (AQL)" no
-     dropdown de Oportunidade da tabela do Lead Time — ver ltOportChange/aqlAbrirProdutos. -->
+<!-- Produtos da oportunidade (AQL). Abre quando uma oportunidade (nova ou existente) entra
+     em "Mapeado (AQL)" no Lead Time — ver oportSetEtapa/oportAdicionar/aqlAbrirProdutos. -->
 <div class="modal-overlay" id="modal-aql-produtos" onclick="if(event.target===this)aqlProdutosCancelar()">
   <div class="modal-box" style="max-width:600px;max-height:88vh;display:flex;flex-direction:column;" role="dialog" aria-modal="true" aria-labelledby="aql-prod-titulo">
     <div class="modal-header">
@@ -4056,48 +4052,57 @@ function buildPipeline() {
   const el = document.getElementById('pipe-funil');
   if (!el) return;
 
-  // base: qualquer projeto (não-DRO) Em andamento OU com oportunidade definida.
+  // base: qualquer projeto (não-DRO) Em andamento OU com pelo menos uma oportunidade aberta.
   // Inclui monetizados e projetos em decolagem — eles ainda podem ter oportunidade aberta (upsell/cross-sell).
   let ativos = projects.filter(p => {
     if (isDroFam(p)) return false;
-    const temOport = p.oport && p.oport !== '—' && p.oport !== '' && p.oport !== 'Sem oportunidade';
-    return calcStatus2(p) === 'Em andamento' || temOport;
+    return calcStatus2(p) === 'Em andamento' || oportunidadesDe(p).some(o => !o.fechadaEm);
   });
   if (consFilter) ativos = ativos.filter(p => p.consultor === consFilter);
   if (designerFilterPipe) ativos = ativos.filter(p => p.designer === designerFilterPipe);
-  if (fOport) ativos = ativos.filter(p => p.oport === fOport);
-  if (curMes) ativos = ativos.filter(p => {
-    const d = parseDate(p.proximoContato);
+  if (curMes) ativos = ativos.filter(p => oportunidadesDe(p).some(o => {
+    if (o.fechadaEm) return false;
+    const d = parseDate(o.proximoContato);
     return d && d.getMonth() === curMes.idx && d.getFullYear() === curMes.ano;
-  });
+  }));
 
-  const oEtapas = ['Mapeado (AQL)','Apresentar proposta (SQL)','Proposta apresentada (SAL)','Follow (COMMIT)'];
+  const oEtapas = ETAPAS_OPORT;
   function parseVal(v) { const n = parseFloat((v||'').replace(/\./g,'').replace(',','.')); return isNaN(n) ? 0 : n; }
   const stageIdx = o => oEtapas.indexOf(o);
 
-  // Fonte ÚNICA: o campo Oportunidade do Lead Time (p.oport) — é o que é acompanhado no
-  // dia a dia. A AQL não é lida aqui diretamente; em vez disso, registrar um evento na AQL
-  // (ou marcar "Reunião feita") já ATUALIZA esse campo automaticamente (ver
-  // syncLeadTimeFromAqlEvento / updPipeEvento), então não tem trabalho duplicado.
-  let oports = ativos.filter(p => oEtapas.includes(p.oport));
-  const hasOT  = p => !!p.escopos    || parseVal(p.valorOport)    > 0;
-  const hasRec = p => !!p.escoposRec || parseVal(p.valorOportRec) > 0;
+  // Fonte ÚNICA: as oportunidades do Lead Time (p.oportunidades) — é o que é acompanhado
+  // no dia a dia. A AQL não é lida aqui diretamente; em vez disso, registrar/avançar uma
+  // oportunidade no Lead Time já GERA o evento na AQL automaticamente (ver oportSetEtapa/
+  // aqlProdutosSalvar/updPipeEvento), então não tem trabalho duplicado. Cada oportunidade
+  // aberta de cada projeto vira uma linha própria aqui — um projeto com 2 oportunidades em
+  // etapas diferentes aparece 2x, uma em cada etapa (upsell e cross-sell rodando em paralelo
+  // não são a "mesma" coisa no funil).
+  let oports = [];
+  ativos.forEach(p => {
+    oportunidadesDe(p).forEach(o => {
+      if (o.fechadaEm || !oEtapas.includes(o.etapa)) return;
+      oports.push({ p, o });
+    });
+  });
+  if (fOport) oports = oports.filter(r => r.o.etapa === fOport);
+  const hasOT  = r => !!r.p.escopos    || parseVal(r.o.valorOT)  > 0;
+  const hasRec = r => !!r.p.escoposRec || parseVal(r.o.valorRec) > 0;
   if (fTipo === 'ot')  oports = oports.filter(hasOT);
   if (fTipo === 'rec') oports = oports.filter(hasRec);
 
   // Funil reverso / cumulativo: cada etapa conta quem está NELA OU ALÉM
   const corEtapa = ['var(--blue)','var(--blue)','var(--amber)','var(--green)'];
   const etapas = oEtapas.map((label, i) => {
-    const prjs = oports.filter(p => stageIdx(p.oport) >= i);
+    const rs = oports.filter(r => stageIdx(r.o.etapa) >= i);
     return {
-      label, count: prjs.length, cor: corEtapa[i],
-      valOT:  prjs.reduce((a,p)=> a + parseVal(p.valorOport), 0),
-      valRec: prjs.reduce((a,p)=> a + parseVal(p.valorOportRec), 0),
+      label, count: rs.length, cor: corEtapa[i],
+      valOT:  rs.reduce((a,r)=> a + parseVal(r.o.valorOT), 0),
+      valRec: rs.reduce((a,r)=> a + parseVal(r.o.valorRec), 0),
     };
   });
   const maxC  = Math.max(...etapas.map(e => e.count), 1);
-  const totOT  = oports.reduce((a,p)=> a + parseVal(p.valorOport), 0);
-  const totRec = oports.reduce((a,p)=> a + parseVal(p.valorOportRec), 0);
+  const totOT  = oports.reduce((a,r)=> a + parseVal(r.o.valorOT), 0);
+  const totRec = oports.reduce((a,r)=> a + parseVal(r.o.valorRec), 0);
 
 
   const barAtivos = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">'
@@ -4128,24 +4133,25 @@ function buildPipeline() {
     + '</div>' : '';
 
   const oColors = {'Mapeado (AQL)':'var(--blue)','Apresentar proposta (SQL)':'var(--blue)','Proposta apresentada (SAL)':'var(--amber)','Follow (COMMIT)':'var(--green)'};
-  const rows = oports.slice().sort((a,b)=> (stageIdx(b.oport)-stageIdx(a.oport)) || (a.nome||'').localeCompare(b.nome||''));
+  const rows = oports.slice().sort((a,b)=> (stageIdx(b.o.etapa)-stageIdx(a.o.etapa)) || (a.p.nome||'').localeCompare(b.p.nome||''));
   const tabelaHeader = '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;">'
-    + '<span style="font-size:var(--fs-sm);font-weight:600;color:var(--text);">Lista de projetos no funil (' + rows.length + ')</span>'
+    + '<span style="font-size:var(--fs-sm);font-weight:600;color:var(--text);">Lista de oportunidades no funil (' + rows.length + ')</span>'
     + '</div>';
   const tabela = _pipeListaRecolhida ? '' : '<div style="margin-top:8px;overflow-x:auto;">'
     + '<table style="width:100%;border-collapse:collapse;font-size:var(--fs-sm);">'
     + '<thead><tr>'
     + ['Projeto','Consultor','Etapa','Escopo','Valor'].map(h => '<th style="text-align:left;padding:4px 8px;border-bottom:1px solid var(--border);font-size:var(--fs-2xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">'+h+'</th>').join('')
     + '</tr></thead><tbody>'
-    + (rows.length ? rows.map(p => {
-        const oc = oColors[p.oport] || 'var(--text-hint)';
+    + (rows.length ? rows.map(r => {
+        const p = r.p, o = r.o;
+        const oc = oColors[o.etapa] || 'var(--text-hint)';
         const esc = [p.escopos, p.escoposRec].filter(Boolean).join(' · ') || '—';
-        const v = parseVal(p.valorOport), vr = parseVal(p.valorOportRec);
+        const v = parseVal(o.valorOT), vr = parseVal(o.valorRec);
         const valTxt = [v>0?('OT '+BRL(v)):'', vr>0?('Rec '+BRL(vr)):''].filter(Boolean).join(' · ') || '—';
         return '<tr style="border-bottom:1px solid var(--border);">'
           + '<td style="padding:5px 8px;color:var(--text);">' + (p.nome||'—') + (p.conv==="Monetizado"?' <span style="font-size:var(--fs-3xs);font-weight:700;padding:1px 5px;border-radius:10px;background:rgba(31,157,85,.15);color:var(--green);">monetizado</span>':'') + '</td>'
           + '<td style="padding:5px 8px;color:var(--text-muted);">' + (p.consultor||'—') + '</td>'
-          + '<td style="padding:5px 8px;"><span style="font-size:var(--fs-2xs);font-weight:600;padding:1px 6px;border-radius:20px;background:rgba(0,0,0,.06);color:' + oc + ';">' + p.oport + '</span></td>'
+          + '<td style="padding:5px 8px;"><span style="font-size:var(--fs-2xs);font-weight:600;padding:1px 6px;border-radius:20px;background:rgba(0,0,0,.06);color:' + oc + ';">' + o.etapa + '</span></td>'
           + '<td style="padding:5px 8px;color:var(--text-muted);font-size:var(--fs-xs);">' + esc + '</td>'
           + '<td style="padding:5px 8px;font-weight:600;color:var(--text);">' + valTxt + '</td>'
           + '</tr>';
@@ -7839,14 +7845,28 @@ function buildPipeEventosMatriz(label, ano, consF) {
     + '<tr style="border-top:2px solid var(--border);">' + totRow + '</tr></tbody></table></div>';
 }
 
-// Sincroniza os campos do Lead Time (Oportunidade, Escopos, Próximo Contato) sempre que
-// um evento de AQL/Proposta é criado — Proposta -> "Apresentar proposta (SQL)",
-// Oportunidade -> "Mapeado (AQL)".
+// Sincroniza a oportunidade principal do Lead Time sempre que um evento de AQL/Proposta é
+// criado manualmente na aba AQL — Proposta -> "Apresentar proposta (SQL)", Oportunidade ->
+// "Mapeado (AQL)". Registro manual não escolhe qual oportunidade do projeto está afetando
+// (não tem como saber, se houver mais de uma aberta), então usa/cria a principal.
 function syncLeadTimeFromAqlEvento(p, ev) {
   if (!p || !ev) return;
-  p.oport = ev.tipo === 'Proposta' ? 'Apresentar proposta (SQL)' : 'Mapeado (AQL)';
+  const etapaAlvo = ev.tipo === 'Proposta' ? 'Apresentar proposta (SQL)' : 'Mapeado (AQL)';
+  let o = oportPrincipal(p);
+  if (!o) {
+    o = {
+      id: oportNovaId(), etapa: etapaAlvo, proximoContato: '', valorOT: '', valorRec: '',
+      produtos: [], propostaAgendada: '', dataProposta: '',
+      criadaEm: new Date().toISOString().slice(0,10), fechadaEm: '',
+    };
+    oportunidadesDe(p).push(o);
+  } else {
+    o.etapa = etapaAlvo;
+  }
+  ev.linkOportId = o.id;
   if (ev.escopo) p.escopos = ev.escopo;
-  if (ev.data) p.proximoContato = ev.data;
+  if (ev.data) o.proximoContato = ev.data;
+  sincronizarOportMirror(p);
 }
 
 function addPipeEventoObj(projId, ev) {
@@ -7870,33 +7890,15 @@ function updPipeEvento(projId, evId, field, val) {
   const e = p.pipeEventos.find(x => String(x.id) === String(evId));
   if (!e) return;
   e[field] = val;
-  // Marcar "Reunião feita" numa Proposta avança o Lead Time sozinho pra "Proposta
-  // apresentada (SAL)" — evita ter que atualizar a AQL e o Lead Time separadamente.
+  // Marcar "Reunião feita" numa Proposta avança essa oportunidade sozinha pra "Proposta
+  // apresentada (SAL)" — evita ter que atualizar a AQL e o Lead Time separadamente. Usa a
+  // oportunidade ligada a esse evento (linkOportId); eventos antigos, de antes da lista
+  // existir, caem na principal do projeto.
   if (field === 'reuniaoFeita' && val === true && e.tipo === 'Proposta') {
-    p.oport = 'Proposta apresentada (SAL)';
+    const o = (e.linkOportId && oportunidadesDe(p).find(x => x.id === e.linkOportId)) || oportPrincipal(p);
+    if (o) { o.etapa = 'Proposta apresentada (SAL)'; sincronizarOportMirror(p); }
   }
   buildAql(); upd();
-}
-
-// Integração com o Lead Time: ao atualizar o próximo contato, registra o evento
-// (Oportunidade se etapa=Mapeado; Proposta se etapa=Apresentar proposta SQL)
-function registrarEventoDoLeadTime(p) {
-  if (!p) return;
-  const GATILHOS = { 'Mapeado (AQL)': 'Oportunidade', 'Apresentar proposta (SQL)': 'Proposta' };
-  const tipo = GATILHOS[p.oport];
-  if (!tipo) return;                 // etapa atual não é gatilho
-  if (!p.proximoContato) return;     // sem data de próximo contato, não registra
-  ensurePipeEventos(p);
-  const data = p.proximoContato;
-  // proteção: não cria evento idêntico (mesmo tipo + mesma data) gerado automaticamente
-  const jaExiste = p.pipeEventos.some(e => e.tipo === tipo && e.data === data && e.origem === 'auto');
-  if (jaExiste) return;
-  p.pipeEventos.push(novoPipeEvento({
-    tipo, data, origem: 'auto',
-    valorOT: p.valorOport || '', valorRec: p.valorOportRec || '',
-    escopo: p.escopos || '', obs: 'Gerado pelo Lead Time'
-  }));
-  if (document.getElementById('pev-lista')) buildPipeEventos();
 }
 
 // Modal
@@ -9280,40 +9282,187 @@ function ltSetField(id, field, val) {
   p[field] = val;
   upd();
   // atualiza funil se campo relevante foi alterado
-  if (['oport','valorOport','flag'].includes(field)) {
+  if (field === 'flag') {
     const consFilter = document.getElementById('conv-f-cons')?.value || '';
     buildFunil(consFilter);
   }
-  // ao atualizar o próximo contato no Lead Time, registra evento de pipeline
-  // Registro automático de AQL/Proposta DESATIVADO — a partir de agora só entra via registro manual na aba AQL.
-  // if (field === 'proximoContato') registrarEventoDoLeadTime(p);
 }
-// ── PRODUTOS DA OPORTUNIDADE (AQL) ─────────────────────────────────────────
-// Quando a coordenadora marca "Mapeado (AQL)" no dropdown de Oportunidade da tabela do
-// Lead Time, abre um pop-up pra ela escolher quais produtos do portfólio serão oferecidos
-// e informar se a apresentação da proposta já tem data. A etapa SÓ é gravada no projeto
-// depois que ela salva o pop-up — cancelar devolve o dropdown ao valor anterior, pra não
-// deixar um "Mapeado" sem os produtos por trás.
+// ── OPORTUNIDADES DA AQL ─────────────────────────────────────────────────
+// Cada projeto pode ter mais de uma oportunidade aberta ao mesmo tempo (ex: upsell e
+// cross-sell rodando em paralelo) — p.oportunidades[] é a lista, cada item com sua própria
+// etapa (Mapeado AQL → Apresentar proposta SQL → Proposta apresentada SAL → Follow COMMIT),
+// próximo contato e valor previsto (OT/Rec), editável direto na linha do projeto no Lead
+// Time. Pipeline e AQL deixam de exigir registro manual duplicado — viram análise em cima
+// do que já foi lançado aqui.
 //
-// O que fica no projeto: oportProdutos (array de nomes), oportPropostaAgendada ('sim'|'nao')
-// e oportDataProposta (ISO). As colunas de texto livre "Escopos One-time" e "Escopos
-// Recorrente" continuam existindo e NÃO são tocadas — decisão do Leonam em 31/08/2026:
-// o histórico delas fica preservado e daqui pra frente elas ficam vazias.
-let _aqlProdSel = new Set();   // produtos marcados no pop-up aberto
-let _aqlProdProjId = null;     // projeto sendo editado
-let _aqlProdSelectEl = null;   // <select> de origem, pra reverter no cancelar
+// Os campos antigos (oport/proximoContato/valorOport/valorOportRec/oportProdutos/
+// oportPropostaAgendada/oportDataProposta) continuam existindo, mas viram um ESPELHO
+// automático da oportunidade "principal" (a primeira ainda aberta da lista) — evita ter
+// que reescrever de uma vez todo consumidor antigo desses campos (Pipe da Semana, cópia
+// automática pra Monetização, filtros da TER); eles continuam lendo exatamente como sempre
+// leram, só que agora o valor vem derivado da lista.
+const ETAPAS_OPORT = ['Mapeado (AQL)','Apresentar proposta (SQL)','Proposta apresentada (SAL)','Follow (COMMIT)'];
+let _opSeq = 0;
+function oportNovaId() { return 'op_' + Date.now() + '_' + (_opSeq++); }
 
-function ltOportChange(id, sel) {
-  if (sel.value === 'Mapeado (AQL)') { aqlAbrirProdutos(id, sel); return; }
-  ltSetField(id, 'oport', sel.value);
+function oportunidadesDe(p) {
+  if (!Array.isArray(p.oportunidades)) {
+    p.oportunidades = [];
+    // Migração não-destrutiva: se o projeto já tinha uma oportunidade no campo antigo (de
+    // antes dessa lista existir), ela vira o primeiro item — só nessa primeira leitura,
+    // nunca mais depois (a partir daqui o array já existe de verdade).
+    if (ETAPAS_OPORT.includes(p.oport)) {
+      p.oportunidades.push({
+        id: oportNovaId(), etapa: p.oport, proximoContato: p.proximoContato || '',
+        valorOT: p.valorOport || '', valorRec: p.valorOportRec || '',
+        produtos: Array.isArray(p.oportProdutos) ? p.oportProdutos.slice() : [],
+        propostaAgendada: p.oportPropostaAgendada || '', dataProposta: p.oportDataProposta || '',
+        criadaEm: new Date().toISOString().slice(0,10), fechadaEm: '',
+      });
+    }
+  }
+  return p.oportunidades;
+}
+function oportPrincipal(p) { return oportunidadesDe(p).find(o => !o.fechadaEm) || null; }
+// Atualiza os campos antigos pra sempre refletir a oportunidade principal — chamar depois
+// de qualquer mutação em oportunidadesDe(p).
+function sincronizarOportMirror(p) {
+  const o = oportPrincipal(p);
+  p.oport                = o ? o.etapa : '';
+  p.proximoContato       = o ? o.proximoContato : '';
+  p.valorOport           = o ? o.valorOT : '';
+  p.valorOportRec        = o ? o.valorRec : '';
+  p.oportProdutos        = o ? o.produtos : [];
+  p.oportPropostaAgendada = o ? o.propostaAgendada : '';
+  p.oportDataProposta     = o ? o.dataProposta : '';
+}
+function _oportRefresh(p) {
+  sincronizarOportMirror(p);
+  buildLeadTime();
+  if (document.getElementById('pipe-funil')) buildPipeline();
+  if (document.getElementById('pev-lista')) buildAql();
+  upd();
 }
 
-function aqlAbrirProdutos(id, sel) {
+// Nova oportunidade sempre começa em "Mapeado (AQL)" — abre direto o pop-up de produtos;
+// só entra na lista de verdade quando ela salva (cancelar não cria nada).
+function oportAdicionar(projId) {
+  _aqlProdIsNovo = true;
+  aqlAbrirProdutos(projId, null, null);
+}
+
+function oportSetEtapa(projId, opId, etapa) {
+  const p = projects.find(x => String(x.id) === String(projId));
+  if (!p) return;
+  const o = oportunidadesDe(p).find(x => x.id === opId);
+  if (!o) return;
+  if (etapa === 'Mapeado (AQL)') { _aqlProdIsNovo = false; aqlAbrirProdutos(projId, null, opId); return; }
+  const etapaAnterior = o.etapa;
+  o.etapa = etapa;
+  ensurePipeEventos(p);
+  // Gatilhos de registro na AQL — mesma régua de antes (GATILHOS/registrarEventoDoLeadTime),
+  // agora por oportunidade em vez de por projeto, e só na TRANSIÇÃO de etapa (não a cada
+  // edição de próximo contato, que era o motivo do registro automático ter sido desligado).
+  if (etapa === 'Apresentar proposta (SQL)' && etapaAnterior !== 'Apresentar proposta (SQL)') {
+    const jaTem = p.pipeEventos.some(e => e.linkOportId === opId && e.tipo === 'Proposta');
+    if (!jaTem) p.pipeEventos.push(novoPipeEvento({
+      tipo: 'Proposta', data: new Date().toISOString().slice(0,10), origem: 'auto',
+      valorOT: o.valorOT, valorRec: o.valorRec, escopo: p.escopos || '',
+      obs: 'Gerado pelo Lead Time', linkOportId: opId,
+    }));
+  }
+  if (etapa === 'Proposta apresentada (SAL)') {
+    const ev = p.pipeEventos.find(e => e.linkOportId === opId && e.tipo === 'Proposta');
+    if (ev) ev.reuniaoFeita = true;
+  }
+  _oportRefresh(p);
+}
+
+function oportSetCampo(projId, opId, campo, val) {
+  const p = projects.find(x => String(x.id) === String(projId));
+  if (!p) return;
+  const o = oportunidadesDe(p).find(x => x.id === opId);
+  if (!o) return;
+  o[campo] = val;
+  _oportRefresh(p);
+}
+
+async function oportFechar(projId, opId) {
+  const p = projects.find(x => String(x.id) === String(projId));
+  if (!p) return;
+  if (!(await showConfirm('Encerrar essa oportunidade? As outras oportunidades do mesmo projeto continuam abertas normalmente.'))) return;
+  const o = oportunidadesDe(p).find(x => x.id === opId);
+  if (!o) return;
+  o.fechadaEm = new Date().toISOString().slice(0,10);
+  _oportRefresh(p);
+}
+
+async function oportRemover(projId, opId) {
+  const p = projects.find(x => String(x.id) === String(projId));
+  if (!p) return;
+  if (!(await showConfirm('Excluir essa oportunidade? Essa ação não pode ser desfeita.'))) return;
+  p.oportunidades = oportunidadesDe(p).filter(x => x.id !== opId);
+  _oportRefresh(p);
+}
+
+// Coluna "Oportunidades" do Lead Time: uma linha por oportunidade aberta, com etapa, próximo
+// contato e valor previsto editáveis ali mesmo — mais um botão pra adicionar outra no mesmo
+// projeto (ex: upsell junto com o projeto principal).
+function oportunidadesHTML(p) {
+  const todas = oportunidadesDe(p);
+  const abertas = todas.filter(o => !o.fechadaEm);
+  const nFechadas = todas.length - abertas.length;
+  const oCores = {'Mapeado (AQL)':'var(--blue)','Apresentar proposta (SQL)':'var(--blue)','Proposta apresentada (SAL)':'var(--amber)','Follow (COMMIT)':'var(--green)'};
+  const cards = abertas.map(o => {
+    const cor = oCores[o.etapa] || 'var(--text-hint)';
+    const resumoProdutos = o.etapa === 'Mapeado (AQL)'
+      ? '<button type="button" onclick="aqlAbrirProdutos(' + p.id + ',null,\'' + o.id + '\')" style="display:block;margin-bottom:4px;background:none;border:none;padding:0;color:var(--accent);text-decoration:underline;cursor:pointer;font-size:var(--fs-3xs);text-align:left;">'
+        + (Array.isArray(o.produtos) && o.produtos.length ? (o.produtos.length + ' produto' + (o.produtos.length!==1?'s':'')) : 'sem produtos')
+        + '</button>'
+      : '';
+    return '<div style="background:var(--surface2);border:1px solid var(--border);border-left:3px solid ' + cor + ';border-radius:var(--r-sm);padding:6px 7px;margin-bottom:5px;">'
+      + '<div style="display:flex;align-items:center;gap:3px;margin-bottom:4px;">'
+      + '<select class="sel" style="font-size:var(--fs-2xs);flex:1;padding:2px 3px;min-width:0;" onchange="oportSetEtapa(' + p.id + ',\'' + o.id + '\',this.value)">'
+      + ETAPAS_OPORT.map(e => '<option' + (o.etapa === e ? ' selected' : '') + '>' + e + '</option>').join('')
+      + '</select>'
+      + '<button type="button" onclick="oportFechar(' + p.id + ',\'' + o.id + '\')" title="Encerrar essa oportunidade" style="background:none;border:none;padding:1px;color:var(--text-hint);cursor:pointer;flex-shrink:0;">' + icon('check',{size:11}) + '</button>'
+      + '<button type="button" onclick="oportRemover(' + p.id + ',\'' + o.id + '\')" title="Excluir" style="background:none;border:none;padding:1px;color:var(--text-hint);cursor:pointer;flex-shrink:0;">' + icon('x',{size:11}) + '</button>'
+      + '</div>'
+      + resumoProdutos
+      + '<div style="display:flex;gap:4px;align-items:center;margin-bottom:3px;">'
+      + '<span style="font-size:var(--fs-3xs);color:var(--text-hint);white-space:nowrap;">Próx.:</span>'
+      + '<input type="date" class="sel" style="font-size:var(--fs-2xs);flex:1;padding:1px 3px;min-width:0;" value="' + (o.proximoContato||'') + '" onchange="oportSetCampo(' + p.id + ',\'' + o.id + '\',\'proximoContato\',this.value)">'
+      + '</div>'
+      + '<div style="display:flex;gap:3px;">'
+      + '<input type="text" class="sel" style="font-size:var(--fs-3xs);width:50%;padding:1px 3px;" placeholder="OT" value="' + (o.valorOT||'') + '" onblur="oportSetCampo(' + p.id + ',\'' + o.id + '\',\'valorOT\',this.value)">'
+      + '<input type="text" class="sel" style="font-size:var(--fs-3xs);width:50%;padding:1px 3px;" placeholder="Rec" value="' + (o.valorRec||'') + '" onblur="oportSetCampo(' + p.id + ',\'' + o.id + '\',\'valorRec\',this.value)">'
+      + '</div>'
+      + '</div>';
+  }).join('');
+  return '<div style="min-width:170px;">'
+    + cards
+    + (nFechadas > 0 ? '<div style="font-size:var(--fs-3xs);color:var(--text-hint);margin-bottom:4px;">' + nFechadas + ' encerrada' + (nFechadas!==1?'s':'') + '</div>' : '')
+    + '<button type="button" onclick="oportAdicionar(' + p.id + ')" style="font-size:var(--fs-2xs);padding:3px 6px;border:1px dashed var(--border);border-radius:var(--r-sm);background:none;color:var(--text-hint);cursor:pointer;width:100%;">+ Nova oportunidade</button>'
+    + '</div>';
+}
+
+// ── PRODUTOS DA OPORTUNIDADE (AQL) ─────────────────────────────────────────
+// Pop-up de escolha de produtos do portfólio + se a apresentação da proposta já tem data —
+// abre sempre que uma oportunidade (nova ou existente) entra/reentra em "Mapeado (AQL)". A
+// etapa e os produtos só são gravados de verdade quando ela salva o pop-up — cancelar não
+// cria nada (se for oportunidade nova) nem desfaz a etapa anterior (se for edição).
+let _aqlProdSel = new Set();      // produtos marcados no pop-up aberto
+let _aqlProdProjId = null;        // projeto sendo editado
+let _aqlProdOportId = null;       // id da oportunidade sendo editada (null = criando uma nova)
+let _aqlProdIsNovo = false;       // true = essa oportunidade ainda não existe em oportunidades[]
+
+function aqlAbrirProdutos(id, sel, opId) {
   const p = projects.find(x => String(x.id) === String(id));
   if (!p) return;
   _aqlProdProjId = id;
-  _aqlProdSelectEl = sel || null;
-  _aqlProdSel = new Set(Array.isArray(p.oportProdutos) ? p.oportProdutos : []);
+  _aqlProdOportId = opId || null;
+  const o = opId ? oportunidadesDe(p).find(x => x.id === opId) : null;
+  _aqlProdSel = new Set(o && Array.isArray(o.produtos) ? o.produtos : []);
 
   const cli = document.getElementById('aql-prod-cliente');
   if (cli) cli.textContent = p.nome || '';
@@ -9321,10 +9470,10 @@ function aqlAbrirProdutos(id, sel) {
   if (busca) busca.value = '';
 
   // Repõe o que já estava salvo, pra reabrir o pop-up e ajustar sem começar do zero.
-  const ag = p.oportPropostaAgendada || '';
+  const ag = o ? (o.propostaAgendada || '') : '';
   document.querySelectorAll('input[name="aql-prod-agendada"]').forEach(r => { r.checked = (r.value === ag); });
   const dt = document.getElementById('aql-prod-data');
-  if (dt) dt.value = p.oportDataProposta || '';
+  if (dt) dt.value = o ? (o.dataProposta || '') : '';
 
   aqlProdutosRender();
   aqlProdutosAgendaChange();
@@ -9409,23 +9558,38 @@ function aqlProdutosSalvar() {
   const dt  = document.getElementById('aql-prod-data');
   if (!sel) return;
 
-  p.oportProdutos = [..._aqlProdSel];
-  p.oportPropostaAgendada = sel.value;
-  p.oportDataProposta = sel.value === 'sim' ? (dt?.value || '') : '';
-  p.oport = 'Mapeado (AQL)';
+  const produtos = [..._aqlProdSel];
+  const propostaAgendada = sel.value;
+  const dataProposta = sel.value === 'sim' ? (dt?.value || '') : '';
+
+  if (_aqlProdIsNovo) {
+    const nova = {
+      id: oportNovaId(), etapa: 'Mapeado (AQL)', proximoContato: '', valorOT: '', valorRec: '',
+      produtos, propostaAgendada, dataProposta,
+      criadaEm: new Date().toISOString().slice(0,10), fechadaEm: '',
+    };
+    oportunidadesDe(p).push(nova);
+    ensurePipeEventos(p);
+    p.pipeEventos.push(novoPipeEvento({
+      tipo: 'Oportunidade', data: new Date().toISOString().slice(0,10), origem: 'auto',
+      obs: 'Gerado pelo Lead Time', linkOportId: nova.id,
+    }));
+  } else {
+    const o = oportunidadesDe(p).find(x => x.id === _aqlProdOportId);
+    if (o) { o.etapa = 'Mapeado (AQL)'; o.produtos = produtos; o.propostaAgendada = propostaAgendada; o.dataProposta = dataProposta; }
+  }
 
   aqlProdutosFechar();
-  upd();
-  const consFilter = document.getElementById('conv-f-cons')?.value || '';
-  buildFunil(consFilter);
-  buildLeadTime();
+  _oportRefresh(p);
 }
 
-// Cancelar não pode deixar o dropdown mostrando "Mapeado (AQL)" sem nada gravado por trás.
+// Cancelar não grava nada — se for oportunidade nova, ela nem chega a existir; se for
+// edição, a etapa/produtos anteriores continuam intactos (buildLeadTime reconstrói a linha
+// do zero a partir do dado, então o <select> nunca fica preso mostrando "Mapeado (AQL)" sem
+// gravação por trás).
 function aqlProdutosCancelar() {
-  const p = projects.find(x => String(x.id) === String(_aqlProdProjId));
-  if (_aqlProdSelectEl && p) _aqlProdSelectEl.value = p.oport || '—';
   aqlProdutosFechar();
+  buildLeadTime();
 }
 
 function aqlProdutosFechar() {
@@ -9433,24 +9597,8 @@ function aqlProdutosFechar() {
   if (m) m.style.display = 'none';
   _aqlProdSel = new Set();
   _aqlProdProjId = null;
-  _aqlProdSelectEl = null;
-}
-
-// Resumo clicável abaixo do dropdown. Sem isso não haveria como reabrir o pop-up pra
-// ajustar: reescolher "Mapeado (AQL)" num <select> que já está nesse valor não dispara
-// onchange, então a seleção ficaria presa depois do primeiro save.
-function aqlResumoOportHTML(p) {
-  if (p.oport !== 'Mapeado (AQL)') return '';
-  const n = Array.isArray(p.oportProdutos) ? p.oportProdutos.length : 0;
-  const partes = [n === 0 ? 'sem produtos' : (n === 1 ? '1 produto' : n + ' produtos')];
-  if (p.oportPropostaAgendada === 'sim' && p.oportDataProposta) {
-    const d = parseDate(p.oportDataProposta);
-    partes.push('proposta ' + (d ? d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'}) : p.oportDataProposta));
-  }
-  else if (p.oportPropostaAgendada === 'nao') partes.push('sem data');
-  return '<button onclick="aqlAbrirProdutos(' + p.id + ',null)" title="Editar produtos da oportunidade" '
-    + 'style="margin-top:3px;background:none;border:none;padding:0;color:var(--accent);text-decoration:underline;cursor:pointer;font-size:var(--fs-xs);text-align:left;">'
-    + partes.join(' · ') + '</button>';
+  _aqlProdOportId = null;
+  _aqlProdIsNovo = false;
 }
 
 // Caixinha de status do reembolso (Concedido/Revertido) — só existe enquanto tiver uma data de
@@ -10072,7 +10220,7 @@ function buildLeadTime() {
 
 
   tbody.innerHTML = list.length === 0
-    ? '<tr><td colspan="17" style="text-align:center;padding:24px;color:var(--text-hint);font-size:var(--fs-base);">Nenhum projeto encontrado</td></tr>'
+    ? '<tr><td colspan="14" style="text-align:center;padding:24px;color:var(--text-hint);font-size:var(--fs-base);">Nenhum projeto encontrado</td></tr>'
     : list.map(p => {
 
         // ── coluna "Registrar entrega": select simples + campo de data oculto
@@ -10187,12 +10335,9 @@ function buildLeadTime() {
               h += '</td>';
               return h;
             })()
-          // Oportunidade
+          // Oportunidades (lista — um projeto pode ter mais de uma aberta ao mesmo tempo)
           + '<td style="padding:6px 8px;">'
-          + '<select class="sel" style="font-size:var(--fs-sm);width:120px;" onchange="ltOportChange(' + p.id + ', this)">'
-          + ['—','Mapeado (AQL)','Apresentar proposta (SQL)','Proposta apresentada (SAL)','Follow (COMMIT)','Sem oportunidade'].map(o => '<option' + ((p.oport||'—')===o?' selected':'') + '>' + o + '</option>').join('')
-          + '</select>'
-          + aqlResumoOportHTML(p)
+          + oportunidadesHTML(p)
           + '</td>'
           // Escopos One-time
           + '<td style="padding:6px 8px;">'
@@ -10226,22 +10371,6 @@ function buildLeadTime() {
           + 'value="' + dv(p.dataReembolso) + '" '
           + 'onchange="ltSetReembolsoData(' + p.id + ',this.value)">'
           + '<div id="lt-reemb-status-' + p.id + '">' + ltReembStatusHTML(p) + '</div>'
-          + '</td>'
-          // Próximo contato
-          + '<td style="padding:6px 8px;">'
-          + '<input type="date" class="sel" style="font-size:var(--fs-sm);width:100%;" '
-          + 'value="' + (p.proximoContato||'') + '" '
-          + 'onchange="ltSetField(' + p.id + ',\'proximoContato\',this.value)">' 
-          + '</td>'
-          // Valor previsto OT
-          + '<td style="padding:6px 8px;">'
-          + '<input type="text" class="sel" style="font-size:var(--fs-sm);width:95px;" placeholder="R$ 0,00" value="' + (p.valorOport||'') + '" '
-          + 'onblur="ltSetField(' + p.id + ',\'valorOport\',this.value)">'
-          + '</td>'
-          // Valor previsto Rec
-          + '<td style="padding:6px 8px;">'
-          + '<input type="text" class="sel" style="font-size:var(--fs-sm);width:95px;" placeholder="R$ 0,00" value="' + (p.valorOportRec||'') + '" '
-          + 'onblur="ltSetField(' + p.id + ',\'valorOportRec\',this.value)">'
           + '</td>'
                     + '</tr>';
       }).join('');
@@ -10490,7 +10619,7 @@ function buildLeadTimeTer() {
           + '<td style="padding:6px 8px;text-align:center;">' + flagSelectHTML(p.flag, "onchange=\"ltSetFieldTer('" + p.id + "','flag',this.value)\"") + '</td>'
           + '<td style="padding:6px 8px;">'
           + '<select class="sel" style="font-size:var(--fs-sm);width:120px;" onchange="ltSetFieldTer(' + p.id + ',\'oport\',this.value)">'
-          + ['—','Mapeado (AQL)','Apresentar proposta (SQL)','Follow (COMMIT)','Sem oportunidade'].map(o => '<option' + ((p.oport||'—')===o?' selected':'') + '>' + o + '</option>').join('')
+          + ['—','Mapeado (AQL)','Apresentar proposta (SQL)','Proposta apresentada (SAL)','Follow (COMMIT)','Sem oportunidade'].map(o => '<option' + ((p.oport||'—')===o?' selected':'') + '>' + o + '</option>').join('')
           + '</select></td>'
           + '<td style="padding:6px 8px;">'
           + '<div contenteditable="true" style="font-size:var(--fs-sm);min-height:28px;padding:4px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);outline:none;min-width:150px;" onblur="ltSetFieldTer(' + p.id + ',\'escopos\',this.textContent.trim())">' + (p.escopos||'').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div></td>'
@@ -10620,7 +10749,7 @@ function buildLeadTimeRec() {
           + '<td style="padding:6px 8px;text-align:center;">' + flagSelectHTML(p.flag, "onchange=\"ltSetFieldRec('" + p.id + "','flag',this.value)\"") + '</td>'
           + '<td style="padding:6px 8px;">'
           + '<select class="sel" style="font-size:var(--fs-sm);width:120px;" onchange="ltSetFieldRec(' + p.id + ',\'oport\',this.value)">'
-          + ['—','Mapeado (AQL)','Apresentar proposta (SQL)','Follow (COMMIT)','Sem oportunidade'].map(o => '<option' + ((p.oport||'—')===o?' selected':'') + '>' + o + '</option>').join('')
+          + ['—','Mapeado (AQL)','Apresentar proposta (SQL)','Proposta apresentada (SAL)','Follow (COMMIT)','Sem oportunidade'].map(o => '<option' + ((p.oport||'—')===o?' selected':'') + '>' + o + '</option>').join('')
           + '</select></td>'
           + '<td style="padding:6px 8px;">'
           + '<div contenteditable="true" style="font-size:var(--fs-sm);min-height:28px;padding:4px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);outline:none;min-width:150px;" onblur="ltSetFieldRec(' + p.id + ',\'escopos\',this.textContent.trim())">' + (p.escopos||'').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div></td>'
