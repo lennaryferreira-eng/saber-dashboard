@@ -9304,19 +9304,20 @@ function oportunidadesDe(p) {
     p.oportunidades = [];
     // Migração não-destrutiva: se o projeto já tinha uma oportunidade no campo antigo (de
     // antes dessa lista existir), ela vira o primeiro item — só nessa primeira leitura,
-    // nunca mais depois (a partir daqui o array já existe de verdade). criadaEm fica em
-    // branco (não sabemos quando ela foi levantada de verdade) — NUNCA usar "hoje" aqui:
-    // isso empurrava toda oportunidade antiga pro mês em que a migração rodasse, fazendo o
-    // filtro de mês do Registro da AQL parecer quebrado (tudo caindo junto no mês atual).
-    // Sem data, ela aparece no bloco "sem data" do Registro, fora de qualquer mês — dá pra
-    // preencher a data manualmente lá se quiser encaixar num mês específico.
+    // nunca mais depois (a partir daqui o array já existe de verdade). Não sabemos a data
+    // real de quando ela foi levantada — NUNCA usar "hoje" aqui (isso empurrava toda
+    // oportunidade antiga pro mês em que a migração rodasse). Como aproximação retroativa,
+    // usa o "próximo contato" que já existia (pedido da coordenadora): é a única data que
+    // sobrou desses registros antigos e costuma ficar perto de quando a oportunidade surgiu.
+    // Sem próximo contato também, fica em branco mesmo — cai no bloco "sem data" do Registro,
+    // editável manualmente lá se quiser encaixar num mês específico.
     if (ETAPAS_OPORT.includes(p.oport)) {
       p.oportunidades.push({
         id: oportNovaId(), etapa: p.oport, proximoContato: p.proximoContato || '',
         valorOT: p.valorOport || '', valorRec: p.valorOportRec || '',
         produtos: Array.isArray(p.oportProdutos) ? p.oportProdutos.slice() : [],
         propostaAgendada: p.oportPropostaAgendada || '', dataProposta: p.oportDataProposta || '',
-        criadaEm: '', fechadaEm: '',
+        criadaEm: p.proximoContato || '', fechadaEm: '',
       });
     }
   }
@@ -9327,11 +9328,12 @@ function oportunidadesDe(p) {
   // no campo editável do Registro também não têm evento vinculado, então aquele teste
   // limpava data de verdade também. Em vez disso, mira só na data exata que a migração
   // fabricava, uma única vez por projeto (guardado em _oportMigFix, pra não apagar de novo
-  // se algum dia ela digitar 06/09 de propósito numa oportunidade nova).
+  // se algum dia ela digitar 06/09 de propósito numa oportunidade nova). No lugar da data
+  // fabricada, usa o próximo contato como aproximação retroativa — igual à migração acima.
   if (!p._oportMigFix) {
     const DATA_FABRICADA_MIGRACAO = '2026-09-06';
     p.oportunidades.forEach(o => {
-      if (o.criadaEm === DATA_FABRICADA_MIGRACAO) o.criadaEm = '';
+      if (o.criadaEm === DATA_FABRICADA_MIGRACAO) o.criadaEm = o.proximoContato || '';
     });
     p._oportMigFix = true;
   }
