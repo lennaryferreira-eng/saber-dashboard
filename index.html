@@ -9320,19 +9320,20 @@ function oportunidadesDe(p) {
       });
     }
   }
-  // Autocorreção: oportunidades que já foram salvas com a data fabricada pelo bug da
-  // migração antiga (versão anterior deste código, que usava "hoje" em vez de deixar em
-  // branco) ficam presas nesse dia pra sempre, mesmo depois do fix acima. O jeito seguro de
-  // reconhecer essas artificiais: toda oportunidade criada de verdade (por aqlProdutosSalvar
-  // ou confirmNovoPipeEvento) sempre gera pelo menos 1 pipeEvento vinculado via linkOportId
-  // (ver _oportAplicarGatilhos). Então: tem criadaEm mas nenhum pipeEvento vinculado = veio
-  // do bug antigo, não é uma data real → limpa. Roda toda vez (idempotente), assim conserta
-  // dado que já estava salvo no Supabase antes desse fix, não só migração nova.
-  if (p.oportunidades.length && (p.pipeEventos || p.oportunidades.some(o => o.criadaEm))) {
-    ensurePipeEventos(p);
+  // Autocorreção (rodada única por projeto): antes do fix acima, a migração fabricava
+  // criadaEm = "hoje" no dia em que essa versão nova entrou no ar (2026-09-06 pra quem
+  // acessou o dashboard naquele dia) — isso já ficou salvo em muitos projetos. Não dá pra
+  // usar "tem pipeEvento vinculado?" como sinal (tentativa anterior): datas digitadas à mão
+  // no campo editável do Registro também não têm evento vinculado, então aquele teste
+  // limpava data de verdade também. Em vez disso, mira só na data exata que a migração
+  // fabricava, uma única vez por projeto (guardado em _oportMigFix, pra não apagar de novo
+  // se algum dia ela digitar 06/09 de propósito numa oportunidade nova).
+  if (!p._oportMigFix) {
+    const DATA_FABRICADA_MIGRACAO = '2026-09-06';
     p.oportunidades.forEach(o => {
-      if (o.criadaEm && !p.pipeEventos.some(e => e.linkOportId === o.id)) o.criadaEm = '';
+      if (o.criadaEm === DATA_FABRICADA_MIGRACAO) o.criadaEm = '';
     });
+    p._oportMigFix = true;
   }
   return p.oportunidades;
 }
