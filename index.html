@@ -3370,6 +3370,11 @@ function novoPipeEvento(d){ d=d||{}; return {
   escopo: d.escopo || '', obs: d.obs || '',
   origem: d.origem || '',                    // '' (manual) | 'auto' (gerado pela etapa)
   reuniaoFeita: d.reuniaoFeita || false,      // checkbox marcado na lista de registro
+  linkOportId: d.linkOportId || null,         // liga esse evento à oportunidade que o gerou —
+                                               // faltava aqui, então _oportAplicarGatilhos
+                                               // passava o valor mas essa função descartava
+                                               // (só copiava os campos listados acima), e todo
+                                               // evento novo nascia órfão sem ninguém perceber.
 }; }
 function ensurePipeEventos(p){ if (!Array.isArray(p.pipeEventos)) p.pipeEventos = []; return p; }
 
