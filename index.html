@@ -7775,12 +7775,17 @@ function buildPipeEventos() {
   // mesmo (mesmas ações do Lead Time), com a evolução completa (histórico de quando passou
   // por cada etapa) visível dentro da própria linha — em vez de duplicar registro a cada
   // mudança de etapa. Filtra pelo mês em que a oportunidade foi LEVANTADA (criadaEm).
+  // Oportunidades migradas de antes dessa lista existir não têm criadaEm conhecida — ficam
+  // num bloco à parte, sempre visível independente do mês escolhido, em vez de cair todas
+  // arbitrariamente no mês em que a migração rodou (era isso que fazia "todas as AQLs"
+  // aparecerem juntas, ignorando o filtro).
   const mesIdxAtual = (_MES_ORDEM[label] || 0) - 1;
-  let linhas = [];
+  let linhas = [], semData = [];
   projects.forEach(p => {
     if (isDroFam(p)) return;
     if (consF && p.consultor !== consF) return;
     oportunidadesDe(p).forEach(o => {
+      if (!o.criadaEm) { semData.push({ p, o }); return; }
       const d = parseDate(o.criadaEm);
       if (!d || d.getMonth() !== mesIdxAtual || d.getFullYear() !== ano) return;
       if (semSel && !(d >= semSel.ini && d <= semSel.fim)) return;
@@ -7789,13 +7794,9 @@ function buildPipeEventos() {
   });
   linhas.sort((a,b) => (a.o.criadaEm||'').localeCompare(b.o.criadaEm||''));
 
-  const THEAD = '<tr><th>Criada em</th><th>Projeto</th><th>Consultor</th><th>Etapa</th><th>Próx. contato</th><th>Valores (OT / Rec)</th><th>Histórico</th><th>Status</th><th></th></tr>';
-  if (!linhas.length) {
-    lista.innerHTML = '<div class="tbl-wrap"><table><thead>' + THEAD + '</thead><tbody>' + emptyRow(9, 'Nenhuma oportunidade levantada em ' + (label||'—')) + '</tbody></table></div>';
-    return;
-  }
   const oCoresReg = {'Mapeado (AQL)':'var(--blue)','Apresentar proposta (SQL)':'var(--blue)','Proposta apresentada (SAL)':'var(--amber)','Follow (COMMIT)':'var(--green)'};
-  const rows = linhas.map(({p, o}) => {
+  const THEAD = '<tr><th>Criada em</th><th>Projeto</th><th>Consultor</th><th>Etapa</th><th>Próx. contato</th><th>Valores (OT / Rec)</th><th>Histórico</th><th>Status</th><th></th></tr>';
+  const linha = ({p, o}) => {
     const cor = oCoresReg[o.etapa] || 'var(--text-hint)';
     const historico = (p.pipeEventos||[]).filter(e => e.linkOportId === o.id).sort((a,b)=>(a.data||'').localeCompare(b.data||''));
     const historicoTxt = historico.length
@@ -7803,7 +7804,7 @@ function buildPipeEventos() {
       : '—';
     const statusTxt = o.fechadaEm ? ('Encerrada ' + fmtD(o.fechadaEm)) : 'Aberta';
     return `<tr>
-      <td style="white-space:nowrap;font-size:var(--fs-xs);color:var(--text-hint);">${fmtD(o.criadaEm)}</td>
+      <td style="white-space:nowrap;"><input type="date" class="sel" style="font-size:var(--fs-xs);width:120px;" value="${dv(o.criadaEm)}" title="Preencha se souber quando essa oportunidade foi levantada, pra ela entrar no mês certo" onchange="oportSetCampo(${p.id},'${o.id}','criadaEm',this.value)"></td>
       <td>${p.nome||'—'}</td>
       <td>${p.consultor||'—'}</td>
       <td><select class="sel" style="font-size:var(--fs-xs);width:150px;color:${cor};font-weight:600;" onchange="oportSetEtapa(${p.id},'${o.id}',this.value)">${ETAPAS_OPORT.map(e=>`<option ${o.etapa===e?'selected':''}>${e}</option>`).join('')}</select></td>
@@ -7816,8 +7817,19 @@ function buildPipeEventos() {
         <button class="sel" style="font-size:var(--fs-base);line-height:1;padding:3px 6px;cursor:pointer;color:var(--text-hint);" title="Excluir" onclick="oportRemover(${p.id},'${o.id}')">${icon('x')}</button>
       </td>
     </tr>`;
-  }).join('');
-  lista.innerHTML = '<div class="tbl-wrap"><table><thead>' + THEAD + '</thead><tbody>' + rows + '</tbody></table></div>';
+  };
+
+  let html = '';
+  if (semData.length) {
+    html += '<div style="margin-bottom:1rem;">'
+      + '<div style="font-size:var(--fs-sm);font-weight:600;color:var(--amber);margin-bottom:.4rem;">Sem data de criação (' + semData.length + ') — de antes dessa lista existir; preencha a data pra elas entrarem no mês certo</div>'
+      + '<div class="tbl-wrap"><table><thead>' + THEAD + '</thead><tbody>' + semData.map(linha).join('') + '</tbody></table></div>'
+      + '</div>';
+  }
+  html += linhas.length
+    ? '<div class="tbl-wrap"><table><thead>' + THEAD + '</thead><tbody>' + linhas.map(linha).join('') + '</tbody></table></div>'
+    : (semData.length ? '' : '<div class="tbl-wrap"><table><thead>' + THEAD + '</thead><tbody>' + emptyRow(9, 'Nenhuma oportunidade levantada em ' + (label||'—')) + '</tbody></table></div>');
+  lista.innerHTML = html;
 }
 
 // Passo C — quadro de controle semana a semana (semana × consultor × tipo)
@@ -9292,14 +9304,19 @@ function oportunidadesDe(p) {
     p.oportunidades = [];
     // Migração não-destrutiva: se o projeto já tinha uma oportunidade no campo antigo (de
     // antes dessa lista existir), ela vira o primeiro item — só nessa primeira leitura,
-    // nunca mais depois (a partir daqui o array já existe de verdade).
+    // nunca mais depois (a partir daqui o array já existe de verdade). criadaEm fica em
+    // branco (não sabemos quando ela foi levantada de verdade) — NUNCA usar "hoje" aqui:
+    // isso empurrava toda oportunidade antiga pro mês em que a migração rodasse, fazendo o
+    // filtro de mês do Registro da AQL parecer quebrado (tudo caindo junto no mês atual).
+    // Sem data, ela aparece no bloco "sem data" do Registro, fora de qualquer mês — dá pra
+    // preencher a data manualmente lá se quiser encaixar num mês específico.
     if (ETAPAS_OPORT.includes(p.oport)) {
       p.oportunidades.push({
         id: oportNovaId(), etapa: p.oport, proximoContato: p.proximoContato || '',
         valorOT: p.valorOport || '', valorRec: p.valorOportRec || '',
         produtos: Array.isArray(p.oportProdutos) ? p.oportProdutos.slice() : [],
         propostaAgendada: p.oportPropostaAgendada || '', dataProposta: p.oportDataProposta || '',
-        criadaEm: new Date().toISOString().slice(0,10), fechadaEm: '',
+        criadaEm: '', fechadaEm: '',
       });
     }
   }
