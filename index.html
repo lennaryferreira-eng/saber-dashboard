@@ -7778,18 +7778,16 @@ function buildPipeEventos() {
   // etapa) naquele mês — o MESMO critério que pipeEventosDoMes usa pro "volume de AQL" lá em
   // cima (Consolidado/Metas), pra os dois números baterem. Não usa criadaEm pra isso: criadaEm
   // é só referência/ordenação (pode vir do próximo contato pra oportunidades migradas — ver
-  // oportunidadesDe) e nunca teve um evento real por trás, então contaria número que não
-  // aconteceu de verdade naquele mês. Quem nunca teve NENHUM evento real (típico de
-  // oportunidade migrada de antes dessa lista existir) fica num bloco à parte, sempre visível
-  // independente do mês escolhido.
+  // oportunidadesDe). O filtro de mês é estrito: só mostra o que teve evento real naquele mês,
+  // nada de bloco extra sempre visível — quem nunca teve evento real simplesmente não aparece
+  // aqui até a etapa mudar de novo (continua visível e editável no Lead Time normalmente).
   const mesIdxAtual = (_MES_ORDEM[label] || 0) - 1;
-  let linhas = [], semData = [];
+  let linhas = [];
   projects.forEach(p => {
     if (isDroFam(p)) return;
     if (consF && p.consultor !== consF) return;
     oportunidadesDe(p).forEach(o => {
       const eventosLigados = (p.pipeEventos||[]).filter(e => e.linkOportId === o.id);
-      if (!eventosLigados.length) { semData.push({ p, o }); return; }
       const teveEventoNoPeriodo = eventosLigados.some(e => {
         const d = parseDate(e.data);
         if (!d || d.getMonth() !== mesIdxAtual || d.getFullYear() !== ano) return false;
@@ -7826,17 +7824,9 @@ function buildPipeEventos() {
     </tr>`;
   };
 
-  let html = '';
-  if (semData.length) {
-    html += '<div style="margin-bottom:1rem;">'
-      + '<div style="font-size:var(--fs-sm);font-weight:600;color:var(--amber);margin-bottom:.4rem;">Sem evento registrado (' + semData.length + ') — de antes dessa lista existir, sem histórico real de mudança de etapa; passam a entrar no mês certo assim que a etapa mudar de novo (a data mostrada aqui é só referência)</div>'
-      + '<div class="tbl-wrap"><table><thead>' + THEAD + '</thead><tbody>' + semData.map(linha).join('') + '</tbody></table></div>'
-      + '</div>';
-  }
-  html += linhas.length
+  lista.innerHTML = linhas.length
     ? '<div class="tbl-wrap"><table><thead>' + THEAD + '</thead><tbody>' + linhas.map(linha).join('') + '</tbody></table></div>'
-    : (semData.length ? '' : '<div class="tbl-wrap"><table><thead>' + THEAD + '</thead><tbody>' + emptyRow(9, 'Nenhuma oportunidade levantada em ' + (label||'—')) + '</tbody></table></div>');
-  lista.innerHTML = html;
+    : '<div class="tbl-wrap"><table><thead>' + THEAD + '</thead><tbody>' + emptyRow(9, 'Nenhuma oportunidade levantada em ' + (label||'—')) + '</tbody></table></div>';
 }
 
 // Passo C — quadro de controle semana a semana (semana × consultor × tipo)
