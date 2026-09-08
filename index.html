@@ -9320,6 +9320,20 @@ function oportunidadesDe(p) {
       });
     }
   }
+  // Autocorreção: oportunidades que já foram salvas com a data fabricada pelo bug da
+  // migração antiga (versão anterior deste código, que usava "hoje" em vez de deixar em
+  // branco) ficam presas nesse dia pra sempre, mesmo depois do fix acima. O jeito seguro de
+  // reconhecer essas artificiais: toda oportunidade criada de verdade (por aqlProdutosSalvar
+  // ou confirmNovoPipeEvento) sempre gera pelo menos 1 pipeEvento vinculado via linkOportId
+  // (ver _oportAplicarGatilhos). Então: tem criadaEm mas nenhum pipeEvento vinculado = veio
+  // do bug antigo, não é uma data real → limpa. Roda toda vez (idempotente), assim conserta
+  // dado que já estava salvo no Supabase antes desse fix, não só migração nova.
+  if (p.oportunidades.length && (p.pipeEventos || p.oportunidades.some(o => o.criadaEm))) {
+    ensurePipeEventos(p);
+    p.oportunidades.forEach(o => {
+      if (o.criadaEm && !p.pipeEventos.some(e => e.linkOportId === o.id)) o.criadaEm = '';
+    });
+  }
   return p.oportunidades;
 }
 function oportPrincipal(p) { return oportunidadesDe(p).find(o => !o.fechadaEm) || null; }
