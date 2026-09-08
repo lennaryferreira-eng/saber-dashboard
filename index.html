@@ -7782,20 +7782,26 @@ function buildPipeEventos() {
   // nada de bloco extra sempre visível — quem nunca teve evento real simplesmente não aparece
   // aqui até a etapa mudar de novo (continua visível e editável no Lead Time normalmente).
   const mesIdxAtual = (_MES_ORDEM[label] || 0) - 1;
-  let linhas = [];
+  const noPeriodo = data => {
+    const d = parseDate(data);
+    if (!d || d.getMonth() !== mesIdxAtual || d.getFullYear() !== ano) return false;
+    if (semSel && !(d >= semSel.ini && d <= semSel.fim)) return false;
+    return true;
+  };
+  let linhas = [], orfaosPorProjeto = [];
   projects.forEach(p => {
     if (isDroFam(p)) return;
     if (consF && p.consultor !== consF) return;
     oportunidadesDe(p).forEach(o => {
       const eventosLigados = (p.pipeEventos||[]).filter(e => e.linkOportId === o.id);
-      const teveEventoNoPeriodo = eventosLigados.some(e => {
-        const d = parseDate(e.data);
-        if (!d || d.getMonth() !== mesIdxAtual || d.getFullYear() !== ano) return false;
-        if (semSel && !(d >= semSel.ini && d <= semSel.fim)) return false;
-        return true;
-      });
-      if (teveEventoNoPeriodo) linhas.push({ p, o });
+      if (eventosLigados.some(e => noPeriodo(e.data))) linhas.push({ p, o });
     });
+    // Eventos reais (contam no "volume de AQL" de cima) que sobraram sem oportunidade pra
+    // desenhar a linha — auto-geração antiga do Lead Time ou "+ Registrar evento" manual, os
+    // dois de antes do linkOportId existir. Dá pra "resgatar" pra virarem oportunidade de
+    // verdade (ver oportResgatarOrfaos), sem inventar nenhum evento novo.
+    const orfaosNoMes = _orfaosDoProjeto(p).filter(e => noPeriodo(e.data));
+    if (orfaosNoMes.length) orfaosPorProjeto.push({ p, eventos: orfaosNoMes });
   });
   linhas.sort((a,b) => (a.o.criadaEm||'').localeCompare(b.o.criadaEm||''));
 
@@ -7824,9 +7830,27 @@ function buildPipeEventos() {
     </tr>`;
   };
 
-  lista.innerHTML = linhas.length
+  let html = '';
+  if (orfaosPorProjeto.length) {
+    const linhaOrfao = ({p, eventos}) => {
+      const evsTxt = eventos.slice().sort((a,b)=>(a.data||'').localeCompare(b.data||''))
+        .map(e => (e.tipo==='Proposta'?'SQL':'AQL') + ' ' + fmtD(e.data) + (e.reuniaoFeita?' ✓ reunião':'')).join(' → ');
+      return `<tr>
+        <td>${p.nome||'—'}</td>
+        <td>${p.consultor||'—'}</td>
+        <td style="font-size:var(--fs-2xs);color:var(--text-hint);white-space:nowrap;">${evsTxt}</td>
+        <td style="text-align:center;white-space:nowrap;"><button class="sel" style="font-size:var(--fs-xs);padding:3px 10px;cursor:pointer;font-weight:600;" title="Cria uma oportunidade a partir desses registros, mantendo as datas reais" onclick="oportResgatarOrfaos(${p.id})">Resgatar</button></td>
+      </tr>`;
+    };
+    html += '<div style="margin-bottom:1rem;">'
+      + '<div style="font-size:var(--fs-sm);font-weight:600;color:var(--amber);margin-bottom:.4rem;">Registros sem oportunidade vinculada neste mês (' + orfaosPorProjeto.length + ') — de antes dessa lista existir; já contam no volume de AQL de cima, só falta virar oportunidade pra aparecer editável aqui</div>'
+      + '<div class="tbl-wrap"><table><thead><tr><th>Projeto</th><th>Consultor</th><th>Registros</th><th></th></tr></thead><tbody>' + orfaosPorProjeto.map(linhaOrfao).join('') + '</tbody></table></div>'
+      + '</div>';
+  }
+  html += linhas.length
     ? '<div class="tbl-wrap"><table><thead>' + THEAD + '</thead><tbody>' + linhas.map(linha).join('') + '</tbody></table></div>'
-    : '<div class="tbl-wrap"><table><thead>' + THEAD + '</thead><tbody>' + emptyRow(9, 'Nenhuma oportunidade levantada em ' + (label||'—')) + '</tbody></table></div>';
+    : (orfaosPorProjeto.length ? '' : '<div class="tbl-wrap"><table><thead>' + THEAD + '</thead><tbody>' + emptyRow(9, 'Nenhuma oportunidade levantada em ' + (label||'—')) + '</tbody></table></div>');
+  lista.innerHTML = html;
 }
 
 // Passo C — quadro de controle semana a semana (semana × consultor × tipo)
@@ -9428,6 +9452,44 @@ async function oportRemover(projId, opId) {
   if (!p) return;
   if (!(await showConfirm('Excluir essa oportunidade? Essa ação não pode ser desfeita.'))) return;
   p.oportunidades = oportunidadesDe(p).filter(x => x.id !== opId);
+  _oportRefresh(p);
+}
+
+// pipeEventos que existem mas não pertencem a nenhuma oportunidade atual — de antes do
+// linkOportId existir (a auto-geração antiga do Lead Time e o "+ Registrar evento" manual, os
+// dois removidos nessa reforma) ou de uma oportunidade que já foi excluída. Continuam contando
+// no "volume de AQL" de cima (pipeEventosDoMes não filtra por link), só não aparecem no
+// Registro porque não tem oportunidade pra desenhar a linha.
+function _orfaosDoProjeto(p) {
+  const idsAtivos = new Set(oportunidadesDe(p).map(o => o.id));
+  return (p.pipeEventos || []).filter(e => !e.linkOportId || !idsAtivos.has(e.linkOportId));
+}
+
+// "Resgata" os eventos órfãos de um projeto pra dentro de uma oportunidade de verdade — cria
+// UMA oportunidade cobrindo todos eles (não uma por evento, senão uma dupla Oportunidade+
+// Proposta do mesmo negócio viraria duas oportunidades separadas), na etapa mais avançada que
+// os eventos indicam, com criadaEm no evento mais antigo. Os eventos originais continuam
+// intactos (datas reais preservadas), só ganham linkOportId apontando pra essa oportunidade —
+// não gera pipeEvento novo nenhum, então o "volume de AQL" de cima não muda.
+async function oportResgatarOrfaos(projId) {
+  const p = projects.find(x => String(x.id) === String(projId));
+  if (!p) return;
+  const orfaos = _orfaosDoProjeto(p);
+  if (!orfaos.length) return;
+  if (!(await showConfirm('Recuperar ' + orfaos.length + ' registro(s) antigo(s) desse projeto como uma oportunidade? As datas reais são mantidas.'))) return;
+  orfaos.sort((a,b) => (a.data||'').localeCompare(b.data||''));
+  let etapa = 'Mapeado (AQL)';
+  if (orfaos.some(e => e.tipo === 'Proposta')) etapa = 'Apresentar proposta (SQL)';
+  if (orfaos.some(e => e.tipo === 'Proposta' && e.reuniaoFeita)) etapa = 'Proposta apresentada (SAL)';
+  const maisAntigo = orfaos[0];
+  const o = {
+    id: oportNovaId(), etapa, proximoContato: p.proximoContato || '',
+    valorOT: maisAntigo.valorOT || '', valorRec: maisAntigo.valorRec || '',
+    produtos: [], propostaAgendada: '', dataProposta: '',
+    criadaEm: maisAntigo.data || '', fechadaEm: '',
+  };
+  oportunidadesDe(p).push(o);
+  orfaos.forEach(e => { e.linkOportId = o.id; });
   _oportRefresh(p);
 }
 
