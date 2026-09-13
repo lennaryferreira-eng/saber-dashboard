@@ -20,6 +20,19 @@ jobs:
         run: echo "::add-mask::${{ inputs.value }}"
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
+      # Diagnóstico seguro: só mostra nome/e-mail da conta e dos times que esse token
+      # enxerga — nenhum comando aqui imprime o valor do token nem de nenhum segredo.
+      # Serve pra descobrir em qual conta/time do Vercel esse token vive, já que
+      # `vercel link`/`vercel env` estão falhando com "Could not retrieve Project
+      # Settings" mesmo com VERCEL_ORG_ID/VERCEL_PROJECT_ID corretos.
+      - name: Diagnóstico — de quem é esse token
+        run: |
+          echo "== vercel whoami =="
+          vercel whoami --token="${{ secrets.VERCEL_TOKEN }}" || true
+          echo "== vercel teams ls =="
+          vercel teams ls --token="${{ secrets.VERCEL_TOKEN }}" || true
+          echo "== vercel project ls (sem escopo de org) =="
+          vercel project ls --token="${{ secrets.VERCEL_TOKEN }}" || true
       - name: Linkar o projeto (vercel env precisa disso, diferente do vercel deploy)
         run: vercel link --yes --token="${{ secrets.VERCEL_TOKEN }}"
       - name: Remover valor anterior, se existir (pra poder rodar de novo/atualizar)
