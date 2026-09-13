@@ -7,6 +7,13 @@ name: Deploy to Vercel
 # conteúdo deste push. VERCEL_TOKEN é um secret do repositório (Settings > Secrets and
 # variables > Actions). VERCEL_ORG_ID/VERCEL_PROJECT_ID não são segredos (são só IDs), então
 # ficam fixos aqui.
+#
+# IMPORTANTE (descoberto tentando reusar esse token pra outra coisa): VERCEL_TOKEN é um token
+# de deploy restrito a ESTE projeto específico — não carrega identidade de conta nenhuma.
+# `vercel whoami`/`teams ls`/`project ls`/`env add`/`link` com ele falham todos com "User not
+# found" ou "token not valid", mesmo `vercel deploy` funcionando normalmente. Não dá pra usar
+# esse token pra gerenciar variáveis de ambiente nem nada além de deploy — isso só é possível
+# logado de verdade (com 2FA) na conta do Vercel que administra este projeto.
 on:
   push:
     branches:
