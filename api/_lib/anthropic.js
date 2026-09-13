@@ -92,3 +92,25 @@ export async function callClaudeStream({ apiKey, system, userText, maxTokens, th
     body: JSON.stringify(body),
   });
 }
+
+// "Sem créditos" na API da Anthropic é um erro específico — HTTP 402, error.type
+// "billing_error" — diferente de chave inválida (401), request malformado (400) ou rate
+// limit (429). Só esse caso justifica tentar de novo numa segunda chave: qualquer outro erro
+// falharia igual na chave reserva, e essa segunda tentativa só dobraria a espera à toa.
+function isErroDeCreditos(status, data) {
+  return status === 402 || data?.error?.type === 'billing_error';
+}
+
+// Mesma chamada de callClaudeStream, com uma chave reserva pra quando a principal ficar sem
+// créditos. Só troca de chave nesse caso específico (ver isErroDeCreditos) — a troca acontece
+// ANTES de qualquer byte ser repassado pro cliente (evaluate-meeting.js só começa a streamar
+// depois de checar claudeRes.ok), então não tem risco de misturar duas respostas.
+export async function callClaudeStreamComFallback({ apiKey, apiKeyReserva, ...opts }) {
+  const primeira = await callClaudeStream({ apiKey, ...opts });
+  if (primeira.ok || !apiKeyReserva) return { res: primeira, usouReserva: false };
+  const data = await primeira.clone().json().catch(() => ({}));
+  if (!isErroDeCreditos(primeira.status, data)) return { res: primeira, usouReserva: false };
+  console.log('Claude: chave principal sem créditos (402 billing_error) — tentando a chave secundária.');
+  const segunda = await callClaudeStream({ apiKey: apiKeyReserva, ...opts });
+  return { res: segunda, usouReserva: true };
+}

@@ -22,7 +22,7 @@
 // Anthropic (content_block_delta/message_delta), então o stream do Claude é repassado cru.
 
 import { callGeminiStream } from './_lib/gemini.js';
-import { callClaudeStream } from './_lib/anthropic.js';
+import { callClaudeStreamComFallback } from './_lib/anthropic.js';
 import { MEETING_EVAL_SKILL } from './_lib/meeting-eval-skill.js';
 
 export default async function handler(req, res) {
@@ -53,6 +53,10 @@ export default async function handler(req, res) {
     res.status(500).json({ error: nome + ' não configurada no Vercel (Settings > Environment Variables)' });
     return;
   }
+  // Chave reserva opcional — só usada pro Claude, e só quando a principal ficar sem créditos
+  // (ver isErroDeCreditos em _lib/anthropic.js). Sem essa variável configurada no Vercel, o
+  // comportamento continua igual a antes (falha normal quando a principal não tem crédito).
+  const apiKeyReserva = usarClaude ? process.env.ANTHROPIC_API_KEY_2 : undefined;
 
   // Quando a mesma call cobre duas entregas diferentes (ex: Diagnóstico de Vendas +
   // Diagnóstico de Mídia Paga na mesma reunião), o painel manda a mesma transcrição duas
@@ -69,8 +73,9 @@ export default async function handler(req, res) {
     const maxTokens = 16000;
 
     if (usarClaude) {
-      const claudeRes = await callClaudeStream({
+      const { res: claudeRes, usouReserva } = await callClaudeStreamComFallback({
         apiKey,
+        apiKeyReserva,
         model: modeloClaude,
         system: MEETING_EVAL_SKILL,
         userText,
@@ -84,10 +89,12 @@ export default async function handler(req, res) {
         // procedimento mecânico da própria skill.
         thinking: { type: 'disabled' },
       });
+      if (usouReserva) console.log('Auditoria gerada com a chave Anthropic secundária (a principal estava sem créditos).');
 
       if (!claudeRes.ok) {
         const data = await claudeRes.json().catch(() => ({}));
-        res.status(claudeRes.status).json({ error: 'Erro da API da Anthropic', details: data });
+        const erro = usouReserva ? 'Erro da API da Anthropic (chave principal E secundária)' : 'Erro da API da Anthropic';
+        res.status(claudeRes.status).json({ error: erro, details: data });
         return;
       }
 
