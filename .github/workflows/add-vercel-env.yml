@@ -20,6 +20,8 @@ jobs:
         run: echo "::add-mask::${{ inputs.value }}"
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
+      - name: Linkar o projeto (vercel env precisa disso, diferente do vercel deploy)
+        run: vercel link --yes --token="${{ secrets.VERCEL_TOKEN }}"
       - name: Remover valor anterior, se existir (pra poder rodar de novo/atualizar)
         run: vercel env rm ANTHROPIC_API_KEY_2 production --yes --token="${{ secrets.VERCEL_TOKEN }}" || true
       - name: Adicionar ANTHROPIC_API_KEY_2 (Production)

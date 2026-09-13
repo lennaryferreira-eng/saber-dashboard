@@ -11,8 +11,8 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
-    workflow_dispatch:
 env:
   VERCEL_ORG_ID: team_sG5uRTjMG1iSGBRhEnjDCvT6
   VERCEL_PROJECT_ID: prj_d24bxWZFsETcFJYW98jTvEIGYMwx
