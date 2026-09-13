@@ -1,0 +1,26 @@
+name: Adicionar variável de ambiente no Vercel
+
+on:
+  workflow_dispatch:
+    inputs:
+      value:
+        description: 'Valor da ANTHROPIC_API_KEY_2 (a chave sk-ant-... da conta secundária)'
+        required: true
+        type: string
+
+env:
+  VERCEL_ORG_ID: team_sG5uRTjMG1iSGBRhEnjDCvT6
+  VERCEL_PROJECT_ID: prj_d24bxWZFsETcFJYW98jTvEIGYMwx
+
+jobs:
+  add-env:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mascarar o valor nos logs (antes de qualquer outro passo)
+        run: echo "::add-mask::${{ inputs.value }}"
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+      - name: Remover valor anterior, se existir (pra poder rodar de novo/atualizar)
+        run: vercel env rm ANTHROPIC_API_KEY_2 production --yes --token="${{ secrets.VERCEL_TOKEN }}" || true
+      - name: Adicionar ANTHROPIC_API_KEY_2 (Production)
+        run: echo "${{ inputs.value }}" | vercel env add ANTHROPIC_API_KEY_2 production --token="${{ secrets.VERCEL_TOKEN }}"
