@@ -9379,6 +9379,63 @@ function _oportRefresh(p) {
   if (document.getElementById('pipe-funil')) buildPipeline();
   if (document.getElementById('pev-lista')) buildAql();
   upd();
+  oportPersistir(p.id);
+}
+
+// Campos tocados por qualquer mutação de oportunidade — a lista em si (oportunidades),
+// o log de eventos (pipeEventos, por causa de _oportAplicarGatilhos) e o espelho legado que
+// sincronizarOportMirror mantém (consumido por Pipe da Semana/Monetização).
+const CAMPOS_OPORT_PERSISTIR = ['oportunidades', 'pipeEventos', 'oport', 'proximoContato', 'valorOport', 'valorOportRec', 'oportProdutos', 'oportPropostaAgendada', 'oportDataProposta'];
+
+// Grava só esses campos de UM projeto — mesmo motivo do audPersistirScoreEntrega (ver
+// comentário lá, mesma raiz): sbSave()/upd() grava a LINHA INTEIRA a partir de uma foto em
+// memória e aborta em silêncio se detectar conflito (sbConflito) — o que já apagou nota de
+// auditoria salva com sucesso antes desse mesmo conserto. Toda mutação de oportunidade no
+// Lead Time (mudar etapa, editar campo, encerrar, excluir, criar) passa por _oportRefresh, que
+// chama isso — sem depender só do save geral, que sob conflito descartaria a edição em
+// silêncio, exatamente como acontecia com o score da Auditoria.
+let _oportGravando = null;
+async function oportPersistir(projId) {
+  const anterior = _oportGravando;
+  let liberar;
+  _oportGravando = new Promise(res => { liberar = res; });
+  if (anterior) await anterior.catch(() => {});
+  try {
+    return await _oportPersistirAgora(projId);
+  } finally {
+    liberar();
+  }
+}
+async function _oportPersistirAgora(projId) {
+  if (VIEWER) return { ok: false, motivo: 'viewer' };
+  if (typeof MODO_OFFLINE !== 'undefined' && MODO_OFFLINE) return { ok: false, motivo: 'offline' };
+  const pLocal = projects.find(x => String(x.id) === String(projId));
+  if (!pLocal) return { ok: false, motivo: 'projeto_nao_encontrado_local' };
+  const tabela = SB_TABLE;
+  try {
+    const r = await fetch(SB_URL + '/rest/v1/' + tabela + '?id=eq.main&select=projects', { headers: SB_HEADERS });
+    if (!r.ok) throw new Error('HTTP ' + r.status + ' ao ler projects');
+    const rows = await r.json();
+    const remotos = _parseMaybe(rows.length ? rows[0].projects : null, []);
+    if (tabela !== SB_TABLE) return { ok: false, motivo: 'coordenacao_mudou' };
+    if (!Array.isArray(remotos) || !remotos.length) return { ok: false, motivo: 'projects_vazio_no_servidor' };
+    const idx = remotos.findIndex(x => String(x.id) === String(projId));
+    if (idx === -1) return { ok: false, motivo: 'projeto_nao_encontrado_remoto' };
+    CAMPOS_OPORT_PERSISTIR.forEach(campo => { remotos[idx][campo] = pLocal[campo]; });
+    const agora = new Date().toISOString();
+    const w = await fetch(SB_URL + '/rest/v1/' + tabela + '?id=eq.main', {
+      method: 'PATCH',
+      headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ projects: JSON.stringify(remotos), updated_at: agora })
+    });
+    if (!w.ok) throw new Error('HTTP ' + w.status + ': ' + (await w.text().catch(() => '')));
+    if (!sbConflito) sbServerVersion = agora;
+    console.log('oportPersistir: oportunidades gravadas em "' + pLocal.nome + '" ✓');
+    return { ok: true };
+  } catch (e) {
+    console.error('oportPersistir falhou:', e);
+    return { ok: false, motivo: 'rede', erro: e.message };
+  }
 }
 
 // Nova oportunidade sempre começa em "Mapeado (AQL)" — abre direto o pop-up de produtos;
