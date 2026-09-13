@@ -14089,6 +14089,69 @@ async function audPersistirAuditorias() {
   }
 }
 
+// Grava SÓ a nota de UMA entrega de UM projeto — mesmo motivo do audPersistirAuditorias acima
+// (mesmo comentário se aplica): sbSave()/upd() grava a LINHA INTEIRA a partir de uma foto em
+// memória e aborta em conflito (sbConflito) pra não sobrescrever outra sessão — só que
+// "abortar" ali também apagava silenciosamente o score que audSalvar() acabou de calcular,
+// mesmo com a avaliação em si salva certinho (ela já usa o caminho separado acima). Casos reais
+// pegos direto no Supabase: "Carango Tunning" e "Mattia Bueno Arquitetura" — avaliação salva
+// com nota, nunca chegou no Lead Time, Healthscore seguia como se a auditoria não existisse.
+// Relê só a coluna `projects`, edita a nota de UM projeto (por nome) e grava de volta — não
+// toca em nenhum outro projeto nem em nenhuma outra coluna, mesmo trade-off de janela pequena
+// entre GET e PATCH que o audPersistirAuditorias já aceita.
+let _audScoreGravando = null;
+async function audPersistirScoreEntrega(nomeProjeto, ordemEntrega, nota, dataAudit) {
+  const anterior = _audScoreGravando;
+  let liberar;
+  _audScoreGravando = new Promise(res => { liberar = res; });
+  if (anterior) await anterior.catch(() => {});
+  try {
+    return await _audPersistirScoreEntregaAgora(nomeProjeto, ordemEntrega, nota, dataAudit);
+  } finally {
+    liberar();
+  }
+}
+async function _audPersistirScoreEntregaAgora(nomeProjeto, ordemEntrega, nota, dataAudit) {
+  if (VIEWER) return { ok: false, motivo: 'viewer' };
+  if (typeof MODO_OFFLINE !== 'undefined' && MODO_OFFLINE) return { ok: false, motivo: 'offline' };
+  const tabela = SB_TABLE;
+  try {
+    const r = await fetch(SB_URL + '/rest/v1/' + tabela + '?id=eq.main&select=projects', { headers: SB_HEADERS });
+    if (!r.ok) throw new Error('HTTP ' + r.status + ' ao ler projects');
+    const rows = await r.json();
+    const remotos = _parseMaybe(rows.length ? rows[0].projects : null, []);
+    if (tabela !== SB_TABLE) return { ok: false, motivo: 'coordenacao_mudou' };
+    if (!Array.isArray(remotos) || !remotos.length) return { ok: false, motivo: 'projects_vazio_no_servidor' };
+    const idx = remotos.findIndex(x => x.nome === nomeProjeto);
+    if (idx === -1) return { ok: false, motivo: 'projeto_nao_encontrado' };
+    if (!remotos[idx].entregas) remotos[idx].entregas = {};
+    if (!remotos[idx].entregas[ordemEntrega]) remotos[idx].entregas[ordemEntrega] = { real: dataAudit || '', obs: '' };
+    remotos[idx].entregas[ordemEntrega].score = nota;
+    const agora = new Date().toISOString();
+    const w = await fetch(SB_URL + '/rest/v1/' + tabela + '?id=eq.main', {
+      method: 'PATCH',
+      headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ projects: JSON.stringify(remotos), updated_at: agora })
+    });
+    if (!w.ok) throw new Error('HTTP ' + w.status + ': ' + (await w.text().catch(() => '')));
+    // Espelha só esse campo na cópia local — não a foto inteira, pra não reintroduzir o mesmo
+    // risco (sobrescrever os outros 250+ projetos com uma cópia local que pode já estar
+    // desatualizada) que esse caminho separado existe justamente pra evitar.
+    const pLocal = projects.find(x => x.nome === nomeProjeto);
+    if (pLocal) {
+      if (!pLocal.entregas) pLocal.entregas = {};
+      if (!pLocal.entregas[ordemEntrega]) pLocal.entregas[ordemEntrega] = { real: dataAudit || '', obs: '' };
+      pLocal.entregas[ordemEntrega].score = nota;
+    }
+    if (!sbConflito) sbServerVersion = agora;
+    console.log('audPersistirScoreEntrega: score ' + nota + ' gravado em "' + nomeProjeto + '" (entrega ' + ordemEntrega + ') ✓');
+    return { ok: true };
+  } catch (e) {
+    console.error('audPersistirScoreEntrega falhou:', e);
+    return { ok: false, motivo: 'rede', erro: e.message };
+  }
+}
+
 async function _audPersistirAuditoriasAgora() {
   if (VIEWER) return { ok: false, motivo: 'viewer' };
   if (!_auditoriasLoaded) return { ok: false, motivo: 'nao_carregado' };
@@ -14198,7 +14261,15 @@ async function audSalvar(){
       // Time criado com data vazia, flag ignorava a nota e via a etapa anterior como vencida).
       if (!p.entregas[ordemEntrega]) p.entregas[ordemEntrega] = { real: dadosAtualizados.data || '', obs: '' };
       p.entregas[ordemEntrega].score = nota;
-      msgExtra = ' Score enviado pro Lead Time (' + nota + ').';
+      // Não confia só no upd()/sbScheduleSave() daqui pra baixo pra levar esse score até o
+      // banco — aquele save é da linha inteira e aborta em silêncio se detectar conflito
+      // (sbConflito), o que já apagou score de auditoria salva com sucesso (ver comentário em
+      // audPersistirScoreEntrega). Grava esse campo por um caminho dedicado, igual a avaliação
+      // em si já faz.
+      const rScore = await audPersistirScoreEntrega(cliente, ordemEntrega, nota, dadosAtualizados.data);
+      msgExtra = rScore.ok
+        ? ' Score enviado pro Lead Time (' + nota + ').'
+        : ' ⚠ Score calculado mas NÃO confirmado no Lead Time (falha ao gravar) — confira manualmente.';
     } else {
       msgExtra = ' Não achei o projeto "' + cliente + '" pra enviar o score.';
     }
