@@ -9415,7 +9415,19 @@ function _oportAplicarGatilhos(p, o, etapaAnterior, dataEvento) {
   }
   if (o.etapa === 'Proposta apresentada (SAL)' && etapaAnterior !== 'Proposta apresentada (SAL)') {
     const ev = p.pipeEventos.find(e => e.linkOportId === o.id && e.tipo === 'Proposta');
-    if (ev) ev.reuniaoFeita = true;
+    if (ev) {
+      ev.reuniaoFeita = true;
+    } else {
+      // Oportunidade sem evento de Proposta prévio (ex: veio direto de uma migração antiga,
+      // ou pulou etapas) — sem isso, marcar SAL não deixava rastro nenhum na AQL: nada pra
+      // marcar reuniaoFeita, e o "volume de AQL" do mês continuava sem saber que essa
+      // qualificação aconteceu. Cria o evento retroativamente, já com a reunião marcada.
+      p.pipeEventos.push(novoPipeEvento({
+        tipo: 'Proposta', data: hoje, origem: 'auto', reuniaoFeita: true,
+        valorOT: o.valorOT, valorRec: o.valorRec, escopo: p.escopos || '',
+        obs: 'Gerado pelo Lead Time', linkOportId: o.id,
+      }));
+    }
   }
 }
 
