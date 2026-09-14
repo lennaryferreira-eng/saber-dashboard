@@ -1459,7 +1459,7 @@
         </div>
       </div>
       <div style="display:flex;gap:6px;">
-        <button class="btn btn-primary" onclick="fcaSalvarNovo()" style="flex:1;border-radius:6px;">Registrar</button>
+        <button class="btn btn-primary" id="fca-modal-salvar-btn" onclick="fcaSalvarNovo()" style="flex:1;border-radius:6px;">Registrar</button>
         <button class="btn btn-ghost" onclick="fecharModalFca()" style="border-radius:6px;">Cancelar</button>
       </div>
     </div>
@@ -2601,10 +2601,17 @@ function fcaTrocarFiltro(v){ fcaFiltro = v; fcaRenderFiltros(); fcaRenderLista()
 // poluída com o formulário sempre aberto em cima da tabela). Um único modal serve os dois
 // modos: no modo 'projetos' aparece o seletor de projeto no topo, populado pela semana
 // navegável ao lado do filtro.
-function fcaAbrirModalNovo(){
-  ['fca-modal-fato','fca-modal-causa','fca-modal-acao','fca-modal-resultado-esperado','fca-modal-frente'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
-  const impactoEl = document.getElementById('fca-modal-impacto'); if (impactoEl) impactoEl.value = 'Médio';
-  const prioridadeEl = document.getElementById('fca-modal-prioridade'); if (prioridadeEl) prioridadeEl.value = 'Média';
+let _fcaModalEditId = null; // null = criando nova; com valor = editando essa FCA existente
+function fcaAbrirModalNovo(itemEditando){
+  _fcaModalEditId = itemEditando ? itemEditando.id : null;
+  const g = (id, val) => { const e = document.getElementById(id); if (e) e.value = val || ''; };
+  g('fca-modal-fato', itemEditando?.fato);
+  g('fca-modal-causa', itemEditando?.causa);
+  g('fca-modal-acao', itemEditando?.acao);
+  g('fca-modal-resultado-esperado', itemEditando?.resultadoEsperado);
+  g('fca-modal-frente', itemEditando?.frente);
+  const impactoEl = document.getElementById('fca-modal-impacto'); if (impactoEl) impactoEl.value = itemEditando?.impacto || 'Médio';
+  const prioridadeEl = document.getElementById('fca-modal-prioridade'); if (prioridadeEl) prioridadeEl.value = itemEditando?.prioridade || 'Média';
   // Sugestões de "Frente" = as já usadas em FCAs anteriores, mesmo padrão do datalist de tags de projeto.
   const frenteListEl = document.getElementById('fca-modal-frente-list');
   if (frenteListEl) {
@@ -2614,29 +2621,43 @@ function fcaAbrirModalNovo(){
   const tituloEl = document.getElementById('fca-modal-titulo');
   const projRowEl = document.getElementById('fca-modal-projeto-row');
   const projSelEl = document.getElementById('fca-modal-projeto');
-  if (fcaModo === 'projetos') {
-    if (tituloEl) tituloEl.textContent = 'Nova FCA de Projeto';
+  const ehDeProjeto = itemEditando ? !!itemEditando.projetoId : fcaModo === 'projetos';
+  if (ehDeProjeto) {
+    if (tituloEl) tituloEl.textContent = itemEditando ? 'Editar FCA de Projeto' : 'Nova FCA de Projeto';
     if (projRowEl) projRowEl.style.display = 'block';
     if (projSelEl) {
       const elegiveis = fcaProjetosElegiveis(fcaProjSemanaOffset);
-      projSelEl.innerHTML = elegiveis.length
-        ? elegiveis.map(p => '<option value="'+p.id+'">'+p.nome.replace(/</g,'&lt;')+'</option>').join('')
+      // Se a FCA sendo editada é de um projeto que não está entre os "elegíveis" da semana
+      // atual (ex: FCA aberta numa semana anterior), inclui ele mesmo assim — senão o select
+      // fica sem essa opção e reabrir pra editar troca o projeto sem querer.
+      const faltaAtual = itemEditando && !elegiveis.some(p => String(p.id) === String(itemEditando.projetoId));
+      const opcoes = faltaAtual ? elegiveis.concat([projects.find(p => String(p.id) === String(itemEditando.projetoId))].filter(Boolean)) : elegiveis;
+      projSelEl.innerHTML = opcoes.length
+        ? opcoes.map(p => '<option value="'+p.id+'">'+p.nome.replace(/</g,'&lt;')+'</option>').join('')
         : '<option value="">Nenhum projeto rodando nessa semana</option>';
+      if (itemEditando) projSelEl.value = String(itemEditando.projetoId);
     }
   } else {
-    if (tituloEl) tituloEl.textContent = 'Nova FCA';
+    if (tituloEl) tituloEl.textContent = itemEditando ? 'Editar FCA' : 'Nova FCA';
     if (projRowEl) projRowEl.style.display = 'none';
   }
+  const salvarBtn = document.getElementById('fca-modal-salvar-btn');
+  if (salvarBtn) salvarBtn.textContent = itemEditando ? 'Salvar alterações' : 'Registrar';
   const modal = document.getElementById('modal-fca-novo');
   if (modal) modal.style.display = 'flex';
 }
-// Atalho a partir do Gantt do Healthscore (botão de raio ao lado da flag, em cada linha de
-// projeto) — abre o mesmo modal já em modo Projetos, semana atual, com o projeto pré-
-// selecionado, pra registrar "algo precisa acontecer aqui" sem sair da análise da semana. O
-// registro cai direto na aba FCA Projetos pra revisar durante a semana.
+// Atalho a partir do Gantt do Healthscore e da lista do Lead Time (botão de raio ao lado da
+// flag/nome, em cada linha de projeto) — abre o mesmo modal já em modo Projetos, semana atual.
+// Se esse projeto já tem uma FCA em aberto (não concluída), abre ELA pra edição em vez de uma
+// em branco — sem isso, cada clique criava uma FCA nova pro mesmo problema (a pessoa clica de
+// novo justamente pra ver/continuar o que já tinha registrado, não pra duplicar). Mesma regra
+// do badge "FCA aberta" que já aparece do lado do projeto no Healthscore e no Lead Time — usa o
+// primeiro match porque fcaItens tem as mais recentes primeiro (unshift em fcaSalvarNovo).
 function fcaAbrirModalNovoParaProjeto(projectId){
   fcaModo = 'projetos';
   fcaProjSemanaOffset = 0;
+  const existente = fcaItens.find(it => it.projetoId && String(it.projetoId) === String(projectId) && !it.concluida);
+  if (existente) { fcaAbrirModalNovo(existente); return; }
   fcaAbrirModalNovo();
   const projSelEl = document.getElementById('fca-modal-projeto');
   if (projSelEl) projSelEl.value = String(projectId);
@@ -2644,6 +2665,7 @@ function fcaAbrirModalNovoParaProjeto(projectId){
 function fecharModalFca(){
   const modal = document.getElementById('modal-fca-novo');
   if (modal) modal.style.display = 'none';
+  _fcaModalEditId = null;
 }
 function fcaSalvarNovo(){
   const g = id => (document.getElementById(id)?.value || '').trim();
@@ -2656,18 +2678,26 @@ function fcaSalvarNovo(){
     if (!projetoId) { showAlert('Selecione o projeto.'); return; }
     projetoNome = projects.find(p => String(p.id) === String(projetoId))?.nome || '';
   }
-  fcaItens.unshift({
-    id: 'fca_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
-    criadoEm: new Date().toISOString(),
+  const dados = {
     fato, causa, acao,
     resultadoEsperado: g('fca-modal-resultado-esperado'),
-    resultadoReal: '',
     impacto: g('fca-modal-impacto') || 'Médio',
     prioridade: g('fca-modal-prioridade') || 'Média',
     frente: g('fca-modal-frente'),
-    concluida: false,
     projetoId, projetoNome, // null nos dois = FCA geral; preenchidos = FCA de projeto
-  });
+  };
+  if (_fcaModalEditId) {
+    const item = fcaItens.find(x => x.id === _fcaModalEditId);
+    if (item) Object.assign(item, dados); // mantém id, criadoEm, resultadoReal e concluida originais
+  } else {
+    fcaItens.unshift({
+      id: 'fca_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
+      criadoEm: new Date().toISOString(),
+      resultadoReal: '',
+      concluida: false,
+      ...dados,
+    });
+  }
   upd();
   fecharModalFca();
   fcaRenderLista();
