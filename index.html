@@ -3766,6 +3766,13 @@ function calcFlagAutomatica(p, refDateISO) {
   // acontecer (ex: "Verde" de quando o projeto ainda ia bem) — usar esse valor mostraria uma
   // cor enganosa, então sempre neutro aqui, ignorando p.flag.
   if (p.dataReembolso) return '—';
+  // Pausado = suspenso por decisão da coordenação/cliente (status2 manual), não um problema de
+  // execução — rodar a mesma régua de estagnação/score/prazo de um projeto ativo faria um
+  // projeto em standby há semanas cair em Vermelho automático só por não ter entrega recente,
+  // mascarando "está tudo bem, só está pausado" como se fosse atraso de verdade. Fica de fora
+  // da avaliação de saúde (mesmo raciocínio do reembolso acima), mas com rótulo próprio — '—'
+  // sozinho pareceria "sem dados" em vez de "pausado de propósito".
+  if (calcStatus2(p) === 'Pausado') return 'Pausado';
   const ent = p.entregas || {};
   const hojeISO = refDateISO || new Date().toISOString().slice(0,10);
   // Projeto estagnado = regra semanal, alinhada ao ritmo real de upload de auditoria
@@ -4021,7 +4028,7 @@ function prazoInline(p) {
 // ═══════════════════════════════════
 function flagHTML(f) {
   if (!f || f === '—') return '<span style="color:var(--text-hint)">—</span>';
-  const cls = {Verde:'flag-V',Amarelo:'flag-A',Vermelho:'flag-R'}[f] || '';
+  const cls = {Verde:'flag-V',Amarelo:'flag-A',Vermelho:'flag-R',Pausado:'flag-P'}[f] || '';
   return `<span style="display:inline-flex;align-items:center;gap:5px;"><span class="flag-dot ${cls}"></span>${f}</span>`;
 }
 // Select de flag com o ícone de bandeira colorido ao lado (em vez de só o nome em texto) —
@@ -11321,6 +11328,10 @@ function buildGanttTer() {
   let prjs = projects.filter(p => {
     if (p.recorrencia === 'Recorrente') return false; // Capacity One-time: recorrente tem a própria sub-aba
     if (!p.inicio) return false;
+    // Pausado não entra na conta de capacity (nem na tabela nem na carga semanal) — mesmo
+    // critério já usado no Gantt SABER. Continua visível normalmente no Lead Time, só sai
+    // daqui: sem isso caía no fallback "ativo" abaixo e continuava contando carga mesmo pausado.
+    if (p.status2 === 'Pausado') return false;
     const dI = parseDate(p.inicio);
     if (dI > endRef) return false;
     const ativo = p.status2 !== 'Finalizado' && p.status2 !== 'Cancelado' && p.status2 !== 'Interrompido';
@@ -11692,7 +11703,8 @@ function buildCapacityRec() {
     + Array.from({ length: nSemanas }, (_, si) => '<th style="min-width:64px;text-align:center;padding:5px 4px;">Semana ' + (si + 1) + '<div style="font-size:var(--fs-3xs);color:var(--text-hint);font-weight:400;">' + semanaLabel(si) + '</div></th>').join('')
     + '</tr>';
 
-  const list = projects.filter(p => p.recorrencia === 'Recorrente' && p.status2 !== 'Finalizado' && p.status2 !== 'Cancelado' && p.status2 !== 'Interrompido');
+  // Pausado fica fora da capacity recorrente também — mesmo critério do restante do Capacity.
+  const list = projects.filter(p => p.recorrencia === 'Recorrente' && p.status2 !== 'Finalizado' && p.status2 !== 'Cancelado' && p.status2 !== 'Interrompido' && p.status2 !== 'Pausado');
   if (!list.length) {
     tbody.innerHTML = '<tr><td colspan="' + (nSemanas + 2) + '" style="text-align:center;color:var(--text-hint);padding:20px;font-size:var(--fs-base);">Nenhum projeto recorrente ativo</td></tr>';
     return;

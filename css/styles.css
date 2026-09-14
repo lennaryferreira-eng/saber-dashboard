@@ -232,7 +232,7 @@ td[contenteditable="true"]:focus{background:var(--accent-dim);border-radius:3px;
 
 /* FLAG */
 .flag-dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex-shrink:0;}
-.flag-V{background:var(--green);} .flag-A{background:var(--amber);} .flag-R{background:var(--red);}
+.flag-V{background:var(--green);} .flag-A{background:var(--amber);} .flag-R{background:var(--red);} .flag-P{background:var(--text-hint);}
 
 /* QUARTER BLOCK */
 .q-block{margin-bottom:2.2rem;}
