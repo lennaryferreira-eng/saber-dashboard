@@ -1478,12 +1478,22 @@
     </div>
     <div class="modal-body">
       <label for="trat-modal-cliente" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Cliente</label>
-      <select id="trat-modal-cliente" class="sel" style="width:100%;font-size:var(--fs-base);margin-bottom:12px;"></select>
+      <select id="trat-modal-cliente" class="sel" onchange="tratSincronizarSinaisProjeto()" style="width:100%;font-size:var(--fs-base);margin-bottom:12px;"></select>
       <label for="trat-modal-situacao" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Situação</label>
       <textarea id="trat-modal-situacao" class="sel" rows="3" placeholder="O que está acontecendo…" style="width:100%;font-size:var(--fs-base);margin-bottom:10px;resize:vertical;"></textarea>
       <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);cursor:pointer;margin-bottom:14px;">
         <input type="checkbox" id="trat-modal-reembolso" style="width:16px;height:16px;cursor:pointer;"> Pediu reembolso?
       </label>
+      <div style="display:flex;flex-direction:column;gap:8px;padding:10px 12px;background:var(--surface2);border-radius:var(--r-sm);margin-bottom:14px;">
+        <span style="font-size:var(--fs-2xs);font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-hint);">Sinalizar no projeto</span>
+        <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);cursor:pointer;">
+          <input type="checkbox" id="trat-modal-pausar" style="width:16px;height:16px;cursor:pointer;"> ⏸ Pausar projeto (status "Pausado")
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);cursor:pointer;">
+          <input type="checkbox" id="trat-modal-danger" style="width:16px;height:16px;cursor:pointer;"> 🚩 Sinalizar em risco (flag Vermelha)
+        </label>
+        <span style="font-size:var(--fs-2xs);color:var(--text-hint);">Churn não tem opção aqui — encerrar a tratativa já é o sinal de que ela terminou.</span>
+      </div>
       <label for="trat-modal-atualizacao" style="display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Atualização</label>
       <textarea id="trat-modal-atualizacao" class="sel" rows="3" placeholder="Como está agora…" style="width:100%;font-size:var(--fs-base);margin-bottom:10px;resize:vertical;"></textarea>
       <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);cursor:pointer;margin-bottom:14px;">
@@ -2836,8 +2846,20 @@ function tratAbrirModal(id){
   if (atualizacaoEl) atualizacaoEl.value = item ? (item.atualizacao || '') : '';
   if (finalizadoEl) finalizadoEl.checked = !!(item && item.finalizado);
   if (excluirBtn) excluirBtn.style.display = item ? '' : 'none';
+  tratSincronizarSinaisProjeto(); // reflete o status/flag ATUAIS do projeto selecionado nos checkboxes
   const modal = document.getElementById('modal-trat-novo');
   if (modal) modal.style.display = 'flex';
+}
+// Os checkboxes "Pausar"/"Em risco" espelham o estado ATUAL do projeto selecionado no <select>
+// de cliente (não algo salvo na tratativa) — precisa rodar de novo sempre que o cliente muda,
+// senão ficaria mostrando o status de quem estava selecionado antes.
+function tratSincronizarSinaisProjeto(){
+  const clienteId = document.getElementById('trat-modal-cliente')?.value || '';
+  const p = projects.find(x => String(x.id) === String(clienteId));
+  const pausarEl = document.getElementById('trat-modal-pausar');
+  const dangerEl = document.getElementById('trat-modal-danger');
+  if (pausarEl) pausarEl.checked = !!(p && p.status2 === 'Pausado');
+  if (dangerEl) dangerEl.checked = !!(p && p.flagManual === 'Vermelho');
 }
 function fecharModalTrat(){
   const modal = document.getElementById('modal-trat-novo');
@@ -2853,6 +2875,8 @@ function tratSalvar(){
   const pediuReembolso = !!document.getElementById('trat-modal-reembolso')?.checked;
   const atualizacao = (document.getElementById('trat-modal-atualizacao')?.value || '').trim();
   const finalizado = !!document.getElementById('trat-modal-finalizado')?.checked;
+  const pausar = !!document.getElementById('trat-modal-pausar')?.checked;
+  const danger = !!document.getElementById('trat-modal-danger')?.checked;
   if (_tratModalId) {
     const item = tratativas.find(t => t.id === _tratModalId);
     if (item) Object.assign(item, { clienteId, clienteNome, situacao, pediuReembolso, atualizacao, finalizado });
@@ -2863,9 +2887,21 @@ function tratSalvar(){
       clienteId, clienteNome, situacao, pediuReembolso, atualizacao, finalizado,
     });
   }
+  // Aplica os sinais no projeto vinculado — só mexe no que essas duas checkboxes controlam,
+  // sem sobrescrever um status2/flagManual que veio de outro lugar (Churn setado na Base de
+  // Projetos, ou uma flag manual com outro motivo definida pelo modal de flag comum). Igual
+  // "Pediu reembolso?" já reflete um estado direto do projeto, isso é só mais duas dessas.
+  const projVinculado = projects.find(x => String(x.id) === String(clienteId));
+  if (projVinculado) {
+    if (pausar) projVinculado.status2 = 'Pausado';
+    else if (projVinculado.status2 === 'Pausado') projVinculado.status2 = '';
+    if (danger) { projVinculado.flagManual = 'Vermelho'; projVinculado.flagManualMotivo = 'Tratativa: ' + situacao; }
+    else if (projVinculado.flagManual === 'Vermelho') projVinculado.flagManual = '';
+  }
   upd();
   fecharModalTrat();
   buildOvTratativas();
+  if (typeof refreshAll === 'function') refreshAll(); // reflete o status/flag do projeto na hora (Visão Geral, Lead Time, Capacity…)
 }
 async function tratExcluirAtual(){
   if (!_tratModalId) return;
