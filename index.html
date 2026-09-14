@@ -11905,6 +11905,12 @@ function buildGantt() {
     if (isDroFam(p)) return false; // DRO tem aba própria
     const s2 = calcStatus2(p);
     if (s2 === 'Churn') return false;
+    // Pausado ignora a checagem de janela/recência abaixo (dFinal >= startRef) — ela existe pra
+    // não lotar a tabela de projeto antigo já encerrado, mas um projeto pausado tem prevFim
+    // "congelado" (ninguém atualiza previsão de quem está parado), então quase sempre cairia
+    // fora da janela mesmo devendo continuar visível. Achado ao investigar por que só 2 de 4
+    // projetos Pausado apareciam no Capacity — os outros 2 tinham prevFim de semanas atrás.
+    if (s2 === 'Pausado') return true;
     const dI = parseDate(p.inicio);
     // usa realFim se disponível (pode ser futuro), senão prevFim
     const dFBase = p.realFim ? parseDate(p.realFim) : ((p.realFim && p.prevFim && p.realFim > p.prevFim ? parseDate(p.realFim) : (p.prevFim ? parseDate(p.prevFim) : new Date(dI.getTime() + 45 * 864e5))));
