@@ -1458,6 +1458,7 @@
           <datalist id="fca-modal-frente-list"></datalist>
         </div>
       </div>
+      <button class="btn btn-ghost" id="fca-modal-finalizar-btn" onclick="fcaFinalizarEAbrirNova()" style="display:none;width:100%;border-radius:6px;margin-bottom:6px;color:var(--green);border-color:var(--green);">✓ Finalizar esta FCA e abrir uma nova</button>
       <div style="display:flex;gap:6px;">
         <button class="btn btn-primary" id="fca-modal-salvar-btn" onclick="fcaSalvarNovo()" style="flex:1;border-radius:6px;">Registrar</button>
         <button class="btn btn-ghost" onclick="fecharModalFca()" style="border-radius:6px;">Cancelar</button>
@@ -2643,8 +2644,40 @@ function fcaAbrirModalNovo(itemEditando){
   }
   const salvarBtn = document.getElementById('fca-modal-salvar-btn');
   if (salvarBtn) salvarBtn.textContent = itemEditando ? 'Salvar alterações' : 'Registrar';
+  // "Finalizar" só faz sentido editando uma FCA que já existe — numa em branco não há o que
+  // concluir ainda.
+  const finalizarBtn = document.getElementById('fca-modal-finalizar-btn');
+  if (finalizarBtn) finalizarBtn.style.display = itemEditando ? 'block' : 'none';
   const modal = document.getElementById('modal-fca-novo');
   if (modal) modal.style.display = 'flex';
+}
+// Atalho pro fluxo comum de quem reabre uma FCA em aberto só pra fechá-la: marca concluída,
+// aplicando primeiro qualquer edição feita nos campos do modal (senão "Finalizar" descartaria
+// em silêncio um ajuste que a pessoa acabou de digitar) — e já abre uma nova em branco pro
+// mesmo projeto (ou modo geral), porque quem finaliza aqui geralmente é pra registrar o próximo
+// problema na sequência, não só fechar e sair.
+function fcaFinalizarEAbrirNova(){
+  if (!_fcaModalEditId) return;
+  const item = fcaItens.find(x => x.id === _fcaModalEditId);
+  if (!item) return;
+  const g = id => (document.getElementById(id)?.value || '').trim();
+  const fato = g('fca-modal-fato'), causa = g('fca-modal-causa'), acao = g('fca-modal-acao');
+  if (fato) item.fato = fato;   // não deixa um campo obrigatório em branco por causa de um clique sem querer
+  if (causa) item.causa = causa;
+  if (acao) item.acao = acao;
+  item.resultadoEsperado = g('fca-modal-resultado-esperado');
+  item.impacto = g('fca-modal-impacto') || item.impacto;
+  item.prioridade = g('fca-modal-prioridade') || item.prioridade;
+  item.frente = g('fca-modal-frente');
+  item.concluida = true;
+  upd();
+  fcaRenderLista();
+  if (item.projetoId) {
+    fcaAbrirModalNovoParaProjeto(item.projetoId); // sem FCA aberta agora -> abre em branco
+  } else {
+    fcaModo = 'geral';
+    fcaAbrirModalNovo();
+  }
 }
 // Atalho a partir do Gantt do Healthscore e da lista do Lead Time (botão de raio ao lado da
 // flag/nome, em cada linha de projeto) — abre o mesmo modal já em modo Projetos, semana atual.
