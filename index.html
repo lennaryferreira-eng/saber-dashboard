@@ -1882,7 +1882,7 @@
       <button class="modal-close" onclick="closeConsultoresModal()" title="Fechar"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
     </div>
     <div class="modal-body">
-      <p style="font-size:var(--fs-sm);color:var(--text-hint);margin:0 0 12px;">Define quem aparece nos filtros e listas do painel (e nas listas suspensas da Auditoria). A ordem aqui é a ordem usada nas telas.</p>
+      <p style="font-size:var(--fs-sm);color:var(--text-hint);margin:0 0 12px;">Define quem aparece nos filtros e listas do painel (e nas listas suspensas da Auditoria). A ordem aqui é a ordem usada nas telas. Marcar como <b>Inativo</b> tira a pessoa de Performance, AQL, Monetização, PDI e Capacity — sem apagar nada: histórico (auditorias, projetos, cultura) continua intacto e filtrável. Use o <b>x</b> só se quiser remover de vez.</p>
       <div id="cons-modal-rows"></div>
       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
         <button class="btn" onclick="consAddRow()">+ Adicionar</button>
@@ -4339,7 +4339,7 @@ async function restoreBackup() {
     if (data.conv_base && typeof data.conv_base === 'object') Object.assign(convBaseManual, data.conv_base);
     if (data.fotos && typeof data.fotos === 'object') { Object.assign(perfFotos, data.fotos); _fotosLoaded = true; }
     if (data.auditorias && Array.isArray(data.auditorias)) { auditorias = data.auditorias; _auditoriasLoaded = true; }
-    if (data.consultores) { if (Array.isArray(data.consultores.list) && data.consultores.list.length) window.CONS_MON = data.consultores.list; if (data.consultores.colors) window.dotColors = Object.assign({}, window.dotColors||{}, data.consultores.colors); }
+    if (data.consultores) { if (Array.isArray(data.consultores.list) && data.consultores.list.length) window.CONS_MON = data.consultores.list; if (data.consultores.colors) window.dotColors = Object.assign({}, window.dotColors||{}, data.consultores.colors); if (Array.isArray(data.consultores.inativos)) window.CONS_INATIVOS = data.consultores.inativos; }
     refreshAll();
     buildLeadTime();
     upd(); // salva no Supabase
@@ -6974,7 +6974,18 @@ function buildPdi() {
 }
 
 // ── Roster do PDI (time todo: consultores + designers + demais) ─
-function squadList() { return (window.CONS_MON || ['Caio','Leonam','Loma','Camila','Cleiton']); }
+// squadList() sem argumento = só ATIVOS — é o que a maioria dos lugares quer (montar um
+// dropdown pra escolher alguém pra algo NOVO, ou uma grade de KPIs do squad atual). Passa
+// `true` só nos poucos lugares que precisam continuar enxergando gente inativa: filtro sobre
+// dados HISTÓRICOS já existentes (ex: filtro de auditorias passadas por consultor), ou editar
+// um registro antigo que já está vinculado a alguém inativo (ver audEditar). CONS_MON continua
+// sendo o roster INTEIRO (ativos + inativos) — inativar não remove ninguém dele, só marca.
+function squadList(incluirInativos) {
+  const todos = window.CONS_MON || ['Caio','Leonam','Loma','Camila','Cleiton'];
+  if (incluirInativos) return todos;
+  const inativos = window.CONS_INATIVOS || [];
+  return inativos.length ? todos.filter(n => !inativos.includes(n)) : todos;
+}
 function defaultPdiRows() { return squadList().map(c => ({ nome: c, cargo: '', obs: '', m: {} })); }
 // Normaliza pdiData salvo (array novo OU formato antigo por índice) para { rows:[...] }
 function normalizePdi(obj) {
@@ -7605,14 +7616,14 @@ function buildAqlMetas() {
     if (e.reuniaoFeita) porConsSal[e.consultor] = (porConsSal[e.consultor] || 0) + 1;
   });
 
-  window.CONS_MON = window.CONS_MON || ['Caio','Leonam','Loma','Camila','Cleiton'];
   const dotColors = window.dotColors || {};
   if (!chips) return;
 
   const ritmoInfo = _aqlRitmoInfo(mesInfo);
   // Se logado como consultor (acesso travado), mostra só o próprio chip — esconde os dos colegas.
+  // Sem trava: só consultores ATIVOS geram chip de meta — inativo não junta mais 0% pra sempre.
   const consLock = (currentPerfil && currentPerfil.consultor) || '';
-  const listaConsultores = consLock ? [consLock] : window.CONS_MON;
+  const listaConsultores = consLock ? [consLock] : squadList();
 
   chips.innerHTML = listaConsultores.map(nome => {
     const pct = parseFloat(meta['cons_' + nome + '_pct'] || 0);
@@ -7721,8 +7732,9 @@ function buildAqlChart() {
   const semanas = getSemanasDoMes(label, ano);
   let evs = pipeEventosDoMes(label, ano); // cada registro da lista conta como 1 AQL, independente do tipo
   if (consF) evs = evs.filter(e => e.consultor === consF);
-  window.CONS_MON = window.CONS_MON || ['Caio','Leonam','Loma','Camila','Cleiton'];
-  const consultores = consF ? [consF] : window.CONS_MON;
+  // Sem filtro específico, mostra só as séries de quem está ATIVO — um filtro explícito (consF,
+  // vindo do dropdown histórico #pev-cons) pode escolher um consultor inativo, e aí mostra normal.
+  const consultores = consF ? [consF] : squadList();
   const dotColors = window.dotColors || {};
 
   function semIdx(dataStr) {
@@ -8174,10 +8186,10 @@ function calcMon() {
   const elRec = document.getElementById('mon-real-rec-val'); if (elRec) elRec.textContent = BRL(totalRec);
   set('ov-mon',  BRL(total)); set('ov2-mon', BRL(total));
 
-  // chips por consultor — se travado, só o próprio; senão, o squad inteiro
-  window.CONS_MON = window.CONS_MON || ['Caio','Leonam','Loma','Camila','Cleiton'];
-  const CONS_MON = consLock ? [consLock] : window.CONS_MON;
-  CONS_MON.forEach(c => { if (!consMap[c]) consMap[c] = {t:0,n:0}; });
+  // chips por consultor — se travado, só o próprio; senão, só o squad ATIVO (inativo não gera
+  // mais um card de meta/realizado parado em 0 — mesmo critério de Performance/AQL).
+  const squadChips = consLock ? [consLock] : squadList();
+  squadChips.forEach(c => { if (!consMap[c]) consMap[c] = {t:0,n:0}; });
   window.dotColors = window.dotColors || {'Caio':'var(--blue)','Leonam':'var(--green)','Loma':'var(--accent)','Camila':'var(--purple)','Cleiton':'var(--amber)'};
   const dotColors = window.dotColors;
   // Meta geral do mês para cálculo dos % por consultor
@@ -8187,8 +8199,8 @@ function calcMon() {
   const metaMonRec = metaMonRec2;
 
   document.getElementById('mon-chips').innerHTML = Object.entries(consMap)
-    .filter(([n]) => window.CONS_MON.includes(n))
-    .sort((a,b) => window.CONS_MON.indexOf(a[0]) - window.CONS_MON.indexOf(b[0]))
+    .filter(([n]) => squadChips.includes(n))
+    .sort((a,b) => squadChips.indexOf(a[0]) - squadChips.indexOf(b[0]))
     .map(([nome, d]) => {
       const dot    = (window.dotColors||{})[nome] || 'var(--accent-dim)';
       const mesKey = curM?.key || '';
@@ -9085,6 +9097,11 @@ function buildOvAnalises(curM) {
       if (ETAPAS_PIPE.includes(p.oport)) consMap[p.consultor].pipe++;
       if (calcFlagAutomatica(p) === 'Vermelho') consMap[p.consultor].vermelho++;
     });
+    // Mesmo critério do Capacity: inativado some do snapshot de carga da semana — se ainda tem
+    // projeto em aberto sob o nome dele, é sinal de que falta reatribuir, não motivo pra manter
+    // o card aqui.
+    const inativosCarga = window.CONS_INATIVOS || [];
+    if (inativosCarga.length) inativosCarga.forEach(n => delete consMap[n]);
     const maxTotal = Math.max(...Object.values(consMap).map(d=>d.total), 1);
     consEl.innerHTML = Object.entries(consMap).sort((a,b)=>b[1].total-a[1].total).map(([nome,d]) => {
       const pct = Math.round(d.total / maxTotal * 100);
@@ -11452,8 +11469,13 @@ function buildCargaSemanal(prjsAll, semanasExt, campo, elId, titulo, rotuloColun
     semanas = Array.from({length: 12}, (_, i) => { const seg = new Date(seg0); seg.setDate(seg0.getDate() + i*7); return mkSem(seg); });
   }
 
-  // Valores únicos do campo (consultor/designer) dos projetos filtrados
-  const cons = [...new Set(prjsAll.map(p => p[campo]).filter(Boolean))].sort();
+  // Valores únicos do campo (consultor/designer) dos projetos filtrados — pra consultor,
+  // exclui quem está inativado (capacity é sobre carga ATUAL/futura do squad; se sobrou
+  // projeto em aberto com alguém inativado, precisa reatribuir, não vai continuar contando
+  // aqui). Designer não tem conceito de ativo/inativo hoje, segue mostrando todo mundo.
+  const inativos = window.CONS_INATIVOS || [];
+  let cons = [...new Set(prjsAll.map(p => p[campo]).filter(Boolean))].sort();
+  if (campo === 'consultor' && inativos.length) cons = cons.filter(n => !inativos.includes(n));
   if (!cons.length) { el.innerHTML = ''; return; }
 
   // Para cada semana e pessoa, conta projetos ativos (usa ativoFn customizado se fornecido)
@@ -12205,7 +12227,9 @@ function buildPerformance() {
   if (btnCons) { btnCons.style.background = isDesigner ? 'var(--surface)' : 'var(--accent)'; btnCons.style.color = isDesigner ? 'var(--text)' : '#fff'; }
   if (btnDes)  { btnDes.style.background  = isDesigner ? 'var(--accent)' : 'var(--surface)'; btnDes.style.color  = isDesigner ? '#fff' : 'var(--text)'; }
 
-  const CONS = isDesigner ? ['Alexandre','Eduardo'] : (window.CONS_MON || ['Caio','Leonam','Loma','Camila','Cleiton']);
+  // Só consultores ATIVOS entram no leaderboard — inativo não fica parado com KPI zerado nem
+  // concorrendo (ou perdendo) o "Top Performer" sem mais fazer parte do squad.
+  const CONS = isDesigner ? ['Alexandre','Eduardo'] : squadList();
   const METAS = { conv: 40, prazo: 80, pdi: 80, nps: 50, npsResp: 60, scoreEntrega: 70 };
 
   const mesesEleg = perfMesesElegNovosInd(curM);
@@ -13207,7 +13231,7 @@ let audAgg = 'consultor';
 let audHeat = 'consultor';
 let audReviewD9 = {};   // d9_itens do parse, guardados para salvar
 
-function audConsultores(){ return (typeof squadList==='function') ? squadList() : ['Caio','Leonam','Loma','Camila','Cleiton']; }
+function audConsultores(incluirInativos){ return (typeof squadList==='function') ? squadList(incluirInativos) : ['Caio','Leonam','Loma','Camila','Cleiton']; }
 function audClientes(){ return [...new Set(projects.map(p=>p.nome).filter(Boolean))].sort((a,b)=>a.localeCompare(b)); }
 
 function audScore(a,id){ const v=a&&a.scores&&a.scores[id]; const x=parseFloat(v); return isNaN(x)?null:x; }
@@ -14175,6 +14199,15 @@ function audEditar(id) {
   if (!a) return;
   audEditandoId = id;
   const setVal = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val || ''; };
+  // #aud-f-consultor só lista ativos (audConsultores() sem argumento) — se essa avaliação for
+  // de alguém já inativado, a option nem existe, e setVal('aud-f-consultor', a.consultor) cairia
+  // silenciosamente em "" por não achar match. Garante a option antes de selecionar.
+  const consultorSel = document.getElementById('aud-f-consultor');
+  if (consultorSel && a.consultor && ![...consultorSel.options].some(o => o.value === a.consultor)) {
+    const label = a.consultor.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    const value = a.consultor.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+    consultorSel.insertAdjacentHTML('beforeend', '<option value="'+value+'">'+label+' (inativo)</option>');
+  }
   setVal('aud-f-consultor', a.consultor);
   setVal('aud-f-tipo', a.entrega);
   setVal('aud-f-cliente', a.cliente);
@@ -14706,7 +14739,10 @@ function audRenderLista(){
     };
     const meses=[...new Set(auditorias.map(a=>{const d=parseDate(a.data);return d?(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')):null;}).filter(Boolean))].sort().reverse();
     const semanas=[...new Set(auditorias.map(a=>audWeekKey(a.data)).filter(Boolean))].sort().reverse();
-    fb.innerHTML=sel('consultor','Todos consultores',audConsultores())+sel('tipo','Todas entregas',AUD_TIPOS)+sel('cliente','Todos clientes',audClientes())
+    // Filtro sobre HISTÓRICO já salvo — precisa continuar listando inativos, senão as
+    // auditorias antigas deles somem do dropdown (os registros continuam existindo, só ficam
+    // impossíveis de filtrar por esse campo).
+    fb.innerHTML=sel('consultor','Todos consultores',audConsultores(true))+sel('tipo','Todas entregas',AUD_TIPOS)+sel('cliente','Todos clientes',audClientes())
       + '<select onchange="audSetFiltro(\'mes\',this.value)" class="base-sel"><option value="">Todos meses</option>'+meses.map(m=>'<option '+(audFiltro.mes===m?'selected':'')+'>'+m+'</option>').join('')+'</select>'
       + '<select onchange="audSetFiltro(\'semana\',this.value)" class="base-sel"><option value="">Todas semanas</option>'+semanas.map(w=>'<option value="'+w+'" '+(audFiltro.semana===w?'selected':'')+'>'+audWeekLabel(w)+'</option>').join('')+'</select>'
       + '<button class="base-clear" onclick="audLimparFiltro()">Limpar</button>';
@@ -14758,14 +14794,25 @@ const CONS_CORES = [
   {v:'var(--cyan)',  nome:'Ciano'},
   {v:'var(--text-muted)', nome:'Cinza'},
 ];
-function consRowHTML(nome, cor){
+function consRowHTML(nome, cor, ativo){
   cor = cor || 'var(--blue)';
+  ativo = ativo !== false; // default ativo — só vira false explicitamente pra quem está em CONS_INATIVOS
   const opts = CONS_CORES.map(c=>'<option value="'+c.v+'" '+(c.v===cor?'selected':'')+'>'+c.nome+'</option>').join('');
   const safe = (nome||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
-  return '<div class="cons-row" style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">'
+  // Toggle Ativo/Inativo — mesmo estilo de badge-select do FCA. "Inativo" não remove ninguém do
+  // roster (isso é o botão x, destrutivo de verdade): só some das telas que fazem grade/KPI do
+  // squad atual (Performance, AQL, Monetização, PDI, Capacity), mantendo o histórico intacto.
+  const corAtivo = ativo ? 'var(--green)' : 'var(--text-hint)';
+  const selAtivo = '<select class="cons-ativo" style="background:'+corAtivo+';color:#fff;font-size:var(--fs-3xs);font-weight:700;border:none;border-radius:8px;padding:3px 6px;cursor:pointer;width:76px;" '
+    + 'onchange="this.style.background=(this.value===\'ativo\'?\'var(--green)\':\'var(--text-hint)\');this.closest(\'.cons-row\').style.opacity=(this.value===\'ativo\'?\'1\':\'.55\');">'
+    + '<option value="ativo"'+(ativo?' selected':'')+'>Ativo</option>'
+    + '<option value="inativo"'+(!ativo?' selected':'')+'>Inativo</option>'
+    + '</select>';
+  return '<div class="cons-row" style="display:flex;gap:8px;align-items:center;margin-bottom:8px;opacity:'+(ativo?'1':'.55')+';">'
     +'<span class="cons-dot" style="width:12px;height:12px;border-radius:50%;background:'+cor+';flex-shrink:0;"></span>'
     +'<input class="cons-nome aud-inp" value="'+safe+'" placeholder="Nome do consultor" style="flex:1;">'
     +'<select class="cons-cor aud-inp" style="width:120px;" onchange="this.closest(\'.cons-row\').querySelector(\'.cons-dot\').style.background=this.value;">'+opts+'</select>'
+    +selAtivo
     +'<button onclick="consRemoverLinha(this)" title="Remover" style="background:none;border:none;cursor:pointer;color:var(--text-hint);font-size:var(--fs-lg);">'+icon('x')+'</button>'
     +'</div>';
 }
@@ -14779,10 +14826,13 @@ async function consRemoverLinha(btn){
   }
 }
 function openConsultoresModal(){
-  const list = (typeof squadList==='function') ? squadList() : (window.CONS_MON||[]);
+  // squadList(true) = roster INTEIRO (ativos + inativos) — o modal de gestão precisa mostrar
+  // todo mundo, senão não teria como reativar quem está marcado como inativo.
+  const list = (typeof squadList==='function') ? squadList(true) : (window.CONS_MON||[]);
   const colors = window.dotColors||{};
+  const inativos = window.CONS_INATIVOS||[];
   const box = document.getElementById('cons-modal-rows');
-  box.innerHTML = list.map(n=>consRowHTML(n, colors[n])).join('');
+  box.innerHTML = list.map(n=>consRowHTML(n, colors[n], !inativos.includes(n))).join('');
   const msg=document.getElementById('cons-modal-msg'); if(msg) msg.textContent='';
   document.getElementById('modal-consultores').style.display='flex';
 }
@@ -14799,16 +14849,18 @@ function consPuxarProjetos(){
 }
 function consSalvar(){
   const rows=[...document.querySelectorAll('#cons-modal-rows .cons-row')];
-  const list=[], colors={};
+  const list=[], colors={}, inativos=[];
   rows.forEach(r=>{
     const nome=r.querySelector('.cons-nome').value.trim();
     if(!nome || list.includes(nome)) return;
     list.push(nome); colors[nome]=r.querySelector('.cons-cor').value;
+    if(r.querySelector('.cons-ativo')?.value === 'inativo') inativos.push(nome);
   });
   const msg=document.getElementById('cons-modal-msg');
   if(!list.length){ if(msg){msg.textContent='Adicione ao menos um consultor.';msg.style.color='var(--accent)';} return; }
   window.CONS_MON = list;
   window.dotColors = Object.assign({}, window.dotColors||{}, colors);
+  window.CONS_INATIVOS = inativos;
   if(typeof upd==='function') upd();
   // refresca telas e as listas suspensas da Auditoria
   const af=document.getElementById('aud-form'); if(af) af.dataset.ready='';
@@ -14843,6 +14895,7 @@ function _resetCoordState() {
   Object.keys(capManual).forEach(k => delete capManual[k]);
   window.CONS_MON = [];
   window.dotColors = {};
+  window.CONS_INATIVOS = [];
 }
 
 function updateCoordUI() {
@@ -15003,7 +15056,7 @@ async function syncSheets() {
   const payload = {
     tipo:       'full',
     projects:   JSON.stringify(projects),
-    consultores: JSON.stringify({list:window.CONS_MON||[], colors:window.dotColors||{}}),
+    consultores: JSON.stringify({list:window.CONS_MON||[], colors:window.dotColors||{}, inativos:window.CONS_INATIVOS||[]}),
   };
   const res = await fetch('/api/sync-sheets', {
     method: 'POST',
@@ -15046,6 +15099,7 @@ async function sbSave() {
     tratativas: tratativas,
     consList: window.CONS_MON || [],
     consColors: window.dotColors || {},
+    consInativos: window.CONS_INATIVOS || [],
   };
   // TRAVA DE SEGURANÇA: nunca sobrescreve o banco com dados vazios (evita perda)
   if (!Array.isArray(_snap.projects) || _snap.projects.length === 0) {
@@ -15148,7 +15202,7 @@ async function sbSave() {
       sinais_culturais: JSON.stringify(_snap.sinaisCulturais),
       fca_itens: JSON.stringify(_snap.fcaItens),
       tratativas: JSON.stringify(_snap.tratativas),
-      consultores: JSON.stringify({list:_snap.consList, colors:_snap.consColors}),
+      consultores: JSON.stringify({list:_snap.consList, colors:_snap.consColors, inativos:_snap.consInativos}),
     };
     // Só manda auditorias/fotos se essa aba realmente carregou o valor de verdade (abriu a
     // aba correspondente em algum momento) — sem essa trava, o primeiro save depois de só
@@ -15215,7 +15269,7 @@ async function sbSave() {
         sinais_culturais: _snap.sinaisCulturais,
         fca_itens: _snap.fcaItens,
         tratativas: _snap.tratativas,
-        consultores: {list:_snap.consList, colors:_snap.consColors},
+        consultores: {list:_snap.consList, colors:_snap.consColors, inativos:_snap.consInativos},
         saved_at: sbLastSaved.toISOString(), total: _snap.projects.length, table: _snap.table
       };
       // Só entram se já carregados nesta sessão — omitir (em vez de gravar "[]"/"{}") evita
@@ -15246,7 +15300,7 @@ async function sbSave() {
           projects, nps_data: npsData, csp_manual: cspManual,
           mon_metas: monMetas, aql_metas: aqlMetas, cap_data: capData, cap_manual: capManual,
           pdi_data: pdiData, conv_base: convBaseManual,
-        consultores: {list:window.CONS_MON||[], colors:window.dotColors||{}},
+        consultores: {list:window.CONS_MON||[], colors:window.dotColors||{}, inativos:window.CONS_INATIVOS||[]},
           saved_at: new Date().toISOString()
         };
         if (_auditoriasLoaded) emergency.auditorias = auditorias;
@@ -15278,7 +15332,7 @@ async function sbExport() {
     conv_base:  convBaseManual,
     fotos:      perfFotos,
     auditorias,
-    consultores: {list:window.CONS_MON||[], colors:window.dotColors||{}}
+    consultores: {list:window.CONS_MON||[], colors:window.dotColors||{}, inativos:window.CONS_INATIVOS||[]}
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
   const a    = document.createElement('a');
@@ -15306,7 +15360,7 @@ function sbImport(input) {
       if (data.conv_base && typeof data.conv_base === 'object') Object.assign(convBaseManual, data.conv_base);
       if (data.fotos && typeof data.fotos === 'object') { Object.assign(perfFotos, data.fotos); _fotosLoaded = true; }
       if (data.auditorias && Array.isArray(data.auditorias)) { auditorias = data.auditorias; _auditoriasLoaded = true; }
-    if (data.consultores) { if (Array.isArray(data.consultores.list) && data.consultores.list.length) window.CONS_MON = data.consultores.list; if (data.consultores.colors) window.dotColors = Object.assign({}, window.dotColors||{}, data.consultores.colors); }
+    if (data.consultores) { if (Array.isArray(data.consultores.list) && data.consultores.list.length) window.CONS_MON = data.consultores.list; if (data.consultores.colors) window.dotColors = Object.assign({}, window.dotColors||{}, data.consultores.colors); if (Array.isArray(data.consultores.inativos)) window.CONS_INATIVOS = data.consultores.inativos; }
 
       buildCspManual();
       buildPdi();
@@ -15480,7 +15534,7 @@ async function sbLoad() {
         try { const tr = _parseMaybe(row.tratativas, []); if (Array.isArray(tr)) tratativas = tr; } catch(e){}
       }
       if (row.consultores) {
-        try { const cm = _parseMaybe(row.consultores, {}); if (cm && Array.isArray(cm.list) && cm.list.length) window.CONS_MON = cm.list; if (cm && cm.colors) window.dotColors = Object.assign({}, window.dotColors||{}, cm.colors); } catch(e){}
+        try { const cm = _parseMaybe(row.consultores, {}); if (cm && Array.isArray(cm.list) && cm.list.length) window.CONS_MON = cm.list; if (cm && cm.colors) window.dotColors = Object.assign({}, window.dotColors||{}, cm.colors); if (cm && Array.isArray(cm.inativos)) window.CONS_INATIVOS = cm.inativos; } catch(e){}
       }
     }
 
@@ -15541,6 +15595,7 @@ function _aplicarSnapshot(d) {
   if (d.consultores) {
     if (Array.isArray(d.consultores.list) && d.consultores.list.length) window.CONS_MON = d.consultores.list;
     if (d.consultores.colors) window.dotColors = Object.assign({}, window.dotColors || {}, d.consultores.colors);
+    if (Array.isArray(d.consultores.inativos)) window.CONS_INATIVOS = d.consultores.inativos;
   }
 }
 
@@ -15672,7 +15727,7 @@ function _montarSnapshot() {
     sinais_culturais: sinaisCulturais,
     fca_itens: fcaItens,
     tratativas,
-    consultores: { list: window.CONS_MON || [], colors: window.dotColors || {} },
+    consultores: { list: window.CONS_MON || [], colors: window.dotColors || {}, inativos: window.CONS_INATIVOS || [] },
     saved_at: new Date().toISOString(),
   };
 }
