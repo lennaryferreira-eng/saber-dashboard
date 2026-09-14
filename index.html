@@ -8553,9 +8553,15 @@ function buildOvInsightsSemana() {
   // não tiveram nada registrado nessa semana — são exatamente os que mais precisam aparecer aqui.
   const refDateSemana = refDateParaSemana(ovInsightsSemanaOffset);
   const projetosAtivosAgora = projects.filter(p => !isDroFam(p) && !p.dataReembolso && p.inicio && calcStatus2(p) === 'Em andamento');
+  // Pausado não é "Em andamento", então nunca entrava em projetosAtivosAgora — sumia de
+  // Verde/Amarelo/Vermelho sem ir pra lugar nenhum. Conta à parte (calcFlagAutomatica já
+  // devolve 'Pausado' pra esse caso) e ganha um 4º card neutro logo abaixo.
+  const projetosPausadosAgora = projects.filter(p => !isDroFam(p) && p.inicio && calcFlagAutomatica(p, refDateSemana) === 'Pausado');
   const flags = { Verde: 0, Amarelo: 0, Vermelho: 0 };
   projetosAtivosAgora.forEach(p => { const f = calcFlagAutomatica(p, refDateSemana); if (flags[f] !== undefined) flags[f]++; });
-  const totalFlags = projetosAtivosAgora.length;
+  // Base unificada — os 4 cards (Verde/Amarelo/Vermelho/Pausado) somam 100% do portfólio ativo
+  // + standby, em vez de só os 3 primeiros somarem 100% do que está "Em andamento".
+  const totalFlags = projetosAtivosAgora.length + projetosPausadosAgora.length;
   // Mesmo critério usado DENTRO da flag (prazoStatus: até 52 dias do início é no prazo,
   // depois disso é atraso) — antes esse quadro comparava cada entrega isolada com a etapa
   // anterior +7 dias, um critério diferente do que de fato decide a flag. "Em risco" é o
@@ -8605,6 +8611,7 @@ function buildOvInsightsSemana() {
     + quadradoGrande(flags.Verde, pct(flags.Verde, totalFlags), 'var(--green)', 'Verde', 'Verde')
     + quadradoGrande(flags.Amarelo, pct(flags.Amarelo, totalFlags), 'var(--amber)', 'Amarelo', 'Amarelo')
     + quadradoGrande(flags.Vermelho, pct(flags.Vermelho, totalFlags), 'var(--accent)', 'Vermelho', 'Vermelho')
+    + quadradoGrande(projetosPausadosAgora.length, pct(projetosPausadosAgora.length, totalFlags), 'var(--text-hint)', 'Pausado', 'Pausado')
     + '</div>'
     + (totalFlags===0 ? '<div style="font-size:var(--fs-sm);color:var(--text-hint);margin-top:8px;">Nenhum projeto com entrega registrada nessa semana.</div>' : '')
     + '</div>';
@@ -8704,9 +8711,13 @@ function buildOvGantt() {
   const toISOf6 = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   const segSemanaPassadaISO = (function() { const d = new Date(hojeSeg); d.setDate(d.getDate() - 7); return toISOf6(d); })();
   const hojeISOBase = toISOf6(hoje);
+  // Pausado fica fora dessa base por padrão (não é execução ativa) — mas se o filtro clicado
+  // for justamente o card "Pausado" (ver buildOvInsightsSemana), a base muda pra só eles, senão
+  // o clique no 4º card cairia num "Nenhum projeto encontrado" mesmo eles existindo.
   let prjs = projects.filter(p => {
     if (isDroFam(p)) return false;
     if (!p.inicio) return false;
+    if (ovFlagFiltro === 'Pausado') return calcFlagAutomatica(p, refDateSemana) === 'Pausado';
     if (calcStatus2(p) === 'Em andamento') return true;
     const ent = p.entregas || {};
     return [0,1,2,3,4,5,6].some(i => {
@@ -10503,8 +10514,9 @@ function buildLeadTime() {
   let list = listaBase;
   // Mesma restrição da composição (só "Em andamento" tem flag/prazo significativos) — clicar
   // um quadrado nunca deveria trazer de volta um Finalizado/Churn antigo só por causa do
-  // "Vermelho" artificial da estagnação.
-  if (ltFlagFiltro) list = list.filter(p => calcStatus2(p) === 'Em andamento' && calcFlagAutomatica(p) === ltFlagFiltro);
+  // "Vermelho" artificial da estagnação. Pausado é a exceção de propósito: ele nunca é "Em
+  // andamento", então precisa do próprio passe pra esse filtro funcionar.
+  if (ltFlagFiltro) list = list.filter(p => calcFlagAutomatica(p) === ltFlagFiltro && (ltFlagFiltro === 'Pausado' || calcStatus2(p) === 'Em andamento'));
   if (ltPrazoFiltro) list = list.filter(p => {
     if (calcStatus2(p) !== 'Em andamento') return false;
     const st = prazoStatus(p);
@@ -11104,10 +11116,17 @@ function buildLtAnalise(list) {
   // é exatamente a definição de projeto que já acabou. Mesma restrição que o Insights do
   // Healthscore já usa: só entra na composição de flag quem está realmente "Em andamento".
   const listaFlag = list.filter(p => calcStatus2(p) === 'Em andamento');
+  // Pausado não é "Em andamento", então nunca entrava aqui — sumia de Verde/Amarelo/Vermelho E
+  // não tinha card nenhum pra ele, mesmo aparecendo normalmente na tabela do Lead Time logo
+  // abaixo. Conta à parte (via calcFlagAutomatica, que já devolve 'Pausado' pra esse caso) e
+  // entra como um 4º card neutro — ver quadradoGrande(...,'Pausado',...) mais abaixo.
+  const listaPausados = list.filter(p => calcFlagAutomatica(p) === 'Pausado');
 
   const flags = { Verde: 0, Amarelo: 0, Vermelho: 0 };
   listaFlag.forEach(p => { const f = calcFlagAutomatica(p); if (flags[f] !== undefined) flags[f]++; });
-  const totalFlags = listaFlag.length;
+  // Base unificada — Verde/Amarelo/Vermelho/Pausado juntos somam 100%, representando o
+  // portfólio filtrado inteiro (antes, só Verde/Amarelo/Vermelho entravam na conta).
+  const totalFlags = listaFlag.length + listaPausados.length;
 
   const prazoStatuses  = listaFlag.map(p => prazoStatus(p));
   const noPrazoCount   = prazoStatuses.filter(st => st.ok === true && !st.risco).length;
@@ -11146,6 +11165,7 @@ function buildLtAnalise(list) {
     + quadradoGrande(flags.Verde, pct(flags.Verde, totalFlags), 'var(--green)', 'Verde', 'Verde')
     + quadradoGrande(flags.Amarelo, pct(flags.Amarelo, totalFlags), 'var(--amber)', 'Amarelo', 'Amarelo')
     + quadradoGrande(flags.Vermelho, pct(flags.Vermelho, totalFlags), 'var(--accent)', 'Vermelho', 'Vermelho')
+    + quadradoGrande(listaPausados.length, pct(listaPausados.length, totalFlags), 'var(--text-hint)', 'Pausado', 'Pausado')
     + '</div></div>'
     + '<div style="flex:1;min-width:280px;">'
     + '<div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:8px;">Composição da flag — prazo</div>'
