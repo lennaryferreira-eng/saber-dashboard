@@ -1277,6 +1277,10 @@
           <option value="5">4ª Entrega</option>
           <option value="6">Decolagem</option>
         </select>
+        <label title="Mostra só projetos com alguma entrega (do consultor ou, se filtrado, do designer) caindo nessa semana — combina com os filtros de Consultor/Designer acima." style="display:flex;align-items:center;gap:5px;font-size:var(--fs-sm);cursor:pointer;">
+          <input type="checkbox" id="gantt-entrega-semana-filter" onchange="buildCapacity()" style="width:14px;height:14px;cursor:pointer;">
+          <span style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Entrega essa semana</span>
+        </label>
         <span style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Período</span>
         <select class="base-sel" id="gantt-period" onchange="buildCapacity()">
           <option value="3">3 meses</option>
@@ -10060,6 +10064,29 @@ function designerAtivoNaSemana(p, seg, dom) {
     return d && d >= seg && d <= dom;
   });
 }
+// Mesma ideia, mas pro consultor: como ele acompanha o projeto inteiro (não só um subconjunto
+// de etapas como o designer), considera TODAS as 0-6 — usado pelo filtro "Entrega essa semana"
+// do Capacity pra achar quem tem alguma entrega (Kickoff a Decolagem) caindo na semana atual.
+function consultorAtivoNaSemana(p, seg, dom) {
+  return [0,1,2,3,4,5,6].some(i => {
+    const real = etapaData(p, i);
+    const dataRef = real || semDataEtapa(p, i);
+    const d = parseDate(dataRef);
+    return d && d >= seg && d <= dom;
+  });
+}
+// Data (real, senão estimada) da entrega mais próxima do projeto que cai na semana [seg,dom],
+// olhando só as etapas relevantes pro contexto (designer filtrado -> só as dele; senão, todas).
+// Usado pra ordenar o filtro "Entrega essa semana" pela urgência (quem entrega primeiro na
+// semana aparece primeiro na lista), não só pela data de início do projeto.
+function dataEntregaNaSemana(p, seg, dom, soDesigner) {
+  const etapas = soDesigner ? designerEtapas(p) : [0,1,2,3,4,5,6];
+  const datas = etapas.map(i => {
+    const real = etapaData(p, i);
+    return real || semDataEtapa(p, i);
+  }).filter(dataRef => { const d = parseDate(dataRef); return d && d >= seg && d <= dom; });
+  return datas.sort()[0] || null;
+}
 
 
 // ── SCORE DE ENTREGA ──────────────────────────────────────────
@@ -11722,9 +11749,10 @@ function buildGantt() {
   const designerFilter = document.getElementById('gantt-designer-filter')?.value || '';
   const copyFilter     = document.getElementById('gantt-copy-filter')?.value || '';
   const etapaFilter    = document.getElementById('gantt-etapa-filter')?.value ?? '';
+  const entregaSemanaFilter = document.getElementById('gantt-entrega-semana-filter')?.checked || false;
   // true se qualquer filtro estiver ativo — a regra de ignorar semana só-com-Growth só vale aqui;
   // sem nenhum filtro aplicado, a contagem geral considera todas as etapas normalmente.
-  const algumFiltroAtivo = !!(consFilter || statusFilter || mesFilter || designerFilter || copyFilter || etapaFilter);
+  const algumFiltroAtivo = !!(consFilter || statusFilter || mesFilter || designerFilter || copyFilter || etapaFilter || entregaSemanaFilter);
   const months       = parseInt(document.getElementById('gantt-period')?.value || '6');
   const hoje         = new Date(); hoje.setHours(0,0,0,0);
 
@@ -11839,7 +11867,29 @@ function buildGantt() {
     const m = ALL_MESES.find(x => x.idx === d?.getMonth() && x.ano === d?.getFullYear());
     return m ? (m.label + '/' + m.ano) === mesFilter : false;
   });
-  prjs.sort((a, b) => (a.inicio || '') < (b.inicio || '') ? -1 : 1);
+  // "Entrega essa semana" — mostra só projetos com alguma entrega (real ou estimada) caindo na
+  // semana atual (segunda a domingo). Combina com Designer (se filtrado, olha só as etapas dele
+  // via designerAtivoNaSemana) ou considera todas as etapas quando é o consultor/visão geral
+  // (consultorAtivoNaSemana). Ordena pela data da entrega dentro da semana, não por p.inicio —
+  // é o que responde "o que entrega primeiro" dentro da própria semana.
+  if (entregaSemanaFilter) {
+    const hojeSem = new Date(); hojeSem.setHours(0,0,0,0);
+    const diaSemSem = hojeSem.getDay();
+    const segSem = new Date(hojeSem); segSem.setDate(hojeSem.getDate() - (diaSemSem === 0 ? 6 : diaSemSem - 1));
+    const domSem = new Date(segSem); domSem.setDate(segSem.getDate() + 6); domSem.setHours(23,59,59,999);
+    prjs = prjs.filter(p => {
+      const st = calcStatus2(p);
+      if (st === 'Churn' || st === 'Pausado') return false;
+      return designerFilter ? designerAtivoNaSemana(p, segSem, domSem) : consultorAtivoNaSemana(p, segSem, domSem);
+    });
+    prjs.sort((a, b) => {
+      const da = dataEntregaNaSemana(a, segSem, domSem, !!designerFilter) || '';
+      const db = dataEntregaNaSemana(b, segSem, domSem, !!designerFilter) || '';
+      return da < db ? -1 : da > db ? 1 : 0;
+    });
+  } else {
+    prjs.sort((a, b) => (a.inicio || '') < (b.inicio || '') ? -1 : 1);
+  }
 
   
   buildGanttDRO(semanas);
