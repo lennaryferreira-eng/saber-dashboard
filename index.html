@@ -3190,6 +3190,7 @@ const ICONS = {
   cornerLeft:'<path d="M6 3L2 7l4 4"/><path d="M2 7h7a4 4 0 014 4v2"/>',
   coin:'<circle cx="8" cy="8" r="6.5"/><path d="M8 4.5v7M6 6.2c0-.9.9-1.5 2-1.5s2 .5 2 1.3-1 1-2 1.2-2 .4-2 1.3.9 1.3 2 1.3 2-.6 2-1.5"/>',
   route:'<circle cx="3.5" cy="12.5" r="2"/><circle cx="12.5" cy="3.5" r="2"/><path d="M5 11L11 5" stroke-dasharray="1.6 1.8"/>',
+  pause:'<rect x="4" y="3" width="3" height="10" rx="1"/><rect x="9" y="3" width="3" height="10" rx="1"/>',
 };
 // Sidebar de navegação (substitui a barra de abas horizontal) — ícone + nome por extenso
 // em cada item. Mantém as mesmas classes/ids que updateCoordUI()/updatePerfilNavVisibility()
@@ -11328,10 +11329,6 @@ function buildGanttTer() {
   let prjs = projects.filter(p => {
     if (p.recorrencia === 'Recorrente') return false; // Capacity One-time: recorrente tem a própria sub-aba
     if (!p.inicio) return false;
-    // Pausado não entra na conta de capacity (nem na tabela nem na carga semanal) — mesmo
-    // critério já usado no Gantt SABER. Continua visível normalmente no Lead Time, só sai
-    // daqui: sem isso caía no fallback "ativo" abaixo e continuava contando carga mesmo pausado.
-    if (p.status2 === 'Pausado') return false;
     const dI = parseDate(p.inicio);
     if (dI > endRef) return false;
     const ativo = p.status2 !== 'Finalizado' && p.status2 !== 'Cancelado' && p.status2 !== 'Interrompido';
@@ -11348,6 +11345,9 @@ function buildGanttTer() {
     return m ? (m.label + '/' + m.ano) === mesFilter : false;
   });
   prjs.sort((a,b) => (a.inicio||'') < (b.inicio||'') ? -1 : 1);
+  // Pausado fica na tabela (standby, ver ícone na linha abaixo), mas sai da conta de carga —
+  // mesmo critério do Gantt SABER.
+  const prjsParaCarga = prjs.filter(p => p.status2 !== 'Pausado');
 
   function ativoNaSemana(p, sDate) {
     const dIp = parseDate(p.inicio); if (!dIp) return false;
@@ -11356,16 +11356,16 @@ function buildGanttTer() {
     const dFp = dFRaw ? parseDate(dFRaw) : new Date(dIp.getTime() + 30*864e5);
     return dIp <= sEnd && dFp >= sDate;
   }
-  buildCargaSemanal(prjs, semanas, 'consultor', 'carga-consultor-ter', 'Carga por consultor — semana a semana', 'Consultor', (p, seg, dom) => ativoNaSemana(p, seg));
+  buildCargaSemanal(prjsParaCarga, semanas, 'consultor', 'carga-consultor-ter', 'Carga por consultor — semana a semana', 'Consultor', (p, seg, dom) => ativoNaSemana(p, seg));
   const cargaDiv = document.getElementById('carga-semanal-ter');
   if (cargaDiv) {
-    const maxCarga = Math.max(...semanas.map(s => prjs.filter(p => ativoNaSemana(p, s)).length), 1);
+    const maxCarga = Math.max(...semanas.map(s => prjsParaCarga.filter(p => ativoNaSemana(p, s)).length), 1);
     cargaDiv.innerHTML = '<div style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);margin-bottom:6px;">Projetos ativos por semana</div>'
       + '<div style="overflow-x:auto;"><div style="display:flex;gap:3px;min-width:max-content;">'
       + semanas.map(s => {
           const sEnd = new Date(s.getTime() + 6*864e5);
           const isHoje = hoje >= s && hoje <= sEnd;
-          const cnt = prjs.filter(p => ativoNaSemana(p, s)).length;
+          const cnt = prjsParaCarga.filter(p => ativoNaSemana(p, s)).length;
           const pctH = Math.round(cnt / maxCarga * 100);
           const d = s.getDate().toString().padStart(2,'0') + '/' + (s.getMonth()+1).toString().padStart(2,'0');
           const color = isHoje ? 'var(--accent)' : 'var(--blue)';
@@ -11476,8 +11476,12 @@ function buildGanttTer() {
         + '</td>';
     }).join('');
 
-    return '<tr>'
-      + '<td style="padding:5px 8px;font-size:var(--fs-sm);font-weight:600;color:var(--text);white-space:nowrap;">' + (p.nome||'—') + '</td>'
+    const ehPausadoTer = p.status2 === 'Pausado';
+    const pausadoBadgeTer = ehPausadoTer
+      ? ' <span title="Pausado — em standby, não conta na carga/capacity" style="display:inline-flex;align-items:center;gap:3px;font-size:var(--fs-3xs);font-weight:700;color:#fff;background:var(--amber);border-radius:8px;padding:1px 6px;white-space:nowrap;vertical-align:middle;">'+icon('pause',{size:8})+' Pausado</span>'
+      : '';
+    return '<tr' + (ehPausadoTer ? ' style="opacity:.75;"' : '') + '>'
+      + '<td style="padding:5px 8px;font-size:var(--fs-sm);font-weight:600;color:var(--text);white-space:nowrap;">' + (p.nome||'—') + pausadoBadgeTer + '</td>'
       + '<td style="padding:5px 8px;font-size:var(--fs-xs);color:var(--text-hint);white-space:nowrap;">' + (p.consultor||'—') + '</td>'
       + cells
       + '</tr>';
@@ -11703,38 +11707,50 @@ function buildCapacityRec() {
     + Array.from({ length: nSemanas }, (_, si) => '<th style="min-width:64px;text-align:center;padding:5px 4px;">Semana ' + (si + 1) + '<div style="font-size:var(--fs-3xs);color:var(--text-hint);font-weight:400;">' + semanaLabel(si) + '</div></th>').join('')
     + '</tr>';
 
-  // Pausado fica fora da capacity recorrente também — mesmo critério do restante do Capacity.
-  const list = projects.filter(p => p.recorrencia === 'Recorrente' && p.status2 !== 'Finalizado' && p.status2 !== 'Cancelado' && p.status2 !== 'Interrompido' && p.status2 !== 'Pausado');
+  // Pausado continua na tabela (standby), só não entra nas tarefas semanais — ver render da
+  // linha abaixo (ehPausadoRec), mesmo critério do restante do Capacity.
+  const list = projects.filter(p => p.recorrencia === 'Recorrente' && p.status2 !== 'Finalizado' && p.status2 !== 'Cancelado' && p.status2 !== 'Interrompido');
   if (!list.length) {
     tbody.innerHTML = '<tr><td colspan="' + (nSemanas + 2) + '" style="text-align:center;color:var(--text-hint);padding:20px;font-size:var(--fs-base);">Nenhum projeto recorrente ativo</td></tr>';
     return;
   }
 
   tbody.innerHTML = list.map(p => {
-    const porSemana = recSemanaTarefas(p, mesKey);
-    const st = recSemanaState(p, mesKey);
+    const ehPausadoRec = p.status2 === 'Pausado';
     const dedTier = terExigeDedicacao(p) ? TER_DEDICACAO_TIERS[p.nivelDedicacao] : null;
     const dedTxt = terExigeDedicacao(p)
       ? (dedTier ? (p.nivelDedicacao + ' · ' + dedTier.cadencia) : 'Dedicação não definida')
       : '';
-    const cells = Array.from({ length: nSemanas }, (_, si) => {
-      const tarefasSemana = porSemana[si] || [];
-      const semState = st[si] || [];
-      const dots = tarefasSemana.map((nome, ei) => {
-        const feito = !!semState[ei];
-        return '<div onclick="recSemanaToggle(\'' + p.id + '\',\'' + mesKey + '\',' + si + ',' + ei + ')" title="' + nome.replace(/"/g,'&quot;') + ' · Semana ' + (si + 1) + ' · ' + (feito ? 'aconteceu' : 'pendente') + '" style="width:8px;height:8px;border-radius:2px;cursor:pointer;background:' + (feito ? 'var(--green)' : 'var(--surface3)') + ';border:1px solid ' + (feito ? 'var(--green)' : 'var(--border)') + ';"></div>';
+    // Pausado: não calcula/mostra tarefas semanais (não é esperado que rotinas recorrentes
+    // continuem rodando durante a pausa) — célula fica vazia, só a linha continua visível.
+    let cells;
+    if (ehPausadoRec) {
+      cells = Array.from({ length: nSemanas }, () => '<td style="text-align:center;padding:4px 3px;"><div style="font-size:var(--fs-3xs);color:var(--text-hint);">—</div></td>').join('');
+    } else {
+      const porSemana = recSemanaTarefas(p, mesKey);
+      const st = recSemanaState(p, mesKey);
+      cells = Array.from({ length: nSemanas }, (_, si) => {
+        const tarefasSemana = porSemana[si] || [];
+        const semState = st[si] || [];
+        const dots = tarefasSemana.map((nome, ei) => {
+          const feito = !!semState[ei];
+          return '<div onclick="recSemanaToggle(\'' + p.id + '\',\'' + mesKey + '\',' + si + ',' + ei + ')" title="' + nome.replace(/"/g,'&quot;') + ' · Semana ' + (si + 1) + ' · ' + (feito ? 'aconteceu' : 'pendente') + '" style="width:8px;height:8px;border-radius:2px;cursor:pointer;background:' + (feito ? 'var(--green)' : 'var(--surface3)') + ';border:1px solid ' + (feito ? 'var(--green)' : 'var(--border)') + ';"></div>';
+        }).join('');
+        const doneCount = semState.filter(Boolean).length;
+        return '<td style="text-align:center;padding:4px 3px;">'
+          + (tarefasSemana.length
+              ? '<div style="display:flex;flex-wrap:wrap;gap:2px;justify-content:center;max-width:52px;margin:0 auto;">' + dots + '</div>'
+                + '<div style="font-size:var(--fs-3xs);color:var(--text-hint);margin-top:2px;">' + doneCount + '/' + tarefasSemana.length + '</div>'
+              : '<div style="font-size:var(--fs-3xs);color:var(--text-hint);">—</div>')
+          + '</td>';
       }).join('');
-      const doneCount = semState.filter(Boolean).length;
-      return '<td style="text-align:center;padding:4px 3px;">'
-        + (tarefasSemana.length
-            ? '<div style="display:flex;flex-wrap:wrap;gap:2px;justify-content:center;max-width:52px;margin:0 auto;">' + dots + '</div>'
-              + '<div style="font-size:var(--fs-3xs);color:var(--text-hint);margin-top:2px;">' + doneCount + '/' + tarefasSemana.length + '</div>'
-            : '<div style="font-size:var(--fs-3xs);color:var(--text-hint);">—</div>')
-        + '</td>';
-    }).join('');
-    return '<tr>'
+    }
+    const pausadoBadgeRec = ehPausadoRec
+      ? ' <span title="Pausado — em standby, não conta na carga/capacity" style="display:inline-flex;align-items:center;gap:3px;font-size:var(--fs-3xs);font-weight:700;color:#fff;background:var(--amber);border-radius:8px;padding:1px 6px;white-space:nowrap;vertical-align:middle;">'+icon('pause',{size:8})+' Pausado</span>'
+      : '';
+    return '<tr' + (ehPausadoRec ? ' style="opacity:.75;"' : '') + '>'
       + '<td style="padding:5px 8px;white-space:nowrap;">'
-      + '<div style="font-size:var(--fs-sm);font-weight:600;color:var(--text);">' + (p.nome||'—') + '</div>'
+      + '<div style="font-size:var(--fs-sm);font-weight:600;color:var(--text);">' + (p.nome||'—') + pausadoBadgeRec + '</div>'
       + (dedTxt ? '<div style="font-size:var(--fs-3xs);font-weight:700;color:' + (dedTier?'var(--accent)':'var(--amber)') + ';">' + dedTxt + '</div>' : '')
       + '</td>'
       + '<td style="padding:5px 8px;font-size:var(--fs-xs);color:var(--text-hint);white-space:nowrap;">' + (p.consultor||'—') + '</td>'
@@ -11825,12 +11841,14 @@ function buildGantt() {
     selMes.innerHTML = '<option value="">Todos</option>' + meses.map(m => '<option' + (m === curM ? ' selected' : '') + '>' + m + '</option>').join('');
   }
 
-  // filtra projetos na janela — exclui Churn e Pausado
+  // filtra projetos na janela — exclui Churn (morto de verdade). Pausado FICA na tabela (com
+  // ícone de interrompido, ver render da linha abaixo) — é standby, não desapareceu — mas sai
+  // da carga/capacity mais abaixo (prjsParaCarga).
   let prjs = projects.filter(p => {
     if (!p.inicio) return false;
     if (isDroFam(p)) return false; // DRO tem aba própria
     const s2 = calcStatus2(p);
-    if (s2 === 'Churn' || s2 === 'Pausado') return false;
+    if (s2 === 'Churn') return false;
     const dI = parseDate(p.inicio);
     // usa realFim se disponível (pode ser futuro), senão prevFim
     const dFBase = p.realFim ? parseDate(p.realFim) : ((p.realFim && p.prevFim && p.realFim > p.prevFim ? parseDate(p.realFim) : (p.prevFim ? parseDate(p.prevFim) : new Date(dI.getTime() + 45 * 864e5))));
@@ -11930,7 +11948,11 @@ function buildGantt() {
     }
     return true;
   });
-  const projsComDRO = [...prjs, ...droParaCarga];
+  // Pausado fica de fora de toda conta de carga/capacity (buildCargaSemanal e o card "Projetos
+  // ativos por semana" logo abaixo, os dois alimentados por projsComDRO) — mas continua na
+  // tabela (prjs, sem filtro aqui) pra aparecer visualmente como standby, não sumir.
+  const prjsParaCarga = prjs.filter(p => calcStatus2(p) !== 'Pausado');
+  const projsComDRO = [...prjsParaCarga, ...droParaCarga];
   buildCargaSemanal(projsComDRO, semanas);
   buildCargaSemanal(projsComDRO, semanas, 'designer', 'carga-designer', 'Carga por designer — semana a semana (só Kickoff, Análise de Ambientes e Decolagem)', 'Designer', designerAtivoNaSemana);
 
@@ -12119,6 +12141,10 @@ function buildGantt() {
 
   // Gantt D&P sempre mostra seus projetos (filtro de auditor só afeta seção DRO abaixo)
   tbody.innerHTML = prjs.map(p => {
+    // Pausado: fica na tabela (não é filtrado em prjs), mas com ícone de interrompido no nome
+    // e a barra apagada — sinaliza "em standby" sem fingir que o timeline normal continua
+    // valendo (ele não conta em prjsParaCarga/capacity, ver acima).
+    const ehPausado = calcStatus2(p) === 'Pausado';
     const dI    = parseDate(p.inicio);
     // dF: se já concluiu de verdade (realFim), essa é a data que manda — não estica até a
     // previsão (prevFim). Senão, usa max(prevFim, decolagem calculada) pra garantir que a
@@ -12217,12 +12243,16 @@ function buildGantt() {
           + '</div>';
         } // fecha else (overdue)
       } // fecha if (active || overdue)
+      if (ehPausado && bar) bar = '<div style="opacity:.4;filter:grayscale(.4);">' + bar + '</div>';
       return '<td style="position:relative;' + (isHoje ? 'background:rgba(196,82,26,.05);' : '') + '">' + bar + '</td>';
     }).join('');
 
     const dotColor = consColor(p.consultor);
-    return '<tr>'
-      + '<td class="gantt-name" title="' + p.nome + '">' + nome + '</td>'
+    const pausadoBadge = ehPausado
+      ? ' <span title="Pausado — em standby, não conta na carga/capacity" style="display:inline-flex;align-items:center;gap:3px;font-size:var(--fs-3xs);font-weight:700;color:#fff;background:var(--amber);border-radius:8px;padding:1px 6px;white-space:nowrap;vertical-align:middle;">'+icon('pause',{size:8})+' Pausado</span>'
+      : '';
+    return '<tr' + (ehPausado ? ' style="opacity:.75;"' : '') + '>'
+      + '<td class="gantt-name" title="' + p.nome + '">' + nome + pausadoBadge + '</td>'
       + '<td class="gantt-cons"><span style="display:inline-flex;align-items:center;gap:4px;">'
       + '<span style="width:7px;height:7px;border-radius:50%;background:' + dotColor + ';flex-shrink:0;"></span>'
       + (p.consultor || '—') + '</span></td>'
