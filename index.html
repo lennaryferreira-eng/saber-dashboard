@@ -9394,17 +9394,17 @@ const CAMPOS_OPORT_PERSISTIR = ['oportunidades', 'pipeEventos', 'oport', 'proxim
 // Lead Time (mudar etapa, editar campo, encerrar, excluir, criar) passa por _oportRefresh, que
 // chama isso — sem depender só do save geral, que sob conflito descartaria a edição em
 // silêncio, exatamente como acontecia com o score da Auditoria.
-let _oportGravando = null;
+//
+// Usa o lock COMPARTILHADO _comLockColunaProjects (não um lock só seu) — essa função e
+// audPersistirScoreEntrega() fazem a mesma coisa (ler a coluna "projects" inteira, alterar só
+// o pedaço de um projeto, regravar a coluna inteira) só que cada uma tinha seu próprio lock
+// isolado. Rodando ao mesmo tempo (ex: editando várias oportunidades no Lead Time enquanto uma
+// auditoria é salva), uma lia a coluna ANTES da outra escrever e depois regravava por cima com
+// essa cópia desatualizada — perdendo a escrita da outra em silêncio (foi exatamente o que
+// sumiu com o score de 3 auditorias em 13/09, salvas manualmente na mesma janela em que várias
+// oportunidades estavam sendo atualizadas). Ver comentário completo em _comLockColunaProjects.
 async function oportPersistir(projId) {
-  const anterior = _oportGravando;
-  let liberar;
-  _oportGravando = new Promise(res => { liberar = res; });
-  if (anterior) await anterior.catch(() => {});
-  try {
-    return await _oportPersistirAgora(projId);
-  } finally {
-    liberar();
-  }
+  return _comLockColunaProjects(() => _oportPersistirAgora(projId));
 }
 async function _oportPersistirAgora(projId) {
   if (VIEWER) return { ok: false, motivo: 'viewer' };
@@ -14168,14 +14168,35 @@ async function audPersistirAuditorias() {
 // Relê só a coluna `projects`, edita a nota de UM projeto (por nome) e grava de volta — não
 // toca em nenhum outro projeto nem em nenhuma outra coluna, mesmo trade-off de janela pequena
 // entre GET e PATCH que o audPersistirAuditorias já aceita.
-let _audScoreGravando = null;
+//
+// Lock COMPARTILHADO com oportPersistir() — ver _comLockColunaProjects logo abaixo pra saber
+// por que precisa ser um lock só, não um por função (era assim antes e causou perda real de
+// score: 13/09, 3 auditorias — Franquia CNA idiomas, Easy TDR, IMEK — salvas manualmente
+// enquanto várias oportunidades eram atualizadas no Lead Time na mesma janela).
 async function audPersistirScoreEntrega(nomeProjeto, ordemEntrega, nota, dataAudit) {
-  const anterior = _audScoreGravando;
+  return _comLockColunaProjects(() => _audPersistirScoreEntregaAgora(nomeProjeto, ordemEntrega, nota, dataAudit));
+}
+// Lock único pra QUALQUER gravação dedicada que faça leitura-modificação-escrita da coluna
+// "projects" inteira (hoje: audPersistirScoreEntrega e oportPersistir). As duas seguem o mesmo
+// padrão pra fugir do sbConflito silencioso do save geral (ver comentários acima e em
+// oportPersistir) — mas cada uma tinha seu próprio lock isolado, então elas só se protegiam
+// contra REPETIÇÕES DE SI MESMAS, não uma contra a outra. Como as duas fazem GET da coluna
+// inteira, editam só o pedaço delas na cópia local, e regravam a coluna INTEIRA de volta,
+// rodando ao mesmo tempo uma podia ler a coluna antes da outra escrever, e depois regravar por
+// cima com essa cópia desatualizada — apagando a escrita da outra sem erro nenhum. Foi
+// exatamente isso: em 13/09 o score de 3 auditorias sumiu do Lead Time porque a coordenadora
+// estava atualizando várias oportunidades no Lead Time (cada edição chama oportPersistir) na
+// mesma janela em que salvou essas avaliações (cada save chama audPersistirScoreEntrega) — as
+// duas gravações na coluna "projects" competiram e uma comeu a outra. Serializar as duas atrás
+// do MESMO lock garante que nunca há uma janela de leitura desatualizada entre elas.
+let _projectsColGravando = null;
+async function _comLockColunaProjects(fn) {
+  const anterior = _projectsColGravando;
   let liberar;
-  _audScoreGravando = new Promise(res => { liberar = res; });
+  _projectsColGravando = new Promise(res => { liberar = res; });
   if (anterior) await anterior.catch(() => {});
   try {
-    return await _audPersistirScoreEntregaAgora(nomeProjeto, ordemEntrega, nota, dataAudit);
+    return await fn();
   } finally {
     liberar();
   }
