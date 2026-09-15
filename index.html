@@ -6384,18 +6384,18 @@ function dataFimRealTer(p) {
   return null;
 }
 
-// Meses (2026) em que o projeto TER One-time está "ativo" pro card de Projetos no Prazo: do
-// início até a finalização real, ou até o prazo previsto (ou hoje, se o prazo já passou sem
-// finalizar) enquanto ainda está aberto. Mais simples que o mesesAtivos da SABER — a TER não
-// tem o conceito de semana fixa/Growthclass isolado pra excluir.
+// Meses (2026) em que o projeto TER One-time está na sua JANELA DE EXECUÇÃO ESPERADA (início
+// até o prevFim calculado pelo modelo) — igual ao mesesAtivos da SABER, que também usa só a
+// janela esperada, nunca a finalização real nem "hoje". Um projeto atrasado que ainda não
+// finalizou NÃO deve esticar essa janela até hoje: quem cuida de continuar mostrando ele nos
+// meses seguintes enquanto seguir atrasado é a extensão própria de prazoNoMesCardTer (mais
+// abaixo). Sem essa separação, todo projeto aberto e atrasado — que é a maioria numa base real —
+// aparecia em TODOS os meses entre o início e o mês atual, em vez de só nos meses relevantes.
 function mesesAtivosTer(p) {
   if (!p.inicio) return [];
   const dIni = parseDate(p.inicio);
   if (!dIni) return [];
-  const hoje = new Date(); hoje.setHours(0,0,0,0);
-  const fim = dataFimRealTer(p);
-  const dPrev = p.prevFim ? parseDate(p.prevFim) : null;
-  const dFim = fim ? parseDate(fim) : (dPrev && dPrev > hoje ? dPrev : hoje);
+  const dFim = p.prevFim ? parseDate(p.prevFim) : null;
   if (!dFim || dFim < dIni) return dIni.getFullYear() === 2026 ? [dIni.getMonth()] : [];
   const meses = new Set();
   let cursor = new Date(dIni.getFullYear(), dIni.getMonth(), 1);
