@@ -13692,6 +13692,18 @@ function perfPdiDoConsultorTer(nome) {
   return { pct: Math.round(vals.reduce((a,b)=>a+b,0) / vals.length) };
 }
 
+// Metas e score geral da Performance da TER por pessoa. Compartilhado com o Meu perfil, para
+// as duas telas nunca mostrarem números diferentes.
+const METAS_TER = { prazo: 80, nps: 50, pdi: 80 };
+function perfIndicadoresTer(nome) {
+  const prazo = perfPrazoDoConsultorTer(nome);
+  const nps = perfNpsDoConsultorTer(nome);
+  const pdi = perfPdiDoConsultorTer(nome);
+  const partes = [prazo.taxa, nps.score, pdi.pct].filter(v => v !== null && v !== undefined);
+  const media = partes.length ? Math.round(partes.reduce((a,b)=>a+b,0) / partes.length) : null;
+  return { nome, prazo, nps, pdi, media };
+}
+
 function buildPerformanceTer() {
   const selCons = document.getElementById('perf-ter-f-cons');
   if (selCons) {
@@ -13702,14 +13714,7 @@ function buildPerformanceTer() {
   const fCons = selCons?.value || '';
   const nomes = (fCons ? [fCons] : squadList());
 
-  const linhas = nomes.map(nome => {
-    const prazo = perfPrazoDoConsultorTer(nome);
-    const nps = perfNpsDoConsultorTer(nome);
-    const pdi = perfPdiDoConsultorTer(nome);
-    const partes = [prazo.taxa, nps.score, pdi.pct].filter(v => v !== null && v !== undefined);
-    const media = partes.length ? Math.round(partes.reduce((a,b)=>a+b,0) / partes.length) : null;
-    return { nome, prazo, nps, pdi, media };
-  }).sort((a, b) => (b.media ?? -1) - (a.media ?? -1));
+  const linhas = nomes.map(perfIndicadoresTer).sort((a, b) => (b.media ?? -1) - (a.media ?? -1));
 
   const el = document.getElementById('perf-ter-cards');
   if (!el) return;
@@ -13732,9 +13737,9 @@ function buildPerformanceTer() {
       + '</div>'
       + '<div style="font-size:var(--fs-xs);color:var(--text-hint);margin-bottom:2px;">Score geral (média dos 3)</div>'
       + '<div style="font-family:var(--cond);font-size:1.8rem;font-weight:800;color:var(--accent);margin-bottom:6px;">' + (l.media !== null ? l.media : '—') + '</div>'
-      + metaLinha('Projetos no Prazo', l.prazo.taxa, 80, '%')
-      + metaLinha('NPS', l.nps.score, 50, '')
-      + metaLinha('PDI', l.pdi.pct, 80, '%')
+      + metaLinha('Projetos no Prazo', l.prazo.taxa, METAS_TER.prazo, '%')
+      + metaLinha('NPS', l.nps.score, METAS_TER.nps, '')
+      + metaLinha('PDI', l.pdi.pct, METAS_TER.pdi, '%')
       + '</div>';
   }).join('');
 }
@@ -16286,11 +16291,7 @@ function renderPerfilDash() {
   const ehSquad = u.acesso === 'consultor' || u.acesso === 'designer';
 
   if (currentCoord === 'ter') {
-    el.innerHTML = '<div class="card"><div class="card-title">Indicadores</div><p class="conta-dica">'
-      + (u && usuarioSoTer(u)
-        ? 'Os indicadores do perfil ainda usam só as regras da SABER. Os números da TER estão nas abas Projetos no Prazo, NPS e Performance.'
-        : 'Os indicadores do perfil usam as regras da Performance da SABER. Troque para a coordenação SABER para vê-los.')
-      + '</p></div>';
+    renderPerfilDashTer(el, u);
     return;
   }
 
@@ -16338,6 +16339,85 @@ function renderPerfilDash() {
   }).join('');
   el.innerHTML = '<div class="conta-dash-topo"><h3>Visão do time</h3>' + perfilSelectMesHTML(mesKey) + '</div>'
     + (secoes || '<div class="card"><p class="conta-dica">Ainda não há indicadores para mostrar.</p></div>');
+}
+
+// ── Meu perfil na TER ──
+// Mesmos três indicadores da Performance da TER (perfIndicadoresTer), no ano todo — as funções
+// da TER não têm recorte por mês.
+function perfilCardTer(nome) {
+  const ind = perfIndicadoresTer(nome);
+  const kpis = [
+    { key: 'prazo', label: 'Projetos no Prazo', val: ind.prazo.taxa, meta: METAS_TER.prazo, suffix: '%',
+      detalhe: ind.prazo.total ? ind.prazo.ok + ' de ' + ind.prazo.total + ' one-time no prazo' : 'Nenhum one-time avaliado' },
+    { key: 'nps', label: 'NPS', val: ind.nps.score, meta: METAS_TER.nps, suffix: '',
+      detalhe: ind.nps.respostas ? ind.nps.respostas + (ind.nps.respostas === 1 ? ' resposta' : ' respostas') : 'Sem respostas' },
+    { key: 'pdi', label: 'PDI', val: ind.pdi.pct, meta: METAS_TER.pdi, suffix: '%',
+      detalhe: 'Média dos fechamentos de quarter' },
+  ];
+  const comDado = kpis.filter(k => k.val !== null && k.val !== undefined);
+  return {
+    nome, media: ind.media, kpis,
+    dot: (window.dotColors || {})[nome] || 'var(--accent)',
+    atingidos: comDado.filter(k => kpiAtingido(k)).length,
+    totalComDado: comDado.length,
+  };
+}
+
+function renderPerfilDashTer(el, u) {
+  const ligadoNaTer = u.squad_nome && (u.coordenacao || 'saber') === 'ter';
+  const topo = t => '<div class="conta-dash-topo"><h3>' + t + '</h3><span class="conta-dica">Coordenação TER · ano de 2026</span></div>';
+
+  if (ligadoNaTer && u.acesso !== 'adm') {
+    const c = perfilCardTer(u.squad_nome);
+    const meus = projects.filter(p => p.consultor === u.squad_nome);
+    const oneTime = meus.filter(p => p.recorrencia === 'One time').length;
+    const rec = meus.filter(p => p.recorrencia === 'Recorrente').length;
+    el.innerHTML = topo('Seus indicadores')
+      + '<div class="conta-grid-kpi">'
+      + '<div class="mcard c-accent"><div class="mlabel">Score geral</div><div class="mval">' + (c.media === null ? '—' : c.media) + '</div><div class="conta-dica">Média dos três indicadores</div></div>'
+      + '<div class="mcard c-green"><div class="mlabel">Metas batidas</div><div class="mval">' + c.atingidos + '<span style="font-size:14px;color:var(--text-hint);"> de ' + c.totalComDado + '</span></div></div>'
+      + '<div class="mcard c-blue"><div class="mlabel">Seus projetos</div><div class="mval">' + meus.length + '</div><div class="conta-dica">' + oneTime + ' one-time · ' + rec + ' recorrentes</div></div>'
+      + '</div>'
+      + '<div class="conta-grid-kpi">' + c.kpis.map(k => {
+        const at = kpiAtingido(k);
+        const badge = at === null ? '<span class="badge b-gray">Sem dado</span>'
+          : at ? '<span class="badge b-green">' + icon('check') + ' Na meta</span>' : '<span class="badge b-red">Abaixo da meta</span>';
+        return '<div class="conta-kpi"><div class="mlabel">' + k.label + '</div>'
+          + '<div class="conta-kpi-topo"><span class="conta-kpi-val">' + kpiValorTexto(k) + '</span><span class="conta-kpi-meta">' + kpiMetaTexto(k) + '</span></div>'
+          + '<div class="conta-abaixo">' + escAttr(k.detalhe) + '</div>' + badge + '</div>';
+      }).join('') + '</div>'
+      + '<button class="btn btn-ghost" data-nome="' + escAttr(u.squad_nome) + '" onclick="perfilAbrirPerformanceTer(this.dataset.nome)">Ver na Performance da TER</button>';
+    return;
+  }
+
+  // ADM, Visualização e Analista de Martech sem vínculo com o squad: visão do time da TER
+  const todos = squadList().map(perfilCardTer);
+  const comAlgumDado = todos.filter(c => c.totalComDado > 0);
+  const ocultos = todos.length - comAlgumDado.length;
+  let html = topo('Visão do time');
+  if (!comAlgumDado.length) {
+    html += '<div class="card"><p class="conta-dica">Ninguém da lista de consultores da TER tem indicador ainda.</p></div>';
+  } else {
+    html += perfilVisaoTimeHTML('Consultores da TER', comAlgumDado);
+  }
+  if (ocultos) {
+    html += '<p class="conta-dica">' + ocultos + (ocultos === 1 ? ' pessoa da lista de consultores da TER não tem' : ' pessoas da lista de consultores da TER não têm')
+      + ' nenhum dado na TER e ' + (ocultos === 1 ? 'ficou' : 'ficaram') + ' de fora. A lista vem da página Usuários: marque quem atende a TER com coordenação TER.</p>';
+  }
+  if (usuarioSoTer(u) && !ligadoNaTer) {
+    html += '<p class="conta-dica">Para ver os seus próprios indicadores, peça para um ADM ligar o seu cadastro ao nome que aparece nos projetos da TER.</p>';
+  }
+  el.innerHTML = html;
+}
+
+function perfilAbrirPerformanceTer(nome) {
+  show('performance');
+  const sel = document.getElementById('perf-ter-f-cons');
+  if (sel) {
+    if (![...sel.options].some(o => o.value === nome)) sel.insertAdjacentHTML('beforeend', '<option>' + escAttr(nome) + '</option>');
+    sel.value = nome;
+    buildPerformanceTer();
+  }
 }
 
 function perfilVisaoTimeHTML(titulo, cards, modo) {
