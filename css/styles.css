@@ -598,3 +598,51 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
 #trilhas-app .tl-footer{padding:30px 0 10px;text-align:center;}
 #trilhas-app .tl-footer p{color:var(--text-hint);font-size:11px;font-family:var(--tl-mono);}
 
+
+/* ── Meu perfil e Usuários ──────────────────────────────────────── */
+.conta-layout{display:grid;grid-template-columns:minmax(260px,320px) 1fr;gap:1.5rem;align-items:start;}
+.conta-card-perfil{margin-bottom:0;}
+@media(max-width:900px){.conta-layout{grid-template-columns:1fr;}}
+.conta-avatar{border-radius:50%;object-fit:cover;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-weight:700;color:#fff;background:var(--text-hint);overflow:hidden;}
+.conta-perfil-topo{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;margin-bottom:1.2rem;}
+.conta-foto-acoes{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}
+.conta-campo{display:block;min-width:0;}
+.conta-campo + .conta-campo{margin-top:0;}
+.conta-stack{display:flex;flex-direction:column;gap:12px;}
+.conta-somente-leitura{padding:9px 11px;border:1px dashed var(--border);border-radius:var(--r-sm);font-size:var(--fs-base);color:var(--text-muted);background:var(--surface2);display:flex;align-items:center;gap:6px;min-height:34px;box-sizing:border-box;}
+.conta-dica{font-size:var(--fs-xs);color:var(--text-hint);margin-top:4px;}
+.conta-msg{font-size:var(--fs-sm);min-height:16px;margin:10px 0 0;color:var(--text-hint);}
+.conta-msg.erro{color:var(--red);}
+.conta-msg.ok{color:var(--green);}
+.conta-acoes{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:14px;}
+.conta-btn-perigo{color:var(--red);}
+.conta-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;}
+.conta-toolbar .aud-inp{width:auto;flex:1 1 180px;}
+.conta-toolbar select.aud-inp{flex:0 1 180px;}
+.conta-tabela{font-size:var(--fs-base);}
+.conta-tabela th{font-size:var(--fs-xs);font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--text-hint);text-align:left;padding:8px 10px;white-space:nowrap;}
+.conta-tabela td{padding:10px;border-top:1px solid var(--border);vertical-align:middle;}
+.conta-tabela tr.conta-linha-eu td{background:var(--surface2);}
+.conta-pessoa{display:flex;align-items:center;gap:10px;min-width:200px;}
+.conta-pessoa small{display:block;color:var(--text-hint);font-size:var(--fs-xs);}
+.conta-dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex-shrink:0;}
+.conta-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.conta-campo-largo{grid-column:1 / -1;}
+@media(max-width:560px){.conta-form-grid{grid-template-columns:1fr;}}
+.conta-fieldset{border:1px solid var(--border);border-radius:var(--r);padding:12px 14px 14px;margin:16px 0 0;}
+.conta-fieldset legend{padding:0 6px;margin:0;}
+.conta-check{display:flex;align-items:center;gap:8px;font-size:var(--fs-base);color:var(--text-muted);}
+.conta-foto-linha{display:flex;align-items:center;gap:10px;margin-top:14px;}
+.conta-kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.1rem;box-shadow:var(--shadow-sm);}
+.conta-kpi-topo{display:flex;flex-direction:column;gap:2px;}
+.conta-grid-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:1.4rem;}
+.conta-kpi-val{font-size:26px;font-weight:700;line-height:1.15;color:var(--text);}
+.conta-kpi-meta{font-size:var(--fs-xs);color:var(--text-hint);}
+.conta-kpi .badge{margin-top:8px;max-width:100%;}
+.conta-abaixo{font-size:var(--fs-xs);color:var(--text-muted);margin-top:8px;line-height:1.5;}
+.conta-dash-topo{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+.conta-dash-topo h3{font-family:var(--serif);font-size:18px;font-weight:600;margin:0;}
+.conta-dash-topo select{width:auto;}
+.conta-celula-ok{color:var(--green);font-weight:600;}
+.conta-celula-nao{color:var(--red);font-weight:600;}
+.conta-celula-vazia{color:var(--text-hint);}

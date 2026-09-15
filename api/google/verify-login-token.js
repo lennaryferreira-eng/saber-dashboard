@@ -5,6 +5,7 @@
 // login (?login_token=...) pra confirmar que o token é genuíno antes de aplicar a sessão.
 
 import { verifyState } from '../_lib/crypto-state.js';
+import { cookieDeSessao } from '../_lib/sessao.js';
 
 const MAX_AGE_MS = 5 * 60 * 1000; // 5 minutos — só precisa sobreviver ao próprio redirect
 
@@ -32,6 +33,9 @@ export default async function handler(req, res) {
       res.status(401).json({ error: 'Token sem e-mail' });
       return;
     }
+    // Troca a prova de login de 5 minutos pela sessão de 30 dias, num cookie HttpOnly que o
+    // JavaScript da página não lê nem altera (ver _lib/sessao.js).
+    res.setHeader('Set-Cookie', cookieDeSessao(payload.email.toLowerCase()));
     res.status(200).json({ email: payload.email });
   } catch (err) {
     res.status(401).json({ error: 'Token de login inválido ou expirado' });

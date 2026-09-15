@@ -38,6 +38,7 @@
       <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 01-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 009 18z"/><path fill="#FBBC05" d="M3.97 10.72A5.4 5.4 0 013.68 9c0-.6.1-1.18.29-1.72V4.95H.96A9 9 0 000 9c0 1.45.35 2.83.96 4.05l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.59-2.59C13.46.89 11.43 0 9 0A9 9 0 00.96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>
       Entrar com Google
     </button>
+    <div id="gate-status" style="display:none;color:rgba(255,255,255,.55);font-size:var(--fs-base);margin-top:14px;">Verificando seu acesso…</div>
     <div id="gate-error" style="color:var(--accent);font-size:var(--fs-base);font-weight:600;margin-top:14px;min-height:16px;"></div>
     <div style="color:rgba(255,255,255,.4);font-size:var(--fs-sm);margin-top:18px;">Só contas @v4company.com têm acesso.</div>
   </div>
@@ -80,11 +81,17 @@
           </button>
         </div>
       </div>
-      <button class="header-text-btn" onclick="openConsultoresModal()" title="Gerenciar consultores do squad">Consultores</button>
-      <button id="perfil-btn" class="btn" onclick="openLoginModal()" style="font-weight:700;letter-spacing:.04em;"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 015 0v2"/></svg> ENTRAR</button>
+      <button class="header-text-btn" id="btn-usuarios-topo" onclick="show('usuarios')" title="Usuários, acessos e consultores do squad" style="display:none;">Usuários</button>
+      <button id="perfil-btn" class="btn" onclick="currentPerfil ? show('perfil') : openLoginModal()" style="font-weight:700;letter-spacing:.04em;"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 015 0v2"/></svg> ENTRAR</button>
     </div>
   </div>
 </header>
+
+<div id="aviso-contingencia" role="status" style="display:none;align-items:center;gap:10px;padding:10px 3rem;background:var(--amber-dim);color:var(--text);font-size:var(--fs-base);border-bottom:1px solid var(--border);">
+  <strong style="color:var(--amber);">Modo contingência</strong>
+  <span>Não deu para confirmar seu login com o servidor. O painel abriu com o seu último perfil conhecido; perfil e usuários ficam só para leitura até a conexão voltar.</span>
+  <button class="btn btn-ghost" onclick="location.reload()" style="margin-left:auto;white-space:nowrap;">Tentar de novo</button>
+</div>
 
 <div class="app-shell">
 <aside class="sidebar">
@@ -1792,6 +1799,36 @@
     </div>
   </div>
   </section>
+
+  <!-- ───────── MEU PERFIL ───────── -->
+  <section id="sec-perfil" class="section">
+    <div class="sec-head"><h2 class="sec-title">Meu perfil</h2><p class="sec-desc">Seus dados no painel e os seus indicadores. Nome, telefone e foto você mesmo edita; cargo e acesso quem define é um ADM.</p></div>
+    <div class="conta-layout">
+      <div class="card conta-card-perfil" id="perfil-card"></div>
+      <div id="perfil-dash"></div>
+    </div>
+  </section>
+
+  <!-- ───────── USUÁRIOS (só ADM) ───────── -->
+  <section id="sec-usuarios" class="section">
+    <div class="sec-head"><h2 class="sec-title">Usuários</h2><p class="sec-desc">Quem entra no painel, com que acesso, e como cada pessoa aparece no squad. Quem está marcado como consultor aqui é quem aparece nos filtros e na Performance.</p></div>
+    <div class="mgrid mg4" id="usu-resumo"></div>
+    <div class="card">
+      <div class="conta-toolbar">
+        <input id="usu-busca" class="aud-inp" type="search" placeholder="Buscar por nome, e-mail ou cargo" oninput="buildUsuarios()" aria-label="Buscar usuário">
+        <select id="usu-f-acesso" class="aud-inp" onchange="buildUsuarios()" aria-label="Filtrar por acesso">
+          <option value="">Todos os acessos</option>
+          <option value="adm">ADM</option>
+          <option value="viewer">Visualização</option>
+          <option value="consultor">Consultor</option>
+          <option value="designer">Designer</option>
+          <option value="nenhum">Sem acesso</option>
+        </select>
+        <button class="btn btn-primary" onclick="usuarioAbrirModal(null)">+ Novo usuário</button>
+      </div>
+      <div class="tbl-scroll"><table class="conta-tabela" id="usu-tabela"></table></div>
+    </div>
+  </section>
 </main>
 </div>
 
@@ -2096,6 +2133,62 @@
   </div>
 </div>
 
+<!-- ───────── MODAL: cadastrar / editar usuário ───────── -->
+<div class="modal-overlay" id="modal-usuario" onclick="if(event.target===this)usuarioFecharModal()">
+  <div class="modal-box" style="max-width:560px;" role="dialog" aria-modal="true" aria-labelledby="usu-modal-titulo">
+    <div class="modal-header">
+      <span class="modal-title" id="usu-modal-titulo">Novo usuário</span>
+      <button class="modal-close" onclick="usuarioFecharModal()" title="Fechar" aria-label="Fechar"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="conta-form-grid">
+        <label class="conta-campo"><span class="aud-lbl">Nome de exibição *</span><input id="usu-nome" class="aud-inp" maxlength="80"></label>
+        <label class="conta-campo"><span class="aud-lbl">E-mail @v4company.com</span><input id="usu-email" class="aud-inp" type="email" maxlength="120" placeholder="nome.sobrenome@v4company.com"></label>
+        <label class="conta-campo"><span class="aud-lbl">Cargo</span><input id="usu-cargo" class="aud-inp" maxlength="80"></label>
+        <label class="conta-campo"><span class="aud-lbl">Telefone / WhatsApp</span><input id="usu-tel" class="aud-inp" maxlength="30"></label>
+        <label class="conta-campo conta-campo-largo"><span class="aud-lbl">Acesso ao painel</span>
+          <select id="usu-acesso" class="aud-inp" onchange="usuarioSincronizarAcesso()">
+            <option value="adm">ADM · vê e edita tudo, administra usuários</option>
+            <option value="viewer">Visualização · vê tudo, não edita</option>
+            <option value="consultor">Consultor · vê só as abas e os projetos dele</option>
+            <option value="designer">Designer · vê só as abas e os projetos dele</option>
+            <option value="nenhum">Sem acesso · cadastro sem login</option>
+          </select>
+        </label>
+      </div>
+      <fieldset class="conta-fieldset">
+        <legend class="aud-lbl">No squad</legend>
+        <div class="conta-form-grid">
+          <label class="conta-campo"><span class="aud-lbl">Função</span>
+            <select id="usu-squad-tipo" class="aud-inp" onchange="usuarioSincronizarAcesso()">
+              <option value="">Não faz parte do squad</option>
+              <option value="consultor">Consultor</option>
+              <option value="designer">Designer</option>
+            </select>
+          </label>
+          <label class="conta-campo"><span class="aud-lbl">Nome nos projetos</span><input id="usu-squad-nome" class="aud-inp" maxlength="40" placeholder="Como aparece em Consultor/Designer"></label>
+          <label class="conta-campo"><span class="aud-lbl">Coordenação</span>
+            <select id="usu-coord" class="aud-inp"><option value="saber">SABER</option><option value="ter">TER</option></select>
+          </label>
+          <label class="conta-campo"><span class="aud-lbl">Cor</span><select id="usu-cor" class="aud-inp"></select></label>
+          <label class="conta-check conta-campo-largo"><input type="checkbox" id="usu-squad-ativo"> Ativo no squad (inativo sai da Performance, AQL, Capacity e PDI, mas o histórico fica)</label>
+        </div>
+      </fieldset>
+      <div id="usu-foto-linha" class="conta-foto-linha" style="display:none;">
+        <span id="usu-foto-preview"></span>
+        <button class="btn btn-ghost" onclick="usuarioRemoverFoto()">Remover foto</button>
+      </div>
+      <div id="usu-modal-msg" class="conta-msg" role="alert"></div>
+      <div class="conta-acoes">
+        <button class="btn btn-ghost conta-btn-perigo" id="usu-btn-remover" onclick="usuarioRemover()">Remover usuário</button>
+        <span style="flex:1;"></span>
+        <button class="btn btn-ghost" onclick="usuarioFecharModal()">Cancelar</button>
+        <button class="btn btn-primary" id="usu-btn-salvar" onclick="usuarioSalvar()">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Modal genérico de confirmação/alerta — usado por showConfirm()/showAlert() (index.html)
      no lugar de confirm()/alert() nativos do navegador. -->
 <div class="modal-overlay" id="modal-confirm" onclick="if(event.target===this)_confirmModalResponder(false)">
@@ -2366,6 +2459,11 @@ function scoreClass(pct){
   if(pct >= 75) return 'good';
   if(pct >= 50) return 'mid';
   return 'low';
+}
+// Escapa para uso dentro de HTML e de atributos entre aspas (escapeHtml, abaixo, não
+// escapa aspas). Use para qualquer texto que venha do cadastro de usuários.
+function escAttr(str){
+  return String(str == null ? '' : str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 function escapeHtml(str){
   const div = document.createElement('div');
@@ -3349,6 +3447,10 @@ const SIDEBAR_NAV = [
     { id: 'auditoria', label: 'Auditoria de Entregas', icon: 'eye' },
     { id: 'cultura', label: 'Termômetro Cultural', icon: 'sparkle', elId: 'nav-tab-cultura' },
     { id: 'fca', label: 'FCA', icon: 'flag' },
+  ] },
+  { group: 'conta', label: 'Conta', items: [
+    { id: 'perfil', label: 'Meu perfil', icon: 'user', elId: 'nav-tab-perfil' },
+    { id: 'usuarios', label: 'Usuários', icon: 'users', elId: 'nav-tab-usuarios', hiddenByDefault: true },
   ] },
 ];
 function renderSidebarNav() {
@@ -4398,48 +4500,34 @@ function buildPipeline() {
 
 
 // ── SISTEMA DE LOGIN ──────────────────────────────────────────
-const PERFIS = {
-  'saberadm2026':   { nome: 'ADM',      consultor: null },
-  'camila2026':     { nome: 'Camila',   consultor: 'Camila' },
-  'caio2026':       { nome: 'Caio',     consultor: 'Caio' },
-  'leonam2026':     { nome: 'Leonam',   consultor: 'Leonam' },
-  'loma2026':       { nome: 'Loma',     consultor: 'Loma' },
-  'cleiton2026':    { nome: 'Cleiton',  consultor: 'Cleiton' },
-  'vinicius2026':   { nome: 'Vinicius', consultor: 'Vinicius' },
-  'suzana2026':     { nome: 'Suzana',   consultor: 'Suzana' },
-  'alexandre2026':  { nome: 'Alexandre', designer: 'Alexandre' },
-  'eduardo2026':    { nome: 'Eduardo',   designer: 'Eduardo' },
-  'visualizar2026': { nome: 'Visualização', viewer: true },
-};
-// Login com Google (substitui a senha compartilhada) — mapeia e-mail @v4company.com pro
-// mesmo objeto de perfil já usado acima, sem duplicar nenhuma definição de permissão.
-const PERFIS_POR_EMAIL = {
-  'leonam.lael@v4company.com':      PERFIS['saberadm2026'],
-  'lennary.ferreira@v4company.com': PERFIS['saberadm2026'],
-  'mariana.figueiredo@v4company.com': PERFIS['saberadm2026'],
-  'helio.freire@v4company.com':     PERFIS['saberadm2026'],
-  // E-mails reais confirmados — o padrão "<primeironome>@v4company.com" usado antes era só
-  // um chute e não batia com o e-mail de verdade de quase ninguém (por isso o login da
-  // Suzana falhou: o sistema esperava "suzana@" e o real é "suzana.ribeiro@").
-  'camila-lima@v4company.com':      PERFIS['camila2026'],
-  'ruancaio.ferreira@v4company.com': PERFIS['caio2026'],
-  'aloma.oliveira@v4company.com':   PERFIS['loma2026'],
-  'cleiton@v4company.com':          PERFIS['cleiton2026'],
-  'vinicius.castro@v4company.com':  PERFIS['vinicius2026'],
-  'suzana.ribeiro@v4company.com':   PERFIS['suzana2026'],
-  'alexandre.souza@v4company.com':  PERFIS['alexandre2026'],
-  'eduardo.rodrigues@v4company.com': PERFIS['eduardo2026'],
-  // Sem perfil de consultor/designer próprio — acesso só de visualização.
-  'raissa.martins@v4company.com':   PERFIS['visualizar2026'],
-  'vitor.emilio@v4company.com':     PERFIS['visualizar2026'],
-  'whellen.medeiros@v4company.com': PERFIS['visualizar2026'],
-  'gustavo.telles@v4company.com':   PERFIS['visualizar2026'],
-  'pedro.bauli@v4company.com':      PERFIS['visualizar2026'],
-};
+// Quem entra, e com que acesso, vem da tabela `usuarios` do Supabase (página Usuários),
+// entregue por /api/sessao depois de o servidor conferir o cookie de sessão assinado.
+// Antes isto era um mapa de e-mails fixo aqui no código, e a "sessão" era um e-mail no
+// localStorage: qualquer um trocava esse valor pelo console e virava ADM.
+let USUARIO_ATUAL = null;        // registro completo da pessoa logada
+let USUARIOS = [];               // lista que ela pode ver (telefone só para ADM e ela mesma)
+let SESSAO_CONTINGENCIA = false; // true = servidor fora do ar, entrou com o último perfil conhecido
+
+// Converte o registro do banco no mesmo formato de perfil que o resto do painel já usa
+// (consultor / designer / viewer; ADM é a ausência dos três).
+function perfilDoUsuario(u) {
+  if (!u) return null;
+  const nome = u.nome_exibicao;
+  if (u.acesso === 'adm') return { nome, consultor: null };
+  if (u.acesso === 'viewer') return { nome, viewer: true };
+  if (u.acesso === 'consultor') return { nome, consultor: u.squad_nome };
+  if (u.acesso === 'designer') return { nome, designer: u.squad_nome };
+  return null;
+}
+// Gestão de usuários exige sessão confirmada pelo servidor — em contingência fica bloqueada.
+function usuarioEhAdm() {
+  return !!(USUARIO_ATUAL && USUARIO_ATUAL.acesso === 'adm' && !SESSAO_CONTINGENCIA);
+}
+
 // Abas que ficam visíveis pra quem loga como consultor (não-ADM) — as demais somem do menu.
-const CONSULTOR_TABS_PERMITIDAS = ['base', 'aql', 'leadtime', 'performance', 'auditoria', 'pipeline', 'capacity'];
+const CONSULTOR_TABS_PERMITIDAS = ['base', 'aql', 'leadtime', 'performance', 'auditoria', 'pipeline', 'capacity', 'perfil'];
 // Designers têm um recorte menor — sem AQL nem Performance (não fazem sentido pra eles)
-const DESIGNER_TABS_PERMITIDAS = ['base', 'leadtime', 'auditoria', 'capacity'];
+const DESIGNER_TABS_PERMITIDAS = ['base', 'leadtime', 'auditoria', 'capacity', 'perfil'];
 // Retorna a lista de abas certa conforme o TIPO de perfil (designer x consultor). "viewer"
 // não usa essa lista — vê tudo, sem restrição de menu (só não pode editar).
 function tabsPermitidasDoPerfil(perfil) {
@@ -4530,7 +4618,13 @@ function _aplicarLogin(perfil) {
   }
 }
 
-function doLogout() {
+async function doLogout() {
+  try { await fetch('/api/sessao', { method: 'DELETE', credentials: 'same-origin' }); } catch (e) {}
+  limparCacheSessao();
+  USUARIO_ATUAL = null;
+  USUARIOS = [];
+  SESSAO_CONTINGENCIA = false;
+  esconderAvisoContingencia();
   currentPerfil = null;
   VIEWER = new URLSearchParams(location.search).has('view'); // volta ao padrão da URL
   closeLoginModal();
@@ -4575,41 +4669,117 @@ async function handleLoginRedirectReturn() {
     });
     const data = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(data.error || ('Erro ao verificar login (' + r.status + ')'));
-    const email = data.email;
-    const perfil = PERFIS_POR_EMAIL[email];
-    if (!perfil) {
-      throw new Error('Sua conta (' + email + ') está autenticada, mas não tem perfil configurado neste painel. Peça pro ADM te adicionar.');
-    }
-    _aplicarLogin(perfil);
-    try { localStorage.setItem('saber_gsi_email', email); } catch (e) {}
-    const gate = document.getElementById('login-gate');
-    if (gate) gate.style.display = 'none';
-    refreshAll();
+    // verify-login-token acabou de gravar o cookie de sessão; daqui em diante quem diz o
+    // acesso é o servidor, a partir da tabela de usuários.
+    await carregarSessao();
   } catch (err) {
     if (errEl) errEl.textContent = err.message;
+    mostrarBotaoLogin(true);
   }
   return true;
 }
 
 // Ao carregar a página: primeiro confere se acabou de voltar do login (ver acima); senão,
-// se já tem um e-mail verificado salvo neste navegador (fica guardado por dias/semanas, tipo
-// "lembrar de mim" — só some se a pessoa clicar em Sair), libera o acesso direto reaplicando
-// o mesmo mapeamento; senão mostra o botão de "Entrar com Google".
+// pergunta ao servidor se o cookie de sessão (30 dias, some ao clicar em Sair) ainda vale.
 async function checkGateSession() {
   const veioDoLogin = await handleLoginRedirectReturn();
   if (veioDoLogin) return;
-
-  let email = null;
-  try { email = localStorage.getItem('saber_gsi_email'); } catch (e) {}
-  const perfil = email ? PERFIS_POR_EMAIL[email] : null;
-  const gate = document.getElementById('login-gate');
-  if (perfil) {
-    _aplicarLogin(perfil);
-    if (gate) gate.style.display = 'none';
-  } else {
-    if (gate) gate.style.display = 'flex';
-  }
+  await carregarSessao();
 }
+
+function mostrarBotaoLogin(mostrar) {
+  const btn = document.getElementById('google-login-btn');
+  const status = document.getElementById('gate-status');
+  if (btn) btn.style.visibility = mostrar ? 'visible' : 'hidden';
+  if (status) status.style.display = mostrar ? 'none' : '';
+}
+
+const CHAVE_CACHE_SESSAO = 'gh_sessao_cache';
+const VALIDADE_CACHE_SESSAO = 7 * 24 * 60 * 60 * 1000;
+// O cache guarda só o necessário para abrir o painel se o servidor cair: sem telefone e
+// sem foto (dado pessoal e peso, respectivamente).
+function _resumoParaCache(u) {
+  if (!u) return null;
+  const { telefone, foto, ...resto } = u;
+  return resto;
+}
+function limparCacheSessao() {
+  try { localStorage.removeItem(CHAVE_CACHE_SESSAO); localStorage.removeItem('saber_gsi_email'); } catch (e) {}
+}
+
+function aplicarSessao(data) {
+  USUARIO_ATUAL = data.usuario;
+  USUARIOS = Array.isArray(data.usuarios) ? data.usuarios : [];
+  SESSAO_CONTINGENCIA = false;
+  try {
+    localStorage.setItem(CHAVE_CACHE_SESSAO, JSON.stringify({ ts: Date.now(), usuario: _resumoParaCache(USUARIO_ATUAL), usuarios: USUARIOS.map(_resumoParaCache) }));
+    localStorage.removeItem('saber_gsi_email'); // sessão antiga, só no navegador
+  } catch (e) {}
+  _aplicarLogin(perfilDoUsuario(USUARIO_ATUAL));
+  aplicarRosterDoSquad();
+}
+
+async function carregarSessao() {
+  const gate = document.getElementById('login-gate');
+  const errEl = document.getElementById('gate-error');
+  mostrarBotaoLogin(false);
+  let r;
+  try {
+    r = await fetch('/api/sessao', { credentials: 'same-origin', cache: 'no-store' });
+  } catch (e) {
+    return entrarEmContingencia();
+  }
+  const corpo = await r.json().catch(() => ({}));
+  if (r.ok) {
+    aplicarSessao(corpo);
+    esconderAvisoContingencia();
+    if (gate) gate.style.display = 'none';
+    refreshAll();
+    return true;
+  }
+  if (r.status === 401 || r.status === 403) {
+    limparCacheSessao();
+    if (errEl && r.status === 403) errEl.textContent = corpo.error || 'Sua conta não tem acesso a este painel.';
+    if (gate) gate.style.display = 'flex';
+    mostrarBotaoLogin(true);
+    return false;
+  }
+  return entrarEmContingencia(corpo.error);
+}
+
+// Servidor fora do ar (rede ou erro 5xx): em vez de trancar o time inteiro para fora, abre
+// com o último perfil confirmado neste navegador, avisa na tela e bloqueia a gestão de
+// usuários. Não abre brecha nova: os dados do painel já são gravados com a chave pública do
+// Supabase; o que a sessão protege de verdade é a tabela de usuários, e ela continua exigindo
+// o cookie no servidor.
+function entrarEmContingencia(motivo) {
+  const gate = document.getElementById('login-gate');
+  const errEl = document.getElementById('gate-error');
+  let cache = null;
+  try { cache = JSON.parse(localStorage.getItem(CHAVE_CACHE_SESSAO) || 'null'); } catch (e) {}
+  const valido = cache && cache.usuario && cache.ts && (Date.now() - cache.ts) < VALIDADE_CACHE_SESSAO && perfilDoUsuario(cache.usuario);
+  if (!valido) {
+    if (errEl) errEl.textContent = 'Não foi possível confirmar seu acesso agora' + (motivo ? ' (' + motivo + ')' : '') + '. Tente de novo em instantes.';
+    if (gate) gate.style.display = 'flex';
+    mostrarBotaoLogin(true);
+    return false;
+  }
+  USUARIO_ATUAL = cache.usuario;
+  USUARIOS = Array.isArray(cache.usuarios) ? cache.usuarios : [];
+  SESSAO_CONTINGENCIA = true;
+  _aplicarLogin(perfilDoUsuario(USUARIO_ATUAL));
+  aplicarRosterDoSquad();
+  if (gate) gate.style.display = 'none';
+  const aviso = document.getElementById('aviso-contingencia');
+  if (aviso) aviso.style.display = 'flex';
+  refreshAll();
+  return true;
+}
+function esconderAvisoContingencia() {
+  const aviso = document.getElementById('aviso-contingencia');
+  if (aviso) aviso.style.display = 'none';
+}
+
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', checkGateSession); else checkGateSession();
 
 // Trava visualmente os campos de EDIÇÃO de dado quando VIEWER=true (não mexe em filtros,
@@ -4648,6 +4818,12 @@ function updatePerfilNavVisibility() {
   // lideranças que veem o resto do painel inteiro, mas não essa aba).
   const btnCultura = document.getElementById('nav-tab-cultura');
   if (btnCultura) btnCultura.style.display = (currentPerfil && (currentPerfil.consultor || currentPerfil.designer || currentPerfil.viewer)) ? 'none' : '';
+  // Usuários: só ADM com sessão confirmada pelo servidor (a API recusa os demais de qualquer jeito)
+  const podeUsuarios = usuarioEhAdm();
+  const btnUsu = document.getElementById('nav-tab-usuarios');
+  if (btnUsu) btnUsu.style.display = podeUsuarios ? '' : 'none';
+  const btnUsuTopo = document.getElementById('btn-usuarios-topo');
+  if (btnUsuTopo) btnUsuTopo.style.display = podeUsuarios ? '' : 'none';
   // Puxar reuniões do Drive (Auditoria de Entregas): mesmo critério de acesso do Termômetro
   // Cultural — só ADM.
   const barDrive = document.getElementById('aud-drive-bar');
@@ -4663,6 +4839,7 @@ function updatePerfilNavVisibility() {
     const m = (btn.getAttribute('onclick') || '').match(/show\('([a-z]+)'\)/);
     if (!m) return;
     const key = m[1];
+    if (key === 'usuarios') return; // tem regra própria (só ADM), definida acima
     if (restringir) {
       if (!tabsPermitidas.includes(key)) {
         btn.style.display = 'none';
@@ -4695,7 +4872,7 @@ function updatePerfilBtn() {
     // caía no "else" e aparecia como "· ADM" por engano. Não-ADM agora não leva sufixo nenhum.
     const ehADM = !currentPerfil.consultor && !currentPerfil.designer && !currentPerfil.viewer;
     const sufixo = ehADM ? ' · ADM' : '';
-    btn.innerHTML = icon('user') + ' ' + currentPerfil.nome.toUpperCase() + sufixo;
+    btn.innerHTML = icon('user') + ' ' + escAttr(currentPerfil.nome.toUpperCase()) + sufixo;
     btn.style.background = 'var(--accent)';
     btn.style.color = '#fff';
     btn.style.borderColor = 'var(--accent)';
@@ -9720,6 +9897,8 @@ function buildOvAnalises(curM) {
 }
 
 function show(sec) {
+  // Usuários é só para ADM: quem chegar aqui por link ou console cai no próprio perfil
+  if (sec === 'usuarios' && !usuarioEhAdm()) sec = 'perfil';
   // Esconde todas as seções e remove active das tabs
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -9755,10 +9934,13 @@ function show(sec) {
     else if (sec === 'aql')         buildAql();
     else if (sec === 'cultura')     buildCultura();
     else if (sec === 'fca')         buildFca();
+    else if (sec === 'perfil')      buildPerfil();
+    else if (sec === 'usuarios')    buildUsuarios();
   } catch(e) { console.error('show(' + sec + ') erro:', e); }
 }
 
 function refreshAll() {
+  aplicarRosterDoSquad();
   if (document.getElementById('dro-list')) buildDRO();
   const cspV   = calcCsp();
   let convV; try { convV = calcConv(); } catch(e){ console.error('calcConv erro:', e); convV = null; }
@@ -13097,7 +13279,7 @@ function buildPerformance() {
 
   // Só consultores ATIVOS entram no leaderboard — inativo não fica parado com KPI zerado nem
   // concorrendo (ou perdendo) o "Top Performer" sem mais fazer parte do squad.
-  const CONS = isDesigner ? ['Alexandre','Eduardo'] : squadList();
+  const CONS = isDesigner ? designersDoSquad() : squadList();
   const METAS = { conv: 40, prazo: 80, pdi: 80, nps: 50, npsResp: 60, scoreEntrega: 70 };
 
   const mesesEleg = perfMesesElegNovosInd(curM);
@@ -13288,6 +13470,9 @@ function buildPerformance() {
     if ((b.convV||0) !== (a.convV||0)) return (b.convV||0) - (a.convV||0);
     return b.projAndamento - a.projAndamento;
   });
+  // O "Meu perfil" lê daqui em vez de recalcular os KPIs com regras próprias (ver perfilCardsDaPerformance)
+  window._perfCardsCache = window._perfCardsCache || {};
+  window._perfCardsCache[perfModo] = { mes: cur || '', cards };
   // Define rank considerando empates
   // Se dois têm o mesmo score → ambos são 1º (gold); próximo é 3º (prata)
   const scores = cards.map(c => c.atingidos * 1000000 + (c.convV||0) * 10000 + c.projAndamento);
@@ -14053,6 +14238,7 @@ function perfUploadFoto(nome, input) {
       catch (err) { await showAlert('Não foi possível processar a imagem.'); return; }
       perfFotos[nome] = dataUrl;
       try { localStorage.setItem('perf-foto-' + nome, dataUrl); } catch (le) {} // cache local
+      sincronizarFotoNoUsuario(nome, dataUrl); // o cadastro de usuários é a origem das fotos do squad
       if (typeof sbScheduleSave === 'function' && !VIEWER) sbScheduleSave();      // sincroniza
       buildPerformance();
     };
@@ -14067,6 +14253,7 @@ function perfRemoveFoto(nome) {
   if (VIEWER) return;
   delete perfFotos[nome];
   try { localStorage.removeItem('perf-foto-' + nome); } catch (e) {}
+  sincronizarFotoNoUsuario(nome, null);
   if (typeof sbScheduleSave === 'function' && !VIEWER) sbScheduleSave();
   buildPerformance();
 }
@@ -14605,8 +14792,8 @@ async function audAbrirModalDrive(){
   audCarregarPessoasConectadas();
 }
 
-// Lista de quem já conectou (login novo) — alimenta o <select> de pessoa. Nomes vêm de
-// PERFIS_POR_EMAIL (mesmo roster do painel "Quem já conectou a Agenda").
+// Lista de quem já conectou (login novo) — alimenta o <select> de pessoa. Nomes vêm da
+// lista de usuários (mesmo roster do painel "Quem já conectou a Agenda").
 async function audCarregarPessoasConectadas(){
   const sel=document.getElementById('drive-cal-pessoa'); if(!sel) return;
   try{
@@ -14616,7 +14803,7 @@ async function audCarregarPessoasConectadas(){
     audDrivePessoas={};
     (data.connections||[]).forEach(c=>{ audDrivePessoas[c.email]=nomeExibicaoPorEmail(c.email); });
     sel.innerHTML='<option value="">Selecione a pessoa…</option>'
-      + Object.entries(audDrivePessoas).map(([email,nome])=>'<option value="'+email+'">'+nome+'</option>').join('');
+      + Object.entries(audDrivePessoas).map(([email,nome])=>'<option value="'+escAttr(email)+'">'+escAttr(nome)+'</option>').join('');
   }catch(err){
     sel.innerHTML='<option value="">Não consegui carregar quem conectou</option>';
   }
@@ -14775,15 +14962,12 @@ function audFecharModalDrive(){
 }
 
 // Painel ADM: quem já autorizou Agenda+Drive no login novo x quem ainda não (roster
-// completo vem de PERFIS_POR_EMAIL, cruzado com o que api/google/connections-status.js
-// devolve — nunca inclui o refresh_token, só e-mail + data).
-// ADM e Visualização apontam pro mesmo objeto de perfil genérico (nome:"ADM"/"Visualização")
-// pra várias pessoas — bom pra permissão, ruim pra exibir "quem é quem" numa lista. Consultor
-// e designer já têm nome próprio no perfil (perfil.consultor/perfil.designer), então só cai no
-// e-mail quando não tem: "leonam.lael@..." vira "Leonam Lael".
+// completo vem da lista de usuários com acesso, cruzado com o que
+// api/google/connections-status.js devolve — nunca inclui o refresh_token, só e-mail + data).
+// Nome: o de exibição cadastrado; sem cadastro, cai no e-mail ("leonam.lael@..." vira "Leonam Lael").
 function nomeExibicaoPorEmail(email){
-  const perfil=PERFIS_POR_EMAIL[email];
-  if(perfil && (perfil.consultor||perfil.designer)) return perfil.consultor||perfil.designer;
+  const u=USUARIOS.find(x=>x.email===email);
+  if(u && u.nome_exibicao) return u.nome_exibicao;
   const local=(email.split('@')[0]||'').replace(/[._-]+/g,' ').trim();
   return local.split(' ').filter(Boolean).map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ') || email;
 }
@@ -14798,14 +14982,14 @@ async function audAbrirPainelConexoes(){
     if(!response.ok) throw new Error(data.error || ('A API retornou um erro ('+response.status+')'));
     const conectados={};
     (data.connections||[]).forEach(c=>{ conectados[c.email]=c.connectedAt; });
-    const linhas=Object.entries(PERFIS_POR_EMAIL).map(([email])=>{
+    const linhas=USUARIOS.filter(u=>u.email && u.acesso!=='nenhum').map(u=>u.email).map(email=>{
       const conectadoEm=conectados[email];
       const nome=nomeExibicaoPorEmail(email);
       const status=conectadoEm
         ? '<span style="color:var(--green);font-weight:600;">'+icon('check')+' Conectado em '+new Date(conectadoEm).toLocaleDateString('pt-BR')+'</span>'
         : '<span style="color:var(--text-hint);">— Ainda não conectou</span>';
       return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-sm);background:var(--surface2);">'
-        + '<div><div style="font-weight:600;">'+nome+'</div><div style="font-size:var(--fs-xs);color:var(--text-hint);">'+email+'</div></div>'
+        + '<div><div style="font-weight:600;">'+escAttr(nome)+'</div><div style="font-size:var(--fs-xs);color:var(--text-hint);">'+escAttr(email)+'</div></div>'
         + '<div style="font-size:var(--fs-sm);white-space:nowrap;">'+status+'</div>'
         + '</div>';
     });
@@ -15830,6 +16014,490 @@ function consSalvar(){
   closeConsultoresModal();
 }
 
+// ═══════════════════════════════════
+//  USUÁRIOS E MEU PERFIL
+// ═══════════════════════════════════
+// O cadastro mora na tabela `usuarios` e só é lido/gravado pelas funções /api/sessao e
+// /api/usuarios, que conferem o cookie de sessão. As regras de quem muda o quê ficam no
+// servidor (api/_lib/usuarios.js); aqui a tela só esconde o que a pessoa não pode usar.
+
+// ── Squad: a lista de consultores sai do cadastro de usuários ─────────
+// window.CONS_MON / dotColors / CONS_INATIVOS continuam existindo e continuam sendo gravadas
+// em <coordenação>_data.consultores pelo upd(), porque ~16 pontos do painel (backup, snapshot,
+// restauração, Auditoria, Capacity...) leem delas. Só a origem muda. Coordenação sem nenhum
+// consultor cadastrado (hoje, a TER) segue com a lista que já estava salva.
+function membrosDoSquad(tipo, coord) {
+  return USUARIOS.filter(u => u.squad_tipo === tipo && u.squad_nome && (u.coordenacao || 'saber') === coord);
+}
+function aplicarRosterDoSquad() {
+  if (!USUARIOS.length) return;
+  const cons = membrosDoSquad('consultor', currentCoord);
+  if (cons.length) {
+    const nomes = cons.map(u => u.squad_nome);
+    const ordemAtual = window.CONS_MON || [];
+    // preserva a ordem que o painel já usava e acrescenta quem é novo no fim
+    window.CONS_MON = ordemAtual.filter(n => nomes.includes(n)).concat(nomes.filter(n => !ordemAtual.includes(n)));
+    window.CONS_INATIVOS = cons.filter(u => !u.squad_ativo).map(u => u.squad_nome);
+  }
+  const doSquad = USUARIOS.filter(u => u.squad_nome && (u.coordenacao || 'saber') === currentCoord);
+  const cores = {};
+  doSquad.forEach(u => { if (u.cor) cores[u.squad_nome] = u.cor; });
+  window.dotColors = Object.assign({}, window.dotColors || {}, cores);
+  // A foto de quem está no squad também passa a vir do cadastro (a migração copiou as que
+  // existiam). Em contingência o cache não traz foto, então não mexe nas que já estão na tela.
+  if (!SESSAO_CONTINGENCIA) {
+    doSquad.forEach(u => { if (u.foto) perfFotos[u.squad_nome] = u.foto; else delete perfFotos[u.squad_nome]; });
+  }
+}
+function designersDoSquad() {
+  const d = membrosDoSquad('designer', currentCoord).filter(u => u.squad_ativo).map(u => u.squad_nome);
+  return d.length ? d : ['Alexandre', 'Eduardo'];
+}
+
+// Upload/remoção de foto pela aba Performance (ADM) também grava no cadastro — senão a
+// próxima atualização da lista traria a foto antiga de volta.
+async function sincronizarFotoNoUsuario(nomeSquad, foto) {
+  const u = USUARIOS.find(x => x.squad_nome === nomeSquad && (x.coordenacao || 'saber') === currentCoord);
+  if (!u || !usuarioEhAdm()) return;
+  u.foto = foto || null; // já na lista local: uma atualização no meio do caminho não desfaz a troca
+  try { aplicarRespostaUsuarios(await apiUsuarios('PATCH', u.id, { foto: foto || null }), { semRefresh: true }); }
+  catch (e) { showToast && showToast('A foto ficou só nesta tela: ' + e.message, 'error'); }
+}
+
+// ── Chamadas e utilitários ────────────────────────────────────────────
+const ACESSO_ROTULO = { adm: 'ADM', viewer: 'Visualização', consultor: 'Consultor', designer: 'Designer', nenhum: 'Sem acesso' };
+const ACESSO_BADGE  = { adm: 'b-accent', viewer: 'b-blue', consultor: 'b-green', designer: 'b-purple', nenhum: 'b-gray' };
+const ACESSO_ORDEM  = { adm: 0, viewer: 1, consultor: 2, designer: 3, nenhum: 4 };
+
+async function apiUsuarios(metodo, id, corpo) {
+  const r = await fetch('/api/usuarios' + (id ? '?id=' + encodeURIComponent(id) : ''), {
+    method: metodo,
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: corpo ? JSON.stringify(corpo) : undefined,
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || ('Erro ' + r.status));
+  return data;
+}
+
+function aplicarRespostaUsuarios(data, opcoes) {
+  aplicarSessao(data);
+  if (!(opcoes && opcoes.semRefresh)) refreshAll();
+  // ADM: grava a lista de consultores/cores/fotos atualizada em <coordenação>_data também
+  if (!VIEWER && typeof upd === 'function') upd();
+}
+
+function iniciaisDe(nome) {
+  const p = String(nome || '?').trim().split(/\s+/);
+  return ((p[0] || '')[0] || '?').toUpperCase() + ((p.length > 1 ? p[p.length - 1][0] : '') || '').toUpperCase();
+}
+function avatarUsuarioHTML(u, px, fotoForcada) {
+  const foto = fotoForcada !== undefined ? fotoForcada : (u && u.foto);
+  const estilo = 'width:' + px + 'px;height:' + px + 'px;font-size:' + Math.round(px * 0.38) + 'px;';
+  if (foto) return '<img class="conta-avatar" style="' + estilo + '" src="' + escAttr(foto) + '" alt="">';
+  const cor = (u && u.cor) || 'var(--text-hint)';
+  return '<span class="conta-avatar" aria-hidden="true" style="' + estilo + 'background:' + escAttr(cor) + ';">' + escAttr(iniciaisDe(u && u.nome_exibicao)) + '</span>';
+}
+function descricaoSquad(u) {
+  if (!u.squad_tipo) return '';
+  return (u.squad_tipo === 'consultor' ? 'Consultor' : 'Designer') + ' · ' + u.squad_nome + ' · ' + (u.coordenacao || 'saber').toUpperCase()
+    + (u.squad_ativo ? '' : ' · inativo');
+}
+
+// Redimensiona para um quadrado de 200px em JPEG (mesmo padrão das fotos da Performance)
+function comprimirFotoQuadrada(file, tamanho) {
+  const size = tamanho || 200;
+  return new Promise((resolve, reject) => {
+    if (!file || !/^image\//.test(file.type)) return reject(new Error('Escolha um arquivo de imagem'));
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Não deu para ler o arquivo'));
+    reader.onload = e => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Arquivo de imagem inválido'));
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        const scale = Math.max(size / img.width, size / img.height);
+        const w = img.width * scale, h = img.height * scale;
+        ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+        try { resolve(canvas.toDataURL('image/jpeg', 0.82)); } catch (err) { reject(new Error('Não deu para processar a imagem')); }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// ── Meu perfil ────────────────────────────────────────────────────────
+let _perfilFotoNova;           // undefined = não mexeu · null = remover · string = nova foto
+let _perfilMes = null;         // mês do dashboard (null = usa o mesmo filtro da Performance)
+
+function buildPerfil() {
+  const card = document.getElementById('perfil-card');
+  if (!card) return;
+  const u = USUARIO_ATUAL;
+  if (!u) { card.innerHTML = '<p class="conta-dica">Entre com Google para ver o seu perfil.</p>'; return; }
+  _perfilFotoNova = undefined;
+  const bloqueado = SESSAO_CONTINGENCIA;
+  const squad = descricaoSquad(u);
+  card.innerHTML =
+    '<div class="conta-perfil-topo">'
+    + '<span id="perfil-avatar">' + avatarUsuarioHTML(u, 88) + '</span>'
+    + '<div><div style="font-weight:700;font-size:var(--fs-lg);">' + escAttr(u.nome_exibicao) + '</div>'
+    + '<div class="conta-dica">' + escAttr(u.cargo || 'Sem cargo definido') + '</div></div>'
+    + '<div class="conta-foto-acoes">'
+    + '<input type="file" id="perfil-foto-input" accept="image/*" hidden onchange="perfilEscolherFoto(this)">'
+    + '<button class="btn btn-ghost" onclick="document.getElementById(\'perfil-foto-input\').click()"' + (bloqueado ? ' disabled' : '') + '>Trocar foto</button>'
+    + '<button class="btn btn-ghost" onclick="perfilRemoverFoto()"' + (bloqueado ? ' disabled' : '') + '>Remover</button>'
+    + '</div></div>'
+    + '<div class="conta-stack">'
+    + '<label class="conta-campo"><span class="aud-lbl">Nome de exibição</span><input id="perfil-nome" class="aud-inp" maxlength="80" value="' + escAttr(u.nome_exibicao) + '"' + (bloqueado ? ' disabled' : '') + '></label>'
+    + '<label class="conta-campo"><span class="aud-lbl">Telefone / WhatsApp</span><input id="perfil-tel" class="aud-inp" maxlength="30" inputmode="tel" value="' + escAttr(u.telefone || '') + '"' + (bloqueado ? ' disabled' : '') + '></label>'
+    + '<div><span class="aud-lbl">Cargo</span><div class="conta-somente-leitura">' + icon('lock') + escAttr(u.cargo || 'Não definido') + '</div><div class="conta-dica">Quem define é um ADM.</div></div>'
+    + '<div><span class="aud-lbl">E-mail</span><div class="conta-somente-leitura">' + escAttr(u.email || '—') + '</div></div>'
+    + '<div><span class="aud-lbl">Acesso</span><div class="conta-somente-leitura" style="flex-wrap:wrap;"><span class="badge ' + ACESSO_BADGE[u.acesso] + '" style="margin:0;">' + ACESSO_ROTULO[u.acesso] + '</span>'
+    + (squad ? '<span>' + escAttr(squad) + '</span>' : '') + '</div></div>'
+    + '</div>'
+    + '<div id="perfil-msg" class="conta-msg" role="status">' + (bloqueado ? 'Modo contingência: não dá para salvar agora.' : '') + '</div>'
+    + '<div class="conta-acoes"><button class="btn btn-ghost" onclick="doLogout()">Sair</button><span style="flex:1;"></span>'
+    + '<button class="btn btn-primary" id="perfil-salvar" onclick="perfilSalvar()"' + (bloqueado ? ' disabled' : '') + '>Salvar</button></div>';
+  renderPerfilDash();
+}
+
+async function perfilEscolherFoto(input) {
+  const msg = document.getElementById('perfil-msg');
+  try {
+    _perfilFotoNova = await comprimirFotoQuadrada(input.files[0]);
+    document.getElementById('perfil-avatar').innerHTML = avatarUsuarioHTML(USUARIO_ATUAL, 88, _perfilFotoNova);
+    if (msg) { msg.className = 'conta-msg'; msg.textContent = 'Foto escolhida. Clique em Salvar para gravar.'; }
+  } catch (e) {
+    if (msg) { msg.className = 'conta-msg erro'; msg.textContent = e.message; }
+  }
+  input.value = '';
+}
+function perfilRemoverFoto() {
+  _perfilFotoNova = null;
+  document.getElementById('perfil-avatar').innerHTML = avatarUsuarioHTML(USUARIO_ATUAL, 88, null);
+  const msg = document.getElementById('perfil-msg');
+  if (msg) { msg.className = 'conta-msg'; msg.textContent = 'Foto removida. Clique em Salvar para gravar.'; }
+}
+
+async function perfilSalvar() {
+  const msg = document.getElementById('perfil-msg');
+  const btn = document.getElementById('perfil-salvar');
+  const corpo = {
+    nome_exibicao: document.getElementById('perfil-nome').value,
+    telefone: document.getElementById('perfil-tel').value || null,
+  };
+  if (_perfilFotoNova !== undefined) corpo.foto = _perfilFotoNova;
+  if (btn) btn.disabled = true;
+  if (msg) { msg.className = 'conta-msg'; msg.textContent = 'Salvando…'; }
+  try {
+    aplicarRespostaUsuarios(await apiUsuarios('PATCH', USUARIO_ATUAL.id, corpo));
+    buildPerfil();
+    const m2 = document.getElementById('perfil-msg');
+    if (m2) { m2.className = 'conta-msg ok'; m2.textContent = 'Perfil salvo.'; }
+  } catch (e) {
+    if (msg) { msg.className = 'conta-msg erro'; msg.textContent = e.message; }
+    if (btn) btn.disabled = false;
+  }
+}
+
+// Reaproveita o cálculo da aba Performance em vez de reescrever as regras dos KPIs aqui:
+// roda buildPerformance() no modo e mês pedidos, lê os cards que ela deixa em
+// window._perfCardsCache e devolve a aba ao estado anterior.
+function perfilCardsDaPerformance(modo, mesKey) {
+  if (currentCoord === 'ter') return null;
+  const modoAntes = perfModo;
+  const tinhaMes = Object.prototype.hasOwnProperty.call(filters, 'performance');
+  const mesAntes = filters['performance'];
+  let cards = null;
+  try {
+    perfModo = modo;
+    filters['performance'] = mesKey || null;
+    window._perfCardsCache = {};
+    buildPerformance();
+    const c = window._perfCardsCache[modo];
+    cards = c ? c.cards : [];
+  } catch (e) {
+    console.error('Meu perfil: falha ao calcular indicadores', e);
+  } finally {
+    perfModo = modoAntes;
+    if (tinhaMes) filters['performance'] = mesAntes; else delete filters['performance'];
+    try { buildPerformance(); } catch (e) {}
+  }
+  return cards;
+}
+function kpiAtingido(k) {
+  if (k.val === null || k.val === undefined) return null;
+  return (k.atingidoOverride !== undefined && k.atingidoOverride !== null) ? k.atingidoOverride : k.val >= k.meta;
+}
+function kpiValorTexto(k) { return (k.val === null || k.val === undefined) ? '—' : k.val + (k.suffix || ''); }
+function kpiMetaTexto(k) { return (k.meta === null || k.meta === undefined) ? 'sem meta definida' : 'meta ' + k.meta + (k.suffix || ''); }
+
+// Mesmo período que a aba Performance mostraria agora: o filtro escolhido lá, ou o mês atual
+// se ela ainda não foi aberta (regra de buildFilterBar). Assim as duas telas nunca abrem com
+// números de períodos diferentes.
+function perfilMesPadrao() {
+  if (filters['performance'] !== undefined) return filters['performance'] || '';
+  const hoje = new Date();
+  const m = ALL_MESES.find(x => x.idx === hoje.getMonth() && x.ano === hoje.getFullYear());
+  return m ? m.key : '';
+}
+function perfilSelectMesHTML(mesKey) {
+  return '<select class="aud-inp" onchange="_perfilMes=this.value;renderPerfilDash()" aria-label="Período dos indicadores">'
+    + '<option value=""' + (!mesKey ? ' selected' : '') + '>Ano completo</option>'
+    + ALL_MESES.map(m => '<option value="' + m.key + '"' + (m.key === mesKey ? ' selected' : '') + '>' + m.label + ' ' + m.ano + '</option>').join('')
+    + '</select>';
+}
+
+function renderPerfilDash() {
+  const el = document.getElementById('perfil-dash');
+  const u = USUARIO_ATUAL;
+  if (!el || !u) return;
+  const mesKey = _perfilMes !== null ? _perfilMes : perfilMesPadrao();
+  const ehSquad = u.acesso === 'consultor' || u.acesso === 'designer';
+
+  if (currentCoord === 'ter') {
+    el.innerHTML = '<div class="card"><div class="card-title">Indicadores</div><p class="conta-dica">Os indicadores do perfil usam as regras da Performance da SABER. Troque para a coordenação SABER para vê-los.</p></div>';
+    return;
+  }
+
+  if (ehSquad) {
+    const cards = perfilCardsDaPerformance(u.acesso, mesKey);
+    const meu = cards && cards.find(c => c.nome === u.squad_nome);
+    let html = '<div class="conta-dash-topo"><h3>Seus indicadores</h3>' + perfilSelectMesHTML(mesKey) + '</div>';
+    if (!cards) {
+      el.innerHTML = html + '<div class="card"><p class="conta-dica">Não deu para calcular os indicadores agora.</p></div>';
+      return;
+    }
+    if (!meu) {
+      el.innerHTML = html + '<div class="card"><p class="conta-dica">' + escAttr(u.squad_nome) + ' não está entre os ' + (u.acesso === 'consultor' ? 'consultores' : 'designers') + ' ativos, então não entra no cálculo da Performance. Se isso estiver errado, peça para um ADM revisar o seu cadastro.</p></div>';
+      return;
+    }
+    html += '<div class="conta-grid-kpi">'
+      + '<div class="mcard c-accent"><div class="mlabel">Metas batidas</div><div class="mval">' + meu.atingidos + '<span style="font-size:14px;color:var(--text-hint);"> de ' + meu.totalComDado + '</span></div></div>'
+      + '<div class="mcard c-green"><div class="mlabel">Aproveitamento</div><div class="mval">' + (meu.pctMedio === null ? '—' : meu.pctMedio + '%') + '</div></div>'
+      + '<div class="mcard c-blue"><div class="mlabel">Projetos em andamento</div><div class="mval">' + meu.projAndamento + '</div></div>'
+      + '</div>';
+    html += '<div class="conta-grid-kpi">' + meu.kpis.map(k => {
+      const at = kpiAtingido(k);
+      const badge = at === null ? '<span class="badge b-gray">Sem dado no período</span>'
+        : at ? '<span class="badge b-green">' + icon('check') + ' Na meta</span>'
+        // NPS pode ter nota acima da meta e ainda assim não bater: a Performance também exige taxa de resposta
+        : (k.key === 'nps' && k.val >= k.meta) ? '<span class="badge b-red" title="A nota bateu a meta, mas a taxa de resposta ficou abaixo do mínimo">Poucas respostas</span>'
+        : '<span class="badge b-red">Abaixo da meta</span>';
+      return '<div class="conta-kpi"><div class="mlabel">' + k.label + '</div>'
+        + '<div class="conta-kpi-topo"><span class="conta-kpi-val">' + kpiValorTexto(k) + '</span><span class="conta-kpi-meta">' + kpiMetaTexto(k) + (k.extraLabel || '') + '</span></div>'
+        + badge + '</div>';
+    }).join('') + '</div>';
+    // Designer não tem a aba Performance no menu (DESIGNER_TABS_PERMITIDAS): o atalho é só de consultor
+    if (u.acesso === 'consultor') {
+      html += '<button class="btn btn-ghost" data-nome="' + escAttr(u.squad_nome) + '" data-modo="' + u.acesso + '" onclick="perfilAbrirDetalhe(this.dataset.nome, this.dataset.modo)">Ver o detalhamento na Performance</button>';
+    }
+    el.innerHTML = html;
+    return;
+  }
+
+  // ADM e Visualização: visão do time
+  const secoes = [['consultor', 'Consultores'], ['designer', 'Designers']].map(([modo, titulo]) => {
+    const cards = perfilCardsDaPerformance(modo, mesKey);
+    if (!cards || !cards.length) return '';
+    return perfilVisaoTimeHTML(titulo, cards, modo);
+  }).join('');
+  el.innerHTML = '<div class="conta-dash-topo"><h3>Visão do time</h3>' + perfilSelectMesHTML(mesKey) + '</div>'
+    + (secoes || '<div class="card"><p class="conta-dica">Ainda não há indicadores para mostrar.</p></div>');
+}
+
+function perfilVisaoTimeHTML(titulo, cards, modo) {
+  const chaves = cards[0].kpis.map(k => k.key);
+  const resumo = chaves.map(chave => {
+    const itens = cards.map(c => ({ nome: c.nome, k: c.kpis.find(x => x.key === chave) })).filter(i => i.k);
+    const exemplo = itens[0].k;
+    const comDado = itens.filter(i => i.k.val !== null && i.k.val !== undefined);
+    const naMeta = comDado.filter(i => kpiAtingido(i.k));
+    const abaixo = comDado.filter(i => !kpiAtingido(i.k)).map(i => i.nome);
+    const media = comDado.length ? Math.round(comDado.reduce((s, i) => s + i.k.val, 0) / comDado.length) : null;
+    return '<div class="conta-kpi"><div class="mlabel">' + exemplo.label + ' · média</div>'
+      + '<div class="conta-kpi-topo"><span class="conta-kpi-val">' + (media === null ? '—' : media + (exemplo.suffix || '')) + '</span><span class="conta-kpi-meta">' + kpiMetaTexto(exemplo) + '</span></div>'
+      + (comDado.length ? '<span class="badge ' + (naMeta.length === comDado.length ? 'b-green' : naMeta.length ? 'b-amber' : 'b-red') + '">' + naMeta.length + ' de ' + comDado.length + ' na meta</span>' : '<span class="badge b-gray">Sem dado no período</span>')
+      + (abaixo.length ? '<div class="conta-abaixo">Abaixo: ' + abaixo.map(escAttr).join(', ') + '</div>' : '')
+      + '</div>';
+  }).join('');
+  const cabecalho = '<tr><th>Pessoa</th>' + cards[0].kpis.map(k => '<th>' + k.label + '</th>').join('') + '<th>Metas</th></tr>';
+  const linhas = cards.map(c => '<tr><td><span class="conta-pessoa" style="min-width:0;">'
+      + '<span class="conta-dot" style="background:' + escAttr(c.dot) + ';"></span>' + escAttr(c.nome) + '</span></td>'
+      + c.kpis.map(k => {
+        const at = kpiAtingido(k);
+        const cls = at === null ? 'conta-celula-vazia' : at ? 'conta-celula-ok' : 'conta-celula-nao';
+        return '<td class="' + cls + '">' + kpiValorTexto(k) + '</td>';
+      }).join('')
+      + '<td>' + c.atingidos + ' de ' + c.totalComDado + '</td></tr>').join('');
+  return '<div class="card"><div class="card-title">' + titulo + '</div>'
+    + '<div class="conta-grid-kpi">' + resumo + '</div>'
+    + '<div class="tbl-scroll"><table class="conta-tabela"><thead>' + cabecalho + '</thead><tbody>' + linhas + '</tbody></table></div></div>';
+}
+
+function perfilAbrirDetalhe(nome, modo) {
+  if (modo === 'designer' || modo === 'consultor') perfModo = modo;
+  show('performance');
+  // show('performance') busca as fotos antes de desenhar; espera o card existir
+  setTimeout(() => { try { perfSelecionaConsultor(nome); } catch (e) {} }, 400);
+}
+
+// ── Usuários (ADM) ────────────────────────────────────────────────────
+let _usuEditandoId = null;
+let _usuFotoRemover = false;
+
+function buildUsuarios() {
+  const tabela = document.getElementById('usu-tabela');
+  const resumo = document.getElementById('usu-resumo');
+  if (!tabela) return;
+  if (!usuarioEhAdm()) { tabela.innerHTML = ''; return; }
+  const busca = (document.getElementById('usu-busca')?.value || '').trim().toLowerCase();
+  const filtroAcesso = document.getElementById('usu-f-acesso')?.value || '';
+
+  if (resumo) {
+    const comAcesso = USUARIOS.filter(u => u.acesso !== 'nenhum').length;
+    const adms = USUARIOS.filter(u => u.acesso === 'adm').length;
+    const consAtivos = USUARIOS.filter(u => u.squad_tipo === 'consultor' && u.squad_ativo).length;
+    const desAtivos = USUARIOS.filter(u => u.squad_tipo === 'designer' && u.squad_ativo).length;
+    resumo.innerHTML = [
+      ['c-accent', 'Com acesso', comAcesso], ['c-purple', 'ADMs', adms],
+      ['c-green', 'Consultores ativos', consAtivos], ['c-blue', 'Designers ativos', desAtivos],
+    ].map(([c, l, v]) => '<div class="mcard ' + c + '"><div class="mlabel">' + l + '</div><div class="mval">' + v + '</div></div>').join('');
+  }
+
+  const lista = USUARIOS
+    .filter(u => !filtroAcesso || u.acesso === filtroAcesso)
+    .filter(u => !busca || [u.nome_exibicao, u.email, u.cargo, u.squad_nome].some(v => (v || '').toLowerCase().includes(busca)))
+    .sort((a, b) => (ACESSO_ORDEM[a.acesso] - ACESSO_ORDEM[b.acesso]) || a.nome_exibicao.localeCompare(b.nome_exibicao, 'pt-BR'));
+
+  const cab = '<thead><tr><th>Pessoa</th><th>Cargo</th><th>Acesso</th><th>No squad</th><th>Telefone</th><th><span class="sr-only">Ações</span></th></tr></thead>';
+  if (!lista.length) {
+    tabela.innerHTML = cab + '<tbody><tr><td colspan="6" class="conta-dica" style="text-align:center;padding:18px;">Ninguém encontrado com esse filtro.</td></tr></tbody>';
+    return;
+  }
+  tabela.innerHTML = cab + '<tbody>' + lista.map(u => {
+    const eu = USUARIO_ATUAL && u.id === USUARIO_ATUAL.id;
+    const squad = u.squad_tipo
+      ? '<span class="conta-pessoa" style="min-width:0;gap:6px;"><span class="conta-dot" style="background:' + escAttr(u.cor || 'var(--text-hint)') + ';"></span>'
+        + escAttr(u.squad_nome) + ' <small style="display:inline;">' + (u.squad_tipo === 'consultor' ? 'consultor' : 'designer') + ' · ' + (u.coordenacao || 'saber').toUpperCase() + '</small></span>'
+        + (u.squad_ativo ? '' : '<span class="badge b-gray" style="margin:4px 0 0;">Inativo</span>')
+      : '<span class="conta-celula-vazia">—</span>';
+    return '<tr' + (eu ? ' class="conta-linha-eu"' : '') + '>'
+      + '<td><span class="conta-pessoa">' + avatarUsuarioHTML(u, 32) + '<span><strong>' + escAttr(u.nome_exibicao) + '</strong>' + (eu ? ' <small style="display:inline;">(você)</small>' : '')
+      + '<small>' + escAttr(u.email || 'sem e-mail') + '</small></span></span></td>'
+      + '<td>' + (u.cargo ? escAttr(u.cargo) : '<span class="conta-celula-vazia">—</span>') + '</td>'
+      + '<td><span class="badge ' + ACESSO_BADGE[u.acesso] + '" style="margin:0;">' + ACESSO_ROTULO[u.acesso] + '</span></td>'
+      + '<td>' + squad + '</td>'
+      + '<td style="white-space:nowrap;">' + (u.telefone ? escAttr(u.telefone) : '<span class="conta-celula-vazia">—</span>') + '</td>'
+      + '<td style="text-align:right;"><button class="btn btn-ghost" data-id="' + escAttr(u.id) + '" onclick="usuarioAbrirModal(this.dataset.id)">Editar</button></td>'
+      + '</tr>';
+  }).join('') + '</tbody>';
+}
+
+function usuarioAbrirModal(id) {
+  if (!usuarioEhAdm()) return;
+  const u = id ? USUARIOS.find(x => x.id === id) : null;
+  _usuEditandoId = u ? u.id : null;
+  _usuFotoRemover = false;
+  const eu = !!(u && USUARIO_ATUAL && u.id === USUARIO_ATUAL.id);
+  const $ = s => document.getElementById(s);
+  $('usu-modal-titulo').textContent = u ? 'Editar ' + u.nome_exibicao : 'Novo usuário';
+  $('usu-nome').value = u ? u.nome_exibicao : '';
+  $('usu-email').value = u ? (u.email || '') : '';
+  $('usu-email').disabled = eu; // o próprio e-mail de login não se troca (o servidor também recusa)
+  $('usu-cargo').value = u ? (u.cargo || '') : '';
+  $('usu-tel').value = u ? (u.telefone || '') : '';
+  $('usu-acesso').value = u ? u.acesso : 'viewer';
+  $('usu-acesso').disabled = eu;
+  $('usu-squad-tipo').value = u ? (u.squad_tipo || '') : '';
+  $('usu-squad-nome').value = u ? (u.squad_nome || '') : '';
+  $('usu-coord').value = u ? (u.coordenacao || 'saber') : 'saber';
+  $('usu-squad-ativo').checked = u ? !!u.squad_ativo : true;
+  $('usu-cor').innerHTML = '<option value="">Sem cor</option>' + CONS_CORES.map(c => '<option value="' + c.v + '"' + (u && u.cor === c.v ? ' selected' : '') + '>' + c.nome + '</option>').join('');
+  const temFoto = !!(u && u.foto);
+  $('usu-foto-linha').style.display = temFoto ? 'flex' : 'none';
+  $('usu-foto-preview').innerHTML = temFoto ? avatarUsuarioHTML(u, 40) : '';
+  $('usu-btn-remover').style.display = (u && !eu) ? '' : 'none';
+  const msg = $('usu-modal-msg'); msg.className = 'conta-msg'; msg.textContent = eu ? 'Você não pode mudar o seu próprio acesso nem o e-mail de login.' : '';
+  usuarioSincronizarAcesso();
+  $('modal-usuario').style.display = 'flex';
+  setTimeout(() => $('usu-nome').focus(), 30);
+}
+function usuarioFecharModal() { document.getElementById('modal-usuario').style.display = 'none'; }
+
+// Acesso de consultor/designer precisa estar ligado ao nome nos projetos: amarra a função
+function usuarioSincronizarAcesso() {
+  const acesso = document.getElementById('usu-acesso').value;
+  const tipo = document.getElementById('usu-squad-tipo');
+  if (acesso === 'consultor' || acesso === 'designer') { tipo.value = acesso; tipo.disabled = true; }
+  else tipo.disabled = false;
+  const noSquad = !!tipo.value;
+  ['usu-squad-nome', 'usu-coord', 'usu-cor', 'usu-squad-ativo'].forEach(i => { document.getElementById(i).disabled = !noSquad; });
+}
+function usuarioRemoverFoto() {
+  _usuFotoRemover = true;
+  document.getElementById('usu-foto-linha').style.display = 'none';
+  const msg = document.getElementById('usu-modal-msg'); msg.className = 'conta-msg'; msg.textContent = 'A foto sai quando você salvar.';
+}
+
+async function usuarioSalvar() {
+  const $ = s => document.getElementById(s);
+  const msg = $('usu-modal-msg');
+  const u = _usuEditandoId ? USUARIOS.find(x => x.id === _usuEditandoId) : null;
+  const eu = !!(u && USUARIO_ATUAL && u.id === USUARIO_ATUAL.id);
+  const tipo = $('usu-squad-tipo').value || null;
+  const corpo = {
+    nome_exibicao: $('usu-nome').value,
+    cargo: $('usu-cargo').value || null,
+    telefone: $('usu-tel').value || null,
+    squad_tipo: tipo,
+    squad_nome: tipo ? ($('usu-squad-nome').value || null) : null,
+    coordenacao: $('usu-coord').value,
+    cor: tipo ? ($('usu-cor').value || null) : null,
+    squad_ativo: tipo ? $('usu-squad-ativo').checked : true,
+  };
+  if (!eu) { corpo.email = $('usu-email').value.trim().toLowerCase() || null; corpo.acesso = $('usu-acesso').value; }
+  if (_usuFotoRemover) corpo.foto = null;
+  if (!corpo.nome_exibicao.trim()) { msg.className = 'conta-msg erro'; msg.textContent = 'Informe o nome de exibição.'; return; }
+  const renomeou = u && u.squad_nome && corpo.squad_nome && u.squad_nome !== corpo.squad_nome;
+  if (renomeou && !(await showConfirm('Mudar o nome no squad de "' + u.squad_nome + '" para "' + corpo.squad_nome + '" não reescreve os projetos já gravados com o nome antigo. Continuar?'))) return;
+  const btn = $('usu-btn-salvar'); btn.disabled = true;
+  msg.className = 'conta-msg'; msg.textContent = 'Salvando…';
+  try {
+    aplicarRespostaUsuarios(await apiUsuarios(u ? 'PATCH' : 'POST', u ? u.id : null, corpo));
+    usuarioFecharModal();
+    buildUsuarios();
+    showToast && showToast(u ? 'Usuário atualizado' : 'Usuário cadastrado', 'success');
+  } catch (e) {
+    msg.className = 'conta-msg erro'; msg.textContent = e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function usuarioRemover() {
+  const u = USUARIOS.find(x => x.id === _usuEditandoId);
+  if (!u) return;
+  const aviso = 'Remover ' + u.nome_exibicao + '? A pessoa perde o acesso ao painel'
+    + (u.squad_tipo ? ' e sai da lista de ' + (u.squad_tipo === 'consultor' ? 'consultores' : 'designers') + '. Os projetos com o nome dela continuam como estão' : '')
+    + '.\n\nSe for só tirar o login, prefira mudar o acesso para "Sem acesso": o cadastro e o histórico ficam.';
+  if (!(await showConfirm(aviso))) return;
+  const msg = document.getElementById('usu-modal-msg');
+  try {
+    aplicarRespostaUsuarios(await apiUsuarios('DELETE', u.id));
+    usuarioFecharModal();
+    buildUsuarios();
+    showToast && showToast('Usuário removido', 'success');
+  } catch (e) {
+    msg.className = 'conta-msg erro'; msg.textContent = e.message;
+  }
+}
+
 const SB_URL = 'https://riawjqvezolgyldldyzi.supabase.co';
 
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJpYXdqcXZlem9sZ3lsZGxkeXppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyMDM3NDUsImV4cCI6MjA5MTc3OTc0NX0.1hmeQ7YCM0LvekZc7aNYy-D4jyVwxC6jK_W3kn5PVwA';
@@ -15867,8 +16535,9 @@ function updateCoordUI() {
   document.querySelectorAll('.nav-group').forEach(g => {
     const isGeral  = !!g.querySelector('.g-geral');
     const isGestao = !!g.querySelector('.g-gestao');
+    const isConta  = !!g.querySelector('.g-conta'); // perfil e usuários valem nas duas coordenações
     // Gestão fica visível na TER (tem Lead Time/Capacity liberados), mas só mostra os tabs marcados .ter-ok
-    g.style.display = (currentCoord === 'ter' && !isGeral && !isGestao) ? 'none' : '';
+    g.style.display = (currentCoord === 'ter' && !isGeral && !isGestao && !isConta) ? 'none' : '';
     if (isGestao) {
       g.querySelectorAll('.nav-tab').forEach(btn => {
         btn.style.display = (currentCoord === 'ter' && !btn.classList.contains('ter-ok')) ? 'none' : '';
