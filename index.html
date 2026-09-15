@@ -191,7 +191,6 @@
             <th style="width:36px;min-width:36px;">#</th><th style="min-width:160px;">Projeto</th><th>Modelo</th><th>Consultor</th><th>GMV (R$)</th><th>Tier</th><th>Fee (R$)</th><th>Designer</th><th>Copy</th>
             <th>Dt. Início</th><th>Dt. Prev. Conclusão</th><th>Dt. Conclusão Real</th>
             <th>Prazo</th><th>Flag</th>
-            <th>Status</th>
             <th style="min-width:140px;">Outros Escopos</th>
             <th></th>
           </tr>
@@ -6243,17 +6242,6 @@ function renderBase() {
       <td><input type="date" class="sel" value="${dv(p.realFim)}" data-f="realFim" data-id="${p.id}" onchange="setField(this)"></td>
       <td>${prazoInline(p)}</td>
       <td style="padding:6px 10px;">${flagHTML(calcFlagAutomatica(p))}</td>
-      <td>
-        <div style="display:flex;flex-direction:column;gap:4px;">
-          <div>${statusBadge2(p)}</div>
-          <select class="sel" data-f="status2" data-id="${p.id}" onchange="setField(this);renderBase()" style="font-size:var(--fs-xs);padding:2px 4px;">
-            <option value="">— manual —</option>
-            ${['Churn','Pausado','Reembolso'].map(o=>`<option${p.status2===o?' selected':''}>${o}</option>`).join('')}
-          </select>
-          ${p.status2==='Reembolso' ? '<div style="font-size:var(--fs-3xs);color:var(--text-hint);">Data do pedido fica no Lead Time</div>' : ''}
-        </div>
-      </td>
-
 
       <td>
         <div contenteditable="true" style="font-size:var(--fs-base);min-width:120px;outline:none;padding:2px 4px;border-radius:var(--r-sm);border:1px solid transparent;" 
