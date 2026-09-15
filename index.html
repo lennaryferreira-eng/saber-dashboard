@@ -1506,6 +1506,27 @@
     </div>
   </div>
 </div>
+<!-- Checklist de fechamento — TER One-time. Abre ao marcar a última etapa ("Entrega final")
+     de um projeto não-Pontual (ver ltTerSetFeito). Só com os 4 itens marcados calcStatus2()
+     considera a última entrega válida pra virar "Finalizado" — marcar a etapa sozinha não
+     finaliza mais o projeto. Cada checkbox salva na hora (sem botão "Salvar"), então "Fechar"
+     é a única ação — o progresso persiste mesmo fechando no meio. -->
+<div class="modal-overlay" id="modal-checklist-final" onclick="if(event.target===this)fecharModalChecklistFinal()">
+  <div class="modal-box" style="max-width:420px;" role="dialog" aria-modal="true" aria-labelledby="checklist-final-titulo">
+    <div class="modal-header">
+      <span class="modal-title" id="checklist-final-titulo">Checklist de fechamento</span>
+      <button class="modal-close" onclick="fecharModalChecklistFinal()" title="Fechar"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div id="checklist-final-nome" style="font-size:var(--fs-sm);color:var(--text-hint);margin-bottom:10px;"></div>
+      <p style="font-size:var(--fs-sm);color:var(--text-hint);margin:0 0 10px;">O projeto só vira "Finalizado" quando os 4 itens abaixo estiverem marcados.</p>
+      <div id="checklist-final-itens"></div>
+      <div style="display:flex;gap:6px;margin-top:14px;">
+        <button class="btn btn-ghost" onclick="fecharModalChecklistFinal()" style="flex:1;border-radius:6px;">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
 <!-- Produtos da oportunidade (AQL). Abre quando uma oportunidade (nova ou existente) entra
      em "Mapeado (AQL)" no Lead Time — ver oportSetEtapa/oportAdicionar/aqlAbrirProdutos. -->
 <div class="modal-overlay" id="modal-aql-produtos" onclick="if(event.target===this)aqlProdutosCancelar()">
@@ -3634,7 +3655,13 @@ function calcStatus2(p) {
   const ent = p.entregas || {};
   const entTer = Array.isArray(p.entregasTer) ? p.entregasTer : [];
   const ultimaEntregaTer = (p.recorrencia !== 'Recorrente' && entTer.length) ? entTer[entTer.length - 1] : null;
-  const temDecolagem = (ent[6] && ent[6].real) || (ultimaEntregaTer && ultimaEntregaTer.real);
+  // TER One-time: a última entrega só conta como conclusão de verdade se o checklist de
+  // fechamento (Playbook/NPS/Acessos/Contratação da ferramenta) estiver completo — marcar a
+  // etapa sozinha não finaliza mais o projeto, é só o gatilho que abre o checklist (ver
+  // ltTerSetFeito). checklistFinalCompleto está definida mais abaixo no arquivo, mas function
+  // declaration é hoisted — funciona igual às outras dependências entre seções deste arquivo.
+  const ultimaEntregaTerValida = ultimaEntregaTer && ultimaEntregaTer.real && checklistFinalCompleto(p);
+  const temDecolagem = (ent[6] && ent[6].real) || ultimaEntregaTerValida;
   if (temDecolagem) {
     const dataDecolagem = (ent[6] && ent[6].real) || ultimaEntregaTer.real;
     const dd = parseDate(dataDecolagem);
@@ -10901,15 +10928,77 @@ function ltTerEntregas(p) {
   return p.entregasTer;
 }
 
+// ── Checklist de fechamento — TER One-time (não-Pontual) ────────────────────────────
+// Marcar a ÚLTIMA etapa ("Entrega final") não finaliza o projeto sozinho mais: abre esse
+// checklist, e só com os 4 itens marcados calcStatus2() considera a última entrega válida pra
+// virar "Finalizado" (ver checklistFinalCompleto, usado lá). Datas de entrega continuam sendo
+// registradas normalmente por ltTerSetFeito — isso só trava o VEREDITO de finalização, não o
+// registro da etapa em si.
+const CHECKLIST_FINAL_ITENS = [
+  { id: 'playbook', label: 'Playbook' },
+  { id: 'nps', label: 'NPS' },
+  { id: 'acessos', label: 'Acessos' },
+  { id: 'ferramenta', label: 'Contratação da ferramenta' },
+];
+function checklistFinalGet(p) {
+  if (!p.checklistFinal || typeof p.checklistFinal !== 'object') p.checklistFinal = {};
+  return p.checklistFinal;
+}
+function checklistFinalCompleto(p) {
+  const c = p.checklistFinal;
+  return !!c && CHECKLIST_FINAL_ITENS.every(it => c[it.id]);
+}
+function checklistFinalContagem(p) {
+  const c = p.checklistFinal || {};
+  return CHECKLIST_FINAL_ITENS.filter(it => c[it.id]).length;
+}
+let _checklistFinalProjId = null;
+function ltAbrirChecklistFinalizacao(id) {
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!p) return;
+  _checklistFinalProjId = id;
+  const c = checklistFinalGet(p);
+  const nomeEl = document.getElementById('checklist-final-nome');
+  if (nomeEl) nomeEl.textContent = p.nome || 'Checklist de fechamento';
+  const wrap = document.getElementById('checklist-final-itens');
+  if (wrap) {
+    wrap.innerHTML = CHECKLIST_FINAL_ITENS.map(it =>
+      '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-base);cursor:pointer;padding:6px 0;">'
+      + '<input type="checkbox" style="width:16px;height:16px;cursor:pointer;" ' + (c[it.id] ? 'checked' : '') + ' onchange="ltSetItemChecklistFinal(\'' + it.id + '\',this.checked)">'
+      + it.label
+      + '</label>'
+    ).join('');
+  }
+  const modal = document.getElementById('modal-checklist-final');
+  if (modal) modal.style.display = 'flex';
+}
+function ltSetItemChecklistFinal(itemId, val) {
+  const p = projects.find(x => String(x.id) === String(_checklistFinalProjId));
+  if (!p) return;
+  checklistFinalGet(p)[itemId] = !!val;
+  upd();
+  buildLeadTimeTer(); // atualiza o badge de progresso e, se completou, a flag/Status calculados
+}
+function fecharModalChecklistFinal() {
+  const modal = document.getElementById('modal-checklist-final');
+  if (modal) modal.style.display = 'none';
+  _checklistFinalProjId = null;
+}
+
 function ltTerSetFeito(id, si, val) {
   const p = projects.find(x => String(x.id) === String(id));
   if (!p) return;
-  const ent = ltTerEntregas(p)[si];
+  const entregas = ltTerEntregas(p);
+  const ent = entregas[si];
   if (!ent) return;
   ent.feito = !!val;
   ent.real = val ? (ent.real || new Date().toISOString().slice(0,10)) : '';
   buildLeadTimeTer();
   upd();
+  // Marcar a ÚLTIMA etapa abre o checklist de fechamento — Pontual não tem "última etapa" no
+  // mesmo sentido (lista livre, sem uma "Entrega final" fixa), então fica de fora.
+  const ehUltimaEtapa = val && si === entregas.length - 1;
+  if (ehUltimaEtapa && !_ehPontual(p)) ltAbrirChecklistFinalizacao(id);
 }
 // Um clique só: liga a reunião e já pergunta a data (opcional, pode pular); clicar de novo
 // desliga. Pra trocar a data de uma reunião já marcada, desliga e liga de novo.
@@ -10974,14 +11063,21 @@ function buildLeadTimeTer() {
               const nome = nomeEtapaTerCurto(p, si);
               const feito = !!ent.feito;
               const reuniao = !!ent.reuniao;
+              const ehUltima = si === semIdxs.length - 1;
               const bg = feito ? 'var(--green)' : 'var(--surface3)';
               const borderCor = feito ? 'var(--green)' : 'var(--border)';
               const nomeCor = feito ? '#fff' : 'var(--text-hint)';
               const tooltip = [nomeEtapaTer(p, si), feito ? 'aconteceu' : 'ainda não aconteceu',
                 reuniao ? ('reunião' + (ent.dataReuniao ? ' em ' + fmtD(ent.dataReuniao) : ' marcada, sem data')) : 'sem reunião registrada'].join(' · ');
+              // Badge do checklist de fechamento — só na última etapa. Clicável pra reabrir o
+              // checklist sem precisar desmarcar/remarcar a etapa. Verde só com os 4 itens.
+              const checklistBadge = ehUltima
+                ? '<button type="button" onclick="event.stopPropagation();ltAbrirChecklistFinalizacao(\'' + p.id + '\')" title="Checklist de fechamento (' + checklistFinalContagem(p) + '/4)" style="position:absolute;bottom:1px;right:1px;background:none;border:none;padding:1px;color:' + (checklistFinalCompleto(p) ? (feito ? '#fff' : 'var(--green)') : nomeCor) + ';opacity:' + (checklistFinalCompleto(p) ? '1' : '.45') + ';cursor:pointer;">' + icon('clipboard',{size:9}) + '</button>'
+                : '';
               return '<div title="' + tooltip.replace(/"/g,'&quot;') + '" onclick="ltTerSetFeito(\'' + p.id + '\',' + si + ',' + (!feito) + ')" style="flex:1;min-height:34px;background:' + bg + ';border:1px solid ' + borderCor + ';border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;text-align:center;padding:3px 14px 3px 2px;position:relative;cursor:pointer;transition:background .2s;">'
                 + '<div style="font-size:var(--fs-2xs);font-weight:700;color:' + nomeCor + ';line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">' + nome + '</div>'
                 + '<button type="button" onclick="event.stopPropagation();ltTerToggleReuniao(\'' + p.id + '\',' + si + ')" title="Alternar se houve reunião" style="position:absolute;top:1px;right:1px;background:none;border:none;padding:1px;color:' + nomeCor + ';opacity:' + (reuniao?'1':'.35') + ';cursor:pointer;">' + icon('users',{size:9}) + '</button>'
+                + checklistBadge
                 + '</div>';
             }).join('');
         const etapasHTML = '<div style="display:flex;gap:3px;">' + etapasBlocks + '</div>'
