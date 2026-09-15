@@ -10845,6 +10845,17 @@ function ltSetDataEntregaPontual(id, idx, val) {
   upd();
   buildLeadTimeTer();
 }
+// Pontual não segue o template de etapas fixas dos outros modelos (não tem "última etapa"
+// pra disparar o checklist de fechamento), então a finalização aqui é só um botão direto —
+// sem checklist, marca status2 = 'Finalizado' na hora.
+async function ltFinalizarPontual(id) {
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!p) return;
+  if (!(await showConfirm('Marcar esse projeto avulso como Finalizado?'))) return;
+  p.status2 = 'Finalizado';
+  upd();
+  buildLeadTimeTer();
+}
 
 function _ltNumSemanas(p) {
   if (_ehPontual(p)) return entregasPontuais(p).length;
@@ -11048,6 +11059,8 @@ function buildLeadTimeTer() {
   const tbody = document.getElementById('ltt-tbody');
   if (!tbody) return;
 
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+
   tbody.innerHTML = list.length === 0
     ? '<tr><td colspan="14" style="text-align:center;padding:24px;color:var(--text-hint);font-size:var(--fs-base);">Nenhum projeto encontrado</td></tr>'
     : list.map(p => {
@@ -11075,10 +11088,16 @@ function buildLeadTimeTer() {
               const feito = !!ent.feito;
               const reuniao = !!ent.reuniao;
               const ehUltima = si === semIdxs.length - 1;
-              const bg = feito ? 'var(--green)' : 'var(--surface3)';
-              const borderCor = feito ? 'var(--green)' : 'var(--border)';
-              const nomeCor = feito ? '#fff' : 'var(--text-hint)';
-              const tooltip = [nomeEtapaTer(p, si), feito ? 'aconteceu' : 'ainda não aconteceu',
+              // Card vermelho: etapa ainda não aconteceu e a data prevista dela (início + N dias
+              // por etapa, fixo — não recalcula pelo atraso de etapas anteriores) já passou. É
+              // o alerta por etapa pra agir antes do projeto como um todo dar problema.
+              const dataPlanejada = feito ? null : parseDate(semDataPlanejadaTer(p, si));
+              const atrasada = !feito && dataPlanejada && dataPlanejada < hoje;
+              const bg = feito ? 'var(--green)' : atrasada ? 'var(--red)' : 'var(--surface3)';
+              const borderCor = feito ? 'var(--green)' : atrasada ? 'var(--red)' : 'var(--border)';
+              const nomeCor = (feito || atrasada) ? '#fff' : 'var(--text-hint)';
+              const tooltip = [nomeEtapaTer(p, si),
+                feito ? 'aconteceu' : atrasada ? 'atrasada — previsto ' + fmtD(semDataPlanejadaTer(p, si)) : 'ainda não aconteceu',
                 reuniao ? ('reunião' + (ent.dataReuniao ? ' em ' + fmtD(ent.dataReuniao) : ' marcada, sem data')) : 'sem reunião registrada'].join(' · ');
               // Badge do checklist de fechamento — só na última etapa. Clicável pra reabrir o
               // checklist sem precisar desmarcar/remarcar a etapa. Verde só com os 4 itens.
@@ -11093,10 +11112,13 @@ function buildLeadTimeTer() {
             }).join('');
         const etapasHTML = '<div style="display:flex;gap:3px;">' + etapasBlocks + '</div>'
           + (ehPontual
-              ? '<div style="display:flex;gap:4px;margin-top:5px;">'
+              ? '<div style="display:flex;gap:4px;margin-top:5px;align-items:center;">'
                 + '<input type="text" id="lt-pontual-nome-' + p.id + '" class="sel" style="font-size:var(--fs-sm);flex:1;min-width:0;" placeholder="Nome da entrega">'
                 + '<input type="date" id="lt-pontual-data-' + p.id + '" class="sel" style="font-size:var(--fs-sm);width:110px;">'
                 + '<button onclick="ltAddEntregaPontual(\'' + p.id + '\')" title="Adicionar entrega pontual" style="padding:0 10px;border:none;border-radius:var(--r-sm);background:var(--accent);color:#fff;font-size:var(--fs-lg);font-weight:700;cursor:pointer;">+</button>'
+                + (p.status2 === 'Finalizado'
+                    ? '<span style="font-size:var(--fs-2xs);font-weight:700;color:var(--green);white-space:nowrap;padding:0 4px;">✓ Finalizado</span>'
+                    : '<button type="button" onclick="ltFinalizarPontual(\'' + p.id + '\')" title="Marcar esse projeto avulso como Finalizado" style="padding:0 10px;border:none;border-radius:var(--r-sm);background:var(--green);color:#fff;font-size:var(--fs-xs);font-weight:700;cursor:pointer;white-space:nowrap;">Finalizar</button>')
                 + '</div>'
               : '');
 
