@@ -3674,8 +3674,10 @@ function calcStatus2(p) {
   }
   if (!temAlgumaEntrega) temAlgumaEntrega = entTer.some(e => e && e.real);
   if (temAlgumaEntrega && !temDecolagem) return 'Em andamento';
-  // Sem entregas: usa prevFim
-  if (p.prevFim) {
+  // Sem entregas: usa prevFim — só pra SABER. Na TER a finalização não pode mais acontecer
+  // sozinha por prazo estourado: o critério principal passa a ser sempre uma marcação
+  // explícita (realFim, última etapa + checklist de fechamento completo, ou status2 manual).
+  if (currentCoord !== 'ter' && p.prevFim) {
     const pd = parseDate(p.prevFim);
     if (pd && pd < hoje) return 'Finalizado';
   }
