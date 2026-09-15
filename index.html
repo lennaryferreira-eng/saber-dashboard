@@ -848,6 +848,7 @@
 
 
 <section id="sec-prazo" class="section">
+<div id="prazo-saber-view">
   <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:1rem;">
     <span class="base-filter-label">Consultor</span>
     <select class="base-sel" id="prazo-f-cons" onchange="calcPrazo()"><option value="">Todos</option></select>
@@ -865,6 +866,23 @@
   </div>
   <div id="filter-bar-prazo" class="filter-bar"></div>
   <div id="prazo-body"></div>
+</div>
+<div id="prazo-ter-view" style="display:none;">
+  <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:1rem;">
+    <span class="base-filter-label">Consultor</span>
+    <select class="base-sel" id="prazo-ter-f-cons" onchange="calcPrazoTer()"><option value="">Todos</option></select>
+    <button class="base-clear" onclick="clearPrazoTerFilters()">Limpar</button>
+  </div>
+  <div class="sec-head"><h2 class="sec-title">Projetos no Prazo</h2><p class="sec-desc">Só projetos <b>One time</b> (exclui Recorrente e Treinamentos avulsos — não têm prazo final fixo). Prazo de cada projeto = prevFim calculado pelo modelo. Meta: 80%.</p></div>
+  <div class="mgrid mg4">
+    <div class="mcard c-blue"><div class="mlabel">Em andamento</div><div class="mval" id="prazo-ter-total">0</div><div class="mmeta">no mês</div></div>
+    <div class="mcard c-blue"><div class="mlabel">No prazo</div><div class="mval" id="prazo-ter-ok">0</div></div>
+    <div class="mcard c-blue"><div class="mlabel">Fora do prazo</div><div class="mval" id="prazo-ter-nok">0</div></div>
+    <div class="mcard c-blue"><div class="mlabel">Taxa 2026</div><div class="mval" id="prazo-ter-taxa">—</div><div class="mmeta">Meta: 80%</div><div class="prog-bg"><div class="prog-fill" id="prazo-ter-bar" style="width:0%;background:var(--blue)"></div></div></div>
+  </div>
+  <div id="filter-bar-prazo-ter" class="filter-bar"></div>
+  <div id="prazo-ter-body"></div>
+</div>
 </section>
 
 <section id="sec-pdi" class="section">
@@ -1068,7 +1086,7 @@
           <th style="min-width:160px;">Escopos One-time</th>
           <th style="min-width:160px;">Escopos Recorrente</th>
           <th style="min-width:130px;">Conversão</th>
-          <th style="min-width:130px;">Motivo perda</th>
+          <th style="min-width:150px;">Status / Motivo perda</th>
           <th style="min-width:110px;">Próx. Contato</th>
         </tr>
       </thead>
@@ -3267,6 +3285,10 @@ const SIDEBAR_NAV = [
   ] },
   { group: 'gestao', label: 'Gestão', items: [
     { id: 'leadtime', label: 'Lead Time', icon: 'calendar', extraClass: 'ter-ok', elId: 'nav-btn-leadtime' },
+    // Duplicata TER-only do 'prazo' (grupo OKRs, acima, some inteiro na TER) — mesmo id/aba,
+    // só pra aparecer aqui em Gestão quando currentCoord === 'ter'. calcPrazo() já despacha
+    // pra calcPrazoTer() sozinho, então não precisa de nenhuma função nova de clique.
+    { id: 'prazo', label: 'Projetos no Prazo', icon: 'clock', extraClass: 'ter-only', hiddenByDefault: true },
     { id: 'recorrentes', label: 'Escopos Recorrentes', icon: 'link', extraClass: 'ter-only', hiddenByDefault: true },
     { id: 'trilhas', label: 'Trilhas', icon: 'route', extraClass: 'ter-only', hiddenByDefault: true },
     { id: 'dro', label: 'DRO/DRX', icon: 'refresh' },
@@ -6297,7 +6319,10 @@ function renderBase() {
 //  BASE DE PROJETOS — TER (schema próprio, independente da SABER)
 // ═══════════════════════════════════
 const TER_MODELOS = ['CRM Kommo basic','CRM Kommo PRO','Manutenção de CRM','Profissional de CRM','Sales Enablement','Diagnóstico 360','Treinamentos (avulsos)'];
-const TER_STATUS  = ['Em andamento','Finalizado','Início em breve','Pausado','Cancelado','Interrompido'];
+// Churn/Reembolso entram aqui pra ficar consistente com o select de Status/Motivo perda do
+// Escopos One-time (mesmo campo p.status2, mesma vocabulário do SABER) — sem isso, um projeto
+// marcado Churn/Reembolso por lá aparecia sem nenhuma opção selecionada aqui na Base.
+const TER_STATUS  = ['Em andamento','Finalizado','Início em breve','Pausado','Cancelado','Interrompido','Churn','Reembolso'];
 
 // Nível de dedicação — todo modelo recorrente exige, exceto Manutenção de CRM (rotina fixa,
 // não varia por dedicação). Define o volume de rotinas e a cadência de contato com o cliente
@@ -6319,6 +6344,12 @@ function prazoStatusTer(p) {
   // Projetos Recorrentes não têm "prazo final" no mesmo sentido — são serviço contínuo, não
   // um contrato com data de entrega. Só One time entra nessa contagem.
   if (p.recorrencia === 'Recorrente') return { txt: '—', cor: 'var(--text-hint)' };
+  // Churn/Pausado/Reembolso/Cancelado/Interrompido: projeto parado ou em tratativa — não conta
+  // como atraso nem como no prazo. Sem essa trava, um projeto interrompido continuaria
+  // acumulando "Atrasado Nd" indefinidamente e sujaria o indicador de Projetos no Prazo.
+  if (['Churn','Pausado','Reembolso','Cancelado','Interrompido'].includes(p.status2)) {
+    return { txt: '⊘ ' + p.status2, cor: 'var(--text-hint)', interrompido: true };
+  }
   if (!p.prevFim) return { txt: '—', cor: 'var(--text-hint)' };
   const dPrev = parseDate(p.prevFim);
   if (!dPrev) return { txt: '—', cor: 'var(--text-hint)' };
@@ -6333,6 +6364,127 @@ function prazoStatusTer(p) {
   if (diasRest < 0)  return { txt: 'Atrasado ' + Math.abs(diasRest) + 'd', cor: 'var(--accent)' };
   if (diasRest <= 5) return { txt: diasRest + 'd restantes', cor: 'var(--amber)' };
   return { txt: diasRest + 'd restantes', cor: 'var(--blue)' };
+}
+
+// ═══════════════════════════════════
+//  PROJETOS NO PRAZO — TER (equivalente à aba da SABER, mas ancorada no prevFim de cada
+//  modelo em vez de um prazo fixo de 45/52 dias — cada escopo da TER já tem sua própria
+//  duração calculada em prevFimCalculadoTer).
+// ═══════════════════════════════════
+
+// Data de finalização REAL do projeto TER One-time pra julgamento de prazo: Conclusão Real
+// explícita, senão a última etapa + checklist de fechamento completo (mesmo critério do
+// calcStatus2). Pontual nunca tem entregasTer preenchida (usa entregasPontuais à parte), então
+// só finaliza aqui via realFim mesmo — consistente com o resto do arquivo.
+function dataFimRealTer(p) {
+  if (p.realFim) return p.realFim;
+  const entTer = Array.isArray(p.entregasTer) ? p.entregasTer : [];
+  const ultima = (p.recorrencia !== 'Recorrente' && entTer.length) ? entTer[entTer.length - 1] : null;
+  if (ultima && ultima.real && checklistFinalCompleto(p)) return ultima.real;
+  return null;
+}
+
+// Meses (2026) em que o projeto TER One-time está "ativo" pro card de Projetos no Prazo: do
+// início até a finalização real, ou até o prazo previsto (ou hoje, se o prazo já passou sem
+// finalizar) enquanto ainda está aberto. Mais simples que o mesesAtivos da SABER — a TER não
+// tem o conceito de semana fixa/Growthclass isolado pra excluir.
+function mesesAtivosTer(p) {
+  if (!p.inicio) return [];
+  const dIni = parseDate(p.inicio);
+  if (!dIni) return [];
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const fim = dataFimRealTer(p);
+  const dPrev = p.prevFim ? parseDate(p.prevFim) : null;
+  const dFim = fim ? parseDate(fim) : (dPrev && dPrev > hoje ? dPrev : hoje);
+  if (!dFim || dFim < dIni) return dIni.getFullYear() === 2026 ? [dIni.getMonth()] : [];
+  const meses = new Set();
+  let cursor = new Date(dIni.getFullYear(), dIni.getMonth(), 1);
+  const limite = new Date(dFim.getFullYear(), dFim.getMonth(), 1);
+  while (cursor <= limite) {
+    if (cursor.getFullYear() === 2026) meses.add(cursor.getMonth());
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+  }
+  return [...meses].sort((a, b) => a - b);
+}
+
+// Versão "rica" (mesmo formato de prazoStatus da SABER: {ok, dias, html, interrompido}) usada
+// só pela aba Projetos no Prazo — prazoStatusTer (acima) continua servindo a Base de Projetos
+// com seu formato simples {txt, cor}, sem quebrar quem já depende dele.
+function prazoStatusTerAba(p) {
+  if (!p.inicio) return { ok: null, html: '<span style="color:var(--text-hint)">—</span>', dias: null };
+  // Churn/Pausado/Reembolso/Cancelado/Interrompido: não conta como atraso nem como no prazo —
+  // senão um projeto parado/em tratativa continuaria sujando o indicador indefinidamente.
+  if (['Churn','Pausado','Reembolso','Cancelado','Interrompido'].includes(p.status2)) {
+    const dias = p.dataPerda ? diffDays(p.inicio, p.dataPerda) : (p.dataReembolso ? diffDays(p.inicio, p.dataReembolso) : null);
+    return { ok: null, interrompido: true, dias, html: '<span class="badge b-gray" style="margin-top:0">⊘ ' + p.status2 + '</span>' };
+  }
+  if (!p.prevFim) return { ok: null, html: '<span style="color:var(--text-hint)">—</span>', dias: null };
+  const dPrev = parseDate(p.prevFim);
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const fim = dataFimRealTer(p);
+  if (fim) {
+    const dFim = parseDate(fim);
+    const dias = diffDays(p.inicio, fim);
+    const ok = dFim <= dPrev;
+    return {
+      ok, dias,
+      html: ok
+        ? '<span class="badge b-green" style="margin-top:0">' + icon('check') + ' ' + dias + 'd — no prazo</span>'
+        : '<span class="badge b-red" style="margin-top:0">' + icon('x') + ' ' + dias + 'd — fora do prazo</span>'
+    };
+  }
+  const diasPrev = diffDays(p.inicio, p.prevFim);
+  const rest = Math.round((dPrev - hoje) / 864e5);
+  const dIni = parseDate(p.inicio);
+  const dec = Math.round((hoje - dIni) / 864e5);
+  if (dec < 0)  return { ok: true, dias: diasPrev, html: '<span class="badge b-gray" style="margin-top:0">Inicia em ' + Math.abs(dec) + 'd</span>' };
+  if (rest < 0) return { ok: false, dias: diasPrev, html: '<span class="badge b-red" style="margin-top:0">' + icon('x') + ' ' + Math.abs(rest) + 'd — fora do prazo</span>' };
+  if (rest <= 5) return { ok: true, dias: diasPrev, html: '<span class="badge b-amber" style="margin-top:0">' + icon('zap') + ' ' + rest + 'd p/ o prazo</span>' };
+  return { ok: true, dias: diasPrev, html: '<span class="badge b-blue" style="margin-top:0">' + rest + 'd p/ o prazo</span>' };
+}
+
+// Veredito de prazo ESPECÍFICO de um mês (mesma régua de prazoStatusNoMes da SABER, ancorada
+// em p.prevFim em vez de início+52 dias).
+function prazoStatusNoMesTer(p, mIdx, mAno) {
+  const base = prazoStatusTerAba(p);
+  if (base.ok === null || !p.inicio || !p.prevFim) return base;
+  const deadline = parseDate(p.prevFim);
+  const mStart = new Date(mAno, mIdx, 1);
+  const mEnd   = new Date(mAno, mIdx + 1, 0);
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const fim = dataFimRealTer(p);
+  const dFim = fim ? parseDate(fim) : null;
+  if (dFim && dFim.getMonth() === mIdx && dFim.getFullYear() === mAno) return base;
+  if (mEnd < hoje) {
+    if (dFim && dFim < mStart) return { ok: null, dias: base.dias, html: '<span style="color:var(--text-hint)">—</span>' };
+    if (deadline > mEnd) return { ok: true, dias: base.dias, html: '<span class="badge b-green" style="margin-top:0">'+icon('check')+' em execução</span>' };
+    return { ok: false, dias: base.dias, html: '<span class="badge b-red" style="margin-top:0">'+icon('x')+' atrasado</span>' };
+  }
+  const endpoint = dFim || hoje;
+  const overdue = (endpoint > deadline) && (deadline <= mEnd) && (endpoint >= mStart);
+  if (overdue) return { ok: false, dias: base.dias, html: '<span class="badge b-red" style="margin-top:0">'+icon('x')+' atrasado</span>' };
+  return { ok: true, dias: base.dias, html: '<span class="badge b-green" style="margin-top:0">'+icon('check')+' em execução</span>' };
+}
+
+// O projeto deve aparecer no card do mês mIdx/mAno? Só One time não-Pontual entra (Recorrente
+// não tem prazo final, Pontual não tem prevFim calculável).
+function prazoNoMesCardTer(p, mIdx, mAno) {
+  if (!p.inicio || p.recorrencia === 'Recorrente' || _ehPontual(p)) return false;
+  if (mAno === 2026 && mesesAtivosTer(p).includes(mIdx)) return true;
+  if (!p.prevFim) return false;
+  const deadline = parseDate(p.prevFim);
+  const mStart = new Date(mAno, mIdx, 1);
+  const mEnd   = new Date(mAno, mIdx + 1, 0);
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const fim = dataFimRealTer(p);
+  const dFim = fim ? parseDate(fim) : null;
+  if (dFim && dFim.getMonth() === mIdx && dFim.getFullYear() === mAno) return true;
+  if (mEnd < hoje) {
+    if (dFim && dFim < mStart) return false;
+    return deadline <= mEnd;
+  }
+  const endpoint = dFim || hoje;
+  return (endpoint > deadline) && (deadline <= mEnd) && (endpoint >= mStart);
 }
 
 function getBaseTerFiltered() {
@@ -6937,6 +7089,17 @@ function clearPrazoFilters() {
 }
 
 function calcPrazo() {
+  // Despacho por coordenação: TER tem sua própria view/cálculo de Prazo (prevFim varia por
+  // modelo, não é o prazo fixo de 45/52 dias da SABER).
+  if (currentCoord === 'ter') {
+    const sv = document.getElementById('prazo-saber-view'); if (sv) sv.style.display = 'none';
+    const tv = document.getElementById('prazo-ter-view');   if (tv) tv.style.display = '';
+    calcPrazoTer();
+    return;
+  } else {
+    const sv = document.getElementById('prazo-saber-view'); if (sv) sv.style.display = '';
+    const tv = document.getElementById('prazo-ter-view');   if (tv) tv.style.display = 'none';
+  }
   // popula filtro consultor
   const selPrazoCons = document.getElementById('prazo-f-cons');
   if (selPrazoCons) {
@@ -7015,6 +7178,82 @@ function calcPrazo() {
   set('prazo-avg',   avgDias !== null ? avgDias + 'd' : '—');
   set('prazo-taxa',  taxaAno !== null ? taxaAno + '%' : '—');
   setStyle('prazo-bar', 'width', taxaAno !== null ? pct(taxaAno, 100) + '%' : '0%');
+  return taxaAno;
+}
+
+function clearPrazoTerFilters() {
+  const el = document.getElementById('prazo-ter-f-cons'); if (el) el.value = '';
+  calcPrazoTer();
+}
+
+// Equivalente TER de calcPrazo() — mesma estrutura (cards mês a mês dentro do quarter, tabela
+// por mês, overview do ano), só troca as funções de julgamento pelas variantes TER (prevFim por
+// modelo em vez do prazo fixo de 45/52 dias) e usa p.flag (manual) em vez de calcFlagAutomatica
+// (a TER não calcula flag automática por score — não tem esse conceito de entrega avaliada).
+function calcPrazoTer() {
+  const selPrazoCons = document.getElementById('prazo-ter-f-cons');
+  if (selPrazoCons) {
+    const cons = [...new Set(projects.map(p=>p.consultor).filter(Boolean))].sort();
+    const curC = selPrazoCons.value;
+    selPrazoCons.innerHTML = '<option value="">Todos</option>' + cons.map(c=>`<option${c===curC?' selected':''}>${c}</option>`).join('');
+  }
+  buildFilterBar('filter-bar-prazo-ter', 'prazoTer', calcPrazoTer);
+  const prazoTerCons = document.getElementById('prazo-ter-f-cons')?.value || '';
+  let totalAno = 0, okAno = 0, nokAno = 0, avaliadosAno = 0, interrAno = 0;
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+
+  buildQuarterBody('prazo-ter-body', m => {
+    let doMes = projects.filter(p => prazoNoMesCardTer(p, m.idx, m.ano));
+    if (prazoTerCons) doMes = doMes.filter(p => p.consultor === prazoTerCons);
+    let ok = 0, nok = 0, interr = 0;
+
+    const rows = doMes.map(p => {
+      const fim = dataFimRealTer(p);
+      const st  = prazoStatusNoMesTer(p, m.idx, m.ano);
+      const dec = p.inicio ? Math.round((hoje - parseDate(p.inicio)) / 864e5) : 0;
+      const diasH = fim ? (st.dias + 'd') : (dec >= 0 ? dec + 'd decorridos' : 'Não iniciado');
+      if (st.ok === true) ok++; else if (st.ok === false) nok++; else if (st.interrompido) interr++;
+      return `<tr>
+        <td>${p.nome||'—'}</td><td>${p.consultor||'—'}</td>
+        <td>${p.inicio||'—'}</td><td>${p.prevFim||'—'}</td><td>${fim||'—'}</td>
+        <td style="white-space:nowrap">${diasH}</td>
+        <td>${st.html}</td>
+        <td>${flagHTML(p.flag)}</td>
+      </tr>`;
+    }).join('');
+
+    const total = doMes.length;
+    const avaliados = ok + nok;
+    const taxa  = avaliados > 0 ? Math.round(ok / avaliados * 100) : null;
+    totalAno += total; okAno += ok; nokAno += nok; avaliadosAno += avaliados; interrAno += interr;
+
+    return `<div class="month-card">
+      <div class="month-header">
+        <span class="month-name">${m.label}</span>
+        <div class="month-taxa">
+          <span class="month-taxa-val" style="color:${taxa!==null&&taxa>=80?'var(--green)':taxa!==null?'var(--red)':'var(--text)'}">${taxa !== null ? taxa + '%' : '—'}</span>
+          <div class="prog-bg" style="width:60px;margin-top:0;"><div class="prog-fill" style="width:${taxa!==null?pct(taxa,100):0}%;background:var(--blue)"></div></div>
+        </div>
+      </div>
+      <div class="month-stats">Projetos: <strong>${total}</strong> · <span style="color:var(--green)">${icon('check')} ${ok}</span> · <span style="color:var(--red)">${icon('x')} ${nok}</span>${interr>0?` · <span style="color:var(--text-hint)">⊘ ${interr}</span>`:''}</div>
+      <div class="tbl-wrap"><table><thead><tr><th>Projeto</th><th>Consultor</th><th>Início</th><th>Prev. Conclusão</th><th>Conclusão Real</th><th>Dias</th><th>Status</th><th>Flag</th></tr></thead><tbody>${rows||emptyRow(8,'Nenhum projeto ativo')}</tbody></table></div>
+    </div>`;
+  }, 'prazoTer');
+
+  const taxaAno = avaliadosAno > 0 ? Math.round(okAno / avaliadosAno * 100) : null;
+  const curPrazoTer  = filters['prazoTer'];
+  const curMPrazoTer = curPrazoTer ? ALL_MESES.find(x => x.key === curPrazoTer) : null;
+  let totalCard = totalAno, okCard = okAno, nokCard = nokAno;
+  if (curMPrazoTer) {
+    let doMesFilt = projects.filter(p => prazoNoMesCardTer(p, curMPrazoTer.idx, curMPrazoTer.ano));
+    if (prazoTerCons) doMesFilt = doMesFilt.filter(p => p.consultor === prazoTerCons);
+    totalCard = doMesFilt.length;
+    okCard  = doMesFilt.filter(p => prazoStatusNoMesTer(p, curMPrazoTer.idx, curMPrazoTer.ano).ok === true).length;
+    nokCard = doMesFilt.filter(p => prazoStatusNoMesTer(p, curMPrazoTer.idx, curMPrazoTer.ano).ok === false).length;
+  }
+  set('prazo-ter-total', totalCard); set('prazo-ter-ok', okCard); set('prazo-ter-nok', nokCard);
+  set('prazo-ter-taxa',  taxaAno !== null ? taxaAno + '%' : '—');
+  setStyle('prazo-ter-bar', 'width', taxaAno !== null ? pct(taxaAno, 100) + '%' : '0%');
   return taxaAno;
 }
 
@@ -11150,7 +11389,26 @@ function buildLeadTimeTer() {
           + '<select class="sel" style="font-size:var(--fs-sm);width:100%;" onchange="ltSetFieldTer(' + p.id + ',\'conv\',this.value)">'
           + '<option value="">—</option>' + ['Monetizado','Não monetizado'].map(o => '<option' + ((p.conv||'')===o?' selected':'') + '>' + o + '</option>').join('')
           + '</select></td>'
+          // Status (Churn/Pausado/Reembolso) — mesmo campo/padrão do Lead Time da SABER
+          // (statusBadge2 + select + sub-campo conforme a escolha), pra dar pra interromper um
+          // projeto em tratativa direto daqui, sem sujar o indicador de Projetos no Prazo. O
+          // campo de motivo é o mesmo p.motivo do mecanismo antigo da TER logo abaixo (Motivo +
+          // data de perda → Interrompido) — não duplica input, Churn e Interrompido só
+          // compartilham o texto do motivo, cada um com seu próprio gatilho/status.
           + '<td style="padding:6px 8px;">'
+          + '<div style="margin-bottom:3px;">' + statusBadge2(p) + '</div>'
+          + '<select class="sel" style="font-size:var(--fs-xs);width:100%;padding:2px 4px;margin-bottom:6px;" onchange="ltSetStatus2(' + p.id + ',this.value)">'
+          + '<option value="">— manual —</option>'
+          + ['Churn','Pausado','Reembolso'].map(o => '<option' + (p.status2===o?' selected':'') + '>' + o + '</option>').join('')
+          + '</select>'
+          + (p.status2 === 'Reembolso'
+              ? '<div style="font-size:var(--fs-2xs);color:var(--text-hint);margin:0 0 1px;">Data do pedido</div>'
+                + '<input type="date" class="sel" style="font-size:var(--fs-xs);width:100%;margin-bottom:6px;" '
+                + 'value="' + dv(p.dataReembolso) + '" '
+                + 'onchange="ltSetReembolsoData(' + p.id + ',this.value)">'
+                + '<div id="lt-reemb-status-' + p.id + '">' + ltReembStatusHTML(p) + '</div>'
+              : '')
+          + '<div style="font-size:var(--fs-2xs);color:var(--text-hint);margin:6px 0 1px;">Motivo (Churn / perda)</div>'
           + '<input type="text" class="sel" style="font-size:var(--fs-sm);width:100%;margin-bottom:4px;" placeholder="Motivo" value="' + (p.motivo||'') + '" onchange="ltSetFieldTer(' + p.id + ',\'motivo\',this.value)">'
           + '<input type="date" class="sel" style="font-size:var(--fs-sm);width:100%;" value="' + (p.dataPerda||'') + '" title="Preencher marca o projeto como Interrompido" onchange="ltTerSetDataPerda(\'' + p.id + '\',this.value)"></td>'
           + '<td style="padding:6px 8px;">'
