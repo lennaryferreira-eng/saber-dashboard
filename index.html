@@ -3596,13 +3596,14 @@ function domingoDaSemana(dataISO) {
 }
 
 function calcStatus2(p) {
-  if (p.status2 === 'Churn' || p.status2 === 'Pausado') return p.status2;
+  if (p.status2 === 'Churn' || p.status2 === 'Pausado' || p.status2 === 'Reembolso') return p.status2;
   if (p.status2 === 'Finalizado') return 'Finalizado';
-  // Reembolso = projeto interrompido/em tratativa, mesmo que ninguém tenha atualizado o
-  // status2 manualmente pra Pausado. Sem essa checagem, o projeto continua contando como
-  // "Em andamento" em Capacity e nas flags do Healthscore — um projeto que já não está
-  // rodando de fato não pode aparecer como ativo só porque o campo manual ficou desatualizado.
-  if (p.dataReembolso) return 'Pausado';
+  // Legado: dataReembolso preenchida sem o status2 explícito (registro de antes dessa opção
+  // existir, ou um caso que passou batido) — trata como Reembolso mesmo assim. Sem essa
+  // checagem, o projeto continuaria contando como "Em andamento" em Capacity e nas flags do
+  // Healthscore — um projeto com pedido de reembolso em aberto não pode aparecer como ativo só
+  // porque ninguém marcou o status2 correspondente.
+  if (p.dataReembolso) return 'Reembolso';
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   if (!p.inicio) return 'Início em breve';
   // DRO/DRX: finalizado só quando o ÚLTIMO comitê/marco tiver sido REALMENTE registrado
@@ -3658,6 +3659,14 @@ function calcStatus2(p) {
   return 'Em andamento';
 }
 
+// Pausado e Reembolso são os dois status "em standby" — visíveis normalmente (Lead Time,
+// Capacity), mas fora da conta de carga/capacity e fora da avaliação de saúde (calcFlagAutomatica).
+// Centraliza a checagem pra não espalhar `s==='Pausado'||s==='Reembolso'` em cada lugar do
+// Capacity que precisa dela.
+function statusEmStandby(p) {
+  const s = calcStatus2(p);
+  return s === 'Pausado' || s === 'Reembolso';
+}
 
 function lastDayOfMonth(ano, mes) {
   return new Date(ano, mes + 1, 0).getDate();
@@ -3801,8 +3810,9 @@ function calcFlagAutomatica(p, refDateISO) {
   // nem Vermelho fazem sentido aqui. Diferente do DRO/DRX (onde p.flag é um campo mantido
   // manualmente), pra reembolso o p.flag costuma ser só um resquício de antes do problema
   // acontecer (ex: "Verde" de quando o projeto ainda ia bem) — usar esse valor mostraria uma
-  // cor enganosa, então sempre neutro aqui, ignorando p.flag.
-  if (p.dataReembolso) return '—';
+  // cor enganosa, então sempre neutro aqui, ignorando p.flag. Rótulo próprio (não só '—') pelo
+  // mesmo motivo do Pausado logo abaixo — '—' sozinho pareceria "sem dados".
+  if (calcStatus2(p) === 'Reembolso') return 'Reembolso';
   // Pausado = suspenso por decisão da coordenação/cliente (status2 manual), não um problema de
   // execução — rodar a mesma régua de estagnação/score/prazo de um projeto ativo faria um
   // projeto em standby há semanas cair em Vermelho automático só por não ter entrega recente,
@@ -4065,7 +4075,7 @@ function prazoInline(p) {
 // ═══════════════════════════════════
 function flagHTML(f) {
   if (!f || f === '—') return '<span style="color:var(--text-hint)">—</span>';
-  const cls = {Verde:'flag-V',Amarelo:'flag-A',Vermelho:'flag-R',Pausado:'flag-P'}[f] || '';
+  const cls = {Verde:'flag-V',Amarelo:'flag-A',Vermelho:'flag-R',Pausado:'flag-P',Reembolso:'flag-Rb'}[f] || '';
   return `<span style="display:inline-flex;align-items:center;gap:5px;"><span class="flag-dot ${cls}"></span>${f}</span>`;
 }
 // Select de flag com o ícone de bandeira colorido ao lado (em vez de só o nome em texto) —
@@ -4085,6 +4095,7 @@ function statusBadge2(p) {
     'Finalizado':'b-gray',
     'Churn':'b-red',
     'Pausado':'b-amber',
+    'Reembolso':'b-purple',
     'Início em breve':'b-gray'
   };
   return `<span class="badge ${map[s]||'b-gray'}" style="margin-top:0">${s}</span>`;
@@ -4103,7 +4114,7 @@ function convBadge(p) {
 }
 
 function monBadge(m) {
-  const map = {Monetizado:'b-green',Cancelado:'b-red','Não monetizado':'b-red','Em negociação':'b-amber','Em andamento':'b-blue','Finalizado':'b-gray','Churn':'b-red','Pausado':'b-amber','Início em breve':'b-gray'};
+  const map = {Monetizado:'b-green',Cancelado:'b-red','Não monetizado':'b-red','Em negociação':'b-amber','Em andamento':'b-blue','Finalizado':'b-gray','Churn':'b-red','Pausado':'b-amber','Reembolso':'b-purple','Início em breve':'b-gray'};
   return `<span class="badge ${map[m]||'b-gray'}" style="margin-top:0">${m}</span>`;
 }
 
@@ -5680,7 +5691,7 @@ function buildGanttDRO(semanasExt) {
   const todosAtivos = projects.filter(p => {
     if (!isDroFam(p) || !p.inicio) return false;
     const s2 = calcStatus2(p);
-    if (s2 === 'Finalizado' || s2 === 'Churn' || s2 === 'Pausado') return false;
+    if (s2 === 'Finalizado' || s2 === 'Churn' || s2 === 'Pausado' || s2 === 'Reembolso') return false;
     if (p.prevFim && parseDate(p.prevFim) < hoje) return false;
     return true;
   });
@@ -6237,8 +6248,9 @@ function renderBase() {
           <div>${statusBadge2(p)}</div>
           <select class="sel" data-f="status2" data-id="${p.id}" onchange="setField(this);renderBase()" style="font-size:var(--fs-xs);padding:2px 4px;">
             <option value="">— manual —</option>
-            ${['Churn','Pausado'].map(o=>`<option${p.status2===o?' selected':''}>${o}</option>`).join('')}
+            ${['Churn','Pausado','Reembolso'].map(o=>`<option${p.status2===o?' selected':''}>${o}</option>`).join('')}
           </select>
+          ${p.status2==='Reembolso' ? '<div style="font-size:var(--fs-3xs);color:var(--text-hint);">Data do pedido fica no Lead Time</div>' : ''}
         </div>
       </td>
 
@@ -8595,7 +8607,10 @@ function buildOvInsightsSemana() {
   // TAMBÉM tem uma flag manual Vermelha por cima (ex: pausado por inadimplência) continua
   // contando como Pausado aqui — a flag manual e o motivo continuam aparecendo normalmente na
   // linha do projeto no Lead Time, só não "sequestram" o projeto pro card Vermelho.
-  const projetosPausadosAgora = projects.filter(p => !isDroFam(p) && p.inicio && calcStatus2(p) === 'Pausado');
+  // statusEmStandby cobre Pausado E Reembolso — os dois são "em standby" (fora da avaliação de
+  // saúde, fora da carga), então dividem o mesmo 4º card em vez de Reembolso ficar sem card
+  // nenhum de novo.
+  const projetosPausadosAgora = projects.filter(p => !isDroFam(p) && p.inicio && statusEmStandby(p));
   const flags = { Verde: 0, Amarelo: 0, Vermelho: 0 };
   projetosAtivosAgora.forEach(p => { const f = calcFlagAutomatica(p, refDateSemana); if (flags[f] !== undefined) flags[f]++; });
   // Base unificada — os 4 cards (Verde/Amarelo/Vermelho/Pausado) somam 100% do portfólio ativo
@@ -8650,7 +8665,7 @@ function buildOvInsightsSemana() {
     + quadradoGrande(flags.Verde, pct(flags.Verde, totalFlags), 'var(--green)', 'Verde', 'Verde')
     + quadradoGrande(flags.Amarelo, pct(flags.Amarelo, totalFlags), 'var(--amber)', 'Amarelo', 'Amarelo')
     + quadradoGrande(flags.Vermelho, pct(flags.Vermelho, totalFlags), 'var(--accent)', 'Vermelho', 'Vermelho')
-    + quadradoGrande(projetosPausadosAgora.length, pct(projetosPausadosAgora.length, totalFlags), 'var(--text-hint)', 'Pausado', 'Pausado')
+    + quadradoGrande(projetosPausadosAgora.length, pct(projetosPausadosAgora.length, totalFlags), 'var(--text-hint)', 'Pausado/Reemb.', 'Pausado')
     + '</div>'
     + (totalFlags===0 ? '<div style="font-size:var(--fs-sm);color:var(--text-hint);margin-top:8px;">Nenhum projeto com entrega registrada nessa semana.</div>' : '')
     + '</div>';
@@ -8756,10 +8771,10 @@ function buildOvGantt() {
   let prjs = projects.filter(p => {
     if (isDroFam(p)) return false;
     if (!p.inicio) return false;
-    // Pausado usa calcStatus2 (não calcFlagAutomatica) — mesmo critério do card: um pausado com
-    // flag manual Vermelha por cima ainda é "Pausado" pra esse filtro, senão o clique no card
-    // mostraria menos projeto do que o número que o próprio card anuncia.
-    if (ovFlagFiltro === 'Pausado') return calcStatus2(p) === 'Pausado';
+    // Pausado usa statusEmStandby (Pausado OU Reembolso), não calcFlagAutomatica — mesmo
+    // critério do card: um pausado com flag manual Vermelha por cima ainda entra aqui, senão o
+    // clique no card mostraria menos projeto do que o número que o próprio card anuncia.
+    if (ovFlagFiltro === 'Pausado') return statusEmStandby(p);
     if (calcStatus2(p) === 'Em andamento') return true;
     const ent = p.entregas || {};
     return [0,1,2,3,4,5,6].some(i => {
@@ -8769,7 +8784,7 @@ function buildOvGantt() {
   });
   if (consFilter) prjs = prjs.filter(p => p.consultor === consFilter);
   if (tagFilter) prjs = prjs.filter(p => (p.tags || []).includes(tagFilter));
-  if (ovFlagFiltro === 'Pausado') prjs = prjs.filter(p => calcStatus2(p) === 'Pausado');
+  if (ovFlagFiltro === 'Pausado') prjs = prjs.filter(p => statusEmStandby(p));
   else if (ovFlagFiltro) prjs = prjs.filter(p => calcFlagAutomatica(p, refDateSemana) === ovFlagFiltro);
   if (ovPrazoFiltro) prjs = prjs.filter(p => {
     const st = prazoStatus(p);
@@ -9453,16 +9468,21 @@ function ltSetField(id, field, val) {
     buildFunil(consFilter);
   }
 }
-// Sinalizar Pausado/Churn direto no Lead Time, do lado do motivo de perda — antes só dava pra
-// fazer isso na Base de Projetos, o que atrapalhava o acompanhamento em comitê (a coordenadora
-// já está passando linha por linha aqui, não faz sentido pular de aba só pra marcar status).
-// Diferente de ltSetField: esse campo muda o badge de status E a flag calculada NESSA MESMA
-// linha (statusBadge2/calcFlagAutomatica), então precisa redesenhar a tabela pra não ficar com
-// o resto da linha desatualizado.
+// Sinalizar Churn/Pausado/Reembolso direto no Lead Time, do lado do motivo de perda — antes só
+// dava pra fazer isso na Base de Projetos, o que atrapalhava o acompanhamento em comitê (a
+// coordenadora já está passando linha por linha aqui, não faz sentido pular de aba só pra
+// marcar status). Diferente de ltSetField: esse campo muda o badge de status E a flag calculada
+// NESSA MESMA linha (statusBadge2/calcFlagAutomatica), então precisa redesenhar a tabela pra não
+// ficar com o resto da linha desatualizado.
 function ltSetStatus2(id, val) {
   const p = projects.find(x => String(x.id) === String(id));
   if (!p) return;
+  const eraReembolso = p.status2 === 'Reembolso';
   p.status2 = val;
+  // Saindo de "Reembolso" pra outro status: limpa a data/decisão do pedido — senão o card de
+  // Reembolsos da Visão Geral (que só olha dataReembolso, independente do status2) continuaria
+  // mostrando esse projeto como se ainda tivesse um pedido em aberto.
+  if (eraReembolso && val !== 'Reembolso') { p.dataReembolso = ''; p.reembolsoStatus = ''; }
   upd();
   buildLeadTime();
 }
@@ -10571,10 +10591,10 @@ function buildLeadTime() {
   // Mesma restrição da composição (só "Em andamento" tem flag/prazo significativos) — clicar
   // um quadrado nunca deveria trazer de volta um Finalizado/Churn antigo só por causa do
   // "Vermelho" artificial da estagnação. Pausado é a exceção de propósito: ele nunca é "Em
-  // andamento", então precisa do próprio passe pra esse filtro funcionar — e usa calcStatus2
-  // (não calcFlagAutomatica), mesmo critério do card: um pausado com flag manual Vermelha por
-  // cima continua contando como Pausado aqui.
-  if (ltFlagFiltro === 'Pausado') list = list.filter(p => calcStatus2(p) === 'Pausado');
+  // andamento", então precisa do próprio passe pra esse filtro funcionar — e usa statusEmStandby
+  // (Pausado OU Reembolso, não calcFlagAutomatica), mesmo critério do card: um pausado com flag
+  // manual Vermelha por cima continua contando aqui.
+  if (ltFlagFiltro === 'Pausado') list = list.filter(p => statusEmStandby(p));
   else if (ltFlagFiltro) list = list.filter(p => calcFlagAutomatica(p) === ltFlagFiltro && calcStatus2(p) === 'Em andamento');
   if (ltPrazoFiltro) list = list.filter(p => {
     if (calcStatus2(p) !== 'Em andamento') return false;
@@ -10733,25 +10753,28 @@ function buildLeadTime() {
           + ['Monetizado','Não monetizado'].map(o => '<option' + ((p.conv||'')===o?' selected':'') + '>' + o + '</option>').join('')
           + '</select>'
           + '</td>'
-          // Status (Pausado/Churn) + Motivo perda + data do pedido de reembolso — status fica
-          // aqui, não só na Base de Projetos, pra dar pra sinalizar tudo direto em comitê sem
-          // trocar de aba.
+          // Status (Churn/Pausado/Reembolso) — um campo só, com o sub-campo relevante abrindo
+          // conforme a escolha, em vez de sempre mostrar Motivo E Pedido de reembolso juntos
+          // independente do que realmente se aplica. Fica aqui, não só na Base de Projetos, pra
+          // dar pra sinalizar tudo direto em comitê sem trocar de aba.
           + '<td style="padding:6px 8px;">'
-          + '<div style="margin-bottom:6px;">'
           + '<div style="margin-bottom:3px;">' + statusBadge2(p) + '</div>'
-          + '<select class="sel" style="font-size:var(--fs-xs);width:100%;padding:2px 4px;" onchange="ltSetStatus2(' + p.id + ',this.value)">'
+          + '<select class="sel" style="font-size:var(--fs-xs);width:100%;padding:2px 4px;margin-bottom:6px;" onchange="ltSetStatus2(' + p.id + ',this.value)">'
           + '<option value="">— manual —</option>'
-          + ['Churn','Pausado'].map(o => '<option' + (p.status2===o?' selected':'') + '>' + o + '</option>').join('')
+          + ['Churn','Pausado','Reembolso'].map(o => '<option' + (p.status2===o?' selected':'') + '>' + o + '</option>').join('')
           + '</select>'
-          + '</div>'
-          + '<input type="text" class="sel" style="font-size:var(--fs-sm);width:100%;" placeholder="Motivo" '
-          + 'value="' + (p.motivo||'') + '" '
-          + 'onchange="ltSetField(' + p.id + ',\'motivo\',this.value)">'
-          + '<div style="font-size:var(--fs-2xs);color:var(--text-hint);margin:4px 0 1px;">Pedido de reembolso</div>'
-          + '<input type="date" class="sel" style="font-size:var(--fs-xs);width:100%;" '
-          + 'value="' + dv(p.dataReembolso) + '" '
-          + 'onchange="ltSetReembolsoData(' + p.id + ',this.value)">'
-          + '<div id="lt-reemb-status-' + p.id + '">' + ltReembStatusHTML(p) + '</div>'
+          + (p.status2 === 'Churn'
+              ? '<input type="text" class="sel" style="font-size:var(--fs-sm);width:100%;" placeholder="Motivo da perda" '
+                + 'value="' + (p.motivo||'') + '" '
+                + 'onchange="ltSetField(' + p.id + ',\'motivo\',this.value)">'
+              : '')
+          + (p.status2 === 'Reembolso'
+              ? '<div style="font-size:var(--fs-2xs);color:var(--text-hint);margin:0 0 1px;">Data do pedido</div>'
+                + '<input type="date" class="sel" style="font-size:var(--fs-xs);width:100%;" '
+                + 'value="' + dv(p.dataReembolso) + '" '
+                + 'onchange="ltSetReembolsoData(' + p.id + ',this.value)">'
+                + '<div id="lt-reemb-status-' + p.id + '">' + ltReembStatusHTML(p) + '</div>'
+              : '')
           + '</td>'
                     + '</tr>';
       }).join('');
@@ -11190,8 +11213,9 @@ function buildLtAnalise(list) {
   // mais abaixo. Usa calcStatus2 (não calcFlagAutomatica) de propósito: um projeto pausado com
   // uma flag manual Vermelha por cima (ex: pausado por inadimplência) continua contando como
   // Pausado aqui — a flag/motivo continuam aparecendo normalmente na linha da tabela, só não
-  // tiram o projeto do card Pausado.
-  const listaPausados = list.filter(p => calcStatus2(p) === 'Pausado');
+  // tiram o projeto do card Pausado. statusEmStandby cobre Pausado E Reembolso — os dois
+  // dividem o mesmo 4º card, mesmo critério da Visão Geral.
+  const listaPausados = list.filter(p => statusEmStandby(p));
 
   const flags = { Verde: 0, Amarelo: 0, Vermelho: 0 };
   listaFlag.forEach(p => { const f = calcFlagAutomatica(p); if (flags[f] !== undefined) flags[f]++; });
@@ -11236,7 +11260,7 @@ function buildLtAnalise(list) {
     + quadradoGrande(flags.Verde, pct(flags.Verde, totalFlags), 'var(--green)', 'Verde', 'Verde')
     + quadradoGrande(flags.Amarelo, pct(flags.Amarelo, totalFlags), 'var(--amber)', 'Amarelo', 'Amarelo')
     + quadradoGrande(flags.Vermelho, pct(flags.Vermelho, totalFlags), 'var(--accent)', 'Vermelho', 'Vermelho')
-    + quadradoGrande(listaPausados.length, pct(listaPausados.length, totalFlags), 'var(--text-hint)', 'Pausado', 'Pausado')
+    + quadradoGrande(listaPausados.length, pct(listaPausados.length, totalFlags), 'var(--text-hint)', 'Pausado/Reemb.', 'Pausado')
     + '</div></div>'
     + '<div style="flex:1;min-width:280px;">'
     + '<div style="font-size:var(--fs-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:8px;">Composição da flag — prazo</div>'
@@ -11438,7 +11462,7 @@ function buildGanttTer() {
   prjs.sort((a,b) => (a.inicio||'') < (b.inicio||'') ? -1 : 1);
   // Pausado fica na tabela (standby, ver ícone na linha abaixo), mas sai da conta de carga —
   // mesmo critério do Gantt SABER.
-  const prjsParaCarga = prjs.filter(p => p.status2 !== 'Pausado');
+  const prjsParaCarga = prjs.filter(p => !statusEmStandby(p));
 
   function ativoNaSemana(p, sDate) {
     const dIp = parseDate(p.inicio); if (!dIp) return false;
@@ -11504,6 +11528,7 @@ function buildGanttTer() {
   const STATUS_COLOR_TER = p => {
     const s = p.status2 || '';
     if (s === 'Pausado')  return 'var(--amber)';
+    if (s === 'Reembolso') return 'var(--purple)';
     if (s === 'Cancelado' || s === 'Interrompido') return 'var(--red)';
     if (s === 'Finalizado') return 'var(--text-hint)';
     return 'var(--blue)'; // Em andamento / Início em breve / default
@@ -11567,8 +11592,10 @@ function buildGanttTer() {
         + '</td>';
     }).join('');
 
-    const ehPausadoTer = p.status2 === 'Pausado';
-    const pausadoBadgeTer = ehPausadoTer
+    const ehPausadoTer = p.status2 === 'Pausado' || p.status2 === 'Reembolso';
+    const pausadoBadgeTer = p.status2 === 'Reembolso'
+      ? ' <span title="Reembolso — em standby, não conta na carga/capacity" style="display:inline-flex;align-items:center;gap:3px;font-size:var(--fs-3xs);font-weight:700;color:#fff;background:var(--purple);border-radius:8px;padding:1px 6px;white-space:nowrap;vertical-align:middle;">'+icon('coin',{size:8})+' Reembolso</span>'
+      : ehPausadoTer
       ? ' <span title="Pausado — em standby, não conta na carga/capacity" style="display:inline-flex;align-items:center;gap:3px;font-size:var(--fs-3xs);font-weight:700;color:#fff;background:var(--amber);border-radius:8px;padding:1px 6px;white-space:nowrap;vertical-align:middle;">'+icon('pause',{size:8})+' Pausado</span>'
       : '';
     return '<tr' + (ehPausadoTer ? ' style="opacity:.75;"' : '') + '>'
@@ -11807,13 +11834,14 @@ function buildCapacityRec() {
   }
 
   tbody.innerHTML = list.map(p => {
-    const ehPausadoRec = p.status2 === 'Pausado';
+    const ehPausadoRec = p.status2 === 'Pausado' || p.status2 === 'Reembolso';
     const dedTier = terExigeDedicacao(p) ? TER_DEDICACAO_TIERS[p.nivelDedicacao] : null;
     const dedTxt = terExigeDedicacao(p)
       ? (dedTier ? (p.nivelDedicacao + ' · ' + dedTier.cadencia) : 'Dedicação não definida')
       : '';
-    // Pausado: não calcula/mostra tarefas semanais (não é esperado que rotinas recorrentes
-    // continuem rodando durante a pausa) — célula fica vazia, só a linha continua visível.
+    // Pausado/Reembolso: não calcula/mostra tarefas semanais (não é esperado que rotinas
+    // recorrentes continuem rodando nesses estados) — célula fica vazia, só a linha continua
+    // visível.
     let cells;
     if (ehPausadoRec) {
       cells = Array.from({ length: nSemanas }, () => '<td style="text-align:center;padding:4px 3px;"><div style="font-size:var(--fs-3xs);color:var(--text-hint);">—</div></td>').join('');
@@ -11836,7 +11864,9 @@ function buildCapacityRec() {
           + '</td>';
       }).join('');
     }
-    const pausadoBadgeRec = ehPausadoRec
+    const pausadoBadgeRec = p.status2 === 'Reembolso'
+      ? ' <span title="Reembolso — em standby, não conta na carga/capacity" style="display:inline-flex;align-items:center;gap:3px;font-size:var(--fs-3xs);font-weight:700;color:#fff;background:var(--purple);border-radius:8px;padding:1px 6px;white-space:nowrap;vertical-align:middle;">'+icon('coin',{size:8})+' Reembolso</span>'
+      : ehPausadoRec
       ? ' <span title="Pausado — em standby, não conta na carga/capacity" style="display:inline-flex;align-items:center;gap:3px;font-size:var(--fs-3xs);font-weight:700;color:#fff;background:var(--amber);border-radius:8px;padding:1px 6px;white-space:nowrap;vertical-align:middle;">'+icon('pause',{size:8})+' Pausado</span>'
       : '';
     return '<tr' + (ehPausadoRec ? ' style="opacity:.75;"' : '') + '>'
@@ -11940,12 +11970,12 @@ function buildGantt() {
     if (isDroFam(p)) return false; // DRO tem aba própria
     const s2 = calcStatus2(p);
     if (s2 === 'Churn') return false;
-    // Pausado ignora a checagem de janela/recência abaixo (dFinal >= startRef) — ela existe pra
-    // não lotar a tabela de projeto antigo já encerrado, mas um projeto pausado tem prevFim
-    // "congelado" (ninguém atualiza previsão de quem está parado), então quase sempre cairia
-    // fora da janela mesmo devendo continuar visível. Achado ao investigar por que só 2 de 4
-    // projetos Pausado apareciam no Capacity — os outros 2 tinham prevFim de semanas atrás.
-    if (s2 === 'Pausado') return true;
+    // Pausado/Reembolso ignoram a checagem de janela/recência abaixo (dFinal >= startRef) — ela
+    // existe pra não lotar a tabela de projeto antigo já encerrado, mas um projeto em standby
+    // tem prevFim "congelado" (ninguém atualiza previsão de quem está parado), então quase
+    // sempre cairia fora da janela mesmo devendo continuar visível. Achado ao investigar por que
+    // só 2 de 4 projetos Pausado apareciam no Capacity — os outros 2 tinham prevFim antigo.
+    if (s2 === 'Pausado' || s2 === 'Reembolso') return true;
     const dI = parseDate(p.inicio);
     // usa realFim se disponível (pode ser futuro), senão prevFim
     const dFBase = p.realFim ? parseDate(p.realFim) : ((p.realFim && p.prevFim && p.realFim > p.prevFim ? parseDate(p.realFim) : (p.prevFim ? parseDate(p.prevFim) : new Date(dI.getTime() + 45 * 864e5))));
@@ -11975,7 +12005,7 @@ function buildGantt() {
       if (!ltInicio(p)) return false;
       // Inclui Em andamento E Finalizado (decolagem pode ter sido nessa semana)
       const st = calcStatus2(p);
-      if (st === 'Churn' || st === 'Pausado' || st === 'Início em breve') return false;
+      if (st === 'Churn' || st === 'Pausado' || st === 'Reembolso' || st === 'Início em breve') return false;
       const ent = p.entregas || {};
       // Para etapa > 0: etapa anterior deve estar registrada
       if (etapaIdx > 0) {
@@ -12006,7 +12036,7 @@ function buildGantt() {
     const domSem = new Date(segSem); domSem.setDate(segSem.getDate() + 6); domSem.setHours(23,59,59,999);
     prjs = prjs.filter(p => {
       const st = calcStatus2(p);
-      if (st === 'Churn' || st === 'Pausado') return false;
+      if (st === 'Churn' || st === 'Pausado' || st === 'Reembolso') return false;
       return designerFilter ? designerAtivoNaSemana(p, segSem, domSem) : consultorAtivoNaSemana(p, segSem, domSem);
     });
     prjs.sort((a, b) => {
@@ -12030,7 +12060,7 @@ function buildGantt() {
   const droParaCarga = projects.filter(p => {
     if (!isDroFam(p) || !p.inicio) return false;
     const s2 = calcStatus2(p);
-    if (s2 === 'Finalizado' || s2 === 'Churn' || s2 === 'Pausado') return false;
+    if (s2 === 'Finalizado' || s2 === 'Churn' || s2 === 'Pausado' || s2 === 'Reembolso') return false;
     const hoje2 = new Date(); hoje2.setHours(0,0,0,0);
     if (p.prevFim && parseDate(p.prevFim) < hoje2) return false;
     if (consFilter && p.consultor !== consFilter) return false;
@@ -12045,10 +12075,10 @@ function buildGantt() {
     }
     return true;
   });
-  // Pausado fica de fora de toda conta de carga/capacity (buildCargaSemanal e o card "Projetos
-  // ativos por semana" logo abaixo, os dois alimentados por projsComDRO) — mas continua na
-  // tabela (prjs, sem filtro aqui) pra aparecer visualmente como standby, não sumir.
-  const prjsParaCarga = prjs.filter(p => calcStatus2(p) !== 'Pausado');
+  // Pausado/Reembolso ficam de fora de toda conta de carga/capacity (buildCargaSemanal e o card
+  // "Projetos ativos por semana" logo abaixo, os dois alimentados por projsComDRO) — mas
+  // continuam na tabela (prjs, sem filtro aqui) pra aparecer visualmente como standby, não sumir.
+  const prjsParaCarga = prjs.filter(p => !statusEmStandby(p));
   const projsComDRO = [...prjsParaCarga, ...droParaCarga];
   buildCargaSemanal(projsComDRO, semanas);
   buildCargaSemanal(projsComDRO, semanas, 'designer', 'carga-designer', 'Carga por designer — semana a semana (só Kickoff, Análise de Ambientes e Decolagem)', 'Designer', designerAtivoNaSemana);
@@ -12238,10 +12268,11 @@ function buildGantt() {
 
   // Gantt D&P sempre mostra seus projetos (filtro de auditor só afeta seção DRO abaixo)
   tbody.innerHTML = prjs.map(p => {
-    // Pausado: fica na tabela (não é filtrado em prjs), mas com ícone de interrompido no nome
-    // e a barra apagada — sinaliza "em standby" sem fingir que o timeline normal continua
-    // valendo (ele não conta em prjsParaCarga/capacity, ver acima).
-    const ehPausado = calcStatus2(p) === 'Pausado';
+    // Pausado/Reembolso: ficam na tabela (não são filtrados em prjs), mas com ícone de
+    // interrompido no nome e a barra apagada — sinaliza "em standby" sem fingir que o timeline
+    // normal continua valendo (nenhum dos dois conta em prjsParaCarga/capacity, ver acima).
+    const statusStandby = calcStatus2(p);
+    const ehPausado = statusStandby === 'Pausado' || statusStandby === 'Reembolso';
     const dI    = parseDate(p.inicio);
     // dF: se já concluiu de verdade (realFim), essa é a data que manda — não estica até a
     // previsão (prevFim). Senão, usa max(prevFim, decolagem calculada) pra garantir que a
@@ -12345,7 +12376,9 @@ function buildGantt() {
     }).join('');
 
     const dotColor = consColor(p.consultor);
-    const pausadoBadge = ehPausado
+    const pausadoBadge = statusStandby === 'Reembolso'
+      ? ' <span title="Reembolso — em standby, não conta na carga/capacity" style="display:inline-flex;align-items:center;gap:3px;font-size:var(--fs-3xs);font-weight:700;color:#fff;background:var(--purple);border-radius:8px;padding:1px 6px;white-space:nowrap;vertical-align:middle;">'+icon('coin',{size:8})+' Reembolso</span>'
+      : ehPausado
       ? ' <span title="Pausado — em standby, não conta na carga/capacity" style="display:inline-flex;align-items:center;gap:3px;font-size:var(--fs-3xs);font-weight:700;color:#fff;background:var(--amber);border-radius:8px;padding:1px 6px;white-space:nowrap;vertical-align:middle;">'+icon('pause',{size:8})+' Pausado</span>'
       : '';
     return '<tr' + (ehPausado ? ' style="opacity:.75;"' : '') + '>'
