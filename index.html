@@ -16434,7 +16434,7 @@ function usuarioFecharModal() { document.getElementById('modal-usuario').style.d
 
 // Cargos que o time já usa (coluna Cargo do PDI) + os que já estão no cadastro. "Outro…"
 // acrescenta um novo na hora.
-const CARGOS_BASE = ['Consultor', 'Designer', 'Coordenador', 'Sales'];
+const CARGOS_BASE = ['Consultor', 'Designer', 'Coordenador', 'Analista de Martech'];
 function usuarioMontarCargos(atual) {
   const sel = document.getElementById('usu-cargo');
   const lista = [...new Set(CARGOS_BASE.concat(USUARIOS.map(u => u.cargo).filter(Boolean), atual ? [atual] : []))]
