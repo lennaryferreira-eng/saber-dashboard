@@ -8590,9 +8590,12 @@ function buildOvInsightsSemana() {
   const refDateSemana = refDateParaSemana(ovInsightsSemanaOffset);
   const projetosAtivosAgora = projects.filter(p => !isDroFam(p) && !p.dataReembolso && p.inicio && calcStatus2(p) === 'Em andamento');
   // Pausado não é "Em andamento", então nunca entrava em projetosAtivosAgora — sumia de
-  // Verde/Amarelo/Vermelho sem ir pra lugar nenhum. Conta à parte (calcFlagAutomatica já
-  // devolve 'Pausado' pra esse caso) e ganha um 4º card neutro logo abaixo.
-  const projetosPausadosAgora = projects.filter(p => !isDroFam(p) && p.inicio && calcFlagAutomatica(p, refDateSemana) === 'Pausado');
+  // Verde/Amarelo/Vermelho sem ir pra lugar nenhum. Conta à parte e ganha um 4º card neutro
+  // logo abaixo. Usa calcStatus2 (não calcFlagAutomatica) de propósito: um projeto pausado que
+  // TAMBÉM tem uma flag manual Vermelha por cima (ex: pausado por inadimplência) continua
+  // contando como Pausado aqui — a flag manual e o motivo continuam aparecendo normalmente na
+  // linha do projeto no Lead Time, só não "sequestram" o projeto pro card Vermelho.
+  const projetosPausadosAgora = projects.filter(p => !isDroFam(p) && p.inicio && calcStatus2(p) === 'Pausado');
   const flags = { Verde: 0, Amarelo: 0, Vermelho: 0 };
   projetosAtivosAgora.forEach(p => { const f = calcFlagAutomatica(p, refDateSemana); if (flags[f] !== undefined) flags[f]++; });
   // Base unificada — os 4 cards (Verde/Amarelo/Vermelho/Pausado) somam 100% do portfólio ativo
@@ -8753,7 +8756,10 @@ function buildOvGantt() {
   let prjs = projects.filter(p => {
     if (isDroFam(p)) return false;
     if (!p.inicio) return false;
-    if (ovFlagFiltro === 'Pausado') return calcFlagAutomatica(p, refDateSemana) === 'Pausado';
+    // Pausado usa calcStatus2 (não calcFlagAutomatica) — mesmo critério do card: um pausado com
+    // flag manual Vermelha por cima ainda é "Pausado" pra esse filtro, senão o clique no card
+    // mostraria menos projeto do que o número que o próprio card anuncia.
+    if (ovFlagFiltro === 'Pausado') return calcStatus2(p) === 'Pausado';
     if (calcStatus2(p) === 'Em andamento') return true;
     const ent = p.entregas || {};
     return [0,1,2,3,4,5,6].some(i => {
@@ -8763,7 +8769,8 @@ function buildOvGantt() {
   });
   if (consFilter) prjs = prjs.filter(p => p.consultor === consFilter);
   if (tagFilter) prjs = prjs.filter(p => (p.tags || []).includes(tagFilter));
-  if (ovFlagFiltro) prjs = prjs.filter(p => calcFlagAutomatica(p, refDateSemana) === ovFlagFiltro);
+  if (ovFlagFiltro === 'Pausado') prjs = prjs.filter(p => calcStatus2(p) === 'Pausado');
+  else if (ovFlagFiltro) prjs = prjs.filter(p => calcFlagAutomatica(p, refDateSemana) === ovFlagFiltro);
   if (ovPrazoFiltro) prjs = prjs.filter(p => {
     const st = prazoStatus(p);
     if (ovPrazoFiltro === 'noPrazo')  return st.ok === true && !st.risco;
@@ -10551,8 +10558,11 @@ function buildLeadTime() {
   // Mesma restrição da composição (só "Em andamento" tem flag/prazo significativos) — clicar
   // um quadrado nunca deveria trazer de volta um Finalizado/Churn antigo só por causa do
   // "Vermelho" artificial da estagnação. Pausado é a exceção de propósito: ele nunca é "Em
-  // andamento", então precisa do próprio passe pra esse filtro funcionar.
-  if (ltFlagFiltro) list = list.filter(p => calcFlagAutomatica(p) === ltFlagFiltro && (ltFlagFiltro === 'Pausado' || calcStatus2(p) === 'Em andamento'));
+  // andamento", então precisa do próprio passe pra esse filtro funcionar — e usa calcStatus2
+  // (não calcFlagAutomatica), mesmo critério do card: um pausado com flag manual Vermelha por
+  // cima continua contando como Pausado aqui.
+  if (ltFlagFiltro === 'Pausado') list = list.filter(p => calcStatus2(p) === 'Pausado');
+  else if (ltFlagFiltro) list = list.filter(p => calcFlagAutomatica(p) === ltFlagFiltro && calcStatus2(p) === 'Em andamento');
   if (ltPrazoFiltro) list = list.filter(p => {
     if (calcStatus2(p) !== 'Em andamento') return false;
     const st = prazoStatus(p);
@@ -11154,9 +11164,12 @@ function buildLtAnalise(list) {
   const listaFlag = list.filter(p => calcStatus2(p) === 'Em andamento');
   // Pausado não é "Em andamento", então nunca entrava aqui — sumia de Verde/Amarelo/Vermelho E
   // não tinha card nenhum pra ele, mesmo aparecendo normalmente na tabela do Lead Time logo
-  // abaixo. Conta à parte (via calcFlagAutomatica, que já devolve 'Pausado' pra esse caso) e
-  // entra como um 4º card neutro — ver quadradoGrande(...,'Pausado',...) mais abaixo.
-  const listaPausados = list.filter(p => calcFlagAutomatica(p) === 'Pausado');
+  // abaixo. Conta à parte e entra como um 4º card neutro — ver quadradoGrande(...,'Pausado',...)
+  // mais abaixo. Usa calcStatus2 (não calcFlagAutomatica) de propósito: um projeto pausado com
+  // uma flag manual Vermelha por cima (ex: pausado por inadimplência) continua contando como
+  // Pausado aqui — a flag/motivo continuam aparecendo normalmente na linha da tabela, só não
+  // tiram o projeto do card Pausado.
+  const listaPausados = list.filter(p => calcStatus2(p) === 'Pausado');
 
   const flags = { Verde: 0, Amarelo: 0, Vermelho: 0 };
   listaFlag.forEach(p => { const f = calcFlagAutomatica(p); if (flags[f] !== undefined) flags[f]++; });
