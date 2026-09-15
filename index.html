@@ -3209,6 +3209,10 @@ function buildCultura(){
 /* ===== fim Termômetro Cultural ===== */
 
 var _carregandoInicial = false; // flag de carga inicial (declarada no topo para evitar TDZ)
+// Resolve quando a primeira carga do Supabase termina. Quem precisa trocar de coordenação logo
+// ao entrar (perfil só TER) espera isto: trocar no meio da carga misturaria dados das duas.
+var _cargaInicialResolver = null;
+var _cargaInicialPronta = new Promise(r => { _cargaInicialResolver = r; });
 
 // ── MODO VISUALIZAÇÃO (link com ?view) — somente leitura, nunca salva ──
 let VIEWER = new URLSearchParams(location.search).has('view'); // também vira true pra qualquer perfil não-ADM ao logar
@@ -4510,10 +4514,17 @@ let SESSAO_CONTINGENCIA = false; // true = servidor fora do ar, entrou com o úl
 
 // Converte o registro do banco no mesmo formato de perfil que o resto do painel já usa
 // (consultor / designer / viewer; ADM é a ausência dos três).
+// Cargo que dá visão só da TER, sem editar (definido com a coordenação em 15/09/2026).
+// O cargo só é alterado por ADM (a API recusa a própria pessoa mexer nele).
+const CARGO_SO_TER = 'Analista de Martech';
+function usuarioSoTer(u) {
+  return !!u && u.acesso !== 'adm' && u.acesso !== 'nenhum' && u.cargo === CARGO_SO_TER;
+}
 function perfilDoUsuario(u) {
   if (!u) return null;
   const nome = u.nome_exibicao;
   if (u.acesso === 'adm') return { nome, consultor: null };
+  if (usuarioSoTer(u)) return { nome, viewer: true, soTer: true };
   if (u.acesso === 'viewer') return { nome, viewer: true };
   if (u.acesso === 'consultor') return { nome, consultor: u.squad_nome };
   if (u.acesso === 'designer') return { nome, designer: u.squad_nome };
@@ -4733,6 +4744,7 @@ async function carregarSessao() {
   if (r.ok) {
     aplicarSessao(corpo);
     esconderAvisoContingencia();
+    await garantirCoordenacaoDoPerfil();
     if (gate) gate.style.display = 'none';
     refreshAll();
     return true;
@@ -4752,7 +4764,7 @@ async function carregarSessao() {
 // usuários. Não abre brecha nova: os dados do painel já são gravados com a chave pública do
 // Supabase; o que a sessão protege de verdade é a tabela de usuários, e ela continua exigindo
 // o cookie no servidor.
-function entrarEmContingencia(motivo) {
+async function entrarEmContingencia(motivo) {
   const gate = document.getElementById('login-gate');
   const errEl = document.getElementById('gate-error');
   let cache = null;
@@ -4769,11 +4781,21 @@ function entrarEmContingencia(motivo) {
   SESSAO_CONTINGENCIA = true;
   _aplicarLogin(perfilDoUsuario(USUARIO_ATUAL));
   aplicarRosterDoSquad();
+  await garantirCoordenacaoDoPerfil();
   if (gate) gate.style.display = 'none';
   const aviso = document.getElementById('aviso-contingencia');
   if (aviso) aviso.style.display = 'flex';
   refreshAll();
   return true;
+}
+// Perfil só TER: espera a carga inicial (que começa sempre pela SABER) e troca para a TER antes
+// de a tela de entrada sumir, para a pessoa não ver a SABER nem por um instante.
+async function garantirCoordenacaoDoPerfil() {
+  if (!(currentPerfil && currentPerfil.soTer) || currentCoord === 'ter') return;
+  const status = document.getElementById('gate-status');
+  if (status) status.textContent = 'Abrindo a coordenação TER…';
+  await _cargaInicialPronta;
+  if (currentPerfil && currentPerfil.soTer && currentCoord !== 'ter') await switchCoord('ter');
 }
 function esconderAvisoContingencia() {
   const aviso = document.getElementById('aviso-contingencia');
@@ -4808,6 +4830,8 @@ function updatePerfilNavVisibility() {
   // Esconde o botão de trocar pra Coordenação TER — só consultor/designer ficam presos à SABER.
   const btnTer = document.getElementById('coord-btn-ter');
   if (btnTer) btnTer.style.display = perfilRestringeNav(currentPerfil) ? 'none' : '';
+  const btnSaber = document.getElementById('coord-btn-saber');
+  if (btnSaber) btnSaber.style.display = (currentPerfil && currentPerfil.soTer) ? 'none' : '';
   // Capacity: designer não precisa ver "Carga por consultor", e consultor não precisa ver
   // "Carga por designer" — cada um só olha pro card que fala da própria função.
   const cargaConsultorEl = document.getElementById('carga-consultor');
@@ -16068,6 +16092,7 @@ async function sincronizarFotoNoUsuario(nomeSquad, foto) {
 const ACESSO_ROTULO = { adm: 'ADM', viewer: 'Visualização', consultor: 'Consultor', designer: 'Designer', nenhum: 'Sem acesso' };
 const ACESSO_BADGE  = { adm: 'b-accent', viewer: 'b-blue', consultor: 'b-green', designer: 'b-purple', nenhum: 'b-gray' };
 const ACESSO_ORDEM  = { adm: 0, viewer: 1, consultor: 2, designer: 3, nenhum: 4 };
+function rotuloAcesso(u) { return usuarioSoTer(u) ? 'Visualização · só TER' : ACESSO_ROTULO[u.acesso]; }
 
 async function apiUsuarios(metodo, id, corpo) {
   const r = await fetch('/api/conta?r=usuarios' + (id ? '&id=' + encodeURIComponent(id) : ''), {
@@ -16157,7 +16182,7 @@ function buildPerfil() {
     + '<label class="conta-campo"><span class="aud-lbl">Telefone / WhatsApp</span><input id="perfil-tel" class="aud-inp" maxlength="30" inputmode="tel" value="' + escAttr(u.telefone || '') + '"' + (bloqueado ? ' disabled' : '') + '></label>'
     + '<div><span class="aud-lbl">Cargo</span><div class="conta-somente-leitura">' + icon('lock') + escAttr(u.cargo || 'Não definido') + '</div><div class="conta-dica">Quem define é um ADM.</div></div>'
     + '<div><span class="aud-lbl">E-mail</span><div class="conta-somente-leitura">' + escAttr(u.email || '—') + '</div></div>'
-    + '<div><span class="aud-lbl">Acesso</span><div class="conta-somente-leitura" style="flex-wrap:wrap;"><span class="badge ' + ACESSO_BADGE[u.acesso] + '" style="margin:0;">' + ACESSO_ROTULO[u.acesso] + '</span>'
+    + '<div><span class="aud-lbl">Acesso</span><div class="conta-somente-leitura" style="flex-wrap:wrap;"><span class="badge ' + ACESSO_BADGE[u.acesso] + '" style="margin:0;">' + rotuloAcesso(u) + '</span>'
     + (squad ? '<span>' + escAttr(squad) + '</span>' : '') + '</div></div>'
     + '</div>'
     + '<div id="perfil-msg" class="conta-msg" role="status">' + (bloqueado ? 'Modo contingência: não dá para salvar agora.' : '') + '</div>'
@@ -16261,7 +16286,11 @@ function renderPerfilDash() {
   const ehSquad = u.acesso === 'consultor' || u.acesso === 'designer';
 
   if (currentCoord === 'ter') {
-    el.innerHTML = '<div class="card"><div class="card-title">Indicadores</div><p class="conta-dica">Os indicadores do perfil usam as regras da Performance da SABER. Troque para a coordenação SABER para vê-los.</p></div>';
+    el.innerHTML = '<div class="card"><div class="card-title">Indicadores</div><p class="conta-dica">'
+      + (u && usuarioSoTer(u)
+        ? 'Os indicadores do perfil ainda usam só as regras da SABER. Os números da TER estão nas abas Projetos no Prazo, NPS e Performance.'
+        : 'Os indicadores do perfil usam as regras da Performance da SABER. Troque para a coordenação SABER para vê-los.')
+      + '</p></div>';
     return;
   }
 
@@ -16392,7 +16421,7 @@ function buildUsuarios() {
       + '<td><span class="conta-pessoa">' + avatarUsuarioHTML(u, 32) + '<span><strong>' + escAttr(u.nome_exibicao) + '</strong>' + (eu ? ' <small style="display:inline;">(você)</small>' : '')
       + '<small>' + escAttr(u.email || 'sem e-mail') + '</small></span></span></td>'
       + '<td>' + (u.cargo ? escAttr(u.cargo) : '<span class="conta-celula-vazia">—</span>') + '</td>'
-      + '<td><span class="badge ' + ACESSO_BADGE[u.acesso] + '" style="margin:0;">' + ACESSO_ROTULO[u.acesso] + '</span></td>'
+      + '<td><span class="badge ' + ACESSO_BADGE[u.acesso] + '" style="margin:0;">' + rotuloAcesso(u) + '</span></td>'
       + '<td>' + squad + '</td>'
       + '<td style="white-space:nowrap;">' + (u.telefone ? escAttr(u.telefone) : '<span class="conta-celula-vazia">—</span>') + '</td>'
       + '<td style="text-align:right;"><button class="btn btn-ghost" data-id="' + escAttr(u.id) + '" onclick="usuarioAbrirModal(this.dataset.id)">Editar</button></td>'
@@ -16445,10 +16474,23 @@ function usuarioMontarCargos(atual) {
   sel.dataset.anterior = atual || '';
 }
 async function usuarioCargoMudou(sel) {
-  if (sel.value !== '__outro__') { sel.dataset.anterior = sel.value; return; }
+  if (sel.value !== '__outro__') { sel.dataset.anterior = sel.value; usuarioAvisoCargo(); return; }
   const novo = ((await showPrompt('Nome do cargo:')) || '').trim();
   if (!novo) { sel.value = sel.dataset.anterior || ''; return; }
   usuarioMontarCargos(novo);
+  usuarioAvisoCargo();
+}
+// Analista de Martech vê só a TER e não edita: o acesso vira Visualização (ADM continua ADM)
+function usuarioAvisoCargo() {
+  const cargo = document.getElementById('usu-cargo').value;
+  const acesso = document.getElementById('usu-acesso');
+  const msg = document.getElementById('usu-modal-msg');
+  if (cargo !== CARGO_SO_TER) return;
+  if (!acesso.disabled && acesso.value !== 'adm' && acesso.value !== 'nenhum' && acesso.value !== 'viewer') {
+    acesso.value = 'viewer';
+    usuarioSincronizarAcesso();
+  }
+  if (msg && acesso.value !== 'adm') { msg.className = 'conta-msg'; msg.textContent = CARGO_SO_TER + ' entra só na coordenação TER, sem editar.'; }
 }
 
 // Acesso de consultor/designer já diz a função no squad: o campo some para não repetir a
@@ -16591,6 +16633,8 @@ async function switchCoord(coord) {
   if (coord === currentCoord) return;
   // Consultor (não-ADM) não acessa a TER de jeito nenhum, nem por clique manual/console.
   if (coord === 'ter' && perfilRestringeNav(currentPerfil)) return;
+  // Analista de Martech (perfil só TER) não abre a SABER, nem por clique nem por console
+  if (coord === 'saber' && currentPerfil && currentPerfil.soTer) return;
   // CRÍTICO: cancela qualquer save pendente da coordenação anterior — sem isso, um save
   // agendado (debounce de 1.5s) pode disparar já apontando pra tabela nova, gravando
   // os dados errados nela.
@@ -17602,6 +17646,7 @@ projects = []; // dados carregados do Supabase
   _carregandoInicial = true;
   await sbLoad();
   _carregandoInicial = false;
+  if (_cargaInicialResolver) _cargaInicialResolver();
   renderBase();
   refreshAll();
   buildLeadTime();
