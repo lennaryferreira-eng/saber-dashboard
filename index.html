@@ -11059,6 +11059,8 @@ function buildLeadTimeTer() {
   const tbody = document.getElementById('ltt-tbody');
   if (!tbody) return;
 
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+
   tbody.innerHTML = list.length === 0
     ? '<tr><td colspan="14" style="text-align:center;padding:24px;color:var(--text-hint);font-size:var(--fs-base);">Nenhum projeto encontrado</td></tr>'
     : list.map(p => {
@@ -11086,10 +11088,16 @@ function buildLeadTimeTer() {
               const feito = !!ent.feito;
               const reuniao = !!ent.reuniao;
               const ehUltima = si === semIdxs.length - 1;
-              const bg = feito ? 'var(--green)' : 'var(--surface3)';
-              const borderCor = feito ? 'var(--green)' : 'var(--border)';
-              const nomeCor = feito ? '#fff' : 'var(--text-hint)';
-              const tooltip = [nomeEtapaTer(p, si), feito ? 'aconteceu' : 'ainda não aconteceu',
+              // Card vermelho: etapa ainda não aconteceu e a data prevista dela (início + N dias
+              // por etapa, fixo — não recalcula pelo atraso de etapas anteriores) já passou. É
+              // o alerta por etapa pra agir antes do projeto como um todo dar problema.
+              const dataPlanejada = feito ? null : parseDate(semDataPlanejadaTer(p, si));
+              const atrasada = !feito && dataPlanejada && dataPlanejada < hoje;
+              const bg = feito ? 'var(--green)' : atrasada ? 'var(--red)' : 'var(--surface3)';
+              const borderCor = feito ? 'var(--green)' : atrasada ? 'var(--red)' : 'var(--border)';
+              const nomeCor = (feito || atrasada) ? '#fff' : 'var(--text-hint)';
+              const tooltip = [nomeEtapaTer(p, si),
+                feito ? 'aconteceu' : atrasada ? 'atrasada — previsto ' + fmtD(semDataPlanejadaTer(p, si)) : 'ainda não aconteceu',
                 reuniao ? ('reunião' + (ent.dataReuniao ? ' em ' + fmtD(ent.dataReuniao) : ' marcada, sem data')) : 'sem reunião registrada'].join(' · ');
               // Badge do checklist de fechamento — só na última etapa. Clicável pra reabrir o
               // checklist sem precisar desmarcar/remarcar a etapa. Verde só com os 4 itens.
