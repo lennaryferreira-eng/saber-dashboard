@@ -1017,7 +1017,7 @@
           <th style="min-width:160px;">Escopos One-time</th>
           <th style="min-width:160px;">Escopos Recorrente</th>
           <th style="min-width:130px;">Conversão</th>
-          <th style="min-width:130px;">Motivo perda</th>
+          <th style="min-width:150px;">Status / Motivo perda</th>
         </tr>
       </thead>
       <tbody id="lt-tbody"></tbody>
@@ -9453,6 +9453,19 @@ function ltSetField(id, field, val) {
     buildFunil(consFilter);
   }
 }
+// Sinalizar Pausado/Churn direto no Lead Time, do lado do motivo de perda — antes só dava pra
+// fazer isso na Base de Projetos, o que atrapalhava o acompanhamento em comitê (a coordenadora
+// já está passando linha por linha aqui, não faz sentido pular de aba só pra marcar status).
+// Diferente de ltSetField: esse campo muda o badge de status E a flag calculada NESSA MESMA
+// linha (statusBadge2/calcFlagAutomatica), então precisa redesenhar a tabela pra não ficar com
+// o resto da linha desatualizado.
+function ltSetStatus2(id, val) {
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!p) return;
+  p.status2 = val;
+  upd();
+  buildLeadTime();
+}
 // ── OPORTUNIDADES DA AQL ─────────────────────────────────────────────────
 // Cada projeto pode ter mais de uma oportunidade aberta ao mesmo tempo (ex: upsell e
 // cross-sell rodando em paralelo) — p.oportunidades[] é a lista, cada item com sua própria
@@ -10720,8 +10733,17 @@ function buildLeadTime() {
           + ['Monetizado','Não monetizado'].map(o => '<option' + ((p.conv||'')===o?' selected':'') + '>' + o + '</option>').join('')
           + '</select>'
           + '</td>'
-          // Motivo perda + data do pedido de reembolso
+          // Status (Pausado/Churn) + Motivo perda + data do pedido de reembolso — status fica
+          // aqui, não só na Base de Projetos, pra dar pra sinalizar tudo direto em comitê sem
+          // trocar de aba.
           + '<td style="padding:6px 8px;">'
+          + '<div style="margin-bottom:6px;">'
+          + '<div style="margin-bottom:3px;">' + statusBadge2(p) + '</div>'
+          + '<select class="sel" style="font-size:var(--fs-xs);width:100%;padding:2px 4px;" onchange="ltSetStatus2(' + p.id + ',this.value)">'
+          + '<option value="">— manual —</option>'
+          + ['Churn','Pausado'].map(o => '<option' + (p.status2===o?' selected':'') + '>' + o + '</option>').join('')
+          + '</select>'
+          + '</div>'
           + '<input type="text" class="sel" style="font-size:var(--fs-sm);width:100%;" placeholder="Motivo" '
           + 'value="' + (p.motivo||'') + '" '
           + 'onchange="ltSetField(' + p.id + ',\'motivo\',this.value)">'
