@@ -3706,7 +3706,10 @@ function pipeEventosDoMes(label, ano){
   const mesIdx = (_MES_ORDEM[label]||0) - 1;
   const out = [];
   (typeof projects !== 'undefined' ? projects : []).forEach(p => {
-    if (isDroFam(p)) return;
+    // DRO/DRX ENTRAM aqui — diferente da maioria dos outros KPIs (Conversão/Monetização/NPS/
+    // Prazo), que excluem DRO/DRX de propósito por terem tracking próprio na aba DRO. A AQL é
+    // sobre oportunidades levantadas (upsell/cross-sell em cima de um DRO/DRX já rodando
+    // inclusive), não sobre o ciclo de vida do projeto em si — não faz sentido excluir aqui.
     (p.pipeEventos||[]).forEach(ev => {
       const dt = parseDate(ev.data);
       if (dt && dt.getMonth() === mesIdx && dt.getFullYear() === ano){
@@ -8650,7 +8653,8 @@ function buildPipeEventos() {
   };
   let linhas = [], orfaosPorProjeto = [];
   projects.forEach(p => {
-    if (isDroFam(p)) return;
+    // DRO/DRX entram aqui — mesmo motivo de pipeEventosDoMes acima (a AQL não é sobre o ciclo
+    // de vida do projeto DRO/DRX, é sobre oportunidades levantadas em cima dele).
     if (consF && p.consultor !== consF) return;
     oportunidadesDe(p).forEach(o => {
       const eventosLigados = (p.pipeEventos||[]).filter(e => e.linkOportId === o.id);
@@ -8766,7 +8770,10 @@ function buildPipeEventosMatriz(label, ano, consF) {
 function openNovoPipeEvento() {
   const dl = document.getElementById('pev-proj-list');
   if (dl) {
-    const lista = projects.filter(p => !p.modelo || p.modelo !== 'DRO').slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||''));
+    // Inclui DRO/DRX — é o ÚNICO jeito deles gerarem uma oportunidade na AQL, já que não
+    // passam pelo Lead Time padrão (onde a maioria dos projetos gera oportunidade sozinha
+    // ao avançar etapa) — sem DRO/DRX aqui, esses projetos nunca tinham como entrar na AQL.
+    const lista = projects.slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||''));
     dl.innerHTML = lista.map(p => `<option value="${(p.nome||'').replace(/"/g,'&quot;')} — ${p.consultor||'sem consultor'} (#${p.id})">`).join('');
   }
   ['pev-proj','pev-ot','pev-rec','pev-escopo','pev-obs'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
