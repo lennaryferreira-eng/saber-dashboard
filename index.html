@@ -257,6 +257,10 @@
           <option>Vermelho</option>
         </select>
       </div>
+      <div class="base-filter-group">
+        <span class="base-filter-label">Mês início</span>
+        <select class="base-sel" id="ft-mes" onchange="renderBaseTer()"><option value="">Todos</option></select>
+      </div>
       <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
         <button class="base-clear" onclick="clearBaseTerFilters()"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg> Limpar</button>
         <span class="base-count" id="base-ter-count"></span>
@@ -6493,25 +6497,55 @@ function getBaseTerFiltered() {
   const fRec    = document.getElementById('ft-recorrencia')?.value || '';
   const fStatus = document.getElementById('ft-status')?.value || '';
   const fFlag   = document.getElementById('ft-flag')?.value || '';
-  return projects.filter(p => {
+  const fMes    = document.getElementById('ft-mes')?.value || '';
+  const list = projects.filter(p => {
     if (fConsultor && p.consultor !== fConsultor) return false;
     if (fModelo && p.modelo !== fModelo) return false;
     if (fRec && p.recorrencia !== fRec) return false;
     if (fStatus && p.status2 !== fStatus) return false;
     if (fFlag && p.flag !== fFlag) return false;
+    if (fMes) {
+      if (!p.inicio) return false;
+      const d = parseDate(p.inicio);
+      const label = ALL_MESES.find(m => m.idx === d?.getMonth() && m.ano === d?.getFullYear());
+      if (!label || (label.label + '/' + label.ano) !== fMes) return false;
+    }
     return true;
   });
+  // Padrão: mais recentes primeiro (mesmo critério da Base de Projetos SABER) — sem início
+  // definido vai pro final, não pro topo.
+  list.sort((a, b) => (b.inicio || '0000-00-00').localeCompare(a.inicio || '0000-00-00'));
+  return list;
 }
 function clearBaseTerFilters() {
-  ['ft-consultor','ft-modelo','ft-recorrencia','ft-status','ft-flag'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['ft-consultor','ft-modelo','ft-recorrencia','ft-status','ft-flag','ft-mes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   renderBaseTer();
 }
 function updateBaseTerConsultorOptions() {
   const sel = document.getElementById('ft-consultor');
-  if (!sel) return;
-  const atual = sel.value;
-  const nomes = [...new Set(projects.map(p => p.consultor).filter(Boolean))].sort((a,b) => a.localeCompare(b));
-  sel.innerHTML = '<option value="">Todos</option>' + nomes.map(n => '<option ' + (n===atual?'selected':'') + '>' + n + '</option>').join('');
+  if (sel) {
+    const atual = sel.value;
+    const nomes = [...new Set(projects.map(p => p.consultor).filter(Boolean))].sort((a,b) => a.localeCompare(b));
+    sel.innerHTML = '<option value="">Todos</option>' + nomes.map(n => '<option ' + (n===atual?'selected':'') + '>' + n + '</option>').join('');
+  }
+  const selMes = document.getElementById('ft-mes');
+  if (selMes) {
+    const meses = [...new Set(projects.map(p => {
+      if (!p.inicio) return null;
+      const d = parseDate(p.inicio);
+      const m = ALL_MESES.find(x => x.idx === d?.getMonth() && x.ano === d?.getFullYear());
+      return m ? m.label + '/' + m.ano : null;
+    }).filter(Boolean))];
+    meses.sort((a, b) => {
+      const [la, ya] = a.split('/'); const [lb, yb] = b.split('/');
+      const ma = ALL_MESES.find(x => x.label === la && x.ano === parseInt(ya));
+      const mb = ALL_MESES.find(x => x.label === lb && x.ano === parseInt(yb));
+      if (!ma || !mb) return 0;
+      return (mb.ano * 12 + mb.idx) - (ma.ano * 12 + ma.idx); // mais recente primeiro
+    });
+    const cur = selMes.value;
+    selMes.innerHTML = '<option value="">Todos</option>' + meses.map(m => `<option${m===cur?' selected':''}>${m}</option>`).join('');
+  }
 }
 
 function renderBaseTer() {
