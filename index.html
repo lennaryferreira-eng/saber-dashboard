@@ -3661,10 +3661,13 @@ function calcStatus2(p) {
   // ltTerSetFeito). checklistFinalCompleto está definida mais abaixo no arquivo, mas function
   // declaration é hoisted — funciona igual às outras dependências entre seções deste arquivo.
   const ultimaEntregaTerValida = ultimaEntregaTer && ultimaEntregaTer.real && checklistFinalCompleto(p);
-  const temDecolagem = (ent[6] && ent[6].real) || ultimaEntregaTerValida;
+  // TER: uma vez que a última etapa está marcada e o checklist de fechamento completo, o
+  // projeto finaliza na hora — não espera a data da entrega "passar" (diferente do SABER
+  // abaixo, onde dd < hoje segue valendo). Marcar o checklist HOJE precisa finalizar HOJE.
+  if (ultimaEntregaTerValida) return 'Finalizado';
+  const temDecolagem = ent[6] && ent[6].real;
   if (temDecolagem) {
-    const dataDecolagem = (ent[6] && ent[6].real) || ultimaEntregaTer.real;
-    const dd = parseDate(dataDecolagem);
+    const dd = parseDate(ent[6].real);
     if (dd && dd < hoje) return 'Finalizado';
   }
   // Tem alguma entrega registrada mas sem decolagem → Em andamento
