@@ -949,6 +949,8 @@
   <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:.8rem;">
     <span class="base-filter-label">Consultor</span>
     <select class="base-sel" id="nps-ter-f-cons" onchange="buildNpsTer()"><option value="">Todos</option></select>
+    <span class="base-filter-label">Mês</span>
+    <select class="base-sel" id="nps-ter-f-mes" onchange="buildNpsTer()"><option value="">Todos</option></select>
     <button class="base-clear" onclick="clearNpsTerFilters()">Limpar</button>
   </div>
 
@@ -7724,7 +7726,18 @@ function npsMesesRecorrente(p) {
 
 function clearNpsTerFilters() {
   const el = document.getElementById('nps-ter-f-cons'); if (el) el.value = '';
+  const elMes = document.getElementById('nps-ter-f-mes'); if (elMes) elMes.value = '';
   buildNpsTer();
+}
+
+// Rótulo "Label/Ano" (ex: "Julho/2026") a partir de uma data — mesmo formato usado no filtro
+// de Mês início da Base TER, reaproveitado aqui pro filtro de Mês do NPS.
+function mesLabelDe(dataISO) {
+  if (!dataISO) return null;
+  const d = parseDate(dataISO);
+  if (!d) return null;
+  const m = ALL_MESES.find(x => x.idx === d.getMonth() && x.ano === d.getFullYear());
+  return m ? m.label + '/' + m.ano : null;
 }
 
 function saveNpsNotaRec(key, val) { npsGet(key).nota = val; upd(); buildNpsTer(); }
@@ -7739,11 +7752,17 @@ function saveNpsNotaOt(id, val) { npsGet(String(id)).nota = val; upd(); buildNps
 function saveNpsDataOt(id, val) { npsGet(String(id)).dataResp = val; upd(); buildNpsTer(); }
 function saveNpsComentOt(id, val) { npsGet(String(id)).comentario = val; upd(); buildNpsTer(); }
 
-function buildNpsTerOneTime(fCons) {
+function buildNpsTerOneTime(fCons, fMes) {
   let base = projects.filter(p => p.recorrencia === 'One time' && calcStatus2(p) === 'Finalizado');
   if (fCons) base = base.filter(p => p.consultor === fCons);
+  // Data de finalização real: dataFimRealTer(p) primeiro (checklist de fechamento — é assim
+  // que a maioria dos projetos TER finaliza de fato, sem nunca preencher p.realFim à mão),
+  // prevFim só como último recurso pra um Finalizado manual sem nenhuma data real registrada.
+  const fimDe = p => dataFimRealTer(p) || p.prevFim;
+  // "Apto à coleta" no mês = finalizou NESSE mês — mesmo critério da SABER (Mês finalização).
+  if (fMes) base = base.filter(p => mesLabelDe(fimDe(p)) === fMes);
   base.sort((a, b) => {
-    const dA = parseDate(a.realFim || a.prevFim), dB = parseDate(b.realFim || b.prevFim);
+    const dA = parseDate(fimDe(a)), dB = parseDate(fimDe(b));
     if (!dA && !dB) return 0; if (!dA) return 1; if (!dB) return -1;
     return dB - dA;
   });
@@ -7752,7 +7771,7 @@ function buildNpsTerOneTime(fCons) {
   tbody.innerHTML = base.length === 0 ? emptyRow(7, 'Nenhum projeto One-time finalizado') : base.map(p => {
     const nd = npsData[String(p.id)] || { nota: '', comentario: '', dataResp: '' };
     return `<tr>
-      <td>${fmtD(p.realFim || p.prevFim) || '—'}</td><td>${p.nome||'—'}</td><td>${p.consultor||'—'}</td>
+      <td>${fmtD(fimDe(p)) || '—'}</td><td>${p.nome||'—'}</td><td>${p.consultor||'—'}</td>
       <td><input type="number" min="0" max="10" class="sel" style="width:55px" value="${nd.nota}" onchange="saveNpsNotaOt('${p.id}',this.value)" placeholder="—"></td>
       <td>${npsCat(nd.nota)}</td>
       <td><input type="date" class="sel" style="width:130px;font-size:var(--fs-sm);" value="${dv(nd.dataResp)}" onchange="saveNpsDataOt('${p.id}',this.value)"></td>
@@ -7762,11 +7781,15 @@ function buildNpsTerOneTime(fCons) {
   return base.map(p => npsData[String(p.id)]);
 }
 
-function buildNpsTerRecorrente(fCons) {
+function buildNpsTerRecorrente(fCons, fMes) {
   let base = projects.filter(p => p.recorrencia === 'Recorrente');
   if (fCons) base = base.filter(p => p.consultor === fCons);
   const linhas = [];
-  base.forEach(p => npsMesesRecorrente(p).forEach(m => linhas.push({ p, m })));
+  // "Apto à coleta" no mês = o projeto estava ativo nesse mês (dentro da janela início→hoje) —
+  // com filtro de mês marcado, só entra a linha DESSE mês, não o histórico inteiro.
+  base.forEach(p => npsMesesRecorrente(p)
+    .filter(m => !fMes || (m.label + '/' + m.ano) === fMes)
+    .forEach(m => linhas.push({ p, m })));
   const tbody = document.getElementById('nps-ter-rec-tbody');
   if (!tbody) return [];
   tbody.innerHTML = linhas.length === 0 ? emptyRow(7, 'Nenhum projeto Recorrente ativo') : linhas.map(({p, m}) => {
@@ -7792,8 +7815,30 @@ function buildNpsTer() {
   }
   const fCons = selCons?.value || '';
 
-  const respOneTime = buildNpsTerOneTime(fCons);
-  const respRec = buildNpsTerRecorrente(fCons);
+  // Meses disponíveis pro filtro: união dos meses de finalização (One-time) com os meses em
+  // que algum Recorrente esteve ativo (aptos à coleta) — ordenados do mais recente pro mais antigo.
+  const selMes = document.getElementById('nps-ter-f-mes');
+  if (selMes) {
+    const mesesOt = projects
+      .filter(p => p.recorrencia === 'One time' && calcStatus2(p) === 'Finalizado')
+      .map(p => mesLabelDe(p.realFim || p.prevFim)).filter(Boolean);
+    const mesesRec = projects
+      .filter(p => p.recorrencia === 'Recorrente')
+      .flatMap(p => npsMesesRecorrente(p).map(m => m.label + '/' + m.ano));
+    const meses = [...new Set([...mesesOt, ...mesesRec])].sort((a, b) => {
+      const [la, ya] = a.split('/'); const [lb, yb] = b.split('/');
+      const ma = ALL_MESES.find(x => x.label === la && x.ano === parseInt(ya));
+      const mb = ALL_MESES.find(x => x.label === lb && x.ano === parseInt(yb));
+      if (!ma || !mb) return 0;
+      return (mb.ano * 12 + mb.idx) - (ma.ano * 12 + ma.idx);
+    });
+    const curM = selMes.value;
+    selMes.innerHTML = '<option value="">Todos</option>' + meses.map(m => `<option${m===curM?' selected':''}>${m}</option>`).join('');
+  }
+  const fMes = selMes?.value || '';
+
+  const respOneTime = buildNpsTerOneTime(fCons, fMes);
+  const respRec = buildNpsTerRecorrente(fCons, fMes);
   const todas = [...respOneTime, ...respRec];
   const comNota = todas.filter(nd => nd && nd.nota !== '' && nd.nota !== undefined && nd.nota !== null);
   const notas = comNota.map(nd => parseInt(nd.nota)).filter(n => !isNaN(n));
