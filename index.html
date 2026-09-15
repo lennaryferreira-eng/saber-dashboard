@@ -10879,8 +10879,14 @@ function getLtTerFiltered() {
   const fStatus= document.getElementById('ltt-f-status')?.value || 'Ativos';
   return projects.filter(p => {
     if (p.recorrencia !== 'One time') return false; // Escopos One-time: só projetos marcados como One time
-    if (fStatus === 'Ativos' && (p.status2 === 'Finalizado' || p.status2 === 'Cancelado' || p.status2 === 'Interrompido')) return false;
-    if (fStatus === 'Finalizados' && p.status2 !== 'Finalizado') return false;
+    // Usa o status EFETIVO (calcStatus2), não o campo bruto p.status2 — um projeto finalizado
+    // pelo checklist de fechamento (última etapa + Playbook/NPS/Acessos/Ferramenta) não passa
+    // por nenhum select manual, então p.status2 nunca muda sozinho; sem isso ele ficava preso
+    // em Ativos pra sempre mesmo já "Finalizado" de fato. Cancelado/Interrompido continuam
+    // vindo do campo bruto — são estados só manuais, calcStatus2 não sabe sobre eles.
+    const statusEfetivo = calcStatus2(p);
+    if (fStatus === 'Ativos' && (statusEfetivo === 'Finalizado' || p.status2 === 'Cancelado' || p.status2 === 'Interrompido')) return false;
+    if (fStatus === 'Finalizados' && statusEfetivo !== 'Finalizado') return false;
     if (fCons && p.consultor !== fCons) return false;
     if (fConv && p.conv !== fConv) return false;
     if (fOport && p.oport !== fOport) return false;
