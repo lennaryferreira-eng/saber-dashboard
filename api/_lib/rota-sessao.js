@@ -1,10 +1,10 @@
-// api/sessao.js
+// api/_lib/rota-sessao.js — atende /api/conta?r=sessao (ver api/conta.js)
 // GET    → quem está logado (lido do cookie assinado) + a lista de usuários que essa pessoa
 //          pode ver. É a primeira coisa que o painel pergunta ao abrir.
 // DELETE → sair: apaga o cookie.
 
-import { emailDaSessao, cookieDeSaida } from './_lib/sessao.js';
-import { listarUsuarios, visaoDaLista } from './_lib/usuarios.js';
+import { emailDaSessao, cookieDeSaida } from './sessao.js';
+import { listarUsuarios, visaoDaLista } from './usuarios.js';
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');

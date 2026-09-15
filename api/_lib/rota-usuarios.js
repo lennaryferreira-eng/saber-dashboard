@@ -1,15 +1,15 @@
-// api/usuarios.js
+// api/_lib/rota-usuarios.js — atende /api/conta?r=usuarios (ver api/conta.js)
 // POST            → cadastra (só ADM)
-// PATCH  ?id=...  → altera (ADM altera tudo; a própria pessoa só nome de exibição, telefone e foto)
-// DELETE ?id=...  → remove (só ADM)
-// A leitura da lista vem junto de GET /api/sessao. As regras ficam em _lib/usuarios.js.
+// PATCH  &id=...  → altera (ADM altera tudo; a própria pessoa só nome de exibição, telefone e foto)
+// DELETE &id=...  → remove (só ADM)
+// A leitura da lista vem junto de GET /api/conta?r=sessao. As regras ficam em _lib/usuarios.js.
 
-import { emailDaSessao } from './_lib/sessao.js';
+import { emailDaSessao } from './sessao.js';
 import {
   ErroDeRegra, listarUsuarios, visaoDaLista,
   planejarCriacao, planejarAlteracao, planejarRemocao,
   criarUsuario, alterarUsuario, removerUsuario,
-} from './_lib/usuarios.js';
+} from './usuarios.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

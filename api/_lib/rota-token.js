@@ -1,11 +1,13 @@
-// api/google/verify-login-token.js
+// api/_lib/rota-token.js — atende /api/conta?r=token (ver api/conta.js). Era
+// api/google/verify-login-token.js; virou rota da api/conta para caber no limite de 12
+// funções do plano Hobby da Vercel.
 // Mesmo contrato do antigo api/google/verify-login.js (token opaco entra, e-mail verificado
 // sai) — só que valida o `login_token` de curta duração emitido por login-callback.js em vez
 // de um ID token do Google direto. O front-end chama isso assim que volta do redirect de
 // login (?login_token=...) pra confirmar que o token é genuíno antes de aplicar a sessão.
 
-import { verifyState } from '../_lib/crypto-state.js';
-import { cookieDeSessao } from '../_lib/sessao.js';
+import { verifyState } from './crypto-state.js';
+import { cookieDeSessao } from './sessao.js';
 
 const MAX_AGE_MS = 5 * 60 * 1000; // 5 minutos — só precisa sobreviver ao próprio redirect
 

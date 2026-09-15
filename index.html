@@ -4501,7 +4501,7 @@ function buildPipeline() {
 
 // ── SISTEMA DE LOGIN ──────────────────────────────────────────
 // Quem entra, e com que acesso, vem da tabela `usuarios` do Supabase (página Usuários),
-// entregue por /api/sessao depois de o servidor conferir o cookie de sessão assinado.
+// entregue por /api/conta?r=sessao depois de o servidor conferir o cookie de sessão assinado.
 // Antes isto era um mapa de e-mails fixo aqui no código, e a "sessão" era um e-mail no
 // localStorage: qualquer um trocava esse valor pelo console e virava ADM.
 let USUARIO_ATUAL = null;        // registro completo da pessoa logada
@@ -4619,7 +4619,7 @@ function _aplicarLogin(perfil) {
 }
 
 async function doLogout() {
-  try { await fetch('/api/sessao', { method: 'DELETE', credentials: 'same-origin' }); } catch (e) {}
+  try { await fetch('/api/conta?r=sessao', { method: 'DELETE', credentials: 'same-origin' }); } catch (e) {}
   limparCacheSessao();
   USUARIO_ATUAL = null;
   USUARIOS = [];
@@ -4662,14 +4662,14 @@ async function handleLoginRedirectReturn() {
     return true;
   }
   try {
-    const r = await fetch('/api/google/verify-login-token', {
+    const r = await fetch('/api/conta?r=token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token: loginToken }),
     });
     const data = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(data.error || ('Erro ao verificar login (' + r.status + ')'));
-    // verify-login-token acabou de gravar o cookie de sessão; daqui em diante quem diz o
+    // /api/conta?r=token acabou de gravar o cookie de sessão; daqui em diante quem diz o
     // acesso é o servidor, a partir da tabela de usuários.
     await carregarSessao();
   } catch (err) {
@@ -4725,7 +4725,7 @@ async function carregarSessao() {
   mostrarBotaoLogin(false);
   let r;
   try {
-    r = await fetch('/api/sessao', { credentials: 'same-origin', cache: 'no-store' });
+    r = await fetch('/api/conta?r=sessao', { credentials: 'same-origin', cache: 'no-store' });
   } catch (e) {
     return entrarEmContingencia();
   }
@@ -16017,8 +16017,8 @@ function consSalvar(){
 // ═══════════════════════════════════
 //  USUÁRIOS E MEU PERFIL
 // ═══════════════════════════════════
-// O cadastro mora na tabela `usuarios` e só é lido/gravado pelas funções /api/sessao e
-// /api/usuarios, que conferem o cookie de sessão. As regras de quem muda o quê ficam no
+// O cadastro mora na tabela `usuarios` e só é lido/gravado por /api/conta (rotas sessao e
+// usuarios), que confere o cookie de sessão. As regras de quem muda o quê ficam no
 // servidor (api/_lib/usuarios.js); aqui a tela só esconde o que a pessoa não pode usar.
 
 // ── Squad: a lista de consultores sai do cadastro de usuários ─────────
@@ -16070,7 +16070,7 @@ const ACESSO_BADGE  = { adm: 'b-accent', viewer: 'b-blue', consultor: 'b-green',
 const ACESSO_ORDEM  = { adm: 0, viewer: 1, consultor: 2, designer: 3, nenhum: 4 };
 
 async function apiUsuarios(metodo, id, corpo) {
-  const r = await fetch('/api/usuarios' + (id ? '?id=' + encodeURIComponent(id) : ''), {
+  const r = await fetch('/api/conta?r=usuarios' + (id ? '&id=' + encodeURIComponent(id) : ''), {
     method: metodo,
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
