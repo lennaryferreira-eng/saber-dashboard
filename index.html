@@ -2144,7 +2144,7 @@
       <div class="conta-form-grid">
         <label class="conta-campo"><span class="aud-lbl">Nome de exibição *</span><input id="usu-nome" class="aud-inp" maxlength="80"></label>
         <label class="conta-campo"><span class="aud-lbl">E-mail @v4company.com</span><input id="usu-email" class="aud-inp" type="email" maxlength="120" placeholder="nome.sobrenome@v4company.com"></label>
-        <label class="conta-campo"><span class="aud-lbl">Cargo</span><input id="usu-cargo" class="aud-inp" maxlength="80"></label>
+        <label class="conta-campo"><span class="aud-lbl">Cargo</span><select id="usu-cargo" class="aud-inp" onchange="usuarioCargoMudou(this)"></select></label>
         <label class="conta-campo"><span class="aud-lbl">Telefone / WhatsApp</span><input id="usu-tel" class="aud-inp" maxlength="30"></label>
         <label class="conta-campo conta-campo-largo"><span class="aud-lbl">Acesso ao painel</span>
           <select id="usu-acesso" class="aud-inp" onchange="usuarioSincronizarAcesso()">
@@ -2159,7 +2159,7 @@
       <fieldset class="conta-fieldset">
         <legend class="aud-lbl">No squad</legend>
         <div class="conta-form-grid">
-          <label class="conta-campo"><span class="aud-lbl">Função</span>
+          <label class="conta-campo" id="usu-squad-tipo-campo"><span class="aud-lbl">Também está no squad como</span>
             <select id="usu-squad-tipo" class="aud-inp" onchange="usuarioSincronizarAcesso()">
               <option value="">Não faz parte do squad</option>
               <option value="consultor">Consultor</option>
@@ -16350,6 +16350,7 @@ function perfilAbrirDetalhe(nome, modo) {
 // ── Usuários (ADM) ────────────────────────────────────────────────────
 let _usuEditandoId = null;
 let _usuFotoRemover = false;
+let _usuTipoOriginal = '';     // função no squad ao abrir o modal (para desfazer o preenchimento automático)
 
 function buildUsuarios() {
   const tabela = document.getElementById('usu-tabela');
@@ -16410,11 +16411,12 @@ function usuarioAbrirModal(id) {
   $('usu-nome').value = u ? u.nome_exibicao : '';
   $('usu-email').value = u ? (u.email || '') : '';
   $('usu-email').disabled = eu; // o próprio e-mail de login não se troca (o servidor também recusa)
-  $('usu-cargo').value = u ? (u.cargo || '') : '';
+  usuarioMontarCargos(u ? u.cargo : '');
   $('usu-tel').value = u ? (u.telefone || '') : '';
   $('usu-acesso').value = u ? u.acesso : 'viewer';
   $('usu-acesso').disabled = eu;
-  $('usu-squad-tipo').value = u ? (u.squad_tipo || '') : '';
+  _usuTipoOriginal = u ? (u.squad_tipo || '') : '';
+  $('usu-squad-tipo').value = _usuTipoOriginal;
   $('usu-squad-nome').value = u ? (u.squad_nome || '') : '';
   $('usu-coord').value = u ? (u.coordenacao || 'saber') : 'saber';
   $('usu-squad-ativo').checked = u ? !!u.squad_ativo : true;
@@ -16430,12 +16432,39 @@ function usuarioAbrirModal(id) {
 }
 function usuarioFecharModal() { document.getElementById('modal-usuario').style.display = 'none'; }
 
-// Acesso de consultor/designer precisa estar ligado ao nome nos projetos: amarra a função
+// Cargos que o time já usa (coluna Cargo do PDI) + os que já estão no cadastro. "Outro…"
+// acrescenta um novo na hora.
+const CARGOS_BASE = ['Consultor', 'Designer', 'Coordenador', 'Sales'];
+function usuarioMontarCargos(atual) {
+  const sel = document.getElementById('usu-cargo');
+  const lista = [...new Set(CARGOS_BASE.concat(USUARIOS.map(u => u.cargo).filter(Boolean), atual ? [atual] : []))]
+    .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  sel.innerHTML = '<option value="">Sem cargo</option>'
+    + lista.map(c => '<option value="' + escAttr(c) + '"' + (c === atual ? ' selected' : '') + '>' + escAttr(c) + '</option>').join('')
+    + '<option value="__outro__">Outro…</option>';
+  sel.dataset.anterior = atual || '';
+}
+async function usuarioCargoMudou(sel) {
+  if (sel.value !== '__outro__') { sel.dataset.anterior = sel.value; return; }
+  const novo = ((await showPrompt('Nome do cargo:')) || '').trim();
+  if (!novo) { sel.value = sel.dataset.anterior || ''; return; }
+  usuarioMontarCargos(novo);
+}
+
+// Acesso de consultor/designer já diz a função no squad: o campo some para não repetir a
+// mesma informação. Ele só aparece para ADM/Visualização que também está no squad.
 function usuarioSincronizarAcesso() {
   const acesso = document.getElementById('usu-acesso').value;
   const tipo = document.getElementById('usu-squad-tipo');
-  if (acesso === 'consultor' || acesso === 'designer') { tipo.value = acesso; tipo.disabled = true; }
-  else tipo.disabled = false;
+  const ehSquad = acesso === 'consultor' || acesso === 'designer';
+  // Acesso de consultor/designer define a função; ao sair dele, volta a função que a pessoa
+  // tinha ao abrir o modal (senão ficaria "consultor" escondido e sem nome, e o salvar falha)
+  if (ehSquad) tipo.value = acesso;
+  else if (tipo.value !== _usuTipoOriginal && document.getElementById('usu-squad-tipo-campo').style.display === 'none') tipo.value = _usuTipoOriginal;
+  document.getElementById('usu-squad-tipo-campo').style.display = ehSquad ? 'none' : '';
+  // Cargo vazio: sugere o cargo correspondente ao acesso
+  const cargo = document.getElementById('usu-cargo');
+  if (ehSquad && !cargo.value) usuarioMontarCargos(acesso === 'consultor' ? 'Consultor' : 'Designer');
   const noSquad = !!tipo.value;
   ['usu-squad-nome', 'usu-coord', 'usu-cor', 'usu-squad-ativo'].forEach(i => { document.getElementById(i).disabled = !noSquad; });
 }
@@ -16453,7 +16482,7 @@ async function usuarioSalvar() {
   const tipo = $('usu-squad-tipo').value || null;
   const corpo = {
     nome_exibicao: $('usu-nome').value,
-    cargo: $('usu-cargo').value || null,
+    cargo: ($('usu-cargo').value && $('usu-cargo').value !== '__outro__') ? $('usu-cargo').value : null,
     telefone: $('usu-tel').value || null,
     squad_tipo: tipo,
     squad_nome: tipo ? ($('usu-squad-nome').value || null) : null,
