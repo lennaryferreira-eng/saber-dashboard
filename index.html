@@ -1689,6 +1689,7 @@
 
 
   <section id="sec-performance" class="section">
+  <div id="performance-saber-view">
     <div class="sec-head"><h2 class="sec-title">Performance</h2><p class="sec-desc">Ranking de consultores e designers por KPIs — 2026.</p></div>
     <div style="display:flex;gap:6px;margin-bottom:.8rem;">
       <button id="perf-modo-consultor" onclick="perfSetModo('consultor')" style="border:none;border-radius:20px;padding:7px 18px;font-size:var(--fs-base);font-weight:600;cursor:pointer;">Consultores</button>
@@ -1777,6 +1778,17 @@
         </div>
       </div>
     </div>
+  </div>
+  <div id="performance-ter-view" style="display:none;">
+    <div class="sec-head"><h2 class="sec-title">Performance</h2><p class="sec-desc">Ranking de consultores da TER — Projetos no Prazo, NPS e PDI. 2026.</p></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.2rem;">
+      <span style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Consultor</span>
+      <select class="base-sel" id="perf-ter-f-cons" onchange="buildPerformanceTer()"><option value="">Todos</option></select>
+    </div>
+    <div style="overflow-x:auto;padding-bottom:8px;">
+      <div id="perf-ter-cards" style="display:flex;gap:16px;flex-wrap:wrap;min-width:max-content;padding:4px 2px 8px;"></div>
+    </div>
+  </div>
   </section>
 </main>
 </div>
@@ -3331,7 +3343,7 @@ const SIDEBAR_NAV = [
     { id: 'pipeline', label: 'Pipeline', icon: 'arrowUp' },
     { id: 'monetizacao', label: 'Monetização', icon: 'coin' },
     { id: 'capacity', label: 'Capacity', icon: 'users', extraClass: 'ter-ok' },
-    { id: 'performance', label: 'Performance', icon: 'trophy' },
+    { id: 'performance', label: 'Performance', icon: 'trophy', extraClass: 'ter-ok' },
     { id: 'auditoria', label: 'Auditoria de Entregas', icon: 'eye' },
     { id: 'cultura', label: 'Termômetro Cultural', icon: 'sparkle', elId: 'nav-tab-cultura' },
     { id: 'fca', label: 'FCA', icon: 'flag' },
@@ -13005,6 +13017,17 @@ function perfMesesElegNovosInd(curM) {
 }
 
 function buildPerformance() {
+  // Despacho por coordenação: TER tem seu próprio ranking, bem mais enxuto (só Prazo/NPS/PDI —
+  // não tem Conversão, Score, SAL nem Score da Entrega, que são conceitos da SABER).
+  if (currentCoord === 'ter') {
+    const sv = document.getElementById('performance-saber-view'); if (sv) sv.style.display = 'none';
+    const tv = document.getElementById('performance-ter-view');   if (tv) tv.style.display = '';
+    buildPerformanceTer();
+    return;
+  } else {
+    const sv = document.getElementById('performance-saber-view'); if (sv) sv.style.display = '';
+    const tv = document.getElementById('performance-ter-view');   if (tv) tv.style.display = 'none';
+  }
   buildFilterBar('perf-filter-bar', 'performance', buildPerformance);
   const cur  = filters['performance'];
   const curM = cur ? ALL_MESES.find(x => x.key === cur) : null;
@@ -13366,6 +13389,99 @@ function buildPerformance() {
   if (_nomeParaAutoSelecionar) setTimeout(() => perfSelecionaConsultor(_nomeParaAutoSelecionar), 50);
 
   buildPerfMetaMon();
+}
+
+// ═══════════════════════════════════
+//  PERFORMANCE — TER (só Prazo/NPS/PDI — sem Conversão, Score, SAL nem Score da Entrega,
+//  que são conceitos da SABER sem equivalente direto na TER). Consultor-only, sem modo
+//  designer — a TER não tem esse papel.
+// ═══════════════════════════════════
+
+// % de projetos One-time no prazo desse consultor — mesmo critério da aba Projetos no Prazo
+// (prazoStatusTerAba), mas olhando o histórico inteiro dele, não um mês específico.
+function perfPrazoDoConsultorTer(nome) {
+  const list = projects.filter(p => p.consultor === nome && p.recorrencia === 'One time' && !_ehPontual(p));
+  const avaliados = list.map(p => prazoStatusTerAba(p)).filter(st => st.ok !== null && st.ok !== undefined);
+  if (!avaliados.length) return { taxa: null, ok: 0, total: 0 };
+  const ok = avaliados.filter(st => st.ok === true).length;
+  return { taxa: Math.round(ok / avaliados.length * 100), ok, total: avaliados.length };
+}
+
+// NPS desse consultor — combina as respostas One-time (por projeto) e Recorrente (por mês),
+// mesma fórmula padrão (promotores - detratores) / respostas × 100 usada em buildNpsTer().
+function perfNpsDoConsultorTer(nome) {
+  const oneTimeIds = projects
+    .filter(p => p.consultor === nome && p.recorrencia === 'One time' && calcStatus2(p) === 'Finalizado')
+    .map(p => String(p.id));
+  const recKeys = [];
+  projects.filter(p => p.consultor === nome && p.recorrencia === 'Recorrente')
+    .forEach(p => npsMesesRecorrente(p).forEach(m => recKeys.push(npsRecKey(p.id, m.key))));
+  const notas = [...oneTimeIds, ...recKeys]
+    .map(k => npsData[k])
+    .filter(nd => nd && nd.nota !== '' && nd.nota !== undefined && nd.nota !== null)
+    .map(nd => parseInt(nd.nota)).filter(n => !isNaN(n));
+  if (!notas.length) return { score: null, respostas: 0 };
+  const prom = notas.filter(n => n >= 9).length;
+  const detr = notas.filter(n => n <= 6).length;
+  return { score: Math.round((prom - detr) / notas.length * 100), respostas: notas.length };
+}
+
+// % de PDI fechado desse consultor — média dos fechamentos de quarter (Mar/Jun/Set/Dez),
+// direto de pdiData.rows (mesma fonte da aba PDI, sem precisar da tabela renderizada no DOM).
+function perfPdiDoConsultorTer(nome) {
+  if (!pdiData || !Array.isArray(pdiData.rows)) return { pct: null };
+  const row = pdiData.rows.find(r => r.nome === nome);
+  if (!row || !row.m) return { pct: null };
+  const vals = ALL_MESES.map((m, mi) => (isQuarterClose(mi) && row.m[mi] != null) ? Number(row.m[mi]) : null).filter(v => v !== null && !isNaN(v));
+  if (!vals.length) return { pct: null };
+  return { pct: Math.round(vals.reduce((a,b)=>a+b,0) / vals.length) };
+}
+
+function buildPerformanceTer() {
+  const selCons = document.getElementById('perf-ter-f-cons');
+  if (selCons) {
+    const nomes = squadList();
+    const curC = selCons.value;
+    selCons.innerHTML = '<option value="">Todos</option>' + nomes.map(n => '<option' + (n===curC?' selected':'') + '>' + n + '</option>').join('');
+  }
+  const fCons = selCons?.value || '';
+  const nomes = (fCons ? [fCons] : squadList());
+
+  const linhas = nomes.map(nome => {
+    const prazo = perfPrazoDoConsultorTer(nome);
+    const nps = perfNpsDoConsultorTer(nome);
+    const pdi = perfPdiDoConsultorTer(nome);
+    const partes = [prazo.taxa, nps.score, pdi.pct].filter(v => v !== null && v !== undefined);
+    const media = partes.length ? Math.round(partes.reduce((a,b)=>a+b,0) / partes.length) : null;
+    return { nome, prazo, nps, pdi, media };
+  }).sort((a, b) => (b.media ?? -1) - (a.media ?? -1));
+
+  const el = document.getElementById('perf-ter-cards');
+  if (!el) return;
+  if (!linhas.length) { el.innerHTML = '<div style="color:var(--text-hint);font-size:var(--fs-base);">Nenhum consultor no squad.</div>'; return; }
+
+  const metaLinha = (label, val, meta, suffix) => {
+    const cor = val === null || val === undefined ? 'var(--text-hint)' : (val >= meta ? 'var(--green)' : 'var(--red)');
+    const txt = val === null || val === undefined ? '—' : val + (suffix || '');
+    return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:var(--fs-sm);padding:4px 0;border-top:1px solid var(--border);">'
+      + '<span style="color:var(--text-muted);">' + label + '</span>'
+      + '<span style="font-weight:700;color:' + cor + ';">' + txt + '<span style="font-weight:400;color:var(--text-hint);font-size:var(--fs-xs);"> / meta ' + meta + (suffix||'') + '</span></span>'
+      + '</div>';
+  };
+
+  el.innerHTML = linhas.map((l, i) => {
+    return '<div class="card" style="min-width:230px;padding:16px;">'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">'
+      + '<span style="font-family:var(--cond);font-size:1.4rem;font-weight:800;color:var(--text-hint);">#' + (i+1) + '</span>'
+      + '<span style="font-family:var(--cond);font-size:1.2rem;font-weight:700;">' + l.nome + '</span>'
+      + '</div>'
+      + '<div style="font-size:var(--fs-xs);color:var(--text-hint);margin-bottom:2px;">Score geral (média dos 3)</div>'
+      + '<div style="font-family:var(--cond);font-size:1.8rem;font-weight:800;color:var(--accent);margin-bottom:6px;">' + (l.media !== null ? l.media : '—') + '</div>'
+      + metaLinha('Projetos no Prazo', l.prazo.taxa, 80, '%')
+      + metaLinha('NPS', l.nps.score, 50, '')
+      + metaLinha('PDI', l.pdi.pct, 80, '%')
+      + '</div>';
+  }).join('');
 }
 
 // Seção "Meta de Monetização por consultor" — reaproveita EXATAMENTE a mesma lógica de
