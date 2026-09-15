@@ -907,6 +907,7 @@
 </section>
 
 <section id="sec-nps" class="section">
+<div id="nps-saber-view">
   <div class="sec-head"><h2 class="sec-title">NPS</h2><p class="sec-desc">Projetos finalizados — preencha nota e comentário. Meta: 50.</p></div>
 
   <!-- Cards -->
@@ -932,6 +933,34 @@
     <div class="card-title">Respostas por projeto monetizado</div>
     <div class="tbl-wrap"><table><thead><tr><th>Finalização</th><th>Projeto</th><th>Consultor</th><th>Nota (0–10)</th><th>Categoria</th><th>Data Resposta</th><th>Comentário</th><th>Auditoria final</th></tr></thead><tbody id="nps-tbody"></tbody></table></div>
   </div>
+</div>
+<div id="nps-ter-view" style="display:none;">
+  <div class="sec-head"><h2 class="sec-title">NPS</h2><p class="sec-desc">One-time: uma resposta por projeto, coletada ao concluir a última etapa (checklist de fechamento completo). Recorrente: uma resposta por mês, enquanto o projeto estiver ativo. Meta: 50.</p></div>
+
+  <div class="mgrid" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:.7rem;margin-bottom:1rem;">
+    <div class="mcard c-amber"><div class="mlabel">NPS Médio</div><div class="mval" id="nps-ter-ano">—</div><div class="mmeta">0 a 100</div></div>
+    <div class="mcard c-amber"><div class="mlabel">Respostas</div><div class="mval"><span id="nps-ter-respostas">0</span> / <span id="nps-ter-total-fin">0</span></div><div class="mmeta">respondidas / esperadas</div></div>
+    <div class="mcard c-amber"><div class="mlabel">% Resposta</div><div class="mval" id="nps-ter-pct-resp">—</div><div class="mmeta">esperadas respondidas</div></div>
+    <div class="mcard c-green"><div class="mlabel">Promotores</div><div class="mval" id="nps-ter-prom">0</div></div>
+    <div class="mcard c-gray"><div class="mlabel">Neutros</div><div class="mval" id="nps-ter-neut">0</div></div>
+    <div class="mcard c-red"><div class="mlabel">Detratores</div><div class="mval" id="nps-ter-detr">0</div></div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:.8rem;">
+    <span class="base-filter-label">Consultor</span>
+    <select class="base-sel" id="nps-ter-f-cons" onchange="buildNpsTer()"><option value="">Todos</option></select>
+    <button class="base-clear" onclick="clearNpsTerFilters()">Limpar</button>
+  </div>
+
+  <div class="card" style="margin-bottom:1rem;">
+    <div class="card-title">One-time — por projeto finalizado</div>
+    <div class="tbl-wrap"><table><thead><tr><th>Finalização</th><th>Projeto</th><th>Consultor</th><th>Nota (0–10)</th><th>Categoria</th><th>Data Resposta</th><th>Comentário</th></tr></thead><tbody id="nps-ter-ot-tbody"></tbody></table></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Recorrente — por mês</div>
+    <div class="tbl-wrap"><table><thead><tr><th>Mês</th><th>Projeto</th><th>Consultor</th><th>Nota (0–10)</th><th>Categoria</th><th>Data Resposta</th><th>Comentário</th></tr></thead><tbody id="nps-ter-rec-tbody"></tbody></table></div>
+  </div>
+</div>
 </section>
 
 <section id="sec-monetizacao" class="section">
@@ -3293,6 +3322,9 @@ const SIDEBAR_NAV = [
     // só pra aparecer aqui em Gestão quando currentCoord === 'ter'. calcPrazo() já despacha
     // pra calcPrazoTer() sozinho, então não precisa de nenhuma função nova de clique.
     { id: 'prazo', label: 'Projetos no Prazo', icon: 'clock', extraClass: 'ter-only', hiddenByDefault: true },
+    // Duplicata TER-only do 'nps' (grupo OKRs some inteiro na TER) — buildNpsTable() já
+    // despacha pra buildNpsTer() sozinho, mesmo padrão do 'prazo' acima.
+    { id: 'nps', label: 'NPS', icon: 'star', extraClass: 'ter-only', hiddenByDefault: true },
     { id: 'recorrentes', label: 'Escopos Recorrentes', icon: 'link', extraClass: 'ter-only', hiddenByDefault: true },
     { id: 'trilhas', label: 'Trilhas', icon: 'route', extraClass: 'ter-only', hiddenByDefault: true },
     { id: 'dro', label: 'DRO/DRX', icon: 'refresh' },
@@ -7434,6 +7466,17 @@ function calcPdi() {
 //  NPS
 // ═══════════════════════════════════
 function buildNpsTable() {
+  // Despacho por coordenação: TER tem seu próprio NPS (One-time por projeto finalizado +
+  // Recorrente por mês), bem diferente do modelo "um registro por projeto" da SABER.
+  if (currentCoord === 'ter') {
+    const sv = document.getElementById('nps-saber-view'); if (sv) sv.style.display = 'none';
+    const tv = document.getElementById('nps-ter-view');   if (tv) tv.style.display = '';
+    buildNpsTer();
+    return;
+  } else {
+    const sv = document.getElementById('nps-saber-view'); if (sv) sv.style.display = '';
+    const tv = document.getElementById('nps-ter-view');   if (tv) tv.style.display = 'none';
+  }
 
   // popula filtro de consultor
   const selCons = document.getElementById('nps-f-cons');
@@ -7631,6 +7674,131 @@ function buildNpsChart(data) {
       }
     }
   });
+}
+
+// ═══════════════════════════════════
+//  NPS — TER (dois modelos bem diferentes num só npsData)
+//  One-time: um registro por projeto (npsData[id]), coletado ao concluir a última etapa —
+//  mesma mecânica da SABER, reaproveitando saveNpsNota/saveNpsData/saveNpsComent/npsCat direto.
+//  Recorrente: um registro por MÊS (chave composta 'rec:<id>:<mesKey>'), já que o projeto não
+//  "finaliza" nunca — segue rodando indefinidamente. Continua no mesmo npsData/nps_data (TER já
+//  tem essa coluna no Supabase, idêntica à da SABER) só pra não precisar de migração nova.
+// ═══════════════════════════════════
+function npsRecKey(projectId, mesKey) { return 'rec:' + projectId + ':' + mesKey; }
+function npsGet(key) {
+  if (!npsData[key]) npsData[key] = { nota: '', comentario: '', dataResp: '' };
+  return npsData[key];
+}
+
+// Todos os meses (2026) entre o início do Recorrente e o mês atual — histórico completo, pra
+// dar pra preencher retroativamente um mês que passou sem NPS coletado.
+function npsMesesRecorrente(p) {
+  if (!p.inicio) return [];
+  const dIni = parseDate(p.inicio);
+  if (!dIni) return [];
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const meses = [];
+  let cursor = new Date(dIni.getFullYear(), dIni.getMonth(), 1);
+  const limite = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  while (cursor <= limite) {
+    if (cursor.getFullYear() === 2026) {
+      const m = ALL_MESES.find(x => x.idx === cursor.getMonth() && x.ano === cursor.getFullYear());
+      if (m) meses.push(m);
+    }
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+  }
+  return meses.sort((a, b) => (b.ano * 12 + b.idx) - (a.ano * 12 + a.idx)); // mais recente primeiro
+}
+
+function clearNpsTerFilters() {
+  const el = document.getElementById('nps-ter-f-cons'); if (el) el.value = '';
+  buildNpsTer();
+}
+
+function saveNpsNotaRec(key, val) { npsGet(key).nota = val; upd(); buildNpsTer(); }
+function saveNpsDataRec(key, val) { npsGet(key).dataResp = val; upd(); buildNpsTer(); }
+function saveNpsComentRec(key, val) { npsGet(key).comentario = val; upd(); buildNpsTer(); }
+// Variantes próprias do One-time da TER (não reaproveita saveNpsNota/saveNpsData/saveNpsComent
+// da SABER) — aquelas chamam calcNps()/buildNpsChart(), que recalculam o card/gráfico da SABER
+// (fica escondido, mas ainda roda) e NUNCA atualizam os cards/tabelas da própria TER. Com isso,
+// depois de preencher uma nota o resumo (Respostas/Promotores/…) ficava desatualizado até trocar
+// de aba. Essas variantes chamam buildNpsTer(), que já recalcula tudo certo.
+function saveNpsNotaOt(id, val) { npsGet(String(id)).nota = val; upd(); buildNpsTer(); }
+function saveNpsDataOt(id, val) { npsGet(String(id)).dataResp = val; upd(); buildNpsTer(); }
+function saveNpsComentOt(id, val) { npsGet(String(id)).comentario = val; upd(); buildNpsTer(); }
+
+function buildNpsTerOneTime(fCons) {
+  let base = projects.filter(p => p.recorrencia === 'One time' && calcStatus2(p) === 'Finalizado');
+  if (fCons) base = base.filter(p => p.consultor === fCons);
+  base.sort((a, b) => {
+    const dA = parseDate(a.realFim || a.prevFim), dB = parseDate(b.realFim || b.prevFim);
+    if (!dA && !dB) return 0; if (!dA) return 1; if (!dB) return -1;
+    return dB - dA;
+  });
+  const tbody = document.getElementById('nps-ter-ot-tbody');
+  if (!tbody) return [];
+  tbody.innerHTML = base.length === 0 ? emptyRow(7, 'Nenhum projeto One-time finalizado') : base.map(p => {
+    const nd = npsData[String(p.id)] || { nota: '', comentario: '', dataResp: '' };
+    return `<tr>
+      <td>${fmtD(p.realFim || p.prevFim) || '—'}</td><td>${p.nome||'—'}</td><td>${p.consultor||'—'}</td>
+      <td><input type="number" min="0" max="10" class="sel" style="width:55px" value="${nd.nota}" onchange="saveNpsNotaOt('${p.id}',this.value)" placeholder="—"></td>
+      <td>${npsCat(nd.nota)}</td>
+      <td><input type="date" class="sel" style="width:130px;font-size:var(--fs-sm);" value="${dv(nd.dataResp)}" onchange="saveNpsDataOt('${p.id}',this.value)"></td>
+      <td contenteditable="true" onblur="saveNpsComentOt('${p.id}',this.textContent.trim())">${nd.comentario||'—'}</td>
+    </tr>`;
+  }).join('');
+  return base.map(p => npsData[String(p.id)]);
+}
+
+function buildNpsTerRecorrente(fCons) {
+  let base = projects.filter(p => p.recorrencia === 'Recorrente');
+  if (fCons) base = base.filter(p => p.consultor === fCons);
+  const linhas = [];
+  base.forEach(p => npsMesesRecorrente(p).forEach(m => linhas.push({ p, m })));
+  const tbody = document.getElementById('nps-ter-rec-tbody');
+  if (!tbody) return [];
+  tbody.innerHTML = linhas.length === 0 ? emptyRow(7, 'Nenhum projeto Recorrente ativo') : linhas.map(({p, m}) => {
+    const key = npsRecKey(p.id, m.key);
+    const nd = npsData[key] || { nota: '', comentario: '', dataResp: '' };
+    return `<tr>
+      <td>${m.label}/${m.ano}</td><td>${p.nome||'—'}</td><td>${p.consultor||'—'}</td>
+      <td><input type="number" min="0" max="10" class="sel" style="width:55px" value="${nd.nota}" onchange="saveNpsNotaRec('${key}',this.value)" placeholder="—"></td>
+      <td>${npsCat(nd.nota)}</td>
+      <td><input type="date" class="sel" style="width:130px;font-size:var(--fs-sm);" value="${dv(nd.dataResp)}" onchange="saveNpsDataRec('${key}',this.value)"></td>
+      <td contenteditable="true" onblur="saveNpsComentRec('${key}',this.textContent.trim())">${nd.comentario||'—'}</td>
+    </tr>`;
+  }).join('');
+  return linhas.map(({p, m}) => npsData[npsRecKey(p.id, m.key)]);
+}
+
+function buildNpsTer() {
+  const selCons = document.getElementById('nps-ter-f-cons');
+  if (selCons) {
+    const cons = [...new Set(projects.map(p => p.consultor).filter(Boolean))].sort();
+    const curC = selCons.value;
+    selCons.innerHTML = '<option value="">Todos</option>' + cons.map(c => '<option' + (c===curC?' selected':'') + '>' + c + '</option>').join('');
+  }
+  const fCons = selCons?.value || '';
+
+  const respOneTime = buildNpsTerOneTime(fCons);
+  const respRec = buildNpsTerRecorrente(fCons);
+  const todas = [...respOneTime, ...respRec];
+  const comNota = todas.filter(nd => nd && nd.nota !== '' && nd.nota !== undefined && nd.nota !== null);
+  const notas = comNota.map(nd => parseInt(nd.nota)).filter(n => !isNaN(n));
+  const prom = notas.filter(n => n >= 9).length;
+  const neut = notas.filter(n => n >= 7 && n <= 8).length;
+  const detr = notas.filter(n => n <= 6).length;
+  const npsScore = notas.length > 0 ? Math.round((prom - detr) / notas.length * 100) : null;
+  const pctResp = todas.length > 0 ? Math.round(notas.length / todas.length * 100) : null;
+
+  set('nps-ter-ano', npsScore !== null ? npsScore.toString() : '—');
+  set('nps-ter-prom', prom);
+  set('nps-ter-neut', neut);
+  set('nps-ter-detr', detr);
+  set('nps-ter-respostas', notas.length);
+  set('nps-ter-total-fin', todas.length);
+  set('nps-ter-pct-resp', pctResp !== null ? pctResp + '%' : '—');
+  return npsScore;
 }
 
 // ═══════════════════════════════════
