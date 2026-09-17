@@ -14496,6 +14496,52 @@ function audParseD9(txt, entrega){
   let m;
   while((m=reItem.exec(mB[1]))!==null){ const v=simbolo(m[2]); itens[m[1]]=v; ordem.push(v); }
 
+  // Formato alternativo, comum quando a IA embute o critério no meio do parágrafo em vez de
+  // numerar linha a linha: "Gargalos do funil com evidência quantitativa (1.1): 62% de perdas
+  // pós-preço... — ✅ quantificado." — o ID vem entre parênteses NO MEIO da frase (não no
+  // início da linha) e a marca só aparece bem depois, após um travessão, não logo no ":".
+  // Só preenche o que o passe acima ainda não achou; pega a primeira marca entre um ID e o
+  // próximo, pra não vazar a marca de um critério pro anterior quando não há quebra de linha.
+  const reIdParen = /\(\s*([\dA-Za-z]+\.[\dA-Za-z]+)\s*\)/g;
+  const marcasParen = [...mB[1].matchAll(reIdParen)];
+  marcasParen.forEach((mp, i) => {
+    const id = mp[1];
+    if (id in itens) return;
+    const ini = mp.index + mp[0].length;
+    const fim = (i+1 < marcasParen.length) ? marcasParen[i+1].index : mB[1].length;
+    const mk = mB[1].slice(ini, fim).match(/(✅|⚠️|❌|N\/?A)/);
+    if (mk) { const v = simbolo(mk[1]); itens[id]=v; ordem.push(v); }
+  });
+
+  // Casamento por TEXTO do rótulo (não pelo número) — cobre o caso do exemplo acima quando a
+  // IA usa a numeração "solta" (1.1, 1.2...) em vez da numeração com letra de bloco que o
+  // checklist da entrega espera (1A.1, 1B.1...): o ID batido não existiria no checklist, então
+  // sem isso o critério ficava pra sempre sem marca mesmo com a marca presente no texto. Busca
+  // o começo do rótulo oficial do critério (tolera o resto da frase variar) e pega a marca mais
+  // próxima depois dele; cursor só anda pra frente, respeitando a ordem do texto.
+  const skillLbl = AUD_D9_SKILLS[entrega];
+  if (skillLbl) {
+    const todosItens = skillLbl.flatMap(b => b.items);
+    let cursor = 0;
+    skillLbl.forEach(bloco => bloco.items.forEach(it => {
+      if (it.id in itens) return;
+      // Tira parênteses do rótulo antes de montar a âncora — são só exemplo/esclarecimento
+      // ("(ex: leads sem próximo passo)"), a IA quase nunca ecoa isso literalmente.
+      const inicioRotulo = it.label.replace(/\([^)]*\)/g, ' ').trim().split(/\s+/).slice(0, 3)
+        .map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s+');
+      // Se outro item do MESMO checklist começa com as mesmas 3 palavras (ex: "Diagnóstico de
+      // site/LP — copy" vs "…— design" vs "…— CRO"), a âncora não identifica ninguém sozinha —
+      // melhor deixar sem marca do que arriscar atribuir ao item errado.
+      const ambiguo = todosItens.some(outro => outro.id !== it.id && new RegExp('^' + inicioRotulo, 'i').test(outro.label.replace(/\([^)]*\)/g, ' ').trim()));
+      if (ambiguo) return;
+      const mLbl = mB[1].slice(cursor).match(new RegExp(inicioRotulo, 'i'));
+      if (!mLbl) return;
+      const posDepois = cursor + mLbl.index + mLbl[0].length;
+      const mk = mB[1].slice(posDepois, posDepois + 400).match(/(✅|⚠️|❌|N\/?A)/);
+      if (mk) { itens[it.id] = simbolo(mk[1]); cursor = posDepois + mk.index + mk[0].length; }
+    }));
+  }
+
   // Itens sem ID numérico (Regras Transversais da D9 — valem pra TODOS os tipos de entrega,
   // não têm código numérico próprio). Casam pelo início do texto do critério, tolerando
   // variações de redação depois do rótulo-base (a skill não fixa o rótulo exato).
