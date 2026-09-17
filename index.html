@@ -1579,7 +1579,7 @@
     </div>
     <div class="modal-body">
       <div id="checklist-final-nome" style="font-size:var(--fs-sm);color:var(--text-hint);margin-bottom:10px;"></div>
-      <p style="font-size:var(--fs-sm);color:var(--text-hint);margin:0 0 10px;">O projeto só vira "Finalizado" quando os 4 itens abaixo estiverem marcados.</p>
+      <p id="checklist-final-desc" style="font-size:var(--fs-sm);color:var(--text-hint);margin:0 0 10px;"></p>
       <div id="checklist-final-itens"></div>
       <div style="display:flex;gap:6px;margin-top:14px;">
         <button class="btn btn-ghost" onclick="fecharModalChecklistFinal()" style="flex:1;border-radius:6px;">Fechar</button>
@@ -3821,10 +3821,18 @@ function calcStatus2(p) {
     if (ultimoCiclo && ultimoCiclo.c3 && ultimoCiclo.c3.real) return 'Finalizado';
     return 'Em andamento';
   }
-  // Se tem realFim, usa ele
+  // Se tem realFim, usa ele — na SABER, só finaliza de verdade com o checklist de fechamento
+  // completo (NPS enviado / Entregáveis aprovados / Formalização por e-mail). realFim é
+  // preenchido automaticamente a partir da data da Decolagem por ltSaveDate — é o mesmo
+  // evento, então a mesma trava vale aqui. Sem isso, um projeto com Decolagem registrada mas
+  // ainda com refações pendentes contava como Finalizado antes da hora. Na TER esse campo é
+  // editado à parte na Base de Projetos, sem ligação com o checklist, então segue como já era.
   if (p.realFim) {
     const dr = parseDate(p.realFim);
-    if (dr && dr < hoje) return 'Finalizado';
+    if (dr && dr < hoje) {
+      if (currentCoord === 'ter' || checklistFinalCompleto(p)) return 'Finalizado';
+      return 'Em andamento';
+    }
     if (dr && dr >= hoje) return 'Em andamento';
   }
   // Verifica entregas: se tem decolagem/entrega final registrada, está finalizado —
@@ -3849,7 +3857,15 @@ function calcStatus2(p) {
   const temDecolagem = ent[6] && ent[6].real;
   if (temDecolagem) {
     const dd = parseDate(ent[6].real);
-    if (dd && dd < hoje) return 'Finalizado';
+    // SABER: mesma trava do checklist de fechamento do bloco de realFim acima — cobre o caso
+    // (raro) de dado antigo/legado em que ent[6].real ficou preenchido sem o realFim
+    // correspondente. Retorna direto (não deixa cair no fallback de prevFim mais abaixo, que é
+    // só pra projeto SEM NENHUMA entrega registrada — aqui já tem decolagem, só falta o
+    // checklist).
+    if (dd && dd < hoje) {
+      if (checklistFinalCompleto(p)) return 'Finalizado';
+      return 'Em andamento';
+    }
   }
   // Tem alguma entrega registrada mas sem decolagem → Em andamento
   let temAlgumaEntrega = false;
@@ -10771,6 +10787,10 @@ function ltSaveDate(id) {
   if (si === 6) {
     if (inp.value) {
       p.realFim = inp.value; // preenche data de conclusão real
+      // Registrar a Decolagem não finaliza mais o projeto sozinho — abre o checklist de
+      // fechamento (NPS enviado / Entregáveis aprovados / Formalização por e-mail); só com
+      // ele completo calcStatus2() considera essa Decolagem válida pra virar "Finalizado".
+      ltAbrirChecklistFinalizacao(id);
     } else {
       p.realFim = ''; // limpa se data for removida
     }
@@ -11399,11 +11419,20 @@ function buildLeadTime() {
             tooltip = nomeEtapaCurto(p, si) + ' ⚠ +' + atrasoBarra + 'd · realizado: ' + realFmt;
           }
 
+          // Badge do checklist de fechamento — só no bloco de Decolagem (si=6), e só depois
+          // que a data real dela foi registrada (antes disso não tem o que marcar ainda).
+          // Clicável pra reabrir o checklist sem precisar apagar/registrar a data de novo.
+          const corBadgeSaber = bg === 'var(--surface3)'
+            ? (checklistFinalCompleto(p) ? 'var(--green)' : 'var(--text-hint)')
+            : (checklistFinalCompleto(p) ? '#fff' : 'rgba(255,255,255,.6)');
+          const checklistBadgeSaber = (si === 6 && real)
+            ? '<button type="button" onclick="event.stopPropagation();ltAbrirChecklistFinalizacao(\'' + p.id + '\')" title="Checklist de fechamento (' + checklistFinalContagem(p) + '/' + checklistFinalItensAtuais().length + ')" style="position:absolute;bottom:1px;right:1px;background:none;border:none;padding:1px;color:' + corBadgeSaber + ';opacity:' + (checklistFinalCompleto(p) ? '1' : '.75') + ';cursor:pointer;">' + icon('clipboard',{size:9}) + '</button>'
+            : '';
           return '<div id="lt-blk-' + p.id + '-' + si + '" title="' + tooltip + '" style="'
             + 'flex:1;height:30px;background:' + bg + ';border-radius:3px;'
             + 'display:flex;align-items:center;justify-content:center;'
-            + 'transition:background .25s;cursor:default;">'
-            + label + '</div>';
+            + 'transition:background .25s;cursor:default;position:relative;">'
+            + label + checklistBadgeSaber + '</div>';
         }).join('');
 
         // Mesma tag automática do Healthscore: true se esse projeto tem QUALQUER FCA de
@@ -11662,41 +11691,54 @@ function ltTerEntregas(p) {
   return p.entregasTer;
 }
 
-// ── Checklist de fechamento — TER One-time (não-Pontual) ────────────────────────────
-// Marcar a ÚLTIMA etapa ("Entrega final") não finaliza o projeto sozinho mais: abre esse
-// checklist, e só com os 4 itens marcados calcStatus2() considera a última entrega válida pra
-// virar "Finalizado" (ver checklistFinalCompleto, usado lá). Datas de entrega continuam sendo
-// registradas normalmente por ltTerSetFeito — isso só trava o VEREDITO de finalização, não o
-// registro da etapa em si.
+// ── Checklist de fechamento — TER One-time (não-Pontual) e SABER (Decolagem) ────────
+// Marcar a ÚLTIMA etapa (TER: "Entrega final" · SABER: "Decolagem") não finaliza o projeto
+// sozinho: abre esse checklist, e só com todos os itens marcados calcStatus2() considera a
+// entrega final válida pra virar "Finalizado" (ver checklistFinalCompleto, usado lá). Datas de
+// entrega continuam sendo registradas normalmente (ltTerSetFeito/ltSaveDate) — isso só trava o
+// VEREDITO de finalização, não o registro da etapa em si. Cada coordenação tem seu próprio
+// conjunto de itens (não fazem sentido compartilhados — "Contratação da ferramenta" não existe
+// pra SABER, "formalização por email" não é algo que a TER pediu).
 const CHECKLIST_FINAL_ITENS = [
   { id: 'playbook', label: 'Playbook' },
   { id: 'nps', label: 'NPS' },
   { id: 'acessos', label: 'Acessos' },
   { id: 'ferramenta', label: 'Contratação da ferramenta' },
 ];
+const CHECKLIST_FINAL_SABER_ITENS = [
+  { id: 'nps_enviado', label: 'NPS enviado' },
+  { id: 'entregaveis_aprovados', label: 'Entregáveis aprovados' },
+  { id: 'formalizacao_email', label: 'Formalização por e-mail' },
+];
+function checklistFinalItensAtuais() {
+  return currentCoord === 'ter' ? CHECKLIST_FINAL_ITENS : CHECKLIST_FINAL_SABER_ITENS;
+}
 function checklistFinalGet(p) {
   if (!p.checklistFinal || typeof p.checklistFinal !== 'object') p.checklistFinal = {};
   return p.checklistFinal;
 }
 function checklistFinalCompleto(p) {
   const c = p.checklistFinal;
-  return !!c && CHECKLIST_FINAL_ITENS.every(it => c[it.id]);
+  return !!c && checklistFinalItensAtuais().every(it => c[it.id]);
 }
 function checklistFinalContagem(p) {
   const c = p.checklistFinal || {};
-  return CHECKLIST_FINAL_ITENS.filter(it => c[it.id]).length;
+  return checklistFinalItensAtuais().filter(it => c[it.id]).length;
 }
 let _checklistFinalProjId = null;
 function ltAbrirChecklistFinalizacao(id) {
   const p = projects.find(x => String(x.id) === String(id));
   if (!p) return;
   _checklistFinalProjId = id;
+  const itens = checklistFinalItensAtuais();
   const c = checklistFinalGet(p);
   const nomeEl = document.getElementById('checklist-final-nome');
   if (nomeEl) nomeEl.textContent = p.nome || 'Checklist de fechamento';
+  const descEl = document.getElementById('checklist-final-desc');
+  if (descEl) descEl.textContent = 'O projeto só vira "Finalizado" quando ' + (itens.length === 1 ? 'o item abaixo estiver marcado.' : 'os ' + itens.length + ' itens abaixo estiverem marcados.');
   const wrap = document.getElementById('checklist-final-itens');
   if (wrap) {
-    wrap.innerHTML = CHECKLIST_FINAL_ITENS.map(it =>
+    wrap.innerHTML = itens.map(it =>
       '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-base);cursor:pointer;padding:6px 0;">'
       + '<input type="checkbox" style="width:16px;height:16px;cursor:pointer;" ' + (c[it.id] ? 'checked' : '') + ' onchange="ltSetItemChecklistFinal(\'' + it.id + '\',this.checked)">'
       + it.label
@@ -11711,7 +11753,7 @@ function ltSetItemChecklistFinal(itemId, val) {
   if (!p) return;
   checklistFinalGet(p)[itemId] = !!val;
   upd();
-  buildLeadTimeTer(); // atualiza o badge de progresso e, se completou, a flag/Status calculados
+  buildLeadTime(); // já despacha certo pra SABER ou TER — atualiza o badge de progresso e, se completou, a flag/Status calculados
 }
 function fecharModalChecklistFinal() {
   const modal = document.getElementById('modal-checklist-final');
