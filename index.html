@@ -11656,12 +11656,25 @@ function semDataPlanejadaTer(p, si) {
   return addDays(p.inicio, diasPorEtapaTer(p) * (si + 1));
 }
 
+// Ordenação padrão das tabelas de Escopos (One-time e Recorrente): sem início definido vai
+// pro TOPO (é o que precisa de atenção mais urgente — nem começou ainda), o resto ordena por
+// início mais recente primeiro. Diferente da Base de Projetos, que deliberadamente manda
+// sem-início pro final (ver comentário em getBaseTerFiltered) — aqui o objetivo é destacar,
+// não arquivar.
+function sortLtSemInicioPrimeiro(list) {
+  return list.sort((a, b) => {
+    if (!a.inicio && !b.inicio) return 0;
+    if (!a.inicio) return -1;
+    if (!b.inicio) return 1;
+    return b.inicio.localeCompare(a.inicio);
+  });
+}
 function getLtTerFiltered() {
   const fCons  = document.getElementById('ltt-f-cons')?.value || '';
   const fConv  = document.getElementById('ltt-f-conv')?.value || '';
   const fOport = document.getElementById('ltt-f-oport')?.value || '';
   const fStatus= document.getElementById('ltt-f-status')?.value || 'Ativos';
-  return projects.filter(p => {
+  const list = projects.filter(p => {
     if (p.recorrencia !== 'One time') return false; // Escopos One-time: só projetos marcados como One time
     // Usa o status EFETIVO (calcStatus2), não o campo bruto p.status2 — um projeto finalizado
     // pelo checklist de fechamento (última etapa + Playbook/NPS/Acessos/Ferramenta) não passa
@@ -11676,6 +11689,7 @@ function getLtTerFiltered() {
     if (fOport && p.oport !== fOport) return false;
     return true;
   });
+  return sortLtSemInicioPrimeiro(list);
 }
 function clearLtTerFilters() {
   ['ltt-f-cons','ltt-f-conv','ltt-f-oport'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
@@ -11987,13 +12001,14 @@ function getLtRecFiltered() {
   const fCons = document.getElementById('ltr-f-cons')?.value || '';
   const fConv = document.getElementById('ltr-f-conv')?.value || '';
   const fOport= document.getElementById('ltr-f-oport')?.value || '';
-  return projects.filter(p => {
+  const list = projects.filter(p => {
     if (p.recorrencia !== 'Recorrente') return false; // Escopos Recorrentes: só projetos marcados como Recorrente
     if (fCons && p.consultor !== fCons) return false;
     if (fConv && p.conv !== fConv) return false;
     if (fOport && p.oport !== fOport) return false;
     return true;
   });
+  return sortLtSemInicioPrimeiro(list);
 }
 function clearLtRecFilters() {
   ['ltr-f-cons','ltr-f-conv','ltr-f-oport'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
@@ -12353,12 +12368,22 @@ function buildGanttTer() {
   // atrasado (fim calculado já passou) é justamente o que uma visão de capacity precisa
   // mostrar, não esconder. Só quem já terminou é que segue a regra de "saiu da janela
   // recente" — senão projeto finalizado há anos nunca sumiria da tela.
+  // "Finalizado" usa calcStatus2 (não o campo bruto p.status2): um projeto finalizado pelo
+  // checklist de fechamento (última etapa + Playbook/NPS/Acessos/Ferramenta) não passa por
+  // nenhum select manual, então p.status2 nunca muda sozinho — sem isso ele ficava preso
+  // aparecendo no Capacity pra sempre, com badges de "previsto" fantasma pras etapas que na
+  // prática já tinham acontecido. Cancelado/Interrompido continuam vindo do campo bruto — são
+  // estados só manuais, calcStatus2 não sabe sobre eles (mesmo critério de getLtTerFiltered).
   let prjs = projects.filter(p => {
     if (p.recorrencia === 'Recorrente') return false; // Capacity One-time: recorrente tem a própria sub-aba
-    if (!p.inicio) return false;
+    if (p.status2 === 'Cancelado' || p.status2 === 'Interrompido') return false;
+    // Sem início definido: não dá pra posicionar na timeline (nenhuma semana calculável) —
+    // aparece sempre, sinalizado como "Início em breve" no topo da tabela (ver sort abaixo e
+    // o render de linha especial mais adiante), em vez de sumir da tela até alguém preencher.
+    if (!p.inicio) return calcStatus2(p) !== 'Finalizado';
     const dI = parseDate(p.inicio);
     if (dI > endRef) return false;
-    const ativo = p.status2 !== 'Finalizado' && p.status2 !== 'Cancelado' && p.status2 !== 'Interrompido';
+    const ativo = calcStatus2(p) !== 'Finalizado';
     if (ativo) return true;
     const dFRaw = terFimRef(p);
     const dF = dFRaw ? parseDate(dFRaw) : new Date(dI.getTime() + 30 * 864e5);
@@ -12442,11 +12467,21 @@ function buildGanttTer() {
     if (s === 'Pausado')  return 'var(--amber)';
     if (s === 'Reembolso') return 'var(--purple)';
     if (s === 'Cancelado' || s === 'Interrompido') return 'var(--red)';
-    if (s === 'Finalizado') return 'var(--text-hint)';
+    if (calcStatus2(p) === 'Finalizado') return 'var(--text-hint)'; // ver comentário do filtro acima
     return 'var(--blue)'; // Em andamento / Início em breve / default
   };
 
   tbody.innerHTML = prjs.map(p => {
+    if (!p.inicio) {
+      // Sem início: não tem nenhuma semana calculável, então não monta células — só a linha
+      // com o aviso, sempre no topo da tabela (ver sort logo acima do filtro).
+      return '<tr>'
+        + '<td style="padding:5px 8px;font-size:var(--fs-sm);font-weight:600;color:var(--text);white-space:nowrap;">' + (p.nome||'—')
+        + ' <span style="display:inline-flex;align-items:center;gap:3px;font-size:var(--fs-3xs);font-weight:700;color:#fff;background:var(--blue);border-radius:8px;padding:1px 6px;white-space:nowrap;vertical-align:middle;">Início em breve</span></td>'
+        + '<td style="padding:5px 8px;font-size:var(--fs-xs);color:var(--text-hint);white-space:nowrap;">' + (p.consultor||'—') + '</td>'
+        + '<td colspan="' + semanas.length + '" style="text-align:center;color:var(--text-hint);font-size:var(--fs-xs);">Aguardando data de início</td>'
+        + '</tr>';
+    }
     const dIp = parseDate(p.inicio);
     const dFRaw = terFimRef(p);
     const dFp = dFRaw ? parseDate(dFRaw) : new Date(dIp.getTime() + 30*864e5);
