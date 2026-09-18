@@ -11851,7 +11851,7 @@ function buildLeadTimeTer() {
               const borderCor = feito ? 'var(--green)' : atrasada ? 'var(--red)' : 'var(--border)';
               const nomeCor = (feito || atrasada) ? '#fff' : 'var(--text-hint)';
               const tooltip = [nomeEtapaTer(p, si),
-                feito ? 'aconteceu' : atrasada ? 'atrasada — previsto ' + fmtD(semDataPlanejadaTer(p, si)) : 'ainda não aconteceu',
+                feito ? ('aconteceu' + (ent.real ? ' em ' + fmtD(ent.real) : '')) : atrasada ? 'atrasada — previsto ' + fmtD(semDataPlanejadaTer(p, si)) : 'ainda não aconteceu',
                 reuniao ? ('reunião' + (ent.dataReuniao ? ' em ' + fmtD(ent.dataReuniao) : ' marcada, sem data')) : 'sem reunião registrada'].join(' · ');
               // Badge do checklist de fechamento — só na última etapa. Clicável pra reabrir o
               // checklist sem precisar desmarcar/remarcar a etapa. Verde só com os 4 itens.
@@ -11859,7 +11859,10 @@ function buildLeadTimeTer() {
                 ? '<button type="button" onclick="event.stopPropagation();ltAbrirChecklistFinalizacao(\'' + p.id + '\')" title="Checklist de fechamento (' + checklistFinalContagem(p) + '/4)" style="position:absolute;bottom:1px;right:1px;background:none;border:none;padding:1px;color:' + (checklistFinalCompleto(p) ? (feito ? '#fff' : 'var(--green)') : nomeCor) + ';opacity:' + (checklistFinalCompleto(p) ? '1' : '.45') + ';cursor:pointer;">' + icon('clipboard',{size:9}) + '</button>'
                 : '';
               return '<div title="' + tooltip.replace(/"/g,'&quot;') + '" onclick="ltTerSetFeito(\'' + p.id + '\',' + si + ',' + (!feito) + ')" style="flex:1;min-height:34px;background:' + bg + ';border:1px solid ' + borderCor + ';border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;text-align:center;padding:3px 14px 3px 2px;position:relative;cursor:pointer;transition:background .2s;">'
+                + '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;max-width:100%;">'
                 + '<div style="font-size:var(--fs-2xs);font-weight:700;color:' + nomeCor + ';line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">' + nome + '</div>'
+                + (feito && ent.real ? '<div style="font-size:var(--fs-3xs);font-weight:600;color:' + nomeCor + ';opacity:.85;line-height:1.15;white-space:nowrap;">' + fmtD(ent.real) + '</div>' : '')
+                + '</div>'
                 + '<button type="button" onclick="event.stopPropagation();ltTerToggleReuniao(\'' + p.id + '\',' + si + ')" title="Alternar se houve reunião" style="position:absolute;top:1px;right:1px;background:none;border:none;padding:1px;color:' + nomeCor + ';opacity:' + (reuniao?'1':'.35') + ';cursor:pointer;">' + icon('users',{size:9}) + '</button>'
                 + checklistBadge
                 + '</div>';
