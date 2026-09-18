@@ -11774,14 +11774,25 @@ function fecharModalChecklistFinal() {
   _checklistFinalProjId = null;
 }
 
-function ltTerSetFeito(id, si, val) {
+async function ltTerSetFeito(id, si, val) {
   const p = projects.find(x => String(x.id) === String(id));
   if (!p) return;
   const entregas = ltTerEntregas(p);
   const ent = entregas[si];
   if (!ent) return;
   ent.feito = !!val;
-  ent.real = val ? (ent.real || new Date().toISOString().slice(0,10)) : '';
+  if (val) {
+    // Pergunta a data em que a etapa REALMENTE aconteceu (sugere hoje, mas deixa editar) — antes
+    // gravava "hoje" direto sem chance de indicar uma data diferente (ex: registrando com atraso).
+    if (!ent.real) {
+      buildLeadTimeTer();
+      const hojeStr = new Date().toISOString().slice(0,10);
+      const data = await showPrompt('Data em que essa etapa aconteceu:', { inputType: 'date', defaultValue: hojeStr, confirmLabel: 'Salvar', cancelLabel: 'Usar hoje' });
+      ent.real = data || hojeStr;
+    }
+  } else {
+    ent.real = '';
+  }
   buildLeadTimeTer();
   upd();
   // Marcar a ÚLTIMA etapa abre o checklist de fechamento — Pontual não tem "última etapa" no
