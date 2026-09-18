@@ -1434,14 +1434,14 @@
       <span style="width:10px;height:10px;border-radius:50%;background:var(--green);display:inline-block;"></span>
       Projetos Recorrentes
     </div>
-    <p style="font-size:var(--fs-sm);color:var(--text-hint);margin:-4px 0 1rem;">3 eventos padronizados do mês selecionado abaixo (Otimizações previstas, Reunião mensal, Envio NPS) — mesmo conteúdo da aba Escopos Recorrentes, lado a lado pra todos os projetos ativos de uma vez.</p>
-    <div id="cap-ter-rec-filter-bar" class="filter-bar" style="margin-bottom:1rem;"></div>
+    <p style="font-size:var(--fs-sm);color:var(--text-hint);margin:-4px 0 1rem;">Histórico mês a mês dos 3 eventos padronizados (Otimizações previstas · Reunião mensal · Envio NPS, nessa ordem em cada célula) — só visualização, sem clique; pra marcar algo, use a aba Escopos Recorrentes. Reaproveita os filtros de Consultor e Período do Gantt acima.</p>
     <div class="gantt-wrap">
       <table class="gantt-table"><thead id="cap-ter-rec-thead"></thead><tbody id="cap-ter-rec-tbody"></tbody></table>
     </div>
     <div style="display:flex;gap:16px;margin-top:.75rem;flex-wrap:wrap;">
-      <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:9px;height:9px;border-radius:2px;background:var(--green);display:inline-block;"></span>Confirmado</span>
-      <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:9px;height:9px;border-radius:2px;background:var(--surface3);border:1px solid var(--border);display:inline-block;"></span>Pendente</span>
+      <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:9px;height:9px;border-radius:2px;background:var(--green);display:inline-block;"></span>Aconteceu</span>
+      <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:9px;height:9px;border-radius:2px;background:var(--surface3);border:1px solid var(--border);display:inline-block;"></span>Ainda não (mês em andamento)</span>
+      <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:9px;height:9px;border-radius:2px;background:var(--red);display:inline-block;"></span>Atrasado (mês já fechou)</span>
     </div>
   </div>
 
@@ -12302,11 +12302,10 @@ function buildCapacity() {
   if (currentCoord === 'ter') {
     const sv = document.getElementById('cap-saber-view'); if (sv) sv.style.display = 'none';
     const tv = document.getElementById('cap-ter-view');   if (tv) tv.style.display = '';
-    // One-time e Recorrente aparecem juntos na mesma página (Recorrente como seção sempre
-    // visível abaixo, mesmo padrão da seção "Projetos DRO/DRX" na SABER) — os dois precisam
-    // ser (re)construídos toda vez, não só um deles como antes (quando ficavam atrás de abas).
+    // buildGanttTer() já cascata pra buildCapacityRec() no final (mesmo padrão de
+    // buildGantt() -> buildGanttDRO() na SABER) — a seção Recorrente é só leitura e reaproveita
+    // os filtros de Consultor/Período daqui, então não precisa de build separado.
     buildGanttTer();
-    buildCapacityRec();
     return;
   } else {
     const sv = document.getElementById('cap-saber-view'); if (sv) sv.style.display = '';
@@ -12457,6 +12456,7 @@ function buildGanttTer() {
 
   if (!prjs.length) {
     tbody.innerHTML = '<tr><td colspan="' + (semanas.length+2) + '" style="text-align:center;color:var(--text-hint);padding:20px;font-size:var(--fs-base);">Nenhum projeto no período</td></tr>';
+    buildCapacityRec(); // sem isso, a seção Recorrente ficava sem construir quando não há nenhum One-time no período (early return antes de chegar na cascata lá embaixo)
     return;
   }
 
@@ -12549,6 +12549,11 @@ function buildGanttTer() {
       + cells
       + '</tr>';
   }).join('');
+
+  // Cascata pra seção Recorrente (mesmo padrão de buildGantt() -> buildGanttDRO() na SABER):
+  // ela reaproveita os filtros de Consultor/Período daqui em cima, então precisa reconstruir
+  // toda vez que este Gantt reconstrói, não só quando alguém edita algo em Escopos Recorrentes.
+  buildCapacityRec();
 }
 
 function buildCargaSemanal(prjsAll, semanasExt, campo, elId, titulo, rotuloColuna, ativoFn) {
@@ -12781,29 +12786,55 @@ function recMensalBlocksHTML(p, mesKey) {
 // Capacity → Recorrente: mesma ideia do Gantt one-time (uma linha por projeto), só que sem
 // colunas de semana — os 3 eventos já são do MÊS inteiro selecionado no filtro (não por
 // semana), então cada projeto tem uma linha só com os mesmos 3 blocos de Escopos Recorrentes.
+// Um mês "fechou" (já virou passado) sem o evento ter acontecido é atraso de verdade; o mês
+// atual ainda em andamento sem o evento não é — ainda dá tempo. Cor pendente muda conforme
+// isso: cinza enquanto há tempo, vermelho só quando já passou da hora.
+function recMesFechado(mObj, hoje) {
+  return (mObj.ano * 12 + mObj.idx) < (hoje.getFullYear() * 12 + hoje.getMonth());
+}
+function recDotColor(feito, mesFechado) {
+  if (feito) return 'var(--green)';
+  return mesFechado ? 'var(--red)' : 'var(--surface3)';
+}
+// Capacity → Recorrente: mesma linguagem visual da seção "Projetos DRO/DRX" da SABER — uma
+// timeline só de leitura, sem nenhum clique (a versão clicável dos 3 eventos mensais mora só
+// em Escopos Recorrentes, ver recMensalBlocksHTML; duplicar a interação aqui só confundia quem
+// vinha em Capacity só pra visualizar). Colunas são MESES (não semanas — o progresso é mensal),
+// reaproveitando o mesmo filtro de Consultor e Período do Gantt One-time logo acima, igual o
+// DRO/DRX reaproveita Consultor/Designer/Copy do Gantt principal da SABER.
 function buildCapacityRec() {
   const thead = document.getElementById('cap-ter-rec-thead');
   const tbody = document.getElementById('cap-ter-rec-tbody');
   if (!thead || !tbody) return;
-  buildFilterBar('cap-ter-rec-filter-bar', 'capTerRec', buildCapacityRec);
-  const mesKey = filters['capTerRec'];
-  if (!mesKey) {
-    thead.innerHTML = '';
-    tbody.innerHTML = '<tr><td style="text-align:center;color:var(--text-hint);padding:20px;font-size:var(--fs-base);">Selecione um mês acima pra ver o progresso do mês.</td></tr>';
-    return;
+
+  const consFilter = document.getElementById('gantt-ter-cons-filter')?.value || '';
+  const months = parseInt(document.getElementById('gantt-ter-period')?.value || '6');
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+
+  // Últimos N meses até o atual (do mais antigo pro mais recente), mesma janela do período
+  // escolhido no Gantt One-time — evita ter dois seletores de "quantos meses ver" na mesma página.
+  const mesesTimeline = [];
+  for (let i = months - 1; i >= 0; i--) {
+    const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+    const m = ALL_MESES.find(x => x.idx === d.getMonth() && x.ano === d.getFullYear());
+    if (m) mesesTimeline.push(m);
   }
 
   thead.innerHTML = '<tr>'
-    + '<th style="min-width:160px;text-align:left;padding:5px 8px;">Projeto</th>'
+    + '<th style="min-width:160px;text-align:left;padding:5px 8px;position:sticky;left:0;background:var(--surface2);z-index:2;">Projeto</th>'
     + '<th style="min-width:80px;text-align:left;padding:5px 8px;">Consultor</th>'
-    + '<th style="min-width:260px;text-align:left;padding:5px 8px;">Progresso do mês</th>'
+    + mesesTimeline.map(m => {
+        const isAtual = m.idx === hoje.getMonth() && m.ano === hoje.getFullYear();
+        return '<th style="min-width:56px;text-align:center;padding:5px 4px;' + (isAtual ? 'color:var(--accent);background:rgba(212,0,26,.06);' : '') + '">' + m.label.slice(0,3) + '/' + String(m.ano).slice(2) + '</th>';
+      }).join('')
     + '</tr>';
 
-  // Pausado continua na tabela (standby), só não entra no progresso do mês — mesmo critério
-  // do restante do Capacity.
-  const list = projects.filter(p => p.recorrencia === 'Recorrente' && p.status2 !== 'Finalizado' && p.status2 !== 'Cancelado' && p.status2 !== 'Interrompido');
+  // Pausado continua na tabela (standby), só não entra na timeline — mesmo critério do
+  // restante do Capacity.
+  let list = projects.filter(p => p.recorrencia === 'Recorrente' && p.status2 !== 'Finalizado' && p.status2 !== 'Cancelado' && p.status2 !== 'Interrompido');
+  if (consFilter) list = list.filter(p => p.consultor === consFilter);
   if (!list.length) {
-    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-hint);padding:20px;font-size:var(--fs-base);">Nenhum projeto recorrente ativo</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="' + (mesesTimeline.length + 2) + '" style="text-align:center;color:var(--text-hint);padding:20px;font-size:var(--fs-base);">Nenhum projeto recorrente ativo</td></tr>';
     return;
   }
 
@@ -12813,23 +12844,43 @@ function buildCapacityRec() {
     const dedTxt = terExigeDedicacao(p)
       ? (dedTier ? (p.nivelDedicacao + ' · ' + dedTier.cadencia) : 'Dedicação não definida')
       : '';
-    // Pausado/Reembolso: não mostra o progresso do mês (não é esperado que o acompanhamento
-    // continue rodando nesses estados) — célula fica vazia, só a linha continua visível.
-    const progresso = ehPausadoRec
-      ? '<div style="font-size:var(--fs-3xs);color:var(--text-hint);">— em standby —</div>'
-      : recMensalBlocksHTML(p, mesKey);
+    const dIni = p.inicio ? parseDate(p.inicio) : null;
+    const dIniMes = dIni ? new Date(dIni.getFullYear(), dIni.getMonth(), 1) : null;
+
+    const cells = mesesTimeline.map(m => {
+      if (ehPausadoRec) return '<td style="text-align:center;padding:4px 3px;"><span style="font-size:var(--fs-3xs);color:var(--text-hint);">—</span></td>';
+      // Antes do início do projeto esse mês nem existia pra ele — célula fica vazia, não vermelha.
+      if (dIniMes && new Date(m.ano, m.idx, 1) < dIniMes) return '<td style="padding:4px 3px;"></td>';
+      const mesFechado = recMesFechado(m, hoje);
+      const totalOtim = recOtimItens(p).length;
+      const nOtim = recOtimContagem(p, m.key);
+      const otimFeito = recOtimCompleto(p, m.key);
+      const r = recReuniaoGet(p, m.key);
+      const npsFeito = recNpsFeito(p, m.key);
+      const tooltip = [
+        m.label + '/' + m.ano,
+        'Otimizações: ' + nOtim + '/' + totalOtim + (otimFeito ? ' (completo)' : ''),
+        'Reunião: ' + (r.feito ? ('aconteceu' + (r.data ? ' em ' + fmtD(r.data) : '')) : 'não aconteceu'),
+        'NPS: ' + (npsFeito ? 'respondido' : 'sem resposta'),
+      ].join(' · ').replace(/"/g,'&quot;');
+      const dot = feito => '<span style="width:7px;height:7px;border-radius:2px;display:inline-block;background:' + recDotColor(feito, mesFechado) + ';"></span>';
+      return '<td style="text-align:center;padding:4px 3px;" title="' + tooltip + '">'
+        + '<div style="display:flex;gap:2px;justify-content:center;">' + dot(otimFeito) + dot(r.feito) + dot(npsFeito) + '</div>'
+        + '</td>';
+    }).join('');
+
     const pausadoBadgeRec = p.status2 === 'Reembolso'
       ? ' <span title="Reembolso — em standby, não conta na carga/capacity" style="display:inline-flex;align-items:center;gap:3px;font-size:var(--fs-3xs);font-weight:700;color:#fff;background:var(--purple);border-radius:8px;padding:1px 6px;white-space:nowrap;vertical-align:middle;">'+icon('coin',{size:8})+' Reembolso</span>'
       : ehPausadoRec
       ? ' <span title="Pausado — em standby, não conta na carga/capacity" style="display:inline-flex;align-items:center;gap:3px;font-size:var(--fs-3xs);font-weight:700;color:#fff;background:var(--amber);border-radius:8px;padding:1px 6px;white-space:nowrap;vertical-align:middle;">'+icon('pause',{size:8})+' Pausado</span>'
       : '';
     return '<tr' + (ehPausadoRec ? ' style="opacity:.75;"' : '') + '>'
-      + '<td style="padding:5px 8px;white-space:nowrap;">'
+      + '<td style="padding:5px 8px;white-space:nowrap;position:sticky;left:0;background:var(--surface);">'
       + '<div style="font-size:var(--fs-sm);font-weight:600;color:var(--text);">' + (p.nome||'—') + pausadoBadgeRec + '</div>'
       + (dedTxt ? '<div style="font-size:var(--fs-3xs);font-weight:700;color:' + (dedTier?'var(--accent)':'var(--amber)') + ';">' + dedTxt + '</div>' : '')
       + '</td>'
       + '<td style="padding:5px 8px;font-size:var(--fs-xs);color:var(--text-hint);white-space:nowrap;">' + (p.consultor||'—') + '</td>'
-      + '<td style="padding:5px 8px;">' + progresso + '</td>'
+      + cells
       + '</tr>';
   }).join('');
 }
