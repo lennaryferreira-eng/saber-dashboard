@@ -8040,13 +8040,19 @@ function buildNpsTer() {
   // que algum Recorrente esteve ativo (aptos à coleta) — ordenados do mais recente pro mais antigo.
   const selMes = document.getElementById('nps-ter-f-mes');
   if (selMes) {
+    // Mesmo critério de finalização usado em buildNpsTerOneTime (dataFimRealTer antes de
+    // prevFim), senão um projeto fechado só pelo checklist podia ficar de fora da lista de
+    // meses ou aparecer sob o mês errado aqui.
     const mesesOt = projects
       .filter(p => p.recorrencia === 'One time' && calcStatus2(p) === 'Finalizado')
-      .map(p => mesLabelDe(p.realFim || p.prevFim)).filter(Boolean);
+      .map(p => mesLabelDe(dataFimRealTer(p) || p.prevFim)).filter(Boolean);
     const mesesRec = projects
       .filter(p => p.recorrencia === 'Recorrente')
       .flatMap(p => npsMesesRecorrente(p).map(m => m.label + '/' + m.ano));
-    const meses = [...new Set([...mesesOt, ...mesesRec])].sort((a, b) => {
+    const hoje = new Date();
+    const mesAtualObj = ALL_MESES.find(x => x.idx === hoje.getMonth() && x.ano === hoje.getFullYear());
+    const mesAtualLabel = mesAtualObj ? mesAtualObj.label + '/' + mesAtualObj.ano : null;
+    const meses = [...new Set([...mesesOt, ...mesesRec, ...(mesAtualLabel ? [mesAtualLabel] : [])])].sort((a, b) => {
       const [la, ya] = a.split('/'); const [lb, yb] = b.split('/');
       const ma = ALL_MESES.find(x => x.label === la && x.ano === parseInt(ya));
       const mb = ALL_MESES.find(x => x.label === lb && x.ano === parseInt(yb));
@@ -8055,6 +8061,13 @@ function buildNpsTer() {
     });
     const curM = selMes.value;
     selMes.innerHTML = '<option value="">Todos</option>' + meses.map(m => `<option${m===curM?' selected':''}>${m}</option>`).join('');
+    // Igual à lógica da SABER (calcNps() cai no mês atual quando não há filtro escolhido): sem
+    // filtro definido, mostra só os aptos do mês atual em vez de misturar todo o histórico.
+    // Só aplica uma vez (o dataset marca isso) pra não sobrescrever "Todos" escolhido depois.
+    if (!selMes.dataset.defaulted) {
+      selMes.dataset.defaulted = '1';
+      if (!curM && mesAtualLabel) selMes.value = mesAtualLabel;
+    }
   }
   const fMes = selMes?.value || '';
 
