@@ -6918,6 +6918,16 @@ function terFimRef(p) {
   if (p.recorrencia === 'Recorrente' || _ehPontual(p)) return addDays(new Date().toISOString().slice(0,10), 3650);
   return '';
 }
+// Variante de terFimRef() pra decidir se um projeto já FINALIZADO ainda está numa janela
+// recente o bastante pra aparecer no Capacity. O fallback "sempre ativo" de terFimRef() (+10
+// anos pra Pontual/Recorrente sem prevFim/realFim) é pensado pra projeto em andamento sem data
+// de fim natural — aplicado a um projeto já finalizado (ex: Pontual marcado Finalizado via
+// ltFinalizarPontual, que nunca grava nenhuma data), fazia ele nunca sumir da tela mesmo
+// depois de encerrado. Sem status Finalizado, cai no terFimRef() normal.
+function terFimRefParaExibicao(p) {
+  if (calcStatus2(p) === 'Finalizado') return p.realFim || p.prevFim || '';
+  return terFimRef(p);
+}
 
 function setFieldTer(el) {
   const id = el.dataset.id;
@@ -12385,7 +12395,7 @@ function buildGanttTer() {
     if (dI > endRef) return false;
     const ativo = calcStatus2(p) !== 'Finalizado';
     if (ativo) return true;
-    const dFRaw = terFimRef(p);
+    const dFRaw = terFimRefParaExibicao(p);
     const dF = dFRaw ? parseDate(dFRaw) : new Date(dI.getTime() + 30 * 864e5);
     return dF >= startRef;
   });
@@ -12404,7 +12414,7 @@ function buildGanttTer() {
   function ativoNaSemana(p, sDate) {
     const dIp = parseDate(p.inicio); if (!dIp) return false;
     const sEnd = new Date(sDate.getTime() + 6*864e5);
-    const dFRaw = terFimRef(p);
+    const dFRaw = terFimRefParaExibicao(p);
     const dFp = dFRaw ? parseDate(dFRaw) : new Date(dIp.getTime() + 30*864e5);
     return dIp <= sEnd && dFp >= sDate;
   }
@@ -12483,7 +12493,7 @@ function buildGanttTer() {
         + '</tr>';
     }
     const dIp = parseDate(p.inicio);
-    const dFRaw = terFimRef(p);
+    const dFRaw = terFimRefParaExibicao(p);
     const dFp = dFRaw ? parseDate(dFRaw) : new Date(dIp.getTime() + 30*864e5);
     const ehPontual = _ehPontual(p);
     const entregas = ehPontual ? entregasPontuais(p) : ltTerEntregas(p);
