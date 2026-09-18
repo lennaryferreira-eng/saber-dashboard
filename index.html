@@ -1139,7 +1139,7 @@
 </section>
 
 <section id="sec-recorrentes" class="section">
-  <div class="sec-head"><h2 class="sec-title">Escopos Recorrentes</h2><p class="sec-desc">Só projetos marcados como <b>Recorrente</b> na Base de Projetos. Escolha o mês acima da tabela — as etapas mostradas são as rotinas semanais do modelo (Manutenção/Profissional de CRM/Sales Enablement), divididas semana a semana dentro daquele mês. Clique no bloco da etapa quando ela acontecer (cinza → verde).</p></div>
+  <div class="sec-head"><h2 class="sec-title">Escopos Recorrentes</h2><p class="sec-desc">Só projetos marcados como <b>Recorrente</b> na Base de Projetos. Escolha o mês acima da tabela — todo escopo recorrente tem os mesmos 3 eventos pra confirmar naquele mês: <b>Otimizações previstas</b> (abre um checklist com os itens específicos do modelo), <b>Reunião mensal</b> e <b>Envio NPS</b> (calculado a partir da aba NPS Recorrente).</p></div>
 
   <div class="mgrid mg4" style="margin-bottom:.8rem;">
     <div class="mcard c-blue"><div class="mlabel">Projetos</div><div class="mval" id="ltr-total">0</div></div>
@@ -1175,7 +1175,7 @@
           <th style="min-width:90px;">GMV</th>
           <th style="min-width:80px;">Tier</th>
           <th>Início</th><th>Previsto</th>
-          <th style="min-width:260px;">Etapas</th>
+          <th style="min-width:220px;">Progresso do mês</th>
           <th style="min-width:200px;">Observação do projeto</th>
           <th style="min-width:80px;">Flag</th>
           <th style="min-width:130px;">Oportunidade</th>
@@ -1437,14 +1437,14 @@
 
   <div id="cap-ter-recorrente" style="display:none;">
     <div class="card">
-      <div class="card-title">Entregas previstas — semana a semana</div>
-      <p style="font-size:var(--fs-sm);color:var(--text-hint);margin:-4px 0 1rem;">Igual ao Gantt de One-time, mas só com as semanas do mês selecionado acima — cada quadradinho é uma rotina daquele produto; passe o mouse pra ver qual, clique pra marcar que aconteceu.</p>
+      <div class="card-title">Progresso do mês — todos os recorrentes</div>
+      <p style="font-size:var(--fs-sm);color:var(--text-hint);margin:-4px 0 1rem;">Mesmos 3 eventos do mês selecionado acima (Otimizações previstas, Reunião mensal, Envio NPS) da aba Escopos Recorrentes, só que lado a lado pra todos os projetos recorrentes ativos de uma vez.</p>
       <div id="cap-ter-rec-filter-bar" class="filter-bar" style="margin-bottom:1rem;"></div>
       <div class="gantt-wrap">
         <table class="gantt-table"><thead id="cap-ter-rec-thead"></thead><tbody id="cap-ter-rec-tbody"></tbody></table>
       </div>
       <div style="display:flex;gap:16px;margin-top:.75rem;flex-wrap:wrap;">
-        <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:9px;height:9px;border-radius:2px;background:var(--green);display:inline-block;"></span>Rotina aconteceu</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:9px;height:9px;border-radius:2px;background:var(--green);display:inline-block;"></span>Confirmado</span>
         <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:9px;height:9px;border-radius:2px;background:var(--surface3);border:1px solid var(--border);display:inline-block;"></span>Pendente</span>
       </div>
     </div>
@@ -1583,6 +1583,25 @@
       <div id="checklist-final-itens"></div>
       <div style="display:flex;gap:6px;margin-top:14px;">
         <button class="btn btn-ghost" onclick="fecharModalChecklistFinal()" style="flex:1;border-radius:6px;">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Checklist de "Otimizações previstas" do mês — Escopos Recorrentes. Lista específica por
+     modelo (TER_OTIMIZACOES_POR_MODELO), reaproveitando os itens que antes eram a rotina
+     semanal fixa de cada produto. -->
+<div class="modal-overlay" id="modal-otim-mes" onclick="if(event.target===this)fecharModalOtimMes()">
+  <div class="modal-box" style="max-width:420px;" role="dialog" aria-modal="true" aria-labelledby="otim-mes-titulo">
+    <div class="modal-header">
+      <span class="modal-title" id="otim-mes-titulo">Otimizações previstas</span>
+      <button class="modal-close" onclick="fecharModalOtimMes()" title="Fechar"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div id="otim-mes-nome" style="font-size:var(--fs-sm);color:var(--text-hint);margin-bottom:10px;"></div>
+      <p id="otim-mes-desc" style="font-size:var(--fs-sm);color:var(--text-hint);margin:0 0 10px;"></p>
+      <div id="otim-mes-itens"></div>
+      <div style="display:flex;gap:6px;margin-top:14px;">
+        <button class="btn btn-ghost" onclick="fecharModalOtimMes()" style="flex:1;border-radius:6px;">Fechar</button>
       </div>
     </div>
   </div>
@@ -3580,7 +3599,7 @@ const MODAL_CLOSE_FN = {
   'modal-nova-mon':'closeNovaMon', 'modal-pipe-evento':'closeNovoPipeEvento',
   'modal-drive-fila':'audFecharModalDrive', 'modal-consultores':'closeConsultoresModal',
   'modal-novo-projeto-ter':'closeNovoProjTer', 'modal-login':'closeLoginModal',
-  'modal-confirm':()=>_confirmModalResponder(false),
+  'modal-confirm':()=>_confirmModalResponder(false), 'modal-otim-mes':'fecharModalOtimMes',
 };
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
@@ -11960,9 +11979,9 @@ function buildLeadTimeTer() {
 }
 
 // ═══════════════════════════════════
-//  ESCOPOS RECORRENTES — TER (mesmo formato do Escopos One-time; a coluna "Etapas" mostra
-//  as rotinas semanais do modelo — recCicloTemplate/recSemanaState, mesmo motor do Capacity
-//  → Recorrente — divididas semana a semana dentro do mês escolhido no filtro acima)
+//  ESCOPOS RECORRENTES — TER (mesmo formato do Escopos One-time; a coluna "Progresso do mês"
+//  mostra os 3 eventos padronizados do mês escolhido no filtro acima — ver recMensalBlocksHTML,
+//  mesmo motor do Capacity → Recorrente)
 // ═══════════════════════════════════
 function getLtRecFiltered() {
   const fCons = document.getElementById('ltr-f-cons')?.value || '';
@@ -12000,7 +12019,6 @@ function buildLeadTimeRec() {
   buildFilterBar('ltr-mes-filter-bar', 'ltrMes', buildLeadTimeRec);
   const mesKey = filters['ltrMes'];
   const mObj = mesKey ? ALL_MESES.find(m => m.key === mesKey) : null;
-  const nSemanas = mObj ? numSemanasMes(mObj) : 0;
 
   const list = getLtRecFiltered();
   const countEl = document.getElementById('ltr-count');
@@ -12018,38 +12036,15 @@ function buildLeadTimeRec() {
           ? (dedTier ? (p.nivelDedicacao + ' · ' + dedTier.cadencia) : 'Dedicação não definida')
           : '';
 
-        // Etapas: mesmo bloco compacto do Escopos One-time (nome curto, cinza→verde ao
-        // clicar), agrupado em uma linha por semana do mês selecionado. Não é a mesma rotina
-        // toda semana pra quem exige dedicação (Profissional de CRM/Sales Enablement) — é o
-        // total de tarefas do mês (definido pelo nível de dedicação) dividido entre as
-        // semanas, então cada linha de semana pode ter uma quantidade diferente de blocos.
-        // Manutenção de CRM continua com a mesma lista fixa toda semana (recSemanaTarefas
-        // já trata essa diferença).
+        // Progresso do mês: 3 eventos padronizados, independente do modelo — Otimizações
+        // previstas (abre checklist específico do modelo), Reunião mensal, Envio NPS (ver
+        // recMensalBlocksHTML).
         let etapasHTML;
         if (!mObj) {
           etapasHTML = '<div style="font-size:var(--fs-xs);color:var(--text-hint);">Selecione um mês acima.</div>';
         } else {
-          const porSemana = recSemanaTarefas(p, mesKey);
-          const st = recSemanaState(p, mesKey);
           etapasHTML = (dedTxt ? '<div style="font-size:var(--fs-2xs);font-weight:700;color:' + (dedTier?'var(--accent)':'var(--amber)') + ';margin-bottom:4px;">' + dedTxt + '</div>' : '')
-            + Array.from({ length: nSemanas }, (_, si) => {
-                const tarefasSemana = porSemana[si] || [];
-                const semState = st[si] || [];
-                const blocks = tarefasSemana.map((nome, ei) => {
-                  const feito = !!semState[ei];
-                  const bg = feito ? 'var(--green)' : 'var(--surface3)';
-                  const borderCor = feito ? 'var(--green)' : 'var(--border)';
-                  const nomeCor = feito ? '#fff' : 'var(--text-hint)';
-                  const tooltip = (nome + ' · Semana ' + (si+1) + ' · ' + (feito ? 'aconteceu' : 'ainda não aconteceu')).replace(/"/g,'&quot;');
-                  return '<div title="' + tooltip + '" onclick="recSemanaToggle(\'' + p.id + '\',\'' + mesKey + '\',' + si + ',' + ei + ')" style="flex:1;min-height:28px;background:' + bg + ';border:1px solid ' + borderCor + ';border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;text-align:center;padding:2px 3px;cursor:pointer;transition:background .2s;">'
-                    + '<div style="font-size:var(--fs-3xs);font-weight:700;color:' + nomeCor + ';line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">' + nome + '</div>'
-                    + '</div>';
-                }).join('');
-                return '<div style="display:flex;gap:3px;align-items:center;margin-bottom:3px;">'
-                  + '<span style="font-size:var(--fs-3xs);color:var(--text-hint);width:15px;flex-shrink:0;">S' + (si+1) + '</span>'
-                  + '<div style="display:flex;gap:3px;flex:1;">' + (blocks || '<span style="font-size:var(--fs-3xs);color:var(--text-hint);">—</span>') + '</div>'
-                  + '</div>';
-              }).join('');
+            + recMensalBlocksHTML(p, mesKey);
         }
 
         return '<tr>'
@@ -12597,125 +12592,162 @@ function buildCargaSemanal(prjsAll, semanasExt, campo, elId, titulo, rotuloColun
 }
 
 // ═══════════════════════════════════
-//  CAPACITY — TER RECORRENTE (rotinas semanais de cada produto, divididas nas semanas de
-//  um mês específico — igual o filtro de mês da Visão Geral, pra ficar um registro
-//  histórico por mês em vez de um ciclo único que reinicia e perde o que já aconteceu)
+//  CAPACITY — TER RECORRENTE / ESCOPOS RECORRENTES — progresso do mês padronizado em 3
+//  eventos, independente do modelo: Otimizações previstas (checklist específico do modelo),
+//  Reunião mensal, Envio NPS (reflete a aba NPS Recorrente). Substituiu o sistema anterior de
+//  rotinas semanais por produto, divididas semana a semana dentro do mês — a coordenadora
+//  pediu um progresso mais simples e padronizado em vez de um checklist semana a semana.
 // ═══════════════════════════════════
-// Template fixo por modelo — mesma lógica de TER_NOMES_POR_MODELO no Lead Time one-time.
-// Etapas = rotinas de cadência SEMANAL de cada POP (as diárias e mensais de cada produto
-// não entram aqui — o registro desta tela é semanal; tracking diário/mensal fica pra depois
-// se a coordenadora pedir). Manutenção de CRM não varia por dedicação (rotina fixa); os
-// outros dois usam o mesmo conjunto de rotinas centrais pra qualquer nível de dedicação —
-// o que muda com a dedicação é o volume de cada entrega e a cadência de contato com o
-// cliente (ver TER_DEDICACAO_TIERS, mostrado como selo ao lado do projeto nesta tela).
-const TER_CICLO_RECORRENTE = {
-  'Manutenção de CRM': {
-    cadencia: 'semanal',
-    etapas: ['Sanitização e funil', 'Fluxos de automação', 'Backups e dados'],
-  },
-  'Profissional de CRM': {
-    cadencia: 'semanal',
-    etapas: [
-      'Limpeza de dados', 'Pipelines e etapas', 'Fluxos e automações',
-      'Integrações', 'Dashboards e relatórios', 'Segmentação de base',
-      'Suporte a Mkt/Vendas', 'Comunicação c/ cliente',
-    ],
-  },
-  'Sales Enablement': {
-    cadencia: 'semanal',
-    etapas: [
-      'Materiais de apoio à venda', 'Treinamentos/workshops', 'Métricas de performance',
-      'Playbooks e processos', 'Ferramentas de apoio', 'Alinhamento Mkt/Vendas/BI',
-      'Comunicação c/ cliente',
-    ],
-  },
+
+// Lista de "otimizações previstas" do mês, específica por modelo — mesmos itens que antes
+// eram a rotina semanal fixa de cada produto (mesma lógica de TER_NOMES_POR_MODELO no Lead
+// Time one-time). Modelo sem lista própria cai num fallback genérico.
+const TER_OTIMIZACOES_POR_MODELO = {
+  'Manutenção de CRM': ['Sanitização e funil', 'Fluxos de automação', 'Backups e dados'],
+  'Profissional de CRM': [
+    'Limpeza de dados', 'Pipelines e etapas', 'Fluxos e automações',
+    'Integrações', 'Dashboards e relatórios', 'Segmentação de base',
+    'Suporte a Mkt/Vendas', 'Comunicação c/ cliente',
+  ],
+  'Sales Enablement': [
+    'Materiais de apoio à venda', 'Treinamentos/workshops', 'Métricas de performance',
+    'Playbooks e processos', 'Ferramentas de apoio', 'Alinhamento Mkt/Vendas/BI',
+    'Comunicação c/ cliente',
+  ],
 };
-function recCicloTemplate(p) {
-  return TER_CICLO_RECORRENTE[p.modelo] || { cadencia: 'mensal', etapas: ['Etapa 1','Etapa 2','Etapa 3','Etapa 4'] };
+function recOtimItens(p) {
+  return TER_OTIMIZACOES_POR_MODELO[p.modelo] || ['Otimização 1', 'Otimização 2', 'Otimização 3', 'Otimização 4'];
 }
-// Semanas do mês: divisão simples em blocos fixos de 7 dias a partir do dia 1 (Semana 1 =
-// dias 1-7, Semana 2 = 8-14 ...) — não alinhada à segunda-feira, de propósito: assim todo
-// mês tem o mesmo número de semanas (4 ou 5) independente de em que dia da semana ele começa,
-// o que é mais simples de ler numa grade fixa do que semanas ISO cortadas na virada do mês.
-function diasNoMes(ano, idxMes) { return new Date(ano, idxMes + 1, 0).getDate(); }
-function numSemanasMes(m) { return Math.ceil(diasNoMes(m.ano, m.idx) / 7); }
+// Estado por mês mora no próprio projeto (p.recOtim = { mesKey: [bool por item] }) — salva
+// junto com o resto de `projects`, sem coluna nova no Supabase. Se a lista de itens mudou de
+// tamanho (modelo trocado depois de já ter progresso registrado), preserva o que já tinha e
+// completa/corta pra não desalinhar os índices.
+function recOtimState(p, mesKey) {
+  const itens = recOtimItens(p);
+  if (!p.recOtim) p.recOtim = {};
+  const prev = Array.isArray(p.recOtim[mesKey]) ? p.recOtim[mesKey] : [];
+  const st = prev.slice(0, itens.length);
+  while (st.length < itens.length) st.push(false);
+  p.recOtim[mesKey] = st;
+  return st;
+}
+function recOtimContagem(p, mesKey) { return recOtimState(p, mesKey).filter(Boolean).length; }
+function recOtimCompleto(p, mesKey) { const n = recOtimItens(p).length; return n > 0 && recOtimContagem(p, mesKey) === n; }
 
-// Quantidade de tarefas do MÊS inteiro por nível de dedicação — só vale pra modelos que
-// exigem dedicação (Profissional de CRM, Sales Enablement...). Manutenção de CRM não entra
-// aqui: a POP marca as 3 rotinas dela como cadência semanal fixa, então repetem toda semana
-// igual (recTarefasDoMes trata isso à parte). Números de referência — ajustar se a
-// coordenadora passar volumes mais precisos por produto.
-const TER_DEDICACAO_QTD_TAREFAS = { '10%': 5, '15%': 8, '25%': 12, '50%': 20, '100%': 30 };
-
-// Lista de tarefas do projeto pro mês inteiro. Manutenção de CRM (ou qualquer modelo sem
-// exigência de dedicação): a mesma lista do template, repetida toda semana — é cadência
-// semanal fixa. Profissional de CRM/Sales Enablement: NÃO é "toda rotina toda semana" — é um
-// total de tarefas do mês (de acordo com o nível de dedicação) que se repete ciclicamente
-// pelos nomes do template até completar esse total, e depois se divide entre as semanas
-// (recSemanaTarefas) — ex: nível 10% = 5 tarefas no mês inteiro, não 5 por semana.
-function recTarefasDoMes(p) {
-  const tpl = recCicloTemplate(p);
-  if (!terExigeDedicacao(p)) return tpl.etapas.slice();
-  const qtd = TER_DEDICACAO_QTD_TAREFAS[p.nivelDedicacao] || 0;
-  if (!qtd) return [];
-  return Array.from({ length: qtd }, (_, i) => tpl.etapas[i % tpl.etapas.length]);
-}
-// Divide a lista de tarefas do mês entre as semanas o mais igual possível — sobra vai pras
-// primeiras semanas (5 tarefas / 4 semanas = [2,1,1,1]). Pra modelo sem dedicação (Manutenção
-// de CRM), recTarefasDoMes já devolve a lista fixa, e aqui ela só se repete em toda semana
-// (não se divide) — mantém o comportamento de cadência semanal fixa que já existia.
-function recSemanaTarefas(p, mesKey) {
-  const mObj = ALL_MESES.find(m => m.key === mesKey);
-  const nSemanas = mObj ? numSemanasMes(mObj) : 4;
-  const tarefas = recTarefasDoMes(p);
-  if (!terExigeDedicacao(p)) return Array.from({ length: nSemanas }, () => tarefas.slice());
-  const base = Math.floor(tarefas.length / nSemanas);
-  const resto = tarefas.length % nSemanas;
-  const porSemana = [];
-  let cursor = 0;
-  for (let si = 0; si < nSemanas; si++) {
-    const qtd = base + (si < resto ? 1 : 0);
-    porSemana.push(tarefas.slice(cursor, cursor + qtd));
-    cursor += qtd;
-  }
-  return porSemana;
-}
-// Estado por mês mora no próprio projeto (p.recSemanas = { mesKey: [[bool por tarefa da
-// semana], ...] }) — salva junto com o resto de `projects`, sem precisar de nenhuma coluna
-// nova no Supabase. Se a distribuição de tarefas mudou de tamanho numa semana (a coordenadora
-// trocou o nível de dedicação, ou o template do modelo mudou), preserva o que já tinha e
-// completa/corta pra não desalinhar os índices dentro daquela semana.
-function recSemanaState(p, mesKey) {
-  const porSemana = recSemanaTarefas(p, mesKey);
-  if (!p.recSemanas) p.recSemanas = {};
-  const anterior = Array.isArray(p.recSemanas[mesKey]) ? p.recSemanas[mesKey] : [];
-  const semanas = porSemana.map((tarefasSemana, si) => {
-    const prev = Array.isArray(anterior[si]) ? anterior[si] : [];
-    const s = prev.slice(0, tarefasSemana.length);
-    while (s.length < tarefasSemana.length) s.push(false);
-    return s;
-  });
-  p.recSemanas[mesKey] = semanas;
-  return semanas;
-}
-function recSemanaToggle(id, mesKey, si, ei) {
+let _recOtimProjId = null;
+let _recOtimMesKey = null;
+function ltAbrirOtimMes(id, mesKey) {
   const p = projects.find(x => String(x.id) === String(id));
   if (!p) return;
-  const st = recSemanaState(p, mesKey);
-  st[si][ei] = !st[si][ei];
-  // Chamado tanto do Capacity → Recorrente quanto do Escopos Recorrentes — atualiza os dois
-  // pra não deixar a tabela que não disparou o clique com a linha desatualizada.
-  buildCapacityRec();
-  buildLeadTimeRec();
+  _recOtimProjId = id;
+  _recOtimMesKey = mesKey;
+  _renderModalOtimMes(p);
+  const modal = document.getElementById('modal-otim-mes');
+  if (modal) modal.style.display = 'flex';
+}
+function _renderModalOtimMes(p) {
+  const itens = recOtimItens(p);
+  const st = recOtimState(p, _recOtimMesKey);
+  const mObj = ALL_MESES.find(m => m.key === _recOtimMesKey);
+  const nomeEl = document.getElementById('otim-mes-nome');
+  if (nomeEl) nomeEl.textContent = (p.nome || '') + (mObj ? ' · ' + mObj.label + '/' + mObj.ano : '');
+  const descEl = document.getElementById('otim-mes-desc');
+  if (descEl) descEl.textContent = 'Otimizações previstas de ' + (p.modelo || 'Recorrente') + ' pra esse mês (' + recOtimContagem(p, _recOtimMesKey) + '/' + itens.length + ' marcadas).';
+  const wrap = document.getElementById('otim-mes-itens');
+  if (wrap) {
+    wrap.innerHTML = itens.map((nome, i) =>
+      '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-base);cursor:pointer;padding:6px 0;">'
+      + '<input type="checkbox" style="width:16px;height:16px;cursor:pointer;" ' + (st[i] ? 'checked' : '') + ' onchange="recOtimToggleItem(' + i + ',this.checked)">'
+      + nome
+      + '</label>'
+    ).join('');
+  }
+}
+function recOtimToggleItem(idx, val) {
+  const p = projects.find(x => String(x.id) === String(_recOtimProjId));
+  if (!p || !_recOtimMesKey) return;
+  const st = recOtimState(p, _recOtimMesKey);
+  st[idx] = !!val;
   upd();
+  _renderModalOtimMes(p);
+  // Chamado só de dentro do modal — atualiza as duas tabelas que podem estar mostrando esse
+  // projeto (Escopos Recorrentes e Capacity → Recorrente), igual o antigo recSemanaToggle já fazia.
+  buildLeadTimeRec();
+  buildCapacityRec();
+}
+function fecharModalOtimMes() {
+  const modal = document.getElementById('modal-otim-mes');
+  if (modal) modal.style.display = 'none';
+  _recOtimProjId = null;
+  _recOtimMesKey = null;
 }
 
-// Gantt da Recorrente: mesma linguagem visual do Gantt One-time (uma linha por projeto,
-// colunas = semanas, badge pequeno por célula) — mas com escopo de só um mês por vez (as
-// colunas são as semanas do mês escolhido no filtro, não uma janela rolante de N meses) e,
-// em vez de UMA etapa por semana, cada célula carrega um cluster de quadradinhos pequenos —
-// um por rotina do modelo (recCicloTemplate) — pra não deixar a linha do projeto crescer
-// desproporcionalmente quando o modelo tem muitas rotinas (Profissional de CRM tem 8).
+// Reunião mensal — um clique só: liga e já pergunta a data (sugere hoje, editável); clicar de
+// novo desliga e limpa. Mesmo padrão de ltTerSetFeito/ltTerToggleReuniao no One-time.
+function recReuniaoGet(p, mesKey) {
+  if (!p.recReuniao) p.recReuniao = {};
+  if (!p.recReuniao[mesKey] || typeof p.recReuniao[mesKey] !== 'object') p.recReuniao[mesKey] = { feito: false, data: '' };
+  return p.recReuniao[mesKey];
+}
+async function recReuniaoToggle(id, mesKey) {
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!p) return;
+  const r = recReuniaoGet(p, mesKey);
+  if (r.feito) {
+    r.feito = false;
+    r.data = '';
+    buildLeadTimeRec(); buildCapacityRec(); upd();
+    return;
+  }
+  r.feito = true;
+  buildLeadTimeRec(); buildCapacityRec();
+  const hojeStr = new Date().toISOString().slice(0,10);
+  const data = await showPrompt('Data da reunião mensal:', { inputType: 'date', defaultValue: hojeStr, confirmLabel: 'Salvar', cancelLabel: 'Usar hoje' });
+  r.data = data || hojeStr;
+  buildLeadTimeRec(); buildCapacityRec(); upd();
+}
+
+// Envio NPS — sem controle próprio aqui: reflete se já existe nota respondida naquele mês na
+// aba NPS Recorrente (mesma chave de npsRecKey/npsData), pra não duplicar a coleta em dois lugares.
+function recNpsFeito(p, mesKey) {
+  const nd = npsData[npsRecKey(p.id, mesKey)];
+  return !!(nd && nd.nota !== '' && nd.nota !== undefined && nd.nota !== null);
+}
+
+// Um dos 3 blocos padronizados — reaproveitado tanto em Escopos Recorrentes (buildLeadTimeRec)
+// quanto no Gantt de Capacity → Recorrente (buildCapacityRec).
+function recBloco(label, feito, sub, onclick, tooltip) {
+  const bg = feito ? 'var(--green)' : 'var(--surface3)';
+  const borderCor = feito ? 'var(--green)' : 'var(--border)';
+  const cor = feito ? '#fff' : 'var(--text-hint)';
+  return '<div title="' + tooltip.replace(/"/g,'&quot;') + '"' + (onclick ? ' onclick="' + onclick + '"' : '')
+    + ' style="flex:1;min-height:34px;background:' + bg + ';border:1px solid ' + borderCor + ';border-radius:var(--r-sm);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:3px 4px;' + (onclick ? 'cursor:pointer;' : '') + 'transition:background .2s;">'
+    + '<div style="font-size:var(--fs-2xs);font-weight:700;color:' + cor + ';line-height:1.15;">' + label + '</div>'
+    + (sub ? '<div style="font-size:var(--fs-3xs);font-weight:600;color:' + cor + ';opacity:.85;">' + sub + '</div>' : '')
+    + '</div>';
+}
+function recMensalBlocksHTML(p, mesKey) {
+  const itensOtim = recOtimItens(p);
+  const nOtim = recOtimContagem(p, mesKey);
+  const otimCompleto = recOtimCompleto(p, mesKey);
+  const r = recReuniaoGet(p, mesKey);
+  const npsFeito = recNpsFeito(p, mesKey);
+
+  const blocoOtim = recBloco('Otimizações', otimCompleto, nOtim + '/' + itensOtim.length,
+    "ltAbrirOtimMes('" + p.id + "','" + mesKey + "')",
+    'Otimizações previstas (' + (p.modelo || '—') + ') · ' + nOtim + '/' + itensOtim.length + ' marcadas');
+  const blocoReuniao = recBloco('Reunião', r.feito, (r.feito && r.data) ? fmtD(r.data) : '',
+    "recReuniaoToggle('" + p.id + "','" + mesKey + "')",
+    'Reunião mensal · ' + (r.feito ? ('aconteceu' + (r.data ? ' em ' + fmtD(r.data) : '')) : 'ainda não aconteceu'));
+  const blocoNps = recBloco('NPS', npsFeito, '', null,
+    'Envio NPS · ' + (npsFeito ? 'respondido' : 'ainda sem resposta') + ' — calculado a partir da aba NPS Recorrente, não editável aqui');
+
+  return '<div style="display:flex;gap:3px;">' + blocoOtim + blocoReuniao + blocoNps + '</div>';
+}
+
+// Capacity → Recorrente: mesma ideia do Gantt one-time (uma linha por projeto), só que sem
+// colunas de semana — os 3 eventos já são do MÊS inteiro selecionado no filtro (não por
+// semana), então cada projeto tem uma linha só com os mesmos 3 blocos de Escopos Recorrentes.
 function buildCapacityRec() {
   const thead = document.getElementById('cap-ter-rec-thead');
   const tbody = document.getElementById('cap-ter-rec-tbody');
@@ -12724,29 +12756,21 @@ function buildCapacityRec() {
   const mesKey = filters['capTerRec'];
   if (!mesKey) {
     thead.innerHTML = '';
-    tbody.innerHTML = '<tr><td style="text-align:center;color:var(--text-hint);padding:20px;font-size:var(--fs-base);">Selecione um mês acima pra ver as entregas previstas.</td></tr>';
+    tbody.innerHTML = '<tr><td style="text-align:center;color:var(--text-hint);padding:20px;font-size:var(--fs-base);">Selecione um mês acima pra ver o progresso do mês.</td></tr>';
     return;
   }
-  const mObj = ALL_MESES.find(m => m.key === mesKey);
-  const nSemanas = mObj ? numSemanasMes(mObj) : 4;
-  const diasMes = mObj ? diasNoMes(mObj.ano, mObj.idx) : 28;
-  const semanaLabel = si => {
-    const ini = si * 7 + 1;
-    const fim = Math.min(ini + 6, diasMes);
-    return ini.toString().padStart(2,'0') + '-' + fim.toString().padStart(2,'0');
-  };
 
   thead.innerHTML = '<tr>'
     + '<th style="min-width:160px;text-align:left;padding:5px 8px;">Projeto</th>'
     + '<th style="min-width:80px;text-align:left;padding:5px 8px;">Consultor</th>'
-    + Array.from({ length: nSemanas }, (_, si) => '<th style="min-width:64px;text-align:center;padding:5px 4px;">Semana ' + (si + 1) + '<div style="font-size:var(--fs-3xs);color:var(--text-hint);font-weight:400;">' + semanaLabel(si) + '</div></th>').join('')
+    + '<th style="min-width:260px;text-align:left;padding:5px 8px;">Progresso do mês</th>'
     + '</tr>';
 
-  // Pausado continua na tabela (standby), só não entra nas tarefas semanais — ver render da
-  // linha abaixo (ehPausadoRec), mesmo critério do restante do Capacity.
+  // Pausado continua na tabela (standby), só não entra no progresso do mês — mesmo critério
+  // do restante do Capacity.
   const list = projects.filter(p => p.recorrencia === 'Recorrente' && p.status2 !== 'Finalizado' && p.status2 !== 'Cancelado' && p.status2 !== 'Interrompido');
   if (!list.length) {
-    tbody.innerHTML = '<tr><td colspan="' + (nSemanas + 2) + '" style="text-align:center;color:var(--text-hint);padding:20px;font-size:var(--fs-base);">Nenhum projeto recorrente ativo</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-hint);padding:20px;font-size:var(--fs-base);">Nenhum projeto recorrente ativo</td></tr>';
     return;
   }
 
@@ -12756,31 +12780,11 @@ function buildCapacityRec() {
     const dedTxt = terExigeDedicacao(p)
       ? (dedTier ? (p.nivelDedicacao + ' · ' + dedTier.cadencia) : 'Dedicação não definida')
       : '';
-    // Pausado/Reembolso: não calcula/mostra tarefas semanais (não é esperado que rotinas
-    // recorrentes continuem rodando nesses estados) — célula fica vazia, só a linha continua
-    // visível.
-    let cells;
-    if (ehPausadoRec) {
-      cells = Array.from({ length: nSemanas }, () => '<td style="text-align:center;padding:4px 3px;"><div style="font-size:var(--fs-3xs);color:var(--text-hint);">—</div></td>').join('');
-    } else {
-      const porSemana = recSemanaTarefas(p, mesKey);
-      const st = recSemanaState(p, mesKey);
-      cells = Array.from({ length: nSemanas }, (_, si) => {
-        const tarefasSemana = porSemana[si] || [];
-        const semState = st[si] || [];
-        const dots = tarefasSemana.map((nome, ei) => {
-          const feito = !!semState[ei];
-          return '<div onclick="recSemanaToggle(\'' + p.id + '\',\'' + mesKey + '\',' + si + ',' + ei + ')" title="' + nome.replace(/"/g,'&quot;') + ' · Semana ' + (si + 1) + ' · ' + (feito ? 'aconteceu' : 'pendente') + '" style="width:8px;height:8px;border-radius:2px;cursor:pointer;background:' + (feito ? 'var(--green)' : 'var(--surface3)') + ';border:1px solid ' + (feito ? 'var(--green)' : 'var(--border)') + ';"></div>';
-        }).join('');
-        const doneCount = semState.filter(Boolean).length;
-        return '<td style="text-align:center;padding:4px 3px;">'
-          + (tarefasSemana.length
-              ? '<div style="display:flex;flex-wrap:wrap;gap:2px;justify-content:center;max-width:52px;margin:0 auto;">' + dots + '</div>'
-                + '<div style="font-size:var(--fs-3xs);color:var(--text-hint);margin-top:2px;">' + doneCount + '/' + tarefasSemana.length + '</div>'
-              : '<div style="font-size:var(--fs-3xs);color:var(--text-hint);">—</div>')
-          + '</td>';
-      }).join('');
-    }
+    // Pausado/Reembolso: não mostra o progresso do mês (não é esperado que o acompanhamento
+    // continue rodando nesses estados) — célula fica vazia, só a linha continua visível.
+    const progresso = ehPausadoRec
+      ? '<div style="font-size:var(--fs-3xs);color:var(--text-hint);">— em standby —</div>'
+      : recMensalBlocksHTML(p, mesKey);
     const pausadoBadgeRec = p.status2 === 'Reembolso'
       ? ' <span title="Reembolso — em standby, não conta na carga/capacity" style="display:inline-flex;align-items:center;gap:3px;font-size:var(--fs-3xs);font-weight:700;color:#fff;background:var(--purple);border-radius:8px;padding:1px 6px;white-space:nowrap;vertical-align:middle;">'+icon('coin',{size:8})+' Reembolso</span>'
       : ehPausadoRec
@@ -12792,7 +12796,7 @@ function buildCapacityRec() {
       + (dedTxt ? '<div style="font-size:var(--fs-3xs);font-weight:700;color:' + (dedTier?'var(--accent)':'var(--amber)') + ';">' + dedTxt + '</div>' : '')
       + '</td>'
       + '<td style="padding:5px 8px;font-size:var(--fs-xs);color:var(--text-hint);white-space:nowrap;">' + (p.consultor||'—') + '</td>'
-      + cells
+      + '<td style="padding:5px 8px;">' + progresso + '</td>'
       + '</tr>';
   }).join('');
 }
