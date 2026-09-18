@@ -1384,71 +1384,68 @@
 <div id="cap-ter-view" style="display:none;">
   <div class="sec-head">
     <h2 class="sec-title">Capacity — TER</h2>
-    <p class="sec-desc">One-time e Recorrente têm ritmos diferentes — um é uma linha do tempo até a entrega, o outro é uma rotina que se repete. Por isso são duas visões separadas.</p>
+    <p class="sec-desc">Andamento dos projetos One-time (linha do tempo até a entrega) e, logo abaixo, o progresso mensal dos Recorrentes (rotina que se repete) — mesmo padrão da seção de Projetos DRO/DRX na SABER, sempre visível, sem precisar trocar de aba.</p>
   </div>
 
-  <div style="display:flex;gap:2px;background:var(--surface2);border-radius:999px;padding:3px;width:fit-content;margin-bottom:1rem;">
-    <button id="cap-ter-tab-onetime" class="filter-btn active" onclick="switchCapTerSub('onetime')">One-time</button>
-    <button id="cap-ter-tab-rec" class="filter-btn" onclick="switchCapTerSub('rec')">Recorrente</button>
-  </div>
-
-  <div id="cap-ter-onetime">
-    <div class="card">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:1rem;">
-        <div class="card-title" style="margin-bottom:0;">Andamento dos projetos</div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <span style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Consultor</span>
-          <select class="base-sel" id="gantt-ter-cons-filter" onchange="buildGanttTer()"><option value="">Todos</option></select>
-          <span style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Status</span>
-          <select class="base-sel" id="gantt-ter-status-filter" onchange="buildGanttTer()">
-            <option value="">Todos</option>
-            <option>Em andamento</option>
-            <option>Finalizado</option>
-            <option>Início em breve</option>
-            <option>Pausado</option>
-            <option>Cancelado</option>
-            <option>Interrompido</option>
-          </select>
-          <span style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Mês início</span>
-          <select class="base-sel" id="gantt-ter-mes-filter" onchange="buildGanttTer()"><option value="">Todos</option></select>
-          <span style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Período</span>
-          <select class="base-sel" id="gantt-ter-period" onchange="buildGanttTer()">
-            <option value="3">3 meses</option>
-            <option value="6" selected>6 meses</option>
-            <option value="12">12 meses</option>
-          </select>
-        </div>
-      </div>
-      <div id="carga-semanal-ter" style="margin-bottom:1.2rem;"></div>
-      <div class="gantt-wrap">
-        <table class="gantt-table"><thead id="gantt-ter-thead"></thead><tbody id="gantt-ter-tbody"></tbody></table>
-      </div>
-      <div style="display:flex;gap:16px;margin-top:.75rem;flex-wrap:wrap;">
-        <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:14px;height:8px;border-radius:2px;background:var(--blue);display:inline-block;opacity:.85;"></span>Em andamento</span>
-        <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:14px;height:8px;border-radius:2px;background:var(--text-hint);display:inline-block;opacity:.85;"></span>Finalizado</span>
-        <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:14px;height:8px;border-radius:2px;background:var(--amber);display:inline-block;opacity:.85;"></span>Pausado</span>
-        <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:8px;height:8px;border-radius:50%;background:#4ade80;border:1.5px solid rgba(0,0,0,.2);display:inline-block;"></span>Entrega no prazo</span>
-        <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:8px;height:8px;border-radius:50%;background:#f87171;border:1.5px solid rgba(0,0,0,.2);display:inline-block;"></span>Entrega atrasada</span>
-        <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:8px;height:8px;border-radius:50%;background:#fff;border:1.5px solid rgba(0,0,0,.2);display:inline-block;"></span>Pendente</span>
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:1rem;">
+      <div class="card-title" style="margin-bottom:0;">Andamento dos projetos</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <span style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Consultor</span>
+        <select class="base-sel" id="gantt-ter-cons-filter" onchange="buildGanttTer()"><option value="">Todos</option></select>
+        <span style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Status</span>
+        <select class="base-sel" id="gantt-ter-status-filter" onchange="buildGanttTer()">
+          <option value="">Todos</option>
+          <option>Em andamento</option>
+          <option>Finalizado</option>
+          <option>Início em breve</option>
+          <option>Pausado</option>
+          <option>Cancelado</option>
+          <option>Interrompido</option>
+        </select>
+        <span style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Mês início</span>
+        <select class="base-sel" id="gantt-ter-mes-filter" onchange="buildGanttTer()"><option value="">Todos</option></select>
+        <span style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Período</span>
+        <select class="base-sel" id="gantt-ter-period" onchange="buildGanttTer()">
+          <option value="3">3 meses</option>
+          <option value="6" selected>6 meses</option>
+          <option value="12">12 meses</option>
+        </select>
       </div>
     </div>
-    <div id="carga-consultor-ter" style="margin-top:1.6rem;padding-top:1.2rem;border-top:1px solid var(--border);"></div>
-  </div>
-
-  <div id="cap-ter-recorrente" style="display:none;">
-    <div class="card">
-      <div class="card-title">Progresso do mês — todos os recorrentes</div>
-      <p style="font-size:var(--fs-sm);color:var(--text-hint);margin:-4px 0 1rem;">Mesmos 3 eventos do mês selecionado acima (Otimizações previstas, Reunião mensal, Envio NPS) da aba Escopos Recorrentes, só que lado a lado pra todos os projetos recorrentes ativos de uma vez.</p>
-      <div id="cap-ter-rec-filter-bar" class="filter-bar" style="margin-bottom:1rem;"></div>
-      <div class="gantt-wrap">
-        <table class="gantt-table"><thead id="cap-ter-rec-thead"></thead><tbody id="cap-ter-rec-tbody"></tbody></table>
-      </div>
-      <div style="display:flex;gap:16px;margin-top:.75rem;flex-wrap:wrap;">
-        <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:9px;height:9px;border-radius:2px;background:var(--green);display:inline-block;"></span>Confirmado</span>
-        <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:9px;height:9px;border-radius:2px;background:var(--surface3);border:1px solid var(--border);display:inline-block;"></span>Pendente</span>
-      </div>
+    <div id="carga-semanal-ter" style="margin-bottom:1.2rem;"></div>
+    <div class="gantt-wrap">
+      <table class="gantt-table"><thead id="gantt-ter-thead"></thead><tbody id="gantt-ter-tbody"></tbody></table>
+    </div>
+    <div style="display:flex;gap:16px;margin-top:.75rem;flex-wrap:wrap;">
+      <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:14px;height:8px;border-radius:2px;background:var(--blue);display:inline-block;opacity:.85;"></span>Em andamento</span>
+      <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:14px;height:8px;border-radius:2px;background:var(--text-hint);display:inline-block;opacity:.85;"></span>Finalizado</span>
+      <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:14px;height:8px;border-radius:2px;background:var(--amber);display:inline-block;opacity:.85;"></span>Pausado</span>
+      <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:8px;height:8px;border-radius:50%;background:#4ade80;border:1.5px solid rgba(0,0,0,.2);display:inline-block;"></span>Entrega no prazo</span>
+      <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:8px;height:8px;border-radius:50%;background:#f87171;border:1.5px solid rgba(0,0,0,.2);display:inline-block;"></span>Entrega atrasada</span>
+      <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:8px;height:8px;border-radius:50%;background:#fff;border:1.5px solid rgba(0,0,0,.2);display:inline-block;"></span>Pendente</span>
     </div>
   </div>
+
+  <!-- Seção Recorrente no Capacity — mesmo padrão visual da seção "Projetos DRO/DRX" na SABER:
+       sempre visível, empilhada abaixo do Gantt principal, sem aba própria pra trocar. -->
+  <div style="margin-top:2rem;">
+    <div style="font-size:var(--fs-sm);font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+      <span style="width:10px;height:10px;border-radius:50%;background:var(--green);display:inline-block;"></span>
+      Projetos Recorrentes
+    </div>
+    <p style="font-size:var(--fs-sm);color:var(--text-hint);margin:-4px 0 1rem;">3 eventos padronizados do mês selecionado abaixo (Otimizações previstas, Reunião mensal, Envio NPS) — mesmo conteúdo da aba Escopos Recorrentes, lado a lado pra todos os projetos ativos de uma vez.</p>
+    <div id="cap-ter-rec-filter-bar" class="filter-bar" style="margin-bottom:1rem;"></div>
+    <div class="gantt-wrap">
+      <table class="gantt-table"><thead id="cap-ter-rec-thead"></thead><tbody id="cap-ter-rec-tbody"></tbody></table>
+    </div>
+    <div style="display:flex;gap:16px;margin-top:.75rem;flex-wrap:wrap;">
+      <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:9px;height:9px;border-radius:2px;background:var(--green);display:inline-block;"></span>Confirmado</span>
+      <span style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--text-muted);"><span style="width:9px;height:9px;border-radius:2px;background:var(--surface3);border:1px solid var(--border);display:inline-block;"></span>Pendente</span>
+    </div>
+  </div>
+
+  <div id="carga-consultor-ter" style="margin-top:1.6rem;padding-top:1.2rem;border-top:1px solid var(--border);"></div>
 </div>
 </section>
 
@@ -12301,24 +12298,15 @@ function buildCapHistTable() {
   tbody.innerHTML = rows;
 }
 
-// Qual sub-aba do Capacity da TER está ativa — 'onetime' (Gantt de linha do tempo) ou
-// 'rec' (ciclo recorrente que se repete). Persiste só durante a sessão, não precisa salvar.
-let capTerSub = 'onetime';
-function switchCapTerSub(which) {
-  capTerSub = which;
-  const showOnetime = which === 'onetime';
-  document.getElementById('cap-ter-tab-onetime')?.classList.toggle('active', showOnetime);
-  document.getElementById('cap-ter-tab-rec')?.classList.toggle('active', !showOnetime);
-  const elOt = document.getElementById('cap-ter-onetime'); if (elOt) elOt.style.display = showOnetime ? '' : 'none';
-  const elRec = document.getElementById('cap-ter-recorrente'); if (elRec) elRec.style.display = showOnetime ? 'none' : '';
-  if (showOnetime) buildGanttTer(); else buildCapacityRec();
-}
-
 function buildCapacity() {
   if (currentCoord === 'ter') {
     const sv = document.getElementById('cap-saber-view'); if (sv) sv.style.display = 'none';
     const tv = document.getElementById('cap-ter-view');   if (tv) tv.style.display = '';
-    switchCapTerSub(capTerSub);
+    // One-time e Recorrente aparecem juntos na mesma página (Recorrente como seção sempre
+    // visível abaixo, mesmo padrão da seção "Projetos DRO/DRX" na SABER) — os dois precisam
+    // ser (re)construídos toda vez, não só um deles como antes (quando ficavam atrás de abas).
+    buildGanttTer();
+    buildCapacityRec();
     return;
   } else {
     const sv = document.getElementById('cap-saber-view'); if (sv) sv.style.display = '';
