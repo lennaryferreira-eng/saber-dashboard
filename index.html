@@ -3491,6 +3491,10 @@ const SIDEBAR_NAV = [
     // Duplicata TER-only do 'nps' (grupo OKRs some inteiro na TER) — buildNpsTable() já
     // despacha pra buildNpsTer() sozinho, mesmo padrão do 'prazo' acima.
     { id: 'nps', label: 'NPS', icon: 'star', extraClass: 'ter-only', hiddenByDefault: true },
+    // Duplicata TER-only do 'pdi' (grupo OKRs some inteiro na TER) — mesmo id/aba/tabela;
+    // pdiData já vem por coordenação (SB_TABLE = ter_data), e squadList() já reflete o
+    // roster da TER (CONS_MON carregado do mesmo jeito) — não precisa de build/calc próprio.
+    { id: 'pdi', label: 'PDI do Time', icon: 'medal', extraClass: 'ter-only', hiddenByDefault: true },
     { id: 'recorrentes', label: 'Escopos Recorrentes', icon: 'link', extraClass: 'ter-only', hiddenByDefault: true },
     { id: 'trilhas', label: 'Trilhas', icon: 'route', extraClass: 'ter-only', hiddenByDefault: true },
     { id: 'dro', label: 'DRO/DRX', icon: 'refresh' },
