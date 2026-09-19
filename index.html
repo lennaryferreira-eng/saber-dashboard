@@ -1434,7 +1434,7 @@
       <span style="width:10px;height:10px;border-radius:50%;background:var(--green);display:inline-block;"></span>
       Projetos Recorrentes
     </div>
-    <p style="font-size:var(--fs-sm);color:var(--text-hint);margin:-4px 0 1rem;">Histórico mês a mês dos 3 eventos padronizados (Otimizações previstas · Reunião mensal · Envio NPS, nessa ordem em cada célula) — só visualização, sem clique; pra marcar algo, use a aba Escopos Recorrentes. Reaproveita os filtros de Consultor e Período do Gantt acima.</p>
+    <p style="font-size:var(--fs-sm);color:var(--text-hint);margin:-4px 0 1rem;">Mesmas colunas de semana do Gantt One-time acima — o ciclo mensal de cada projeto (Otimizações previstas · Reunião mensal · Envio NPS, nessa ordem em cada célula) aparece marcado na semana em que aconteceu. Só visualização, sem clique; pra marcar algo, use a aba Escopos Recorrentes. Reaproveita os filtros de Consultor e Período do Gantt acima.</p>
     <div class="gantt-wrap">
       <table class="gantt-table"><thead id="cap-ter-rec-thead"></thead><tbody id="cap-ter-rec-tbody"></tbody></table>
     </div>
@@ -12456,7 +12456,7 @@ function buildGanttTer() {
 
   if (!prjs.length) {
     tbody.innerHTML = '<tr><td colspan="' + (semanas.length+2) + '" style="text-align:center;color:var(--text-hint);padding:20px;font-size:var(--fs-base);">Nenhum projeto no período</td></tr>';
-    buildCapacityRec(); // sem isso, a seção Recorrente ficava sem construir quando não há nenhum One-time no período (early return antes de chegar na cascata lá embaixo)
+    buildCapacityRec(semanas); // sem isso, a seção Recorrente ficava sem construir quando não há nenhum One-time no período (early return antes de chegar na cascata lá embaixo)
     return;
   }
 
@@ -12550,10 +12550,10 @@ function buildGanttTer() {
       + '</tr>';
   }).join('');
 
-  // Cascata pra seção Recorrente (mesmo padrão de buildGantt() -> buildGanttDRO() na SABER):
-  // ela reaproveita os filtros de Consultor/Período daqui em cima, então precisa reconstruir
-  // toda vez que este Gantt reconstrói, não só quando alguém edita algo em Escopos Recorrentes.
-  buildCapacityRec();
+  // Cascata pra seção Recorrente (mesmo padrão de buildGantt() -> buildGanttDRO(semanas) na
+  // SABER): reaproveita as MESMAS semanas e o filtro de Consultor daqui em cima, então precisa
+  // reconstruir toda vez que este Gantt reconstrói, não só quando alguém edita Escopos Recorrentes.
+  buildCapacityRec(semanas);
 }
 
 function buildCargaSemanal(prjsAll, semanasExt, campo, elId, titulo, rotuloColuna, ativoFn) {
@@ -12783,9 +12783,6 @@ function recMensalBlocksHTML(p, mesKey) {
   return '<div style="display:flex;gap:3px;">' + blocoOtim + blocoReuniao + blocoNps + '</div>';
 }
 
-// Capacity → Recorrente: mesma ideia do Gantt one-time (uma linha por projeto), só que sem
-// colunas de semana — os 3 eventos já são do MÊS inteiro selecionado no filtro (não por
-// semana), então cada projeto tem uma linha só com os mesmos 3 blocos de Escopos Recorrentes.
 // Um mês "fechou" (já virou passado) sem o evento ter acontecido é atraso de verdade; o mês
 // atual ainda em andamento sem o evento não é — ainda dá tempo. Cor pendente muda conforme
 // isso: cinza enquanto há tempo, vermelho só quando já passou da hora.
@@ -12796,36 +12793,40 @@ function recDotColor(feito, mesFechado) {
   if (feito) return 'var(--green)';
   return mesFechado ? 'var(--red)' : 'var(--surface3)';
 }
-// Capacity → Recorrente: mesma linguagem visual da seção "Projetos DRO/DRX" da SABER — uma
-// timeline só de leitura, sem nenhum clique (a versão clicável dos 3 eventos mensais mora só
-// em Escopos Recorrentes, ver recMensalBlocksHTML; duplicar a interação aqui só confundia quem
-// vinha em Capacity só pra visualizar). Colunas são MESES (não semanas — o progresso é mensal),
-// reaproveitando o mesmo filtro de Consultor e Período do Gantt One-time logo acima, igual o
-// DRO/DRX reaproveita Consultor/Designer/Copy do Gantt principal da SABER.
-function buildCapacityRec() {
+// Capacity → Recorrente: mesma linguagem visual da seção "Projetos DRO/DRX" da SABER — colunas
+// de SEMANA (as mesmas do Gantt One-time logo acima, recebidas em `semanasExt`, igual
+// buildGanttDRO(semanas) reaproveita as semanas de buildGantt()), só de leitura, sem nenhum
+// clique. Cada ciclo mensal (Otimizações/Reunião/NPS) aparece como um marcador na semana em
+// que aconteceu de fato — a "âncora" do ciclo é a data da reunião, senão a data de resposta do
+// NPS, senão o último dia do mês (o próprio prazo do ciclo), nessa ordem — não existe data
+// própria pra "otimizações completas", só um total/mês, então ela empresta a âncora do ciclo.
+function buildCapacityRec(semanasExt) {
   const thead = document.getElementById('cap-ter-rec-thead');
   const tbody = document.getElementById('cap-ter-rec-tbody');
   if (!thead || !tbody) return;
 
   const consFilter = document.getElementById('gantt-ter-cons-filter')?.value || '';
-  const months = parseInt(document.getElementById('gantt-ter-period')?.value || '6');
   const hoje = new Date(); hoje.setHours(0,0,0,0);
-
-  // Últimos N meses até o atual (do mais antigo pro mais recente), mesma janela do período
-  // escolhido no Gantt One-time — evita ter dois seletores de "quantos meses ver" na mesma página.
-  const mesesTimeline = [];
-  for (let i = months - 1; i >= 0; i--) {
-    const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
-    const m = ALL_MESES.find(x => x.idx === d.getMonth() && x.ano === d.getFullYear());
-    if (m) mesesTimeline.push(m);
+  let semanas;
+  if (Array.isArray(semanasExt) && semanasExt.length) {
+    semanas = semanasExt;
+  } else {
+    const diaSem = hoje.getDay();
+    const seg0 = new Date(hoje); seg0.setDate(hoje.getDate() - (diaSem === 0 ? 6 : diaSem - 1) - 1*7);
+    semanas = Array.from({length: 26}, (_, i) => {
+      const d = new Date(seg0); d.setDate(seg0.getDate() + i*7); return d;
+    });
   }
+  const idxSemana = d => semanas.findIndex(s => d >= s && d <= new Date(s.getTime()+6*864e5));
 
   thead.innerHTML = '<tr>'
-    + '<th style="min-width:160px;text-align:left;padding:5px 8px;position:sticky;left:0;background:var(--surface2);z-index:2;">Projeto</th>'
+    + '<th style="min-width:160px;text-align:left;padding:5px 8px;position:sticky;left:0;background:var(--surface2);z-index:3;">Projeto</th>'
     + '<th style="min-width:80px;text-align:left;padding:5px 8px;">Consultor</th>'
-    + mesesTimeline.map(m => {
-        const isAtual = m.idx === hoje.getMonth() && m.ano === hoje.getFullYear();
-        return '<th style="min-width:56px;text-align:center;padding:5px 4px;' + (isAtual ? 'color:var(--accent);background:rgba(212,0,26,.06);' : '') + '">' + m.label.slice(0,3) + '/' + String(m.ano).slice(2) + '</th>';
+    + semanas.map(s => {
+        const sEnd = new Date(s.getTime() + 6*864e5);
+        const isHoje = hoje >= s && hoje <= sEnd;
+        const label = s.getDate().toString().padStart(2,'0') + '/' + (s.getMonth()+1).toString().padStart(2,'0');
+        return '<th style="font-size:var(--fs-2xs);min-width:52px;padding:3px 2px;text-align:center;' + (isHoje ? 'background:rgba(212,0,26,.08);color:var(--accent);font-weight:700;' : '') + '">' + label + '</th>';
       }).join('')
     + '</tr>';
 
@@ -12834,7 +12835,7 @@ function buildCapacityRec() {
   let list = projects.filter(p => p.recorrencia === 'Recorrente' && p.status2 !== 'Finalizado' && p.status2 !== 'Cancelado' && p.status2 !== 'Interrompido');
   if (consFilter) list = list.filter(p => p.consultor === consFilter);
   if (!list.length) {
-    tbody.innerHTML = '<tr><td colspan="' + (mesesTimeline.length + 2) + '" style="text-align:center;color:var(--text-hint);padding:20px;font-size:var(--fs-base);">Nenhum projeto recorrente ativo</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="' + (semanas.length + 2) + '" style="text-align:center;color:var(--text-hint);padding:20px;font-size:var(--fs-base);">Nenhum projeto recorrente ativo</td></tr>';
     return;
   }
 
@@ -12844,30 +12845,50 @@ function buildCapacityRec() {
     const dedTxt = terExigeDedicacao(p)
       ? (dedTier ? (p.nivelDedicacao + ' · ' + dedTier.cadencia) : 'Dedicação não definida')
       : '';
-    const dIni = p.inicio ? parseDate(p.inicio) : null;
-    const dIniMes = dIni ? new Date(dIni.getFullYear(), dIni.getMonth(), 1) : null;
 
-    const cells = mesesTimeline.map(m => {
-      if (ehPausadoRec) return '<td style="text-align:center;padding:4px 3px;"><span style="font-size:var(--fs-3xs);color:var(--text-hint);">—</span></td>';
-      // Antes do início do projeto esse mês nem existia pra ele — célula fica vazia, não vermelha.
-      if (dIniMes && new Date(m.ano, m.idx, 1) < dIniMes) return '<td style="padding:4px 3px;"></td>';
-      const mesFechado = recMesFechado(m, hoje);
-      const totalOtim = recOtimItens(p).length;
-      const nOtim = recOtimContagem(p, m.key);
-      const otimFeito = recOtimCompleto(p, m.key);
-      const r = recReuniaoGet(p, m.key);
-      const npsFeito = recNpsFeito(p, m.key);
-      const tooltip = [
-        m.label + '/' + m.ano,
-        'Otimizações: ' + nOtim + '/' + totalOtim + (otimFeito ? ' (completo)' : ''),
-        'Reunião: ' + (r.feito ? ('aconteceu' + (r.data ? ' em ' + fmtD(r.data) : '')) : 'não aconteceu'),
-        'NPS: ' + (npsFeito ? 'respondido' : 'sem resposta'),
-      ].join(' · ').replace(/"/g,'&quot;');
-      const dot = feito => '<span style="width:7px;height:7px;border-radius:2px;display:inline-block;background:' + recDotColor(feito, mesFechado) + ';"></span>';
-      return '<td style="text-align:center;padding:4px 3px;" title="' + tooltip + '">'
-        + '<div style="display:flex;gap:2px;justify-content:center;">' + dot(otimFeito) + dot(r.feito) + dot(npsFeito) + '</div>'
-        + '</td>';
-    }).join('');
+    const marcaPorSemana = {};
+    if (!ehPausadoRec) {
+      const dIni = p.inicio ? parseDate(p.inicio) : null;
+      // Percorre mês a mês, do início do projeto (ou do início da janela visível, o que for
+      // depois) até o mês da última semana visível — um ciclo por mês.
+      let cursor = new Date(Math.max(dIni ? dIni.getTime() : semanas[0].getTime(), semanas[0].getTime()));
+      cursor = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+      const fimJanela = new Date(semanas[semanas.length-1].getFullYear(), semanas[semanas.length-1].getMonth(), 1);
+      while (cursor <= fimJanela) {
+        const mObj = ALL_MESES.find(m => m.idx === cursor.getMonth() && m.ano === cursor.getFullYear());
+        if (mObj) {
+          const mesFechado = recMesFechado(mObj, hoje);
+          const itensOtim = recOtimItens(p);
+          const nOtim = recOtimContagem(p, mObj.key);
+          const otimFeito = recOtimCompleto(p, mObj.key);
+          const r = recReuniaoGet(p, mObj.key);
+          const nd = npsData[npsRecKey(p.id, mObj.key)];
+          const npsFeito = recNpsFeito(p, mObj.key);
+          const ultimoDiaMes = new Date(cursor.getFullYear(), cursor.getMonth()+1, 0);
+          const anchorDate = r.data ? parseDate(r.data) : (nd && nd.dataResp ? parseDate(nd.dataResp) : ultimoDiaMes);
+          let wi = anchorDate ? idxSemana(anchorDate) : -1;
+          if (wi < 0) {
+            // âncora caiu fora da janela visível de semanas (borda do período) -- usa a última
+            // semana visível que ainda pertence a esse mês, se houver, em vez de não mostrar nada.
+            for (let i = semanas.length - 1; i >= 0; i--) {
+              if (semanas[i].getFullYear() === cursor.getFullYear() && semanas[i].getMonth() === cursor.getMonth()) { wi = i; break; }
+            }
+          }
+          if (wi >= 0) {
+            const tooltip = [
+              mObj.label + '/' + mObj.ano,
+              'Otimizações: ' + nOtim + '/' + itensOtim.length + (otimFeito ? ' (completo)' : ''),
+              'Reunião: ' + (r.feito ? ('aconteceu' + (r.data ? ' em ' + fmtD(r.data) : '')) : 'não aconteceu'),
+              'NPS: ' + (npsFeito ? 'respondido' : 'sem resposta'),
+            ].join(' · ').replace(/"/g,'&quot;');
+            const dot = feito => '<span style="width:7px;height:7px;border-radius:2px;display:inline-block;background:' + recDotColor(feito, mesFechado) + ';"></span>';
+            marcaPorSemana[wi] = '<div title="' + tooltip + '" style="display:flex;gap:2px;justify-content:center;">' + dot(otimFeito) + dot(r.feito) + dot(npsFeito) + '</div>';
+          }
+        }
+        cursor = new Date(cursor.getFullYear(), cursor.getMonth()+1, 1);
+      }
+    }
+    const cells = semanas.map((s, wi) => '<td style="text-align:center;padding:4px 2px;">' + (marcaPorSemana[wi] || '') + '</td>').join('');
 
     const pausadoBadgeRec = p.status2 === 'Reembolso'
       ? ' <span title="Reembolso — em standby, não conta na carga/capacity" style="display:inline-flex;align-items:center;gap:3px;font-size:var(--fs-3xs);font-weight:700;color:#fff;background:var(--purple);border-radius:8px;padding:1px 6px;white-space:nowrap;vertical-align:middle;">'+icon('coin',{size:8})+' Reembolso</span>'
