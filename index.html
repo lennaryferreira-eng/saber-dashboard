@@ -1806,12 +1806,46 @@
   </div>
   <div id="performance-ter-view" style="display:none;">
     <div class="sec-head"><h2 class="sec-title">Performance</h2><p class="sec-desc">Ranking de consultores da TER — Projetos no Prazo, NPS e PDI. 2026.</p></div>
+    <div id="perf-ter-filter-bar" style="margin-bottom:.6rem;"></div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.2rem;">
       <span style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Consultor</span>
       <select class="base-sel" id="perf-ter-f-cons" onchange="buildPerformanceTer()"><option value="">Todos</option></select>
     </div>
-    <div style="overflow-x:auto;padding-bottom:8px;">
-      <div id="perf-ter-cards" style="display:flex;gap:16px;flex-wrap:wrap;min-width:max-content;padding:4px 2px 8px;"></div>
+    <div style="overflow-x:auto;padding-bottom:8px;margin-bottom:1.5rem;">
+      <div id="perf-ter-cards" style="display:flex;gap:16px;flex-wrap:nowrap;min-width:max-content;padding:4px 2px 8px;"></div>
+    </div>
+    <!-- Painel inferior de detalhes -->
+    <div id="perf-ter-detalhe" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <h3 id="perf-ter-detalhe-nome" style="font-family:var(--cond);font-size:1.3rem;font-weight:700;"></h3>
+        <span style="font-size:var(--fs-sm);color:var(--text-hint);">Clique em outro consultor para comparar</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:1rem;">
+        <div class="card" style="padding:0;">
+          <button onclick="perfToggleTer('prazo')" style="width:100%;text-align:left;padding:12px 16px;background:none;border:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-family:var(--sans);font-size:var(--fs-base);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);">
+            <span>Projetos no Prazo</span><span id="perf-ter-prazo-badge" style="font-size:var(--fs-sm);"></span>
+          </button>
+          <div id="perf-ter-prazo-body" style="padding:0 16px 16px;border-top:1px solid var(--border);">
+            <div id="perf-ter-prazo-content"></div>
+          </div>
+        </div>
+        <div class="card" style="padding:0;">
+          <button onclick="perfToggleTer('nps')" style="width:100%;text-align:left;padding:12px 16px;background:none;border:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-family:var(--sans);font-size:var(--fs-base);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);">
+            <span>NPS</span><span id="perf-ter-nps-badge" style="font-size:var(--fs-sm);"></span>
+          </button>
+          <div id="perf-ter-nps-body" style="padding:0 16px 16px;border-top:1px solid var(--border);">
+            <div id="perf-ter-nps-content"></div>
+          </div>
+        </div>
+        <div class="card" style="padding:0;">
+          <button onclick="perfToggleTer('pdi')" style="width:100%;text-align:left;padding:12px 16px;background:none;border:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-family:var(--sans);font-size:var(--fs-base);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);">
+            <span>PDI</span><span id="perf-ter-pdi-badge" style="font-size:var(--fs-sm);"></span>
+          </button>
+          <div id="perf-ter-pdi-body" style="padding:0 16px 16px;border-top:1px solid var(--border);">
+            <div id="perf-ter-pdi-content"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   </section>
@@ -13852,95 +13886,324 @@ function buildPerformance() {
 // ═══════════════════════════════════
 
 // % de projetos One-time no prazo desse consultor — mesmo critério da aba Projetos no Prazo
-// (prazoStatusTerAba), mas olhando o histórico inteiro dele, não um mês específico.
-function perfPrazoDoConsultorTer(nome) {
-  const list = projects.filter(p => p.consultor === nome && p.recorrencia === 'One time' && !_ehPontual(p));
-  const avaliados = list.map(p => prazoStatusTerAba(p)).filter(st => st.ok !== null && st.ok !== undefined);
-  if (!avaliados.length) return { taxa: null, ok: 0, total: 0 };
-  const ok = avaliados.filter(st => st.ok === true).length;
-  return { taxa: Math.round(ok / avaliados.length * 100), ok, total: avaliados.length };
+// (prazoStatusTerAba/prazoNoMesCardTer). Sem curM, olha o histórico inteiro; com curM, só os
+// projetos ativos naquele mês (mesmo critério da aba Projetos no Prazo).
+function perfPrazoDoConsultorTer(nome, curM) {
+  const list = curM
+    ? projects.filter(p => p.consultor === nome && prazoNoMesCardTer(p, curM.idx, curM.ano))
+    : projects.filter(p => p.consultor === nome && p.recorrencia === 'One time' && !_ehPontual(p));
+  const avaliados = list
+    .map(p => ({ p, st: curM ? prazoStatusNoMesTer(p, curM.idx, curM.ano) : prazoStatusTerAba(p) }))
+    .filter(({st}) => st.ok !== null && st.ok !== undefined);
+  if (!avaliados.length) return { taxa: null, ok: 0, total: 0, rows: [] };
+  const ok = avaliados.filter(({st}) => st.ok === true).length;
+  return { taxa: Math.round(ok / avaliados.length * 100), ok, total: avaliados.length, rows: avaliados };
 }
 
 // NPS desse consultor — combina as respostas One-time (por projeto) e Recorrente (por mês),
-// mesma fórmula padrão (promotores - detratores) / respostas × 100 usada em buildNpsTer().
-function perfNpsDoConsultorTer(nome) {
-  const oneTimeIds = projects
+// mesma fórmula padrão (promotores - detratores) / respostas × 100 usada em buildNpsTer(). Sem
+// curM, soma o histórico inteiro; com curM, só as entregas/meses daquele mês específico.
+function perfNpsDoConsultorTer(nome, curM) {
+  const mesLabelAlvo = curM ? (curM.label + '/' + curM.ano) : null;
+  const oneTimeRows = projects
     .filter(p => p.consultor === nome && p.recorrencia === 'One time' && calcStatus2(p) === 'Finalizado')
-    .map(p => String(p.id));
-  const recKeys = [];
+    .filter(p => !mesLabelAlvo || mesLabelDe(dataFimRealTer(p) || p.prevFim) === mesLabelAlvo)
+    .map(p => ({ key: String(p.id), label: p.nome, data: dataFimRealTer(p) || p.prevFim }));
+  const recRows = [];
   projects.filter(p => p.consultor === nome && p.recorrencia === 'Recorrente')
-    .forEach(p => npsMesesRecorrente(p).forEach(m => recKeys.push(npsRecKey(p.id, m.key))));
-  const notas = [...oneTimeIds, ...recKeys]
-    .map(k => npsData[k])
-    .filter(nd => nd && nd.nota !== '' && nd.nota !== undefined && nd.nota !== null)
-    .map(nd => parseInt(nd.nota)).filter(n => !isNaN(n));
-  if (!notas.length) return { score: null, respostas: 0 };
+    .forEach(p => npsMesesRecorrente(p)
+      .filter(m => !curM || m.key === curM.key)
+      .forEach(m => recRows.push({ key: npsRecKey(p.id, m.key), label: p.nome + ' · ' + m.label + '/' + m.ano, data: null })));
+  const todasRows = [...oneTimeRows, ...recRows].map(r => ({ ...r, nd: npsData[r.key] }));
+  const notas = todasRows
+    .filter(r => r.nd && r.nd.nota !== '' && r.nd.nota !== undefined && r.nd.nota !== null)
+    .map(r => parseInt(r.nd.nota)).filter(n => !isNaN(n));
   const prom = notas.filter(n => n >= 9).length;
   const detr = notas.filter(n => n <= 6).length;
-  return { score: Math.round((prom - detr) / notas.length * 100), respostas: notas.length };
+  return {
+    score: notas.length ? Math.round((prom - detr) / notas.length * 100) : null,
+    respostas: notas.length,
+    rows: todasRows,
+  };
 }
 
 // % de PDI fechado desse consultor — média dos fechamentos de quarter (Mar/Jun/Set/Dez),
 // direto de pdiData.rows (mesma fonte da aba PDI, sem precisar da tabela renderizada no DOM).
-function perfPdiDoConsultorTer(nome) {
-  if (!pdiData || !Array.isArray(pdiData.rows)) return { pct: null };
+// Com curM, só entra se aquele mês específico for de fechamento de quarter — senão fica null
+// (PDI simplesmente não fecha em meses fora do quarter).
+function perfPdiDoConsultorTer(nome, curM) {
+  if (!pdiData || !Array.isArray(pdiData.rows)) return { pct: null, rows: [] };
   const row = pdiData.rows.find(r => r.nome === nome);
-  if (!row || !row.m) return { pct: null };
-  const vals = ALL_MESES.map((m, mi) => (isQuarterClose(mi) && row.m[mi] != null) ? Number(row.m[mi]) : null).filter(v => v !== null && !isNaN(v));
-  if (!vals.length) return { pct: null };
-  return { pct: Math.round(vals.reduce((a,b)=>a+b,0) / vals.length) };
+  if (!row || !row.m) return { pct: null, rows: [] };
+  const mesesConsiderados = curM ? [curM] : ALL_MESES;
+  const rows = mesesConsiderados.map(m => {
+    const mi = ALL_MESES.findIndex(x => x.key === m.key);
+    const v = (mi >= 0 && isQuarterClose(mi) && row.m[mi] != null) ? Number(row.m[mi]) : null;
+    return { mes: m, val: (v !== null && !isNaN(v)) ? Math.round(v) : null };
+  }).filter(r => isQuarterClose(ALL_MESES.findIndex(x => x.key === r.mes.key)));
+  const vals = rows.map(r => r.val).filter(v => v !== null);
+  if (!vals.length) return { pct: null, rows };
+  return { pct: Math.round(vals.reduce((a,b)=>a+b,0) / vals.length), rows };
 }
 
-// Metas e score geral da Performance da TER por pessoa. Compartilhado com o Meu perfil, para
-// as duas telas nunca mostrarem números diferentes.
+// Metas e score geral da Performance da TER por pessoa. Compartilhado com o Meu perfil (que
+// chama sem curM, ano completo, pra nunca mostrar um número diferente do que a Performance
+// mostra quando está no filtro padrão "Ano completo").
 const METAS_TER = { prazo: 80, nps: 50, pdi: 80 };
-function perfIndicadoresTer(nome) {
-  const prazo = perfPrazoDoConsultorTer(nome);
-  const nps = perfNpsDoConsultorTer(nome);
-  const pdi = perfPdiDoConsultorTer(nome);
+function perfIndicadoresTer(nome, curM) {
+  const prazo = perfPrazoDoConsultorTer(nome, curM);
+  const nps = perfNpsDoConsultorTer(nome, curM);
+  const pdi = perfPdiDoConsultorTer(nome, curM);
   const partes = [prazo.taxa, nps.score, pdi.pct].filter(v => v !== null && v !== undefined);
   const media = partes.length ? Math.round(partes.reduce((a,b)=>a+b,0) / partes.length) : null;
   return { nome, prazo, nps, pdi, media };
 }
 
 function buildPerformanceTer() {
+  buildFilterBar('perf-ter-filter-bar', 'performanceTer', buildPerformanceTer);
+  const cur  = filters['performanceTer'];
+  const curM = cur ? ALL_MESES.find(x => x.key === cur) : null;
+
   const selCons = document.getElementById('perf-ter-f-cons');
   if (selCons) {
     const nomes = squadList();
     const curC = selCons.value;
     selCons.innerHTML = '<option value="">Todos</option>' + nomes.map(n => '<option' + (n===curC?' selected':'') + '>' + n + '</option>').join('');
   }
-  const fCons = selCons?.value || '';
-  const nomes = (fCons ? [fCons] : squadList());
-
-  const linhas = nomes.map(perfIndicadoresTer).sort((a, b) => (b.media ?? -1) - (a.media ?? -1));
 
   const el = document.getElementById('perf-ter-cards');
   if (!el) return;
-  if (!linhas.length) { el.innerHTML = '<div style="color:var(--text-hint);font-size:var(--fs-base);">Nenhum consultor no squad.</div>'; return; }
 
-  const metaLinha = (label, val, meta, suffix) => {
-    const cor = val === null || val === undefined ? 'var(--text-hint)' : (val >= meta ? 'var(--green)' : 'var(--red)');
-    const txt = val === null || val === undefined ? '—' : val + (suffix || '');
-    return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:var(--fs-sm);padding:4px 0;border-top:1px solid var(--border);">'
-      + '<span style="color:var(--text-muted);">' + label + '</span>'
-      + '<span style="font-weight:700;color:' + cor + ';">' + txt + '<span style="font-weight:400;color:var(--text-hint);font-size:var(--fs-xs);"> / meta ' + meta + (suffix||'') + '</span></span>'
-      + '</div>';
-  };
+  const nomesTodos = squadList();
+  const cards = nomesTodos.map(nome => {
+    const dotC = window.dotColors || {};
+    const dot = dotC[nome] || 'var(--accent)';
+    const ind = perfIndicadoresTer(nome, curM);
+    const kpis = [
+      { key: 'prazo', label: 'No Prazo', val: ind.prazo.taxa, meta: METAS_TER.prazo, suffix: '%' },
+      { key: 'nps',   label: 'NPS',      val: ind.nps.score,  meta: METAS_TER.nps,   suffix: '',
+        extraLabel: ind.nps.respostas ? (' · ' + ind.nps.respostas + ' resp.') : '' },
+      { key: 'pdi',   label: 'PDI',      val: ind.pdi.pct,    meta: METAS_TER.pdi,   suffix: '%' },
+    ];
+    const kpisComDado = kpis.filter(k => k.val !== null && k.val !== undefined);
+    const atingidos = kpisComDado.filter(k => k.val >= k.meta).length;
+    const totalComDado = kpisComDado.length;
+    const pctMedio = kpisComDado.length > 0 ? Math.round(atingidos / kpisComDado.length * 100) : null;
+    return { nome, dot, kpis, atingidos, totalComDado, pctMedio };
+  });
 
-  el.innerHTML = linhas.map((l, i) => {
-    return '<div class="card" style="min-width:230px;padding:16px;">'
-      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">'
-      + '<span style="font-family:var(--cond);font-size:1.4rem;font-weight:800;color:var(--text-hint);">#' + (i+1) + '</span>'
-      + '<span style="font-family:var(--cond);font-size:1.2rem;font-weight:700;">' + l.nome + '</span>'
-      + '</div>'
-      + '<div style="font-size:var(--fs-xs);color:var(--text-hint);margin-bottom:2px;">Score geral (média dos 3)</div>'
-      + '<div style="font-family:var(--cond);font-size:1.8rem;font-weight:800;color:var(--accent);margin-bottom:6px;">' + (l.media !== null ? l.media : '—') + '</div>'
-      + metaLinha('Projetos no Prazo', l.prazo.taxa, METAS_TER.prazo, '%')
-      + metaLinha('NPS', l.nps.score, METAS_TER.nps, '')
-      + metaLinha('PDI', l.pdi.pct, METAS_TER.pdi, '%')
-      + '</div>';
+  if (!cards.length) { el.innerHTML = '<div style="color:var(--text-hint);font-size:var(--fs-base);">Nenhum consultor no squad.</div>'; return; }
+
+  // Ordena: mais KPIs atingidos primeiro · desempate maior % médio · desempate alfabético
+  // (a TER não tem um KPI de "projetos em andamento" ou "conversão" pra desempatar como a
+  // SABER faz — não existe equivalente direto, então o desempate final é só o nome).
+  cards.sort((a, b) => {
+    if (b.atingidos !== a.atingidos) return b.atingidos - a.atingidos;
+    if ((b.pctMedio||0) !== (a.pctMedio||0)) return (b.pctMedio||0) - (a.pctMedio||0);
+    return a.nome.localeCompare(b.nome);
+  });
+  const scores = cards.map(c => c.atingidos * 1000 + (c.pctMedio||0));
+  const rankMap = cards.map((c, idx) => {
+    if (idx === 0) return 1;
+    return scores[idx] === scores[0] ? 1 : scores[idx] === scores[1] ? 2 : idx + 1;
+  });
+  const primeiroNome = cards.length > 0 ? cards[0].nome : null;
+
+  // Filtro: se logado como consultor (acesso travado), força o próprio nome — senão respeita
+  // o dropdown manual (ADM/deslogado podem escolher "Todos" ou um específico).
+  const consLock = (currentPerfil && currentPerfil.consultor) || '';
+  if (selCons) {
+    if (consLock) {
+      if (![...selCons.options].some(o => o.value === consLock)) {
+        const opt = document.createElement('option'); opt.value = consLock; opt.textContent = consLock;
+        selCons.appendChild(opt);
+      }
+      selCons.value = consLock;
+      selCons.classList.add('filter-locked');
+    }
+  }
+  const filtroConsultor = consLock || (selCons ? selCons.value : '');
+
+  let cardsParaExibir = cards, rankMapParaExibir = rankMap;
+  if (filtroConsultor) {
+    const idxF = cards.findIndex(c => c.nome === filtroConsultor);
+    cardsParaExibir = idxF >= 0 ? [cards[idxF]] : [];
+    rankMapParaExibir = idxF >= 0 ? [rankMap[idxF]] : [];
+  }
+
+  el.innerHTML = cardsParaExibir.map((c, idx) => {
+    const rank   = rankMapParaExibir[idx];
+    const isGold = rank === 1;
+    const isSilv = rank === 2;
+    const borderColor = isGold ? 'var(--gold)' : isSilv ? '#9CA3AF' : 'var(--border)';
+    const borderWidth = (isGold || isSilv) ? '2px' : '1px';
+    const crown = isGold ? `<div style="text-align:center;color:var(--gold);margin-bottom:-6px;margin-top:-4px;">${icon('crown',{size:20})}</div>` : '';
+    const foto = perfFotos[c.nome] || localStorage.getItem('perf-foto-' + c.nome) || '';
+
+    const scoreCor = c.pctMedio >= 80 ? 'var(--green)' : c.pctMedio >= 50 ? 'var(--amber)' : 'var(--red)';
+    const _t = c.pctMedio !== null ? Math.max(0, Math.min(1, c.pctMedio / 100)) : 0;
+    const fillDark  = lerpHex('#8C8C8C', '#9A6B0C', _t);
+    const fillMid   = lerpHex('#ABABAB', '#E8A317', _t);
+    const fillLight = lerpHex('#CACAC6', '#FFD24D', _t);
+    const labelCor  = lerpHex('#9A9A95', '#B8860B', _t);
+    const glowA     = (0.06 + 0.50 * _t).toFixed(2);
+    const panelA    = (0.03 + 0.10 * _t).toFixed(2);
+    const borderCor = lerpHex('#CFCFC9', '#B8860B', _t);
+    const scoreBar = c.pctMedio !== null
+      ? `<div style="margin:10px 0 8px;padding:8px 10px;border-radius:9px;background:linear-gradient(180deg,rgba(245,158,11,${panelA}),rgba(245,158,11,${(panelA*0.35).toFixed(3)}));border:1px solid ${borderCor};">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <span style="font-size:var(--fs-2xs);font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:${labelCor};display:flex;align-items:center;gap:4px;">${icon('star',{size:10})}Score geral</span>
+            <span style="font-size:var(--fs-md);font-weight:800;color:${scoreCor};">${c.atingidos}/${c.totalComDado} KPIs · ${c.pctMedio}%</span>
+          </div>
+          <div style="height:10px;border-radius:7px;background:rgba(120,120,120,.16);box-shadow:inset 0 1px 2px rgba(0,0,0,.18);overflow:hidden;position:relative;">
+            <div style="width:${c.pctMedio}%;height:100%;border-radius:7px;background:linear-gradient(90deg,${fillDark} 0%,${fillMid} 45%,${fillLight} 100%);box-shadow:0 0 ${isGold?8:5}px rgba(245,158,11,${glowA});position:relative;transition:width .45s ease;">
+              <div style="position:absolute;inset:0;border-radius:7px;background:linear-gradient(180deg,rgba(255,255,255,.45),rgba(255,255,255,0) 55%);"></div>
+            </div>
+          </div>
+        </div>`
+      : `<div style="margin:10px 0 8px;font-size:var(--fs-sm);color:var(--text-hint);">Sem dados no período</div>`;
+
+    const kpiRows = c.kpis.map(k => {
+      if (k.val === null || k.val === undefined) return `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);">
+          <span style="font-size:var(--fs-sm);color:var(--text-hint);">${k.label}</span>
+          <span style="font-size:var(--fs-sm);color:var(--text-hint);">—</span>
+        </div>`;
+      const pctAtg = Math.min(999, Math.round(k.val / k.meta * 100));
+      const atingiuKpi = k.val >= k.meta;
+      const corKpi = atingiuKpi ? 'var(--green)' : 'var(--red)';
+      const iconKpi = atingiuKpi ? icon('check') : icon('x');
+      return `
+        <div style="padding:5px 0;border-bottom:1px solid var(--border);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+            <span style="font-size:var(--fs-sm);color:var(--text-muted);">${k.label}${k.extraLabel||''}</span>
+            <span style="font-size:var(--fs-base);font-weight:700;color:${corKpi};">${iconKpi} ${k.val}${k.suffix}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <div class="prog-bg" style="flex:1;height:3px;"><div class="prog-fill" style="width:${Math.min(100,pctAtg)}%;background:${corKpi};height:3px;"></div></div>
+            <span style="font-size:var(--fs-2xs);color:var(--text-hint);white-space:nowrap;">meta ${k.meta}${k.suffix}</span>
+          </div>
+        </div>`;
+    }).join('');
+
+    const avatarHtml = foto
+      ? `<img src="${foto}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid ${borderColor};">`
+      : `<div style="width:56px;height:56px;border-radius:50%;background:${c.dot};opacity:.15;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:var(--text);border:2px solid ${borderColor};">${c.nome[0]}</div>`;
+    const removeFotoBtn = foto
+      ? `<button onclick="event.preventDefault();event.stopPropagation();perfRemoveFoto('${c.nome.replace(/'/g,"\\'")}')" title="Remover foto" style="position:absolute;top:-4px;right:-4px;width:18px;height:18px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--text-muted);font-size:var(--fs-sm);line-height:1;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.2);">${icon('x',{size:11})}</button>`
+      : '';
+
+    return `<div class="perf-card" data-nome="${c.nome}" onclick="perfSelecionaConsultorTer('${c.nome}')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();perfSelecionaConsultorTer('${c.nome}')}" style="background:var(--surface);border:${borderWidth} solid ${borderColor};border-radius:10px;padding:16px;width:200px;flex-shrink:0;cursor:pointer;transition:outline .15s;${(isGold||isSilv)?'box-shadow:0 4px 16px rgba(0,0,0,.08);':''}">
+      ${crown}
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <label title="Clique para ${foto?'trocar':'adicionar'} foto" style="cursor:pointer;position:relative;display:inline-block;">
+          ${avatarHtml}
+          ${removeFotoBtn}
+          <input type="file" accept="image/*" style="display:none;" onchange="perfUploadFoto('${c.nome}',this)">
+        </label>
+        <div>
+          <div style="font-size:var(--fs-md);font-weight:700;">${c.nome}</div>
+          <div style="font-size:var(--fs-xs);color:var(--text-hint);">${isGold?'<span style="color:var(--gold)">'+icon('medal')+'</span> 1º lugar':isSilv?'<span style="color:#9CA3AF">'+icon('medal')+'</span> 2º lugar':rank+'º lugar'}</div>
+        </div>
+      </div>
+      ${scoreBar}
+      <div>${kpiRows}</div>
+    </div>`;
   }).join('');
+
+  // Seleciona automaticamente o 1º consultor — mas se o acesso estiver travado num consultor
+  // específico, seleciona ELE MESMO, nunca o líder do squad todo. Mesmo padrão de buildPerformance().
+  const _nomeParaAutoSelecionar = filtroConsultor || primeiroNome;
+  if (_nomeParaAutoSelecionar) setTimeout(() => perfSelecionaConsultorTer(_nomeParaAutoSelecionar), 50);
+}
+
+// ── Performance TER: toggle seções ──────────────────────────
+function perfToggleTer(key) {
+  const body = document.getElementById('perf-ter-' + key + '-body');
+  if (!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : '';
+  const btn = body.previousElementSibling;
+  if (btn) btn.style.opacity = isOpen ? '0.5' : '1';
+}
+
+// ── Performance TER: seleciona consultor e carrega o detalhamento por métrica ───────────────
+function perfSelecionaConsultorTer(nome) {
+  const cur  = filters['performanceTer'];
+  const curM = cur ? ALL_MESES.find(x => x.key === cur) : null;
+
+  document.querySelectorAll('#perf-ter-cards .perf-card').forEach(c => {
+    c.style.outline = c.dataset.nome === nome ? '2px solid var(--accent)' : 'none';
+  });
+
+  const detalhe = document.getElementById('perf-ter-detalhe');
+  if (!detalhe) return;
+  detalhe.style.display = '';
+  document.getElementById('perf-ter-detalhe-nome').textContent = nome;
+  ['prazo','nps','pdi'].forEach(k => {
+    const b = document.getElementById('perf-ter-' + k + '-body');
+    if (b) b.style.display = '';
+    const btn = b?.previousElementSibling;
+    if (btn) btn.style.opacity = '1';
+  });
+
+  const ind = perfIndicadoresTer(nome, curM);
+
+  // ── PROJETOS NO PRAZO ────────────────────────────────────
+  const badgePrazo = document.getElementById('perf-ter-prazo-badge');
+  if (badgePrazo) badgePrazo.innerHTML = ind.prazo.taxa !== null
+    ? `<span style="color:${ind.prazo.taxa>=METAS_TER.prazo?'var(--green)':'var(--red)'};font-weight:700;">${ind.prazo.taxa}% ${ind.prazo.taxa>=METAS_TER.prazo?icon('check'):icon('x')} meta ${METAS_TER.prazo}% (${ind.prazo.ok}/${ind.prazo.total})</span>`
+    : '—';
+  const prazoRows = (ind.prazo.rows || []).map(({p, st}) => `<tr>
+      <td style="padding:6px 8px;font-size:var(--fs-base);">${p.nome}</td>
+      <td style="padding:6px 8px;font-size:var(--fs-sm);color:var(--text-hint);">${fmtD(p.inicio)}</td>
+      <td style="padding:6px 8px;font-size:var(--fs-sm);">${st.html}</td>
+    </tr>`).join('');
+  const contentPrazo = document.getElementById('perf-ter-prazo-content');
+  if (contentPrazo) contentPrazo.innerHTML = (ind.prazo.rows || []).length
+    ? `<div class="tbl-scroll"><table style="width:100%;border-collapse:collapse;margin-top:8px;"><thead><tr>
+        <th style="text-align:left;padding:6px 8px;font-size:var(--fs-xs);color:var(--text-hint);text-transform:uppercase;">Projeto</th>
+        <th style="text-align:left;padding:6px 8px;font-size:var(--fs-xs);color:var(--text-hint);text-transform:uppercase;">Início</th>
+        <th style="text-align:left;padding:6px 8px;font-size:var(--fs-xs);color:var(--text-hint);text-transform:uppercase;">Status</th>
+      </tr></thead><tbody>${prazoRows}</tbody></table></div>`
+    : '<div style="font-size:var(--fs-base);color:var(--text-hint);padding:12px 0;">Nenhum projeto avaliável no período.</div>';
+
+  // ── NPS ───────────────────────────────────────────────────
+  const badgeNps = document.getElementById('perf-ter-nps-badge');
+  if (badgeNps) badgeNps.innerHTML = ind.nps.score !== null
+    ? `<span style="color:${ind.nps.score>=METAS_TER.nps?'var(--green)':'var(--red)'};font-weight:700;">${ind.nps.score} ${ind.nps.score>=METAS_TER.nps?icon('check'):icon('x')} meta ${METAS_TER.nps} (${ind.nps.respostas} resposta${ind.nps.respostas===1?'':'s'})</span>`
+    : '—';
+  const npsRowsArr = (ind.nps.rows || []).filter(r => r.nd && r.nd.nota !== '' && r.nd.nota !== undefined && r.nd.nota !== null);
+  const npsRows = npsRowsArr.map(r => `<tr>
+      <td style="padding:6px 8px;font-size:var(--fs-base);">${r.label}</td>
+      <td style="padding:6px 8px;font-size:var(--fs-sm);color:var(--text-hint);">${r.nd.dataResp ? fmtD(r.nd.dataResp) : '—'}</td>
+      <td style="padding:6px 8px;font-size:var(--fs-sm);font-weight:700;color:${parseInt(r.nd.nota)>=9?'var(--green)':parseInt(r.nd.nota)>=7?'var(--amber)':'var(--red)'};">${r.nd.nota}</td>
+    </tr>`).join('');
+  const contentNps = document.getElementById('perf-ter-nps-content');
+  if (contentNps) contentNps.innerHTML = npsRowsArr.length
+    ? `<div class="tbl-scroll"><table style="width:100%;border-collapse:collapse;margin-top:8px;"><thead><tr>
+        <th style="text-align:left;padding:6px 8px;font-size:var(--fs-xs);color:var(--text-hint);text-transform:uppercase;">Projeto</th>
+        <th style="text-align:left;padding:6px 8px;font-size:var(--fs-xs);color:var(--text-hint);text-transform:uppercase;">Resposta</th>
+        <th style="text-align:left;padding:6px 8px;font-size:var(--fs-xs);color:var(--text-hint);text-transform:uppercase;">Nota</th>
+      </tr></thead><tbody>${npsRows}</tbody></table></div>`
+    : '<div style="font-size:var(--fs-base);color:var(--text-hint);padding:12px 0;">Nenhuma resposta de NPS no período.</div>';
+
+  // ── PDI ───────────────────────────────────────────────────
+  const badgePdi = document.getElementById('perf-ter-pdi-badge');
+  if (badgePdi) badgePdi.innerHTML = ind.pdi.pct !== null
+    ? `<span style="color:${ind.pdi.pct>=METAS_TER.pdi?'var(--green)':'var(--red)'};font-weight:700;">${ind.pdi.pct}% ${ind.pdi.pct>=METAS_TER.pdi?icon('check'):icon('x')} meta ${METAS_TER.pdi}%</span>`
+    : '—';
+  const pdiRows = (ind.pdi.rows || []).map(r => `<tr>
+      <td style="padding:6px 8px;font-size:var(--fs-base);">${r.mes.label}/${r.mes.ano}</td>
+      <td style="padding:6px 8px;font-size:var(--fs-sm);font-weight:700;color:${r.val===null?'var(--text-hint)':r.val>=METAS_TER.pdi?'var(--green)':'var(--red)'};">${r.val===null?'sem fechamento':r.val+'%'}</td>
+    </tr>`).join('');
+  const contentPdi = document.getElementById('perf-ter-pdi-content');
+  if (contentPdi) contentPdi.innerHTML = (ind.pdi.rows || []).length
+    ? `<div class="tbl-scroll"><table style="width:100%;border-collapse:collapse;margin-top:8px;"><thead><tr>
+        <th style="text-align:left;padding:6px 8px;font-size:var(--fs-xs);color:var(--text-hint);text-transform:uppercase;">Quarter</th>
+        <th style="text-align:left;padding:6px 8px;font-size:var(--fs-xs);color:var(--text-hint);text-transform:uppercase;">Fechamento</th>
+      </tr></thead><tbody>${pdiRows}</tbody></table></div>`
+    : '<div style="font-size:var(--fs-base);color:var(--text-hint);padding:12px 0;">Nenhum fechamento de quarter no período.</div>';
 }
 
 // Seção "Meta de Monetização por consultor" — reaproveita EXATAMENTE a mesma lógica de
