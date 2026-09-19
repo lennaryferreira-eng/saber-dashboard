@@ -12405,16 +12405,30 @@ function buildGanttTer() {
     const dFp = dFRaw ? parseDate(dFRaw) : new Date(dIp.getTime() + 30*864e5);
     return dIp <= sEnd && dFp >= sDate;
   }
-  buildCargaSemanal(prjsParaCarga, semanas, 'consultor', 'carga-consultor-ter', 'Carga por consultor — semana a semana', 'Consultor', (p, seg, dom) => ativoNaSemana(p, seg));
+  // Recorrente conta na carga/capacity real do consultor — é trabalho contínuo de verdade
+  // (não tem uma timeline de entrega única como o One-time, mas ocupa capacity igual). Mesmo
+  // padrão de droParaCarga/projsComDRO na SABER: lista separada, filtrada pelo mesmo Consultor
+  // do Gantt principal, combinada com prjsParaCarga só pra alimentar os gráficos de carga —
+  // não entra na tabela principal (prjs), que continua só com One-time.
+  const recParaCarga = projects.filter(p => {
+    if (p.recorrencia !== 'Recorrente' || !p.inicio) return false;
+    if (statusEmStandby(p)) return false;
+    if (calcStatus2(p) === 'Finalizado') return false;
+    if (p.status2 === 'Cancelado' || p.status2 === 'Interrompido') return false;
+    if (consFilter && p.consultor !== consFilter) return false;
+    return true;
+  });
+  const prjsCargaTotal = [...prjsParaCarga, ...recParaCarga];
+  buildCargaSemanal(prjsCargaTotal, semanas, 'consultor', 'carga-consultor-ter', 'Carga por consultor — semana a semana', 'Consultor', (p, seg, dom) => ativoNaSemana(p, seg));
   const cargaDiv = document.getElementById('carga-semanal-ter');
   if (cargaDiv) {
-    const maxCarga = Math.max(...semanas.map(s => prjsParaCarga.filter(p => ativoNaSemana(p, s)).length), 1);
+    const maxCarga = Math.max(...semanas.map(s => prjsCargaTotal.filter(p => ativoNaSemana(p, s)).length), 1);
     cargaDiv.innerHTML = '<div style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);margin-bottom:6px;">Projetos ativos por semana</div>'
       + '<div style="overflow-x:auto;"><div style="display:flex;gap:3px;min-width:max-content;">'
       + semanas.map(s => {
           const sEnd = new Date(s.getTime() + 6*864e5);
           const isHoje = hoje >= s && hoje <= sEnd;
-          const cnt = prjsParaCarga.filter(p => ativoNaSemana(p, s)).length;
+          const cnt = prjsCargaTotal.filter(p => ativoNaSemana(p, s)).length;
           const pctH = Math.round(cnt / maxCarga * 100);
           const d = s.getDate().toString().padStart(2,'0') + '/' + (s.getMonth()+1).toString().padStart(2,'0');
           const color = isHoje ? 'var(--accent)' : 'var(--blue)';
