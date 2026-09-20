@@ -110,12 +110,12 @@
     </div>
 
     <div class="jc-tags tags-bottom-1">
-      <span class="jc-pill gray">Dossiê do Cliente</span>
-      <span class="jc-pill light">Respostas Kick Off</span>
-      <span class="jc-pill gray">Setup Ekyte</span>
-      <span class="jc-pill light">Script Acessos</span>
-      <span class="jc-pill gray">Skill Pre-Diagnóstico</span>
-      <span class="jc-pill light">PPT Kick Off</span>
+      <a class="jc-pill gray" href="https://app.notion.com/p/tellesfreire/Clientes-2a6ba0bb02354c72ad05f7747cb71c02" target="_blank" rel="noopener noreferrer">Dossiê do Cliente</a>
+      <a class="jc-pill light" href="https://docs.google.com/spreadsheets/d/1Hu4Ls8JXJdMM_pMIcwPaBfMP6ob8gKco7jXMJRQAAgs/edit?gid=1778637557#gid=1778637557" target="_blank" rel="noopener noreferrer">Respostas Kick Off</a>
+      <a class="jc-pill gray" href="https://app.ekyte.com/#/projects/330901/edit" target="_blank" rel="noopener noreferrer">Setup Ekyte</a>
+      <button type="button" class="jc-pill light" onclick="jcOpenScriptModal()">Script Acessos</button>
+      <span class="jc-pill gray disabled" title="Em breve">Skill Pre-Diagnóstico<small class="jc-pill-badge">Em breve</small></span>
+      <a class="jc-pill light" href="https://docs.google.com/presentation/d/1nkKZgtrZckVZrhUXGPkIQYiNCUaskkPCAIkIw7NSW-U/edit?slide=id.g3872acc9173_0_0#slide=id.g3872acc9173_0_0" target="_blank" rel="noopener noreferrer">PPT Kick Off</a>
     </div>
 
     <div class="jc-tags tags-bottom-2">
@@ -148,12 +148,12 @@
         <span class="stage-label">Kick Off</span>
       </div>
       <div class="jc-tags">
-        <span class="jc-pill gray">Dossiê do Cliente</span>
-        <span class="jc-pill light">Respostas Kick Off</span>
-        <span class="jc-pill gray">Setup Ekyte</span>
-        <span class="jc-pill light">Script Acessos</span>
-        <span class="jc-pill gray">Skill Pre-Diagnóstico</span>
-        <span class="jc-pill light">PPT Kick Off</span>
+        <a class="jc-pill gray" href="https://app.notion.com/p/tellesfreire/Clientes-2a6ba0bb02354c72ad05f7747cb71c02" target="_blank" rel="noopener noreferrer">Dossiê do Cliente</a>
+        <a class="jc-pill light" href="https://docs.google.com/spreadsheets/d/1Hu4Ls8JXJdMM_pMIcwPaBfMP6ob8gKco7jXMJRQAAgs/edit?gid=1778637557#gid=1778637557" target="_blank" rel="noopener noreferrer">Respostas Kick Off</a>
+        <a class="jc-pill gray" href="https://app.ekyte.com/#/projects/330901/edit" target="_blank" rel="noopener noreferrer">Setup Ekyte</a>
+        <button type="button" class="jc-pill light" onclick="jcOpenScriptModal()">Script Acessos</button>
+        <span class="jc-pill gray disabled" title="Em breve">Skill Pre-Diagnóstico<small class="jc-pill-badge">Em breve</small></span>
+        <a class="jc-pill light" href="https://docs.google.com/presentation/d/1nkKZgtrZckVZrhUXGPkIQYiNCUaskkPCAIkIw7NSW-U/edit?slide=id.g3872acc9173_0_0#slide=id.g3872acc9173_0_0" target="_blank" rel="noopener noreferrer">PPT Kick Off</a>
       </div>
     </div>
 
@@ -232,5 +232,41 @@
     </div>
   </section>
 </main>
+
+<div id="jc-modal-overlay" class="jc-modal-overlay" hidden>
+  <div class="jc-modal-box" role="dialog" aria-modal="true" aria-labelledby="jc-modal-title">
+    <button type="button" class="jc-modal-x" onclick="jcCloseScriptModal()" aria-label="Fechar">&times;</button>
+    <h3 id="jc-modal-title">Script de Acessos</h3>
+    <pre id="jc-modal-text">Cole aqui o texto do script de acessos.</pre>
+    <div class="jc-modal-actions">
+      <button type="button" class="jc-modal-close-btn" onclick="jcCloseScriptModal()">Fechar</button>
+      <button type="button" id="jc-modal-copy-btn" class="jc-modal-copy-btn" onclick="jcCopyScript()">Copiar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function jcOpenScriptModal() {
+  document.getElementById('jc-modal-overlay').hidden = false;
+}
+function jcCloseScriptModal() {
+  document.getElementById('jc-modal-overlay').hidden = true;
+}
+function jcCopyScript() {
+  const text = document.getElementById('jc-modal-text').innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('jc-modal-copy-btn');
+    const original = btn.textContent;
+    btn.textContent = 'Copiado!';
+    setTimeout(() => { btn.textContent = original; }, 1500);
+  });
+}
+document.getElementById('jc-modal-overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'jc-modal-overlay') jcCloseScriptModal();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') jcCloseScriptModal();
+});
+</script>
 </body>
 </html>
