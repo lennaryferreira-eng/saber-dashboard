@@ -13311,9 +13311,13 @@ function buildGantt() {
   // Labels curtos das 6 semanas
   const SEM_LABEL = ['Growth','Kick off','1ª Entr.','2ª Entr.','3ª Entr.','4ª Entr.','Decol.'];
 
-  // Data de hoje em ISO local, pra comparar com o início de cada semana (sISO) abaixo — decide
-  // se uma etapa ainda pendente já devia ter acontecido (semana começou) ou é só previsão futura.
+  // Data de hoje em ISO local, pra comparar com a data estimada de cada etapa abaixo — decide
+  // se ela ainda vai acontecer ou já devia ter acontecido e não foi sinalizada.
   const hojeISOGantt = hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0')+'-'+String(hoje.getDate()).padStart(2,'0');
+  // Segunda-feira da semana atual — âncora pra onde o card de "Atraso" da etapa bloqueadora se
+  // reposiciona a cada carregamento (ver comentário mais abaixo).
+  const diaSemHojeGantt = hoje.getDay();
+  const segHojeGantt = new Date(hoje); segHojeGantt.setDate(hoje.getDate() - (diaSemHojeGantt === 0 ? 6 : diaSemHojeGantt - 1));
 
   // Pré-calcula labels do Gantt para cada projeto, evitando duplicatas
   const _ganttLabels = {};
@@ -13336,8 +13340,40 @@ function buildGantt() {
       const ep = entp[si] || entp[String(si)];
       if (ep && ep.real) reaisp[si] = ep.real;
     }
+
+    // Etapa BLOQUEADORA: a primeira (por posição) sem data real — modelo de entrega sequencial
+    // ("se não teve Pesquisa de Mercado não teve nenhuma outra"), então é ela quem trava o
+    // andamento do projeto daqui pra frente, e todas as etapas seguintes ficam reféns dela.
+    let idxBloqueio = -1;
+    for (let si = 0; si <= 6; si++) { if (!(si in reaisp)) { idxBloqueio = si; break; } }
+
+    // Um candidato {idx, data, atraso} por etapa pendente a partir da bloqueadora, cada um numa
+    // semana sequencial (+7 dias por etapa, pulando as que já têm real fora de ordem).
+    const candidatos = [];
+    if (idxBloqueio >= 0) {
+      let dBaseData = null;
+      for (let si = 0; si < idxBloqueio; si++) {
+        if (reaisp[si] && (dBaseData === null || reaisp[si] > dBaseData)) dBaseData = reaisp[si];
+      }
+      const dataOriginal = dBaseData ? new Date(parseDate(dBaseData).getTime() + 7 * 864e5) : parseDate(semDataPlanejada(p, idxBloqueio));
+      const dataOriginalISO = dataOriginal.getFullYear()+'-'+String(dataOriginal.getMonth()+1).padStart(2,'0')+'-'+String(dataOriginal.getDate()).padStart(2,'0');
+      // A etapa bloqueadora já venceu (semana original já começou, inclui a atual) sem
+      // confirmação? Então o card de "Atraso" persegue a semana ATUAL a cada novo carregamento
+      // — não fica preso na semana original, que ficaria pra trás e sumiria da janela visível em
+      // poucas semanas (era o que acontecia antes: o Atraso pulava pra uma etapa mais à frente
+      // sem dizer que a bloqueadora de verdade era outra, mais atrás). Enquanto ainda não venceu,
+      // a âncora continua sendo a data original — é só a previsão normal de sempre.
+      const bloqueado = dataOriginalISO <= hojeISOGantt;
+      const ancora = bloqueado ? segHojeGantt : dataOriginal;
+      let semanaOffset = 0;
+      for (let si = idxBloqueio; si <= 6; si++) {
+        if (si in reaisp) continue; // já feita fora de ordem — aparece normalmente via reaisHere
+        candidatos.push({ idx: si, data: new Date(ancora.getTime() + semanaOffset * 7 * 864e5), atraso: bloqueado });
+        semanaOffset++;
+      }
+    }
+
     const labelMap = {};
-    const shown = new Set();
     semanas.forEach(s => {
       const sEnd = new Date(s.getTime() + 6 * 864e5);
       if (!(dIp <= sEnd && dFp >= s)) return;
@@ -13348,37 +13384,14 @@ function buildGantt() {
         const paraTexto = designerFilter ? reaisHere.filter(si => designerEtapas(p).includes(si)) : reaisHere;
         labelMap[sISO] = paraTexto.map(si => nomeEtapaCurto(p, si)).join('<br>');
       } else {
-        // Etapa ainda pendente estimada por proporção/offset (semDataEtapa) pra essa semana —
-        // mesmo cálculo de sempre, mas o TEXTO muda conforme a semana já começou ou não: se a
-        // semana estimada já chegou (inclui a atual) e a etapa não foi confirmada, sinaliza
-        // "Atraso" em vez de fingir o nome da etapa como se ela estivesse acontecendo ali (pedido
-        // da coordenadora — achado na Drograria Biofarma: aparecia "Decolagem" com etapas do meio
-        // ainda sem nenhuma confirmação). Semana futura (ainda não chegou) continua mostrando a
-        // previsão normalmente — só é "atraso" o que já devia ter acontecido e não aconteceu.
-        const cands = [];
-        for (let si = 0; si <= 6; si++) {
-          if (si in reaisp) continue;
-          if (shown.has(si)) continue;
-          const d = semDataEtapa(p, si);
-          if (d && d >= sISO && d <= eISO) cands.push([d, si]);
-        }
-        cands.sort((a,b) => a[0] < b[0] ? -1 : 1);
-        if (cands.length > 0) {
-          shown.add(cands[0][1]);
-          const idxEscolhido = cands[0][1];
-          if (designerFilter && !designerEtapas(p).includes(idxEscolhido)) {
-            labelMap[sISO] = '';
-          } else if (sISO <= hojeISOGantt) {
-            // Diz QUAL etapa está atrasada (não só "Atraso" genérico) -- sem isso, quando as
-            // etapas anteriores também estão atrasadas fora da janela visível, o cálculo pula
-            // direto pra uma etapa mais à frente (ex: Mídia Paga) e a coordenadora não tinha
-            // como saber qual entrega faltava só olhando o badge.
-            labelMap[sISO] = '<span style="color:#fca5a5;">'+icon('warning',{size:8})+' Atraso</span><br>'+nomeEtapaCurto(p, idxEscolhido);
-          } else {
-            labelMap[sISO] = nomeEtapaCurto(p, idxEscolhido);
-          }
-        } else {
+        const cand = candidatos.find(c => c.data >= s && c.data <= sEnd);
+        if (!cand || (designerFilter && !designerEtapas(p).includes(cand.idx))) {
           labelMap[sISO] = '';
+        } else if (cand.atraso) {
+          // Diz QUAL etapa está atrasada, não só "Atraso" genérico.
+          labelMap[sISO] = '<span style="color:#fca5a5;">'+icon('warning',{size:8})+' Atraso</span><br>'+nomeEtapaCurto(p, cand.idx);
+        } else {
+          labelMap[sISO] = nomeEtapaCurto(p, cand.idx);
         }
       }
     });
