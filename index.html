@@ -10154,6 +10154,44 @@ function dDecolagemReal(p) {
   return (ent && ent.real) ? parseDate(ent.real) : null;
 }
 
+// Etapa BLOQUEADORA (1ª sem data real, modelo de entrega sequencial) + um candidato
+// {idx,data,atraso} por etapa pendente a partir dela, em semanas sequenciais — mesma lógica
+// usada tanto pros rótulos "Atraso: etapa" do Gantt de Capacity quanto pra saber até onde a
+// barra/janela de semanas do projeto precisa se estender (senão a barra parava no prevFim e
+// escondia as etapas mais atrasadas da cadeia — achado num caso real onde só "Vendas"
+// aparecia, mesmo o projeto tendo mais 2 etapas atrasadas depois dela).
+function _etapaBloqueioCandidatos(p) {
+  const entp = p.entregas || {};
+  const reaisp = {};
+  for (let si = 0; si <= 6; si++) {
+    const ep = entp[si] || entp[String(si)];
+    if (ep && ep.real) reaisp[si] = ep.real;
+  }
+  let idxBloqueio = -1;
+  for (let si = 0; si <= 6; si++) { if (!(si in reaisp)) { idxBloqueio = si; break; } }
+  if (idxBloqueio < 0) return [];
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const hojeISO = hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0')+'-'+String(hoje.getDate()).padStart(2,'0');
+  const dow = hoje.getDay();
+  const segHoje = new Date(hoje); segHoje.setDate(hoje.getDate() - (dow === 0 ? 6 : dow - 1));
+  let dBaseData = null;
+  for (let si = 0; si < idxBloqueio; si++) {
+    if (reaisp[si] && (dBaseData === null || reaisp[si] > dBaseData)) dBaseData = reaisp[si];
+  }
+  const dataOriginal = dBaseData ? new Date(parseDate(dBaseData).getTime() + 7 * 864e5) : parseDate(semDataPlanejada(p, idxBloqueio));
+  const dataOriginalISO = dataOriginal.getFullYear()+'-'+String(dataOriginal.getMonth()+1).padStart(2,'0')+'-'+String(dataOriginal.getDate()).padStart(2,'0');
+  const bloqueado = dataOriginalISO <= hojeISO;
+  const ancora = bloqueado ? segHoje : dataOriginal;
+  const candidatos = [];
+  let semanaOffset = 0;
+  for (let si = idxBloqueio; si <= 6; si++) {
+    if (si in reaisp) continue;
+    candidatos.push({ idx: si, data: new Date(ancora.getTime() + semanaOffset * 7 * 864e5), atraso: bloqueado });
+    semanaOffset++;
+  }
+  return candidatos;
+}
+
 function semDataPlanejada(p, semIdx) {
   const ini = ltInicio(p);
   if (!ini) return null;
@@ -13321,20 +13359,15 @@ function buildGantt() {
   // Labels curtos das 6 semanas
   const SEM_LABEL = ['Growth','Kick off','1ª Entr.','2ª Entr.','3ª Entr.','4ª Entr.','Decol.'];
 
-  // Data de hoje em ISO local, pra comparar com a data estimada de cada etapa abaixo — decide
-  // se ela ainda vai acontecer ou já devia ter acontecido e não foi sinalizada.
-  const hojeISOGantt = hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0')+'-'+String(hoje.getDate()).padStart(2,'0');
-  // Segunda-feira da semana atual — âncora pra onde o card de "Atraso" da etapa bloqueadora se
-  // reposiciona a cada carregamento (ver comentário mais abaixo).
-  const diaSemHojeGantt = hoje.getDay();
-  const segHojeGantt = new Date(hoje); segHojeGantt.setDate(hoje.getDate() - (diaSemHojeGantt === 0 ? 6 : diaSemHojeGantt - 1));
-
   // Pré-calcula labels do Gantt para cada projeto, evitando duplicatas
   const _ganttLabels = {};
   prjs.forEach(p => {
     const dIp = parseDate(p.inicio);
     if (!dIp) return;
     const _dFrealP = fimRealEfetivo(p);
+    // Etapa BLOQUEADORA (1ª sem data real, modelo de entrega sequencial) + um candidato por
+    // etapa pendente a partir dela — ver _etapaBloqueioCandidatos.
+    const candidatos = _etapaBloqueioCandidatos(p);
     // Mesma regra: se já concluiu de verdade, a data real manda — não estica até a previsão.
     let dFp;
     if (_dFrealP) {
@@ -13343,44 +13376,20 @@ function buildGantt() {
       const _dFprevP = p.prevFim ? parseDate(p.prevFim) : new Date(dIp.getTime() + 45 * 864e5);
       const _dFdecolP = dDecolagemReal(p);
       dFp = [_dFprevP, _dFdecolP].filter(Boolean).reduce((a,b) => a > b ? a : b);
+      // Estende até cobrir a cadeia inteira de atraso — sem isso, um prevFim já vencido cortava
+      // a barra/janela de semanas antes de chegar nas etapas mais atrasadas da cadeia (ex: um
+      // projeto travado em Ambientes só mostrava até "Vendas", escondendo Mídia Paga/Decolagem
+      // que viriam depois).
+      if (candidatos.length) {
+        const ultimoCandidato = candidatos[candidatos.length - 1].data;
+        if (ultimoCandidato > dFp) dFp = ultimoCandidato;
+      }
     }
     const entp = p.entregas || {};
     const reaisp = {};
     for (let si = 0; si <= 6; si++) {
       const ep = entp[si] || entp[String(si)];
       if (ep && ep.real) reaisp[si] = ep.real;
-    }
-
-    // Etapa BLOQUEADORA: a primeira (por posição) sem data real — modelo de entrega sequencial
-    // ("se não teve Pesquisa de Mercado não teve nenhuma outra"), então é ela quem trava o
-    // andamento do projeto daqui pra frente, e todas as etapas seguintes ficam reféns dela.
-    let idxBloqueio = -1;
-    for (let si = 0; si <= 6; si++) { if (!(si in reaisp)) { idxBloqueio = si; break; } }
-
-    // Um candidato {idx, data, atraso} por etapa pendente a partir da bloqueadora, cada um numa
-    // semana sequencial (+7 dias por etapa, pulando as que já têm real fora de ordem).
-    const candidatos = [];
-    if (idxBloqueio >= 0) {
-      let dBaseData = null;
-      for (let si = 0; si < idxBloqueio; si++) {
-        if (reaisp[si] && (dBaseData === null || reaisp[si] > dBaseData)) dBaseData = reaisp[si];
-      }
-      const dataOriginal = dBaseData ? new Date(parseDate(dBaseData).getTime() + 7 * 864e5) : parseDate(semDataPlanejada(p, idxBloqueio));
-      const dataOriginalISO = dataOriginal.getFullYear()+'-'+String(dataOriginal.getMonth()+1).padStart(2,'0')+'-'+String(dataOriginal.getDate()).padStart(2,'0');
-      // A etapa bloqueadora já venceu (semana original já começou, inclui a atual) sem
-      // confirmação? Então o card de "Atraso" persegue a semana ATUAL a cada novo carregamento
-      // — não fica preso na semana original, que ficaria pra trás e sumiria da janela visível em
-      // poucas semanas (era o que acontecia antes: o Atraso pulava pra uma etapa mais à frente
-      // sem dizer que a bloqueadora de verdade era outra, mais atrás). Enquanto ainda não venceu,
-      // a âncora continua sendo a data original — é só a previsão normal de sempre.
-      const bloqueado = dataOriginalISO <= hojeISOGantt;
-      const ancora = bloqueado ? segHojeGantt : dataOriginal;
-      let semanaOffset = 0;
-      for (let si = idxBloqueio; si <= 6; si++) {
-        if (si in reaisp) continue; // já feita fora de ordem — aparece normalmente via reaisHere
-        candidatos.push({ idx: si, data: new Date(ancora.getTime() + semanaOffset * 7 * 864e5), atraso: bloqueado });
-        semanaOffset++;
-      }
     }
 
     const labelMap = {};
@@ -13427,6 +13436,13 @@ function buildGantt() {
       const _dFprev = p.prevFim ? parseDate(p.prevFim) : new Date(dI.getTime() + 45 * 864e5);
       const _dFdecol = dDecolagemReal(p);
       dF = [_dFprev, _dFdecol].filter(Boolean).reduce((a,b) => a > b ? a : b);
+      // Mesma extensão do cálculo de labelMap acima — sem isso a barra parava no prevFim antes
+      // de chegar nas etapas mais atrasadas da cadeia de "Atraso".
+      const candidatosDF = _etapaBloqueioCandidatos(p);
+      if (candidatosDF.length) {
+        const ultimoCandidatoDF = candidatosDF[candidatosDF.length - 1].data;
+        if (ultimoCandidatoDF > dF) dF = ultimoCandidatoDF;
+      }
     }
     const total = Math.round((dF - dI) / 864e5) || 45;
     const color = MON_COLOR_FN(p);
