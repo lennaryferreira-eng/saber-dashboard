@@ -10109,9 +10109,20 @@ function semDataEtapa(p, etapaIdx) {
   }
   if (ultimaIdx >= 0 && ultimaData) {
     const dBase = parseDate(ultimaData);
-    const offset = etapaIdx - ultimaIdx;
-    if (offset > 0 && dBase) {
-      const dNext = new Date(dBase.getTime() + offset * 7 * 864e5);
+    // Conta só as etapas entre a última registrada e esta que AINDA estão pendentes — uma
+    // etapa nesse meio que já tem data real (ex: duas entregas registradas no mesmo dia, uma
+    // "na frente" da outra na ordem de posição — o tie-break acima fica com a de trás) não
+    // deve "empurrar" a estimativa das próximas por mais uma semana, senão o Gantt pula
+    // semana(s) inteiras sem nada agendado antes da etapa seguinte (achado com Emporium Car,
+    // Bill Motos e Carango Tunning: Ambientes+Mídia Paga no mesmo dia inflava a estimativa da
+    // Decolagem em semanas que não existiam de verdade).
+    let pendentes = 0;
+    for (let si = ultimaIdx + 1; si <= etapaIdx; si++) {
+      const e = ent[si] || ent[String(si)];
+      if (!(e && e.real)) pendentes++;
+    }
+    if (pendentes > 0 && dBase) {
+      const dNext = new Date(dBase.getTime() + pendentes * 7 * 864e5);
       // Usa data local para evitar deslocamento UTC (fuso Brasília UTC-3)
       const yr = dNext.getFullYear(), mo = dNext.getMonth()+1, dy = dNext.getDate();
       return yr+'-'+String(mo).padStart(2,'0')+'-'+String(dy).padStart(2,'0');
