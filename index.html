@@ -13369,7 +13369,11 @@ function buildGantt() {
           if (designerFilter && !designerEtapas(p).includes(idxEscolhido)) {
             labelMap[sISO] = '';
           } else if (sISO <= hojeISOGantt) {
-            labelMap[sISO] = '<span style="color:#fca5a5;">'+icon('warning',{size:8})+' Atraso</span>';
+            // Diz QUAL etapa está atrasada (não só "Atraso" genérico) -- sem isso, quando as
+            // etapas anteriores também estão atrasadas fora da janela visível, o cálculo pula
+            // direto pra uma etapa mais à frente (ex: Mídia Paga) e a coordenadora não tinha
+            // como saber qual entrega faltava só olhando o badge.
+            labelMap[sISO] = '<span style="color:#fca5a5;">'+icon('warning',{size:8})+' Atraso</span><br>'+nomeEtapaCurto(p, idxEscolhido);
           } else {
             labelMap[sISO] = nomeEtapaCurto(p, idxEscolhido);
           }
