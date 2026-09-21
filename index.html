@@ -3473,6 +3473,7 @@ const SIDEBAR_NAV = [
   { group: 'geral', label: 'Geral', items: [
     { id: 'visao', label: 'Visão Geral', icon: 'chart' },
     { id: 'base', label: 'Base de Projetos', icon: 'clipboard', extraClass: 'tab-base' },
+    { id: 'jornada', label: 'Jornada do Consultor', icon: 'route', href: 'jornada-consultor.html' },
   ] },
   { group: 'okrs', label: 'OKRs', items: [
     { id: 'conversao', label: 'Tx. Conversão', icon: 'zap' },
@@ -3517,13 +3518,22 @@ function renderSidebarNav() {
   nav.innerHTML = SIDEBAR_NAV.map((g, gi) => '<div class="nav-group">'
     + '<div class="nav-group-label g-' + g.group + '">' + g.label + '</div>'
     + '<div class="nav-group-tabs">'
-    + g.items.map((it, ii) => '<button class="nav-tab sidebar-link'
-        + (it.extraClass ? ' ' + it.extraClass : '')
-        + (gi === 0 && ii === 0 ? ' active' : '') + '"'
-        + (it.elId ? ' id="' + it.elId + '"' : '')
-        + (it.hiddenByDefault ? ' style="display:none;"' : '')
-        + ' onclick="show(\'' + it.id + '\')">'
-        + icon(it.icon) + '<span class="sidebar-link-label">' + it.label + '</span></button>').join('')
+    + g.items.map((it, ii) => (it.href
+        // Item externo (página estática fora da SPA, ex: Jornada do Consultor) — link de
+        // verdade em vez de button+show(), senão show() procuraria uma aba #tab-jornada que
+        // não existe. Nova aba pra não perder o estado da SPA atual.
+        ? '<a class="nav-tab sidebar-link' + (it.extraClass ? ' ' + it.extraClass : '') + '"'
+          + (it.elId ? ' id="' + it.elId + '"' : '')
+          + (it.hiddenByDefault ? ' style="display:none;"' : '')
+          + ' href="' + it.href + '" target="_blank" rel="noopener noreferrer">'
+          + icon(it.icon) + '<span class="sidebar-link-label">' + it.label + '</span></a>'
+        : '<button class="nav-tab sidebar-link'
+          + (it.extraClass ? ' ' + it.extraClass : '')
+          + (gi === 0 && ii === 0 ? ' active' : '') + '"'
+          + (it.elId ? ' id="' + it.elId + '"' : '')
+          + (it.hiddenByDefault ? ' style="display:none;"' : '')
+          + ' onclick="show(\'' + it.id + '\')">'
+          + icon(it.icon) + '<span class="sidebar-link-label">' + it.label + '</span></button>')).join('')
     + '</div></div>').join('');
 }
 renderSidebarNav();
