@@ -13321,6 +13321,10 @@ function buildGantt() {
   // Labels curtos das 6 semanas
   const SEM_LABEL = ['Growth','Kick off','1ª Entr.','2ª Entr.','3ª Entr.','4ª Entr.','Decol.'];
 
+  // Data de hoje em ISO local, pra comparar com o início de cada semana (sISO) abaixo — decide
+  // se uma etapa ainda pendente já devia ter acontecido (semana começou) ou é só previsão futura.
+  const hojeISOGantt = hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0')+'-'+String(hoje.getDate()).padStart(2,'0');
+
   // Pré-calcula labels do Gantt para cada projeto, evitando duplicatas
   const _ganttLabels = {};
   prjs.forEach(p => {
@@ -13343,6 +13347,7 @@ function buildGantt() {
       if (ep && ep.real) reaisp[si] = ep.real;
     }
     const labelMap = {};
+    const shown = new Set();
     semanas.forEach(s => {
       const sEnd = new Date(s.getTime() + 6 * 864e5);
       if (!(dIp <= sEnd && dFp >= s)) return;
@@ -13353,18 +13358,34 @@ function buildGantt() {
         const paraTexto = designerFilter ? reaisHere.filter(si => designerEtapas(p).includes(si)) : reaisHere;
         labelMap[sISO] = paraTexto.map(si => nomeEtapaCurto(p, si)).join('<br>');
       } else {
-        // Trava no rótulo da última etapa REAL confirmada ATÉ esta semana — não projeta mais a
-        // próxima etapa por proporção/offset (a régua antiga escondida em semDataEtapa fazia o
-        // projeto "avançar" sozinho pra etapas sem nenhuma data sinalizada, ex: aparecer em
-        // Decolagem com 3 etapas do meio ainda pendentes — achado na Drograria Biofarma).
-        // Recalcula por semana (não uma vez só pro projeto): se sobrar uma semana de intervalo
-        // ENTRE duas entregas reais, essa semana trava na anterior, não pula direto pra última.
-        let idxAteAqui = -1, dataAteAqui = null;
+        // Etapa ainda pendente estimada por proporção/offset (semDataEtapa) pra essa semana —
+        // mesmo cálculo de sempre, mas o TEXTO muda conforme a semana já começou ou não: se a
+        // semana estimada já chegou (inclui a atual) e a etapa não foi confirmada, sinaliza
+        // "Atraso" em vez de fingir o nome da etapa como se ela estivesse acontecendo ali (pedido
+        // da coordenadora — achado na Drograria Biofarma: aparecia "Decolagem" com etapas do meio
+        // ainda sem nenhuma confirmação). Semana futura (ainda não chegou) continua mostrando a
+        // previsão normalmente — só é "atraso" o que já devia ter acontecido e não aconteceu.
+        const cands = [];
         for (let si = 0; si <= 6; si++) {
-          if (reaisp[si] && reaisp[si] <= eISO && (dataAteAqui === null || reaisp[si] > dataAteAqui)) { dataAteAqui = reaisp[si]; idxAteAqui = si; }
+          if (si in reaisp) continue;
+          if (shown.has(si)) continue;
+          const d = semDataEtapa(p, si);
+          if (d && d >= sISO && d <= eISO) cands.push([d, si]);
         }
-        labelMap[sISO] = (idxAteAqui >= 0 && !(designerFilter && !designerEtapas(p).includes(idxAteAqui)))
-          ? nomeEtapaCurto(p, idxAteAqui) : '';
+        cands.sort((a,b) => a[0] < b[0] ? -1 : 1);
+        if (cands.length > 0) {
+          shown.add(cands[0][1]);
+          const idxEscolhido = cands[0][1];
+          if (designerFilter && !designerEtapas(p).includes(idxEscolhido)) {
+            labelMap[sISO] = '';
+          } else if (sISO <= hojeISOGantt) {
+            labelMap[sISO] = '<span style="color:#fca5a5;">'+icon('warning',{size:8})+' Atraso</span>';
+          } else {
+            labelMap[sISO] = nomeEtapaCurto(p, idxEscolhido);
+          }
+        } else {
+          labelMap[sISO] = '';
+        }
       }
     });
     _ganttLabels[p.id] = labelMap;
