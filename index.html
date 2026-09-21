@@ -10142,6 +10142,18 @@ function semDataEtapa(p, etapaIdx) {
   return semDataPlanejada(p, etapaIdx);
 }
 
+// Data real da Decolagem (etapa 6), só se JÁ foi sinalizada — nunca uma estimativa. Usada no
+// Gantt de Capacity em vez de semDataEtapa(p,6) sempre que o cálculo precisa decidir até onde
+// a barra/carga do projeto se estende: etapas intermediárias ainda pendentes (Ambientes/Vendas/
+// Mídia Paga sem data) não devem "destravar" uma Decolagem projetada e esticar a barra/contagem
+// de capacity antes da hora — só prevFim serve de referência de fim até a Decolagem ser
+// sinalizada de verdade (achado no caso da Drograria Biofarma: aparecia "em Decolagem" essa
+// semana com 3 etapas do meio ainda sem confirmação nenhuma).
+function dDecolagemReal(p) {
+  const ent = p.entregas && (p.entregas[6] || p.entregas['6']);
+  return (ent && ent.real) ? parseDate(ent.real) : null;
+}
+
 function semDataPlanejada(p, semIdx) {
   const ini = ltInicio(p);
   if (!ini) return null;
@@ -13206,7 +13218,7 @@ function buildGantt() {
         dFp = _dFrealP;
       } else {
         const _dFprevP = p.prevFim ? parseDate(p.prevFim) : new Date(dIp.getTime() + 45 * 864e5);
-        const _dFdecolP = (function() { const d = semDataEtapa(p, 6); return d ? parseDate(d) : null; })();
+        const _dFdecolP = dDecolagemReal(p);
         dFp = [_dFprevP, _dFdecolP].filter(Boolean).reduce((a,b) => a > b ? a : b);
       }
       return _dKickoffP <= sEnd && dFp >= sDate;
@@ -13321,7 +13333,7 @@ function buildGantt() {
       dFp = _dFrealP;
     } else {
       const _dFprevP = p.prevFim ? parseDate(p.prevFim) : new Date(dIp.getTime() + 45 * 864e5);
-      const _dFdecolP = (function() { const d = semDataEtapa(p, 6); return d ? parseDate(d) : null; })();
+      const _dFdecolP = dDecolagemReal(p);
       dFp = [_dFprevP, _dFdecolP].filter(Boolean).reduce((a,b) => a > b ? a : b);
     }
     const entp = p.entregas || {};
@@ -13331,35 +13343,28 @@ function buildGantt() {
       if (ep && ep.real) reaisp[si] = ep.real;
     }
     const labelMap = {};
-    const shown = new Set();
     semanas.forEach(s => {
       const sEnd = new Date(s.getTime() + 6 * 864e5);
       if (!(dIp <= sEnd && dFp >= s)) return;
       const toISOf = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
       const sISO = toISOf(s), eISO = toISOf(sEnd);
-      // Cálculo de sequência SEMPRE considera as 7 etapas (senão a estimativa das próximas
-      // etapas quebra). O filtro de designer só decide o que aparece no texto, não a conta.
       const reaisHere = [0,1,2,3,4,5,6].filter(si => reaisp[si] && reaisp[si] >= sISO && reaisp[si] <= eISO);
       if (reaisHere.length > 0) {
-        reaisHere.forEach(si => shown.add(si));
         const paraTexto = designerFilter ? reaisHere.filter(si => designerEtapas(p).includes(si)) : reaisHere;
         labelMap[sISO] = paraTexto.map(si => nomeEtapaCurto(p, si)).join('<br>');
       } else {
-        const cands = [];
+        // Trava no rótulo da última etapa REAL confirmada ATÉ esta semana — não projeta mais a
+        // próxima etapa por proporção/offset (a régua antiga escondida em semDataEtapa fazia o
+        // projeto "avançar" sozinho pra etapas sem nenhuma data sinalizada, ex: aparecer em
+        // Decolagem com 3 etapas do meio ainda pendentes — achado na Drograria Biofarma).
+        // Recalcula por semana (não uma vez só pro projeto): se sobrar uma semana de intervalo
+        // ENTRE duas entregas reais, essa semana trava na anterior, não pula direto pra última.
+        let idxAteAqui = -1, dataAteAqui = null;
         for (let si = 0; si <= 6; si++) {
-          if (si in reaisp) continue;
-          if (shown.has(si)) continue;
-          const d = semDataEtapa(p, si);
-          if (d && d >= sISO && d <= eISO) cands.push([d, si]);
+          if (reaisp[si] && reaisp[si] <= eISO && (dataAteAqui === null || reaisp[si] > dataAteAqui)) { dataAteAqui = reaisp[si]; idxAteAqui = si; }
         }
-        cands.sort((a,b) => a[0] < b[0] ? -1 : 1);
-        if (cands.length > 0) {
-          shown.add(cands[0][1]);
-          const idxEscolhido = cands[0][1];
-          labelMap[sISO] = (designerFilter && !designerEtapas(p).includes(idxEscolhido)) ? '' : nomeEtapaCurto(p, idxEscolhido);
-        } else {
-          labelMap[sISO] = '';
-        }
+        labelMap[sISO] = (idxAteAqui >= 0 && !(designerFilter && !designerEtapas(p).includes(idxAteAqui)))
+          ? nomeEtapaCurto(p, idxAteAqui) : '';
       }
     });
     _ganttLabels[p.id] = labelMap;
@@ -13374,15 +13379,15 @@ function buildGantt() {
     const ehPausado = statusStandby === 'Pausado' || statusStandby === 'Reembolso';
     const dI    = parseDate(p.inicio);
     // dF: se já concluiu de verdade (realFim), essa é a data que manda — não estica até a
-    // previsão (prevFim). Senão, usa max(prevFim, decolagem calculada) pra garantir que a
-    // barra chega até a Decolagem estimada.
+    // previsão (prevFim). Senão, usa max(prevFim, Decolagem REAL se já sinalizada) — nunca
+    // uma Decolagem estimada (ver dDecolagemReal), pra barra não esticar sozinha antes da hora.
     const _dFreal = fimRealEfetivo(p);
     let dF;
     if (_dFreal) {
       dF = _dFreal;
     } else {
       const _dFprev = p.prevFim ? parseDate(p.prevFim) : new Date(dI.getTime() + 45 * 864e5);
-      const _dFdecol = (function() { const d = semDataEtapa(p, 6); return d ? parseDate(d) : null; })();
+      const _dFdecol = dDecolagemReal(p);
       dF = [_dFprev, _dFdecol].filter(Boolean).reduce((a,b) => a > b ? a : b);
     }
     const total = Math.round((dF - dI) / 864e5) || 45;
