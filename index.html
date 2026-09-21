@@ -10144,13 +10144,10 @@ function dDecolagemReal(p) {
   return (ent && ent.real) ? parseDate(ent.real) : null;
 }
 
-// Etapa BLOQUEADORA (1ª sem data real, modelo de entrega sequencial) + um candidato
-// {idx,data,atraso} por etapa pendente a partir dela, em semanas sequenciais — mesma lógica
-// usada tanto pros rótulos "Atraso: etapa" do Gantt de Capacity quanto pra saber até onde a
-// barra/janela de semanas do projeto precisa se estender (senão a barra parava no prevFim e
-// escondia as etapas mais atrasadas da cadeia — achado num caso real onde só "Vendas"
-// aparecia, mesmo o projeto tendo mais 2 etapas atrasadas depois dela).
-function _etapaBloqueioCandidatos(p) {
+// Dados da etapa BLOQUEADORA (1ª sem data real, modelo de entrega sequencial): quem é, desde
+// quando venceu e quantas semanas de atraso já acumulou sem NENHUMA confirmação nova. Base
+// compartilhada de _etapaBloqueioCandidatos (rótulos do Gantt) e projetoEstagnado (capacity).
+function _etapaBloqueioInfo(p) {
   const entp = p.entregas || {};
   const reaisp = {};
   for (let si = 0; si <= 6; si++) {
@@ -10159,11 +10156,9 @@ function _etapaBloqueioCandidatos(p) {
   }
   let idxBloqueio = -1;
   for (let si = 0; si <= 6; si++) { if (!(si in reaisp)) { idxBloqueio = si; break; } }
-  if (idxBloqueio < 0) return [];
+  if (idxBloqueio < 0) return null;
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   const hojeISO = hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0')+'-'+String(hoje.getDate()).padStart(2,'0');
-  const dow = hoje.getDay();
-  const segHoje = new Date(hoje); segHoje.setDate(hoje.getDate() - (dow === 0 ? 6 : dow - 1));
   let dBaseData = null;
   for (let si = 0; si < idxBloqueio; si++) {
     if (reaisp[si] && (dBaseData === null || reaisp[si] > dBaseData)) dBaseData = reaisp[si];
@@ -10171,15 +10166,42 @@ function _etapaBloqueioCandidatos(p) {
   const dataOriginal = dBaseData ? new Date(parseDate(dBaseData).getTime() + 7 * 864e5) : parseDate(semDataPlanejada(p, idxBloqueio));
   const dataOriginalISO = dataOriginal.getFullYear()+'-'+String(dataOriginal.getMonth()+1).padStart(2,'0')+'-'+String(dataOriginal.getDate()).padStart(2,'0');
   const bloqueado = dataOriginalISO <= hojeISO;
-  const ancora = bloqueado ? segHoje : dataOriginal;
+  const semanasAtraso = bloqueado ? Math.floor((hoje.getTime() - dataOriginal.getTime()) / (7 * 864e5)) : 0;
+  return { idxBloqueio, reaisp, dataOriginal, bloqueado, semanasAtraso };
+}
+
+// Um candidato {idx,data,atraso} por etapa pendente a partir da bloqueadora, em semanas
+// sequenciais — usado pros rótulos "Atraso: etapa" do Gantt de Capacity e pra saber até onde a
+// barra/janela de semanas do projeto precisa se estender (senão a barra parava no prevFim e
+// escondia as etapas mais atrasadas da cadeia — achado num caso real onde só "Vendas"
+// aparecia, mesmo o projeto tendo mais 2 etapas atrasadas depois dela).
+function _etapaBloqueioCandidatos(p) {
+  const info = _etapaBloqueioInfo(p);
+  if (!info) return [];
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const dow = hoje.getDay();
+  const segHoje = new Date(hoje); segHoje.setDate(hoje.getDate() - (dow === 0 ? 6 : dow - 1));
+  const ancora = info.bloqueado ? segHoje : info.dataOriginal;
   const candidatos = [];
   let semanaOffset = 0;
-  for (let si = idxBloqueio; si <= 6; si++) {
-    if (si in reaisp) continue;
-    candidatos.push({ idx: si, data: new Date(ancora.getTime() + semanaOffset * 7 * 864e5), atraso: bloqueado });
+  for (let si = info.idxBloqueio; si <= 6; si++) {
+    if (si in info.reaisp) continue;
+    candidatos.push({ idx: si, data: new Date(ancora.getTime() + semanaOffset * 7 * 864e5), atraso: info.bloqueado });
     semanaOffset++;
   }
   return candidatos;
+}
+
+// "Estagnado": a etapa bloqueadora está em atraso há mais de SEMANAS_ESTAGNACAO semanas sem
+// NENHUMA confirmação nova — sinal de que o cliente sumiu, não é só um atraso pontual de quem
+// ainda está engajado. Esses projetos saem sozinhos da contagem de capacity/carga (sem precisar
+// marcar Pausado manualmente), mas continuam aparecendo no Gantt com o card de Atraso normal —
+// a coordenadora não perde a visão de que o projeto existe e está travado, só o capacity do
+// consultor não conta mais uma dedicação que, na prática, não está rolando.
+const SEMANAS_ESTAGNACAO = 2;
+function projetoEstagnado(p) {
+  const info = _etapaBloqueioInfo(p);
+  return !!(info && info.semanasAtraso >= SEMANAS_ESTAGNACAO);
 }
 
 function semDataPlanejada(p, semIdx) {
@@ -13217,7 +13239,9 @@ function buildGantt() {
   // Pausado/Reembolso ficam de fora de toda conta de carga/capacity (buildCargaSemanal e o card
   // "Projetos ativos por semana" logo abaixo, os dois alimentados por projsComDRO) — mas
   // continuam na tabela (prjs, sem filtro aqui) pra aparecer visualmente como standby, não sumir.
-  const prjsParaCarga = prjs.filter(p => !statusEmStandby(p));
+  // Projeto "estagnado" (ver projetoEstagnado) sai junto, pelo mesmo motivo — o card de Atraso
+  // continua aparecendo no Gantt, só o capacity do consultor não conta mais essa dedicação.
+  const prjsParaCarga = prjs.filter(p => !statusEmStandby(p) && !projetoEstagnado(p));
   const projsComDRO = [...prjsParaCarga, ...droParaCarga];
   buildCargaSemanal(projsComDRO, semanas);
   buildCargaSemanal(projsComDRO, semanas, 'designer', 'carga-designer', 'Carga por designer — semana a semana (só Kickoff, Análise de Ambientes e Decolagem)', 'Designer', designerAtivoNaSemana);
