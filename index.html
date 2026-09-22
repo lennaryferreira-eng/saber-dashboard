@@ -9900,8 +9900,11 @@ function buildOvAnalises(curM) {
     if (meta) meta.textContent = comFee + ' projeto' + (comFee === 1 ? '' : 's') + ' com fee';
   })();
 
-  // Projetos em andamento no mês — mesma regra de "Projetos no Prazo" (mesesAtivos), exclui DRO
-  const emAndamento = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && mesesAtivos(p).includes(mesIdx));
+  // Projetos em andamento no mês — mesma regra de "Projetos no Prazo" (mesesAtivos), exclui DRO.
+  // mesesAtivos só olha a janela inicio->prevFim, sem olhar o status: sem o calcStatus2 abaixo,
+  // um projeto já Finalizado/Pausado/Reembolso/Churn cujo prevFim ainda cai no mês contava aqui
+  // como "em andamento" mesmo não estando mais ativo de fato.
+  const emAndamento = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && calcStatus2(p) === 'Em andamento' && mesesAtivos(p).includes(mesIdx));
   set('ov-andamento-mes', emAndamento.length);
 
   // Reembolsos no mês — conta pela data do pedido de reembolso (evento com data própria)
