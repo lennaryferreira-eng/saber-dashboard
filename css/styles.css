@@ -646,3 +646,20 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
 .conta-celula-ok{color:var(--green);font-weight:600;}
 .conta-celula-nao{color:var(--red);font-weight:600;}
 .conta-celula-vazia{color:var(--text-hint);}
+
+/* ───────── Blindagem dos modais contra CSS de fora ─────────
+   Complemento de navegador do tipo "mata pop-up/overlay" injeta no Chrome regras como
+   .modal-overlay{display:block!important}. Como o painel abre e fecha modal escrevendo
+   display no atributo style, esse !important vencia: os 16 modais ficavam todos abertos
+   ao mesmo tempo, o de confirmação aparecia vazio (a mensagem só é escrita quando ele é
+   usado de verdade), sem escurecer a tela, e o OK não fechava nada. Foi o que aconteceu
+   com o Hélio em 22/09/2026 — no Safari, sem o complemento, o painel funcionava.
+   Quem manda aqui é o display do atributo style (lido pelo seletor de atributo, síncrono:
+   vale já na mesma linha em que o modal abre, antes do focus()) e, como reforço, a classe
+   .modal-aberto que modalBlindagem() (index.html) espelha pra qualquer outro valor.
+   O que devolve o controle pro painel é a especificidade: dois tipos + classe, ou classe +
+   atributo, ganham de um .modal-overlay{...!important} de fora. */
+html body .modal-overlay{display:none!important;}
+html body .modal-overlay[style*="display: flex"],
+html body .modal-overlay[style*="display:flex"],
+html body .modal-overlay.modal-aberto{display:flex!important;position:fixed!important;inset:0!important;align-items:center!important;justify-content:center!important;background:rgba(0,0,0,.5)!important;z-index:var(--z-modal);}

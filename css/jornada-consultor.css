@@ -150,7 +150,10 @@ a.jc-pill:hover, button.jc-pill:hover {
   z-index: 100;
   padding: 20px;
 }
-.jc-modal-overlay[hidden] { display: none; }
+/* !important porque complemento de navegador que "mata overlay" injeta
+   display:block!important em classe com "overlay" no nome (ver css/styles.css, no fim). */
+html body .jc-modal-overlay[hidden] { display: none !important; }
+html body .jc-modal-overlay:not([hidden]) { display: flex !important; position: fixed !important; inset: 0 !important; align-items: center !important; justify-content: center !important; background: rgba(0, 0, 0, 0.7) !important; }
 
 .jc-modal-box {
   position: relative;

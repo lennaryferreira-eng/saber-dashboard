@@ -3659,6 +3659,27 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// Blindagem dos modais contra CSS de fora. Abrir/fechar modal aqui é escrever display no
+// atributo style, e complemento de navegador do tipo "mata pop-up" injeta no Chrome
+// .modal-overlay{display:block!important}, que vence o style inline: os 16 modais abriam
+// juntos, o de confirmação aparecia vazio (a mensagem só é escrita quando ele é usado) e o
+// OK não fechava nada — foi o que o Hélio viu em 22/09/2026, e no Safari não acontecia.
+// Aqui o display inline é espelhado na classe .modal-aberto, e o CSS decide a partir dela
+// com especificidade suficiente pra ganhar da regra de fora (ver css/styles.css, no fim).
+// Nenhuma das ~25 funções de abrir/fechar precisou mudar por causa disso.
+function modalBlindagem() {
+  const espelhar = (el) => {
+    const aberto = !!el.style.display && el.style.display !== 'none';
+    el.classList.toggle('modal-aberto', aberto);
+  };
+  const obs = new MutationObserver((mudancas) => mudancas.forEach(m => espelhar(m.target)));
+  document.querySelectorAll('.modal-overlay').forEach((el) => {
+    espelhar(el);
+    obs.observe(el, { attributes: true, attributeFilter: ['style'] });
+  });
+}
+modalBlindagem();
+
 // ════════════════════════════════════════════════════════════════
 //  PASSO 1 — CAMADA DE DADOS: monetizacoes[] (fonte da verdade)
 //  Campos antigos (valorOT/valorRec/mesMon/conv) viram ESPELHOS
