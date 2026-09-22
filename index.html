@@ -7800,19 +7800,21 @@ function buildNpsTable() {
   const selMes = document.getElementById('nps-f-mes');
   if (selMes) {
     const mesesFin = [...new Set(projects
-      .filter(p => calcStatus2(p) === 'Finalizado' && (!p.modelo || p.modelo !== 'DRO'))
-      .map(p => { const d = parseDate(p.realFim || p.prevFim); if (!d) return null; const m = ALL_MESES.find(x => x.idx===d.getMonth() && x.ano===d.getFullYear()); return m ? m.label+'/'+m.ano : null; })
+      .filter(p => !!fimRealEfetivo(p) && (!p.modelo || p.modelo !== 'DRO'))
+      .map(p => { const d = fimRealEfetivo(p); if (!d) return null; const m = ALL_MESES.find(x => x.idx===d.getMonth() && x.ano===d.getFullYear()); return m ? m.label+'/'+m.ano : null; })
       .filter(Boolean))].sort((a,b) => b.localeCompare(a));
     const curMes = selMes.value;
     selMes.innerHTML = '<option value="">Todos</option>' + mesesFin.map(m => '<option' + (m===curMes?' selected':'') + '>' + m + '</option>').join('');
   }
   const fMes = selMes?.value || '';
 
-  // base: projetos Finalizados, com filtros
-  let base = projects.filter(p => calcStatus2(p) === 'Finalizado' && (!p.modelo || p.modelo !== 'DRO'));
+  // base: projetos com a entrega final (Decolagem) já registrada — não exige o checklist de
+  // fechamento completo. A decolagem em si já é o sinal de que o cliente precisa dar o NPS;
+  // esperar o checklist (Drive, formalização por e-mail etc.) só atrasaria a coleta.
+  let base = projects.filter(p => !!fimRealEfetivo(p) && (!p.modelo || p.modelo !== 'DRO'));
   if (fCons) base = base.filter(p => p.consultor === fCons);
   if (fMes) base = base.filter(p => {
-    const d = parseDate(p.realFim || p.prevFim);
+    const d = fimRealEfetivo(p);
     if (!d) return false;
     const m = ALL_MESES.find(x => x.idx===d.getMonth() && x.ano===d.getFullYear());
     return m ? (m.label+'/'+m.ano) === fMes : false;
@@ -7820,8 +7822,8 @@ function buildNpsTable() {
 
   // ordena por data de finalização mais recente primeiro
   base.sort((a, b) => {
-    const dA = parseDate(a.realFim || a.prevFim);
-    const dB = parseDate(b.realFim || b.prevFim);
+    const dA = fimRealEfetivo(a);
+    const dB = fimRealEfetivo(b);
     if (!dA && !dB) return 0;
     if (!dA) return 1;
     if (!dB) return -1;
@@ -7838,7 +7840,7 @@ function buildNpsTable() {
     const mesBadge = '';
     const chk = (key,label) => `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;"><input type="checkbox" ${a[key]?'checked':''} onchange="saveNpsAudit('${p.id}','${key}',this.checked)" style="cursor:pointer;">${label}</label>`;
     return `<tr style="${rowStyle}">
-      <td>${fmtD(p.realFim || p.prevFim) || '—'}</td><td>${p.nome||'—'}</td><td>${p.consultor||'—'}</td>
+      <td>${fmtD(fimRealEfetivoISO(p)) || '—'}</td><td>${p.nome||'—'}</td><td>${p.consultor||'—'}</td>
       <td><input type="number" min="0" max="10" class="sel" style="width:55px" value="${nd.nota}" data-nid="${p.id}" onchange="saveNpsNota(this)" placeholder="—"></td>
       <td class="nps-cat-${p.id}">${npsCat(nd.nota)}</td>
       <td><input type="date" class="sel" style="width:130px;font-size:var(--fs-sm);" value="${dv(nd.dataResp)}" data-nid="${p.id}" onchange="saveNpsData(this)"></td>
@@ -7897,8 +7899,8 @@ function calcNps() {
     });
     const finalizadosMes = projects.filter(p => {
       if (isDroFam(p)) return false;
-      const df = parseDate(p.realFim || p.prevFim);
-      return df && df.getMonth() === m.idx && df.getFullYear() === m.ano && calcStatus2(p) === 'Finalizado';
+      const df = fimRealEfetivo(p);
+      return df && df.getMonth() === m.idx && df.getFullYear() === m.ano;
     }).length;
     if (!respostasMes.length || finalizadosMes === 0) return null;
     const notas = respostasMes.map(([,nd]) => parseInt(nd.nota)).filter(n => !isNaN(n));
@@ -7921,11 +7923,12 @@ function calcNps() {
     mesSel = ALL_MESES.find(x => x.idx === hoje2.getMonth() && x.ano === hoje2.getFullYear());
   }
 
-  // finalizados: filtra por consultor e mês (realFim || prevFim)
-  let finalizados = projects.filter(p => calcStatus2(p) === 'Finalizado' && (!p.modelo || p.modelo !== 'DRO'));
+  // finalizados: filtra por consultor e mês (realFim || prevFim) — mesmo critério de "decolagem
+  // registrada" do base acima, não exige checklist completo
+  let finalizados = projects.filter(p => !!fimRealEfetivo(p) && (!p.modelo || p.modelo !== 'DRO'));
   if (fConsNps) finalizados = finalizados.filter(p => p.consultor === fConsNps);
   if (mesSel)  finalizados = finalizados.filter(p => {
-    const df = parseDate(p.realFim || p.prevFim);
+    const df = fimRealEfetivo(p);
     return df && df.getMonth() === mesSel.idx && df.getFullYear() === mesSel.ano;
   });
   const totalFin = finalizados.length;
@@ -13092,6 +13095,13 @@ function fimRealEfetivo(p) {
   if (p.realFim) return parseDate(p.realFim);
   const e = p.entregas && (p.entregas[6] || p.entregas['6']);
   return (e && e.real) ? parseDate(e.real) : null;
+}
+// Mesma lógica de fimRealEfetivo, mas devolvendo a string ISO (não o Date já parseado) — pros
+// lugares que precisam do valor bruto (fmtD, comparação de string, etc.), como a aba NPS.
+function fimRealEfetivoISO(p) {
+  if (p.realFim) return p.realFim;
+  const e = p.entregas && (p.entregas[6] || p.entregas['6']);
+  return (e && e.real) ? e.real : '';
 }
 function buildGantt() {
   if (perfilRestringeNav(currentPerfil)) applyPerfilFilters();
