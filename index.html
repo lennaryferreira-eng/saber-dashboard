@@ -10194,14 +10194,34 @@ function _etapaBloqueioCandidatos(p) {
 
 // "Estagnado": a etapa bloqueadora está em atraso há mais de SEMANAS_ESTAGNACAO semanas sem
 // NENHUMA confirmação nova — sinal de que o cliente sumiu, não é só um atraso pontual de quem
-// ainda está engajado. Esses projetos saem sozinhos da contagem de capacity/carga (sem precisar
-// marcar Pausado manualmente), mas continuam aparecendo no Gantt com o card de Atraso normal —
-// a coordenadora não perde a visão de que o projeto existe e está travado, só o capacity do
-// consultor não conta mais uma dedicação que, na prática, não está rolando.
+// ainda está engajado. autoPausarProjetosEstagnados (chamada por buildGantt) grava esses
+// projetos como status2='Pausado' de verdade — o mesmo Pausado manual de sempre, ficando lá até
+// a coordenadora tirar na mão, sem despausa automática. projetoEstagnado continua existindo à
+// parte como checagem computada: cobre o instante entre o projeto cruzar o limiar e a próxima
+// gravação, e o modo Visualização, que nunca grava — nos dois casos o card de Atraso continua
+// aparecendo no Gantt normalmente, só o capacity do consultor já para de contar a dedicação.
 const SEMANAS_ESTAGNACAO = 2;
 function projetoEstagnado(p) {
   const info = _etapaBloqueioInfo(p);
   return !!(info && info.semanasAtraso >= SEMANAS_ESTAGNACAO);
+}
+
+// Grava de verdade o status2='Pausado' nos projetos "Em andamento" que cruzaram o limiar de
+// estagnação — não fica só no flag computado. Igual ao Pausado marcado manualmente na Base de
+// Projetos: fica lá até a coordenadora tirar na mão (sem despausa automática quando o cliente
+// volta a responder). Só roda fora do modo Visualização (VIEWER nunca grava nada) e só mexe em
+// quem calcStatus2 já classifica como 'Em andamento' — nunca sobrescreve Churn/Reembolso/
+// Pausado manual/Finalizado.
+function autoPausarProjetosEstagnados(projs) {
+  if (VIEWER) return;
+  let mudou = false;
+  for (const p of projs) {
+    if (calcStatus2(p) === 'Em andamento' && projetoEstagnado(p)) {
+      p.status2 = 'Pausado';
+      mudou = true;
+    }
+  }
+  if (mudou) upd();
 }
 
 function semDataPlanejada(p, semIdx) {
@@ -13122,6 +13142,11 @@ function buildGantt() {
     const curM = selMes.value;
     selMes.innerHTML = '<option value="">Todos</option>' + meses.map(m => '<option' + (m === curM ? ' selected' : '') + '>' + m + '</option>').join('');
   }
+
+  // Antes de filtrar/renderizar: projetos "Em andamento" estagnados há mais de
+  // SEMANAS_ESTAGNACAO viram Pausado de verdade agora (ver autoPausarProjetosEstagnados) —
+  // precisa rodar antes do filtro abaixo pra já refletir no resto do render dessa mesma chamada.
+  autoPausarProjetosEstagnados(projects);
 
   // filtra projetos na janela — exclui Churn (morto de verdade). Pausado FICA na tabela (com
   // ícone de interrompido, ver render da linha abaixo) — é standby, não desapareceu — mas sai
