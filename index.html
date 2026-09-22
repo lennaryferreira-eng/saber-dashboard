@@ -1348,6 +1348,7 @@
         </select>
       </div>
     </div>
+    <div id="checklist-pendente-banner" style="margin-bottom:1.2rem;"></div>
     <div id="carga-semanal" style="margin-bottom:1.2rem;"></div>
     <div class="gantt-wrap">
       <table class="gantt-table"><thead id="gantt-thead"></thead><tbody id="gantt-tbody"></tbody></table>
@@ -10248,6 +10249,38 @@ function autoPausarProjetosEstagnados(projs) {
   if (mudou) upd();
 }
 
+// Aviso no Capacity: projeto que já decolou (Decolagem/entrega final registrada) mas ainda não
+// fechou o checklist de fechamento continua contando como "Em andamento" — inclusive pesando
+// normalmente na carga do consultor logo abaixo, mesmo já tendo entregue tudo de fato. Esse
+// card existe só pra deixar visível POR QUE a carga não caiu (o trabalho acabou, falta só
+// marcar o checklist) e dar um atalho direto pra fechar. Não mexe em nada, só lista.
+function buildChecklistPendenteBanner(projs) {
+  const el = document.getElementById('checklist-pendente-banner');
+  if (!el) return;
+  const pendentes = projs.filter(p => !isDroFam(p) && !!fimRealEfetivo(p) && calcStatus2(p) === 'Em andamento');
+  if (!pendentes.length) { el.innerHTML = ''; return; }
+  const itens = checklistFinalItensAtuais();
+  const linhas = pendentes.map(p => {
+    const c = checklistFinalGet(p);
+    const faltando = itens.filter(it => !c[it.id]).map(it => it.label).join(', ');
+    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid rgba(0,0,0,.06);">'
+      + '<div style="min-width:0;">'
+      + '<span style="font-weight:600;">' + (p.nome || '—') + '</span>'
+      + '<span style="color:var(--text-hint);"> · ' + (p.consultor || '—') + '</span>'
+      + '<div style="font-size:var(--fs-xs);color:var(--text-muted);">Faltando: ' + faltando + '</div>'
+      + '</div>'
+      + '<button type="button" onclick="ltAbrirChecklistFinalizacao(\'' + p.id + '\')" class="btn" style="flex:none;padding:4px 10px;font-size:var(--fs-sm);">Fechar checklist</button>'
+      + '</div>';
+  }).join('');
+  el.innerHTML = '<div class="card" style="margin:0;border-left:3px solid var(--amber);">'
+    + '<div style="display:flex;align-items:center;gap:8px;font-weight:700;color:var(--amber);">'
+    + icon('warning',{size:14}) + pendentes.length + ' projeto' + (pendentes.length === 1 ? '' : 's') + ' decolou' + (pendentes.length === 1 ? '' : 'aram') + ' mas o checklist de fechamento ainda não foi concluído'
+    + '</div>'
+    + '<div style="font-size:var(--fs-xs);color:var(--text-muted);margin-top:2px;">Continuam contando na carga do consultor abaixo até o checklist fechar.</div>'
+    + linhas
+    + '</div>';
+}
+
 function semDataPlanejada(p, semIdx) {
   const ini = ltInicio(p);
   if (!ini) return null;
@@ -13179,6 +13212,10 @@ function buildGantt() {
   // SEMANAS_ESTAGNACAO viram Pausado de verdade agora (ver autoPausarProjetosEstagnados) —
   // precisa rodar antes do filtro abaixo pra já refletir no resto do render dessa mesma chamada.
   autoPausarProjetosEstagnados(projects);
+  // Aviso de checklist de fechamento pendente — portfólio inteiro, não respeita os filtros da
+  // tela (Consultor/Status/etc.): é um lembrete de trabalho administrativo parado, não uma
+  // visão filtrada da tabela.
+  buildChecklistPendenteBanner(projects);
 
   // filtra projetos na janela — exclui Churn (morto de verdade). Pausado FICA na tabela (com
   // ícone de interrompido, ver render da linha abaixo) — é standby, não desapareceu — mas sai
