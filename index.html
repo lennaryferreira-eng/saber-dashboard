@@ -10200,8 +10200,16 @@ function _etapaBloqueioCandidatos(p) {
 // parte como checagem computada: cobre o instante entre o projeto cruzar o limiar e a próxima
 // gravação, e o modo Visualização, que nunca grava — nos dois casos o card de Atraso continua
 // aparecendo no Gantt normalmente, só o capacity do consultor já para de contar a dedicação.
+//
+// Só vale pra projeto iniciado a partir de ESTAGNACAO_DESDE — o portfólio já em andamento tem
+// etapas puladas/fora de ordem e projetos sem nenhuma etapa registrada (hábito de antes dessa
+// checagem existir), que virariam "estagnado" em massa por ruído de dado, não atraso real.
+// Aplica só pra frente; o badge de Atraso (_etapaBloqueioInfo/_etapaBloqueioCandidatos, usado no
+// Gantt) não passa por esse corte e continua valendo pra todo projeto, novo ou antigo.
 const SEMANAS_ESTAGNACAO = 2;
+const ESTAGNACAO_DESDE = '2026-09-22';
 function projetoEstagnado(p) {
+  if (!p.inicio || p.inicio < ESTAGNACAO_DESDE) return false;
   const info = _etapaBloqueioInfo(p);
   return !!(info && info.semanasAtraso >= SEMANAS_ESTAGNACAO);
 }
