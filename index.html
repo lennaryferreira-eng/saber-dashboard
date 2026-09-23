@@ -7078,10 +7078,11 @@ function salvarNovoProjTer() {
 // escolhido de propósito) precisam ser estados distintos.
 const filters = {};
 
-function buildFilterBar(containerId, filterKey, onChangeFn) {
+function buildFilterBar(containerId, filterKey, onChangeFn, opts) {
   const el = document.getElementById(containerId);
   if (!el) return;
   const fnName = onChangeFn.name;
+  const withQuarters = !!(opts && opts.withQuarters);
   // inicializa com mês atual só na primeira vez (filtro nunca tocado ainda)
   if (filters[filterKey] === undefined) {
     const hoje = new Date();
@@ -7089,7 +7090,19 @@ function buildFilterBar(containerId, filterKey, onChangeFn) {
     if (mesAtual) filters[filterKey] = mesAtual.key;
   }
   const cur = filters[filterKey];
-  el.innerHTML =
+  // Linha extra de trimestre inteiro (Q1..Q4) — opcional, pra quem quer o resultado
+  // consolidado dos 3 meses do trimestre de uma vez, sem entrar mês a mês. filters[filterKey]
+  // guarda a key do trimestre (ex: 'q1') do mesmo jeito que guardaria a key de um mês — quem
+  // consome o filtro (buildOv) que decide se é mês ou trimestre.
+  const quartersRow = withQuarters
+    ? `<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap;">`
+      + `<span class="filter-label">Trimestre:</span>`
+      + QUARTERS.map(q =>
+          `<button class="filter-btn ${cur === q.key ? 'active' : ''}" onclick="setFilter('${filterKey}','${q.key}','${fnName}')">${q.label.slice(0,2)}</button>`
+        ).join('')
+      + `</div>`
+    : '';
+  el.innerHTML = quartersRow +
     `<span class="filter-label">Visualizar:</span>
      <button class="filter-btn year ${!cur ? 'active' : ''}" onclick="setFilter('${filterKey}',null,'${fnName}')">Ano completo</button>
      <span class="filter-sep"></span>` +
@@ -8400,24 +8413,31 @@ function _mesAtualIndependente() {
 function buildOvAqlCard() {
   const valEl  = document.getElementById('ov-aql-val');
   if (!valEl) return;
-  // Respeita o filtro de mês da Visão Geral (mesmo que os outros KPIs usam) — só cai pro mês
-  // atual "de verdade" quando nada estiver selecionado no filtro.
+  // Respeita o filtro de mês/trimestre da Visão Geral (mesmo que os outros KPIs usam) — só
+  // cai pro mês atual "de verdade" quando nada estiver selecionado no filtro. Trimestre
+  // selecionado: soma realizado e meta dos 3 meses, igual à Monetização.
   const curSel = filters['visao'];
-  const mesInfo = curSel ? (ALL_MESES.find(x => x.key === curSel) || _mesAtualIndependente()) : _mesAtualIndependente();
+  const curQ = curSel ? QUARTERS.find(x => x.key === curSel) : null;
+  const mesesInfo = curQ ? curQ.meses
+    : curSel ? [ALL_MESES.find(x => x.key === curSel) || _mesAtualIndependente()]
+    : [_mesAtualIndependente()];
   const subEl    = document.getElementById('ov-aql-sub');
   const metaEl   = document.getElementById('ov-aql-meta-lbl');
   const barEl    = document.getElementById('ov-aql-bar');
   const borderEl = document.getElementById('ov-aql-border');
-  if (!mesInfo) { valEl.textContent = '—'; if (subEl) subEl.textContent = ''; if (metaEl) metaEl.textContent = 'a definir'; if (barEl) barEl.style.width = '0%'; if (borderEl) borderEl.style.background = 'var(--text-hint)'; return; }
-  const meta = aqlMetas[mesInfo.key] || {};
-  const total = meta.total || 0;
-  const evs = pipeEventosDoMes(mesInfo.label, mesInfo.ano);
-  const realizado = evs.length;
+  if (!mesesInfo[0]) { valEl.textContent = '—'; if (subEl) subEl.textContent = ''; if (metaEl) metaEl.textContent = 'a definir'; if (barEl) barEl.style.width = '0%'; if (borderEl) borderEl.style.background = 'var(--text-hint)'; return; }
+  let total = 0, realizado = 0;
+  mesesInfo.forEach(mesInfo => {
+    const meta = aqlMetas[mesInfo.key] || {};
+    total += meta.total || 0;
+    realizado += pipeEventosDoMes(mesInfo.label, mesInfo.ano).length;
+  });
   const pctMeta = total > 0 ? Math.round(realizado / total * 100) : null;
   // Verde se bateu a meta, vermelho se não — mesmo padrão dos outros KPIs da Visão Geral
   const cor = total === 0 ? 'var(--text-hint)' : (realizado >= total ? 'var(--green)' : 'var(--red)');
   valEl.textContent = realizado;
-  if (subEl)  subEl.textContent  = mesInfo.label + '/' + mesInfo.ano + (pctMeta !== null ? ' · ' + pctMeta + '% da meta' : '');
+  const subLabel = curQ ? curQ.label : (mesesInfo[0].label + '/' + mesesInfo[0].ano);
+  if (subEl)  subEl.textContent  = subLabel + (pctMeta !== null ? ' · ' + pctMeta + '% da meta' : '');
   if (metaEl) metaEl.textContent = total > 0 ? total + ' AQLs' : 'a definir';
   if (barEl)  { barEl.style.width = (pctMeta !== null ? Math.min(100, pctMeta) : 0) + '%'; barEl.style.background = cor; }
   if (borderEl) borderEl.style.background = cor;
@@ -9152,10 +9172,22 @@ function calcMon() {
 // ═══════════════════════════════════
 //  VISÃO GERAL
 // ═══════════════════════════════════
+// Deriva o recorte de meses do filtro "Visualizar" da Visão Geral: trimestre inteiro (3
+// meses agregados), mês específico (1 mês) ou nada selecionado (ano completo, os 12 meses).
+// Único ponto de leitura de filters['visao'] pros cards que agregam por mês — buildOv() e o
+// segundo disparo de buildOvAnalises() no refreshAll() usam os dois o mesmo recorte, nunca
+// derivam separado (senão os dois podiam divergir se um dos dois ficasse desatualizado).
+function visaoFiltroAtual() {
+  const cur = filters['visao'] || null;
+  const curQ = cur ? QUARTERS.find(x => x.key === cur) : null;
+  const curM = (!curQ && cur) ? ALL_MESES.find(x => x.key === cur) : null;
+  const mesesSel = curQ ? curQ.meses : (curM ? [curM] : ALL_MESES);
+  const label = curQ ? curQ.label : (curM ? curM.label + '/' + curM.ano : new Date().toLocaleDateString('pt-BR',{month:'long',year:'numeric'}));
+  return { curQ, curM, mesesSel, label };
+}
 function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
-  buildFilterBar('filter-bar-visao', 'visao', buildOv);
-  const cur  = filters['visao'];
-  const curM = cur ? ALL_MESES.find(x => x.key === cur) : null;
+  buildFilterBar('filter-bar-visao', 'visao', buildOv, { withQuarters: true });
+  const { curQ, curM, mesesSel, label: mesLabelSel } = visaoFiltroAtual();
 
   function setOv(key, disp, val, meta, lower, color) {
     set('ov-' + key + '-val', disp); set('ov2-' + key + '-val', disp);
@@ -9174,12 +9206,12 @@ function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
   }
 
   // ── CSP ─────────────────────────────────────────────────────
-  const mesesCspFiltro = curM ? [curM] : ALL_MESES;
+  const mesesCspFiltro = mesesSel;
   const cspVals = mesesCspFiltro.map(m => cspManual[m.key]).filter(v => v !== undefined);
   const cspV = cspVals.length ? parseFloat((cspVals.reduce((a,b)=>a+b,0)/cspVals.length).toFixed(1)) : null;
 
   // ── CONVERSÃO ────────────────────────────────────────────────
-  const mesesConv = curM ? [curM] : ALL_MESES;
+  const mesesConv = mesesSel;
   let convIniciados = 0, convMon = 0;
   mesesConv.forEach(m => {
     convIniciados += projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && p.inicio && parseDate(p.inicio)?.getMonth() === m.idx && parseDate(p.inicio)?.getFullYear() === m.ano).length;
@@ -9191,7 +9223,7 @@ function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
   // Na TER, projetos Recorrentes não entram nessa conta — são serviço contínuo, sem prazo
   // final no mesmo sentido que os projetos One time (a lógica de "52 dias desde o início"
   // é pensada pro modelo da SABER e não se aplica a eles).
-  const mesesPrazo = curM ? [curM] : ALL_MESES;
+  const mesesPrazo = mesesSel;
   let pTotal = 0, pOk = 0;
   mesesPrazo.forEach(m => {
     let doMes = projects.filter(p => prazoNoMesCard(p, m.idx, m.ano));
@@ -9206,10 +9238,8 @@ function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
   npsBase.forEach(p => {
     const nd = npsData[String(p.id)];
     if (!nd || nd.nota === '' || !nd.dataResp) return;
-    if (curM) {
-      const d = new Date(nd.dataResp);
-      if (d.getMonth() !== curM.idx || d.getFullYear() !== curM.ano) return;
-    }
+    const d = new Date(nd.dataResp);
+    if (!mesesSel.some(m => m.idx === d.getMonth() && m.ano === d.getFullYear())) return;
     const n = parseInt(nd.nota);
     if (!isNaN(n)) npsNotas.push(n);
   });
@@ -9219,12 +9249,12 @@ function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
 
   // ── MONETIZAÇÃO: soma TODAS as monetizações (por evento/mês) ──
   let monTotal = 0, monTotalOT = 0, monTotalRec = 0;
-  (curM ? [curM] : ALL_MESES).forEach(m => {
+  mesesSel.forEach(m => {
     const r = monReceitaNoMes(m.label, m.ano);
     monTotalOT += r.ot; monTotalRec += r.rec; monTotal += r.total;
   });
-  // meta: soma monMetas do mês ou do ano
-  const metaMeses = curM ? [curM] : ALL_MESES;
+  // meta: soma monMetas do mês, do trimestre ou do ano
+  const metaMeses = mesesSel;
   let metaMonOT = 0, metaMonRec = 0;
   metaMeses.forEach(m => { const mm = monMetas[m.key]||{}; metaMonOT += mm.ot||0; metaMonRec += mm.rec||0; });
   const metaMonTotal = metaMonOT + metaMonRec;
@@ -9270,10 +9300,16 @@ function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
     return Math.round(vals.reduce((a,b)=>a+b,0) / vals.length);
   });
   // PDI só vale nos meses de fechamento de quarter (Mar/Jun/Set/Dez)
-  const pdiIdx = curM ? ALL_MESES.findIndex(m => m.key === curM.key) : -1;
   let pdiV;
-  if (pdiIdx >= 0) {
-    pdiV = isQuarterClose(pdiIdx) ? pdiScores[pdiIdx] : null;   // mês fora do fechamento → não calcula
+  if (curQ) {
+    // Trimestre inteiro selecionado: o PDI só é preenchido no mês de fechamento do
+    // trimestre, então o resultado do trimestre É o score desse mês — não faz sentido
+    // "agregar" os 3 meses porque os outros 2 nunca têm PDI lançado.
+    const closeIdx = curQ.meses[curQ.meses.length - 1].idx;
+    pdiV = pdiScores[closeIdx];
+  } else if (curM) {
+    const pdiIdx = ALL_MESES.findIndex(m => m.key === curM.key);
+    pdiV = pdiIdx >= 0 ? (isQuarterClose(pdiIdx) ? pdiScores[pdiIdx] : null) : null;   // mês fora do fechamento → não calcula
   } else {
     const pdiValid = pdiScores.filter((v, mi) => v !== null && isQuarterClose(mi));
     pdiV = pdiValid.length ? Math.round(pdiValid.reduce((a,b)=>a+b,0)/pdiValid.length) : null;
@@ -9285,8 +9321,8 @@ function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
   setOv('pdi',   pdiV   !== null ? pdiV + '%'      : '—', pdiV,   80, false, 'var(--purple)');
   setOv('nps',   npsV   !== null ? npsV.toString() : '—', npsV,   50,  false, 'var(--amber)');
 
-  // atualiza análises com o mês do filtro
-  buildOvAnalises(curM);
+  // atualiza análises com o recorte do filtro (trimestre, mês específico ou ano completo)
+  buildOvAnalises(mesesSel, mesLabelSel);
 
   // Healthscore, Pipeline/Flags, Ticket/Tier, Conversão e Monetização são conceitos da
   // SABER (estágios de entrega, AQL, monetização por tipo) — não existem na TER, que usa
@@ -9860,18 +9896,17 @@ function buildOvGantt() {
 }
 
 
-function buildOvAnalises(curM) {
-  const hoje = new Date();
-  // Se mês filtrado, usa ele; senão usa mês atual
-  const mesIdx = curM ? curM.idx : hoje.getMonth();
-  const mesAno = curM ? curM.ano : hoje.getFullYear();
+function buildOvAnalises(mesesSel, mesLabel) {
   const ETAPAS_PIPE = ['Mapeado (AQL)','Apresentar proposta (SQL)','Proposta apresentada (SAL)','Follow (COMMIT)'];
   function parseVal(v) { return parseFloat((v||'').replace(/\./g,'').replace(',','.')) || 0; }
+  // true quando o filtro está restrito (mês específico ou trimestre), false só em "ano
+  // completo" (mesesSel = ALL_MESES, os 12 meses) — usado nos lugares que se comportam
+  // diferente entre "recorte filtrado" e "ano todo" (ex: card de fee, "ativos" pra tier).
+  const filtrado = mesesSel.length < 12;
+  const noMes = d => !!d && mesesSel.some(m => d.getMonth() === m.idx && d.getFullYear() === m.ano);
 
-  // Mês filtrado (curM) ou mês atual
-  const mesLabel = curM ? curM.label + '/' + curM.ano : hoje.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
-  const iniciados   = projects.filter(p => { if (isDroFam(p)) return false; const d = parseDate(p.inicio); return d && d.getMonth()===mesIdx && d.getFullYear()===mesAno; });
-  const finalizados = projects.filter(p => { const d = parseDate(p.realFim||p.prevFim); return d && d.getMonth()===mesIdx && d.getFullYear()===mesAno && calcStatus2(p)==='Finalizado'; });
+  const iniciados   = projects.filter(p => !isDroFam(p) && noMes(parseDate(p.inicio)));
+  const finalizados = projects.filter(p => noMes(parseDate(p.realFim||p.prevFim)) && calcStatus2(p)==='Finalizado');
   const isMonetizado = p => p.conv === 'Monetizado' || p.mon === 'Monetizado';
   const iniMon  = iniciados.filter(p => isMonetizado(p)).length;
   const iniNMon = iniciados.length - iniMon;
@@ -9881,28 +9916,28 @@ function buildOvAnalises(curM) {
   set('ov-fin-mes',  finalizados.length);
 
   // ── Movimentado pelo squad (soma dos fees pagos pelo cliente) ──
-  // mês selecionado: fees dos projetos iniciados no mês · ano todo: total geral
+  // recorte selecionado (mês/trimestre): fees dos projetos iniciados nele · ano todo: total geral
   (function(){
     if (!document.getElementById('ov-fee-val')) return;
-    const base = curM ? iniciados : projects.filter(p => !isDroFam(p));
+    const base = filtrado ? iniciados : projects.filter(p => !isDroFam(p));
     const totalFee = base.reduce((a, p) => a + parseVal(p.fee), 0);
     const comFee = base.filter(p => parseVal(p.fee) > 0).length;
     set('ov-fee-val', BRL(totalFee));
     const lbl = document.getElementById('ov-fee-label');
-    if (lbl) lbl.textContent = curM ? ('Movimentado pelo squad · ' + mesLabel) : 'Movimentado pelo squad · Total 2026';
+    if (lbl) lbl.textContent = filtrado ? ('Movimentado pelo squad · ' + mesLabel) : 'Movimentado pelo squad · Total 2026';
     const meta = document.getElementById('ov-fee-meta');
     if (meta) meta.textContent = comFee + ' projeto' + (comFee === 1 ? '' : 's') + ' com fee';
   })();
 
-  // Projetos em andamento no mês — mesma regra de "Projetos no Prazo" (mesesAtivos), exclui DRO.
-  // mesesAtivos só olha a janela inicio->prevFim, sem olhar o status: sem o calcStatus2 abaixo,
-  // um projeto já Finalizado/Pausado/Reembolso/Churn cujo prevFim ainda cai no mês contava aqui
-  // como "em andamento" mesmo não estando mais ativo de fato.
-  const emAndamento = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && calcStatus2(p) === 'Em andamento' && mesesAtivos(p).includes(mesIdx));
+  // Projetos em andamento no recorte — mesma regra de "Projetos no Prazo" (mesesAtivos),
+  // exclui DRO. mesesAtivos só olha a janela inicio->prevFim, sem olhar o status: sem o
+  // calcStatus2 abaixo, um projeto já Finalizado/Pausado/Reembolso/Churn cujo prevFim ainda
+  // cai no recorte contava aqui como "em andamento" mesmo não estando mais ativo de fato.
+  const emAndamento = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && calcStatus2(p) === 'Em andamento' && mesesSel.some(m => mesesAtivos(p).includes(m.idx)));
   set('ov-andamento-mes', emAndamento.length);
 
-  // Reembolsos no mês — conta pela data do pedido de reembolso (evento com data própria)
-  const reembMesProjs = projects.filter(p => { const dr = parseDate(p.dataReembolso); return dr && dr.getMonth() === mesIdx && dr.getFullYear() === mesAno; });
+  // Reembolsos no recorte — conta pela data do pedido de reembolso (evento com data própria)
+  const reembMesProjs = projects.filter(p => noMes(parseDate(p.dataReembolso)));
   set('ov-reembolsos-mes', reembMesProjs.length);
   set('ov-reembolsos-motivos', reembMesProjs.length);
   const reembNomesEl = document.getElementById('ov-reembolsos-nomes');
@@ -9931,13 +9966,10 @@ function buildOvAnalises(curM) {
   const ovMesLbl = document.getElementById('ov-mes-label');
   if (ovMesLbl) ovMesLbl.textContent = mesLabel;
 
-  // "Projetos ativos" no recorte do mês (ou "Em andamento" geral, sem mês selecionado) —
+  // "Projetos ativos" no recorte selecionado (ou "Em andamento" geral, sem nada selecionado) —
   // usado abaixo em "Projetos por tier".
-  const ativos = curM
-    ? projects.filter(p => {
-        const d = parseDate(p.inicio);
-        return d && d.getMonth() === mesIdx && d.getFullYear() === mesAno;
-      })
+  const ativos = filtrado
+    ? projects.filter(p => noMes(parseDate(p.inicio)))
     : projects.filter(p => calcStatus2(p) === 'Em andamento');
 
   buildOvReembolsosTabela(reembMesProjs);
@@ -9946,7 +9978,7 @@ function buildOvAnalises(curM) {
 
   // Ticket médio — usa a MONETIZAÇÃO REALIZADA (array monetizacoes[]), por evento de venda
   let somaOT = 0, somaRec = 0, nOT = 0, nRec = 0;
-  (curM ? [curM] : ALL_MESES).forEach(m => {
+  mesesSel.forEach(m => {
     projects.forEach(p => {
       if (isDroFam(p)) return;
       (p.monetizacoes||[]).forEach(ev => {
@@ -10084,9 +10116,8 @@ function refreshAll() {
   try { buildOvAqlCard(); } catch(e){ console.error('buildOvAqlCard erro:', e); }
   const pdiV   = calcPdi();
   buildOv(cspV, convV, prazoV, npsV, pdiV);
-  const _curVisao = filters['visao'] || null;
-  const curMVisao = _curVisao ? ALL_MESES.find(x => x.key === _curVisao) : null;
-  buildOvAnalises(curMVisao);
+  const { mesesSel: _mesesSelVisao, label: _mesLabelVisao } = visaoFiltroAtual();
+  buildOvAnalises(_mesesSelVisao, _mesLabelVisao);
 }
 
 // ═══════════════════════════════════
