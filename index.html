@@ -13854,14 +13854,14 @@ function buildPerformance() {
       scoreEntregaV = notasEntrega.length ? Math.round(notasEntrega.reduce((a,b)=>a+b,0) / notasEntrega.length) : null;
     }
 
-    // NPS — base = finalizados no período (por realFim/prevFim)
+    // NPS — base = projetos que decolaram/entregaram no período (mesmo critério da aba NPS:
+    // fimRealEfetivo, não o checklist de fechamento completo — a decolagem já é o sinal de
+    // que o cliente precisa dar o NPS, não faz sentido esperar o checklist administrativo)
     const npsBase = projects.filter(p => { if (isDroFam(p)) return false;
-      if (p[campoFiltro] !== nome || calcStatus2(p) !== 'Finalizado') return false;
+      if (p[campoFiltro] !== nome || !fimRealEfetivo(p)) return false;
       if (!curM) return true;
-      const dataFim = p.realFim || p.prevFim;
-      if (!dataFim) return false;
-      const d = parseDate(dataFim);
-      return d && d.getMonth() === curM.idx && d.getFullYear() === curM.ano;
+      const d = fimRealEfetivo(p);
+      return d.getMonth() === curM.idx && d.getFullYear() === curM.ano;
     });
     const npsNotas = [];
     npsBase.forEach(p => {
@@ -14858,14 +14858,13 @@ function perfSelecionaConsultor(nome) {
   }
 
   // ── NPS ───────────────────────────────────────────────────
-  // Finalizados no período (filtra pelo realFim ou prevFim)
+  // Decolaram/entregaram no período (mesmo critério da aba NPS: fimRealEfetivo, não o
+  // checklist de fechamento completo)
   const finalizados = prjsCons.filter(p => {
-    if (calcStatus2(p) !== 'Finalizado') return false;
+    if (!fimRealEfetivo(p)) return false;
     if (!curM) return true;
-    const dataFim = p.realFim || p.prevFim;
-    if (!dataFim) return false;
-    const d = parseDate(dataFim);
-    return d && d.getMonth() === curM.idx && d.getFullYear() === curM.ano;
+    const d = fimRealEfetivo(p);
+    return d.getMonth() === curM.idx && d.getFullYear() === curM.ano;
   });
   const npsRespondidos = [], npsPendentes = [];
   finalizados.forEach(p => {
