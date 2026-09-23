@@ -14,7 +14,7 @@
 import { emailDaSessao } from './sessao.js';
 import { listarUsuarios } from './usuarios.js';
 import { getGoogleConnection } from './supabase.js';
-import { getAccessToken, buscarPastas, listarConteudoDaPasta, listCalendarEvents, criarEventoNaAgenda, exportFileAsText } from './google.js';
+import { getAccessToken, buscarPastas, listarConteudoDaPasta, listCalendarEvents, criarEventoNaAgenda, exportFileAsText, lerArquivoDoDrive } from './google.js';
 import { listarDossies, acharSecaoExpansao, blocosDoDossie, escreverNaSecao, limparSecao, ErroNotion, TITULO_EXPANSAO } from './notion.js';
 import { callClaude } from './anthropic.js';
 
@@ -156,9 +156,13 @@ async function rotaContexto(req, res) {
 
 const SISTEMA_REDACAO = `Você escreve o dossiê de transição de um projeto de Estruturação Estratégica da V4 Company, que passa o bastão do consultor para quem vai operar a conta.
 
-Você recebe as anotações das reuniões do projeto e os dados da negociação. Devolve APENAS um JSON válido, sem markdown e sem texto em volta:
+Você recebe, em qualquer combinação: o contrato assinado (PDF ou texto), as anotações da call de expansão (a reunião em que a venda foi fechada) e as anotações das reuniões de entrega do projeto. Devolve APENAS um JSON válido, sem markdown e sem texto em volta:
 
 {
+  "produto": "O serviço contratado, exatamente como está escrito no contrato",
+  "valor": "O valor, com a moeda e o número como aparecem no contrato",
+  "formaPagamento": "Forma de pagamento e parcelamento como está no contrato",
+  "inicioServico": "Data de início do novo serviço no formato AAAA-MM-DD, se estiver clara",
   "motivacao": "O que pesou na decisão de contratar e qual argumento fechou. 2 a 4 frases.",
   "objecoes": "As objeções que o cliente levantou e como foram tratadas. Uma por linha, no formato 'Objeção — como foi tratada'.",
   "promessas": "O que foi dito que o cliente espera receber e em qual prazo. Uma por linha.",
@@ -166,47 +170,90 @@ Você recebe as anotações das reuniões do projeto e os dados da negociação.
 }
 
 Regras:
-- Só afirme o que estiver nas anotações. Se não houver base para um campo, escreva exatamente "Não identificado nas reuniões — preencher à mão".
+- Os quatro primeiros campos são cópia fiel do contrato. Não arredonde valor, não converta data por dedução, não complete parcelamento que não está escrito. Se o contrato não disser, devolva string vazia — quem preenche à mão é o consultor.
+- Os quatro últimos vêm das reuniões, principalmente da call de expansão. Só afirme o que estiver nas anotações. Sem base, escreva exatamente "Não identificado nas reuniões — preencher à mão".
 - Nada de elogio, adjetivo de vendedor ou frase de efeito. Quem lê precisa operar a conta amanhã.
 - Português do Brasil, direto, sem jargão de IA.
-- Nome de pessoa, valor e prazo: copie como está nas anotações, não arredonde nem invente.`;
+- Nome de pessoa, valor e prazo: copie como está na fonte.`;
 
 async function rotaRedigir(req, res) {
   const { eu } = await quemEsta(req);
-  const { cliente, gravacoes, negociacao } = req.body || {};
+  const { cliente, gravacoes, negociacao, contrato, callExpansao } = req.body || {};
   if (!cliente) throw new ErroDeUso(400, 'Informe o cliente');
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new ErroDeUso(503, 'ANTHROPIC_API_KEY não configurada no servidor');
   const { accessToken } = await tokenDaPessoa(eu.email);
 
-  // Lê as anotações que existirem, na ordem em que ajudam mais a entender a negociação
-  // (kick-off e decolagem contam o começo e o fim), com teto por documento pra caber no tempo
-  // da função e no contexto do modelo.
+  const blocos = [];   // conteúdo da mensagem pro Claude, PDF incluído
+  const lidas = [];    // o que deu pra ler, pra dizer na tela
+  const avisos = [];   // o que não deu, com o motivo
+
+  // 1) contrato assinado — PDF vai como documento (o Claude lê PDF nativo), Doc vai como texto
+  if (contrato) {
+    try {
+      const arq = await lerArquivoDoDrive({ accessToken, link: contrato });
+      if (arq.pdfBase64) {
+        blocos.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: arq.pdfBase64 } });
+        lidas.push('contrato (PDF' + (arq.nome ? ': ' + arq.nome : '') + ')');
+      } else {
+        blocos.push({ type: 'text', text: '### Contrato assinado' + (arq.nome ? ' — ' + arq.nome : '') + '\n' + String(arq.texto || '').slice(0, 60000) });
+        lidas.push('contrato' + (arq.nome ? ' (' + arq.nome + ')' : ''));
+      }
+    } catch (e) {
+      avisos.push('contrato: ' + e.message);
+    }
+  }
+
+  // 2) call de expansão — é dela que saem motivação, objeções e promessas
+  if (callExpansao) {
+    try {
+      const arq = await lerArquivoDoDrive({ accessToken, link: callExpansao });
+      if (arq.pdfBase64) {
+        blocos.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: arq.pdfBase64 } });
+        lidas.push('call de expansão (PDF)');
+      } else {
+        blocos.push({ type: 'text', text: '### Call de expansão (onde a venda foi fechada)\n' + String(arq.texto || '').slice(0, 60000) });
+        lidas.push('call de expansão');
+      }
+    } catch (e) {
+      avisos.push('call de expansão: ' + e.message);
+    }
+  }
+
+  // 3) reuniões de entrega que já têm anotação anexada no evento da agenda, na ordem em que
+  //    ajudam mais a entender a conta (kick-off e decolagem contam o começo e o fim)
   const ordem = ['kickoff', 'decolagem', 'entrega3', 'entrega2', 'entrega1'];
-  const pedacos = [];
+  let reunioes = 0;
   for (const chave of ordem) {
     const g = gravacoes && gravacoes[chave];
     if (!g || !g.docId) continue;
     try {
       const texto = await exportFileAsText({ accessToken, fileId: g.docId });
-      pedacos.push('### ' + chave + ' — ' + (g.titulo || '') + '\n' + texto.slice(0, 18000));
-    } catch (e) { /* documento sem permissão de leitura: segue sem ele */ }
-    if (pedacos.length >= 3) break; // três reuniões já dão o retrato; mais que isso estoura o tempo
+      blocos.push({ type: 'text', text: '### Reunião ' + chave + (g.titulo ? ' — ' + g.titulo : '') + '\n' + texto.slice(0, 18000) });
+      reunioes++;
+    } catch (e) { /* sem permissão de leitura nessa: segue sem ela */ }
+    if (reunioes >= 3) break; // três reuniões já dão o retrato; mais que isso estoura o tempo
   }
-  if (!pedacos.length) {
-    throw new ErroDeUso(422, 'Não achei nenhuma anotação de reunião pra ler. Confira os links das gravações ou escreva os campos à mão.');
+  if (reunioes) lidas.push(reunioes + ' reunião(ões) de entrega');
+
+  if (!blocos.length) {
+    throw new ErroDeUso(422, 'Não achei nada pra ler. Cole o link do contrato e o da call de expansão'
+      + (avisos.length ? ' — ' + avisos.join('; ') : '') + '.');
   }
 
-  const entrada = 'Cliente: ' + cliente + '\n\nDados da negociação já preenchidos: '
-    + JSON.stringify(negociacao || {}) + '\n\nAnotações das reuniões:\n\n' + pedacos.join('\n\n---\n\n');
+  // O texto do pedido vai por último: o modelo lê melhor quando os documentos vêm antes.
+  blocos.push({ type: 'text', text: 'Cliente: ' + cliente
+    + '\n\nCampos que o consultor já preencheu (não contradiga sem base no contrato): '
+    + JSON.stringify(negociacao || {})
+    + '\n\nPreencha o JSON pedido a partir dos documentos acima.' });
 
   // Sem `temperature`: o callClaude compartilhado aponta pro claude-sonnet-5, que recusa o
   // parâmetro (a justificativa está no comentário do anthropic.js).
   const resposta = await callClaude({
     apiKey,
     system: SISTEMA_REDACAO,
-    userText: entrada,
-    maxTokens: 2000,
+    conteudo: blocos,
+    maxTokens: 2500,
   });
   if (!resposta.ok) {
     const msg = (resposta.data && resposta.data.error && resposta.data.error.message) || ('HTTP ' + resposta.status);
@@ -221,7 +268,7 @@ async function rotaRedigir(req, res) {
   } catch (e) {
     throw new ErroDeUso(502, 'A IA respondeu fora do formato esperado. Tente de novo ou escreva os campos à mão.');
   }
-  res.status(200).json({ campos: dados, reunioesLidas: pedacos.length });
+  res.status(200).json({ campos: dados, lidas, avisos, reunioesLidas: reunioes });
 }
 
 // ── Gravar no Notion ────────────────────────────────────────────────

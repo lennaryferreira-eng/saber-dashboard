@@ -18993,6 +18993,7 @@ function dossieFiltrar() {
 function dossieSelecionar(id) {
   _dossieSel = _dossies.find(d => d.id === id) || null;
   _dossieCands = [];
+  _dossieTocado = {};
   if (!_dossieSel) return;
   const proj = ferProjetoDoCliente(_dossieSel.nome);
   const neg = ferNegociacaoDoProjeto(proj);
@@ -19014,14 +19015,19 @@ function dossieSelecionar(id) {
     promessas: '',
     informacoes: '',
     contrato: '',
+    callExpansao: '',
   };
   dossieFiltrar();
   dossieRenderForm();
 }
 
+// _dossieTocado marca o campo que a pessoa digitou à mão. A IA preenche o que veio do
+// painel ou está vazio, e não atropela o que o consultor escreveu.
+let _dossieTocado = {};
 function dossieSet(campo, valor) {
   if (!_dossieCampos) return;
   _dossieCampos[campo] = valor;
+  _dossieTocado[campo] = true;
 }
 
 function dossieSetEtapa(chave, qual, valor) {
@@ -19109,11 +19115,13 @@ function dossieRenderForm() {
     + '<p class="fer-secao" style="margin-top:18px;">2. Negociação e contrato</p>'
     + '<div class="fer-duas">' + ferCampo('Produto contratado', 'produto') + ferCampo('Valor', 'valor') + '</div>'
     + '<div class="fer-duas">' + ferCampo('Forma de pagamento', 'formaPagamento') + ferCampo('Data de início do novo serviço', 'inicioServico', { tipo: 'date' }) + '</div>'
-    + ferCampo('Link do contrato assinado', 'contrato', { placeholder: 'https://…' })
+    + ferCampo('Link do contrato assinado (PDF ou Doc no Drive — a IA lê daqui)', 'contrato', { placeholder: 'https://drive.google.com/file/d/…' })
+    + ferCampo('Link da call de expansão (anotações ou transcrição no Drive)', 'callExpansao', { placeholder: 'https://docs.google.com/document/d/…' })
     + '<div class="fer-acoes">'
-      + '<button class="btn btn-ghost" id="dossie-btn-ia" onclick="dossieRedigir()">Escrever os textos com a IA</button>'
+      + '<button class="btn btn-ghost" id="dossie-btn-ia" onclick="dossieRedigir()">Preencher com o contrato e a call</button>'
       + '<span id="dossie-ia-msg" style="font-size:var(--fs-sm);color:var(--text-hint);align-self:center;"></span>'
     + '</div>'
+    + '<p style="font-size:var(--fs-xs);color:var(--text-hint);margin:-6px 0 12px;">Produto, valor, forma de pagamento e data vêm do contrato. Motivação, objeções e promessas vêm da call. O que você já digitou à mão não é sobrescrito.</p>'
     + ferCampo('O que motivou a contratação', 'motivacao', { longo: true })
     + ferCampo('Objeções levantadas e como foram tratadas', 'objecoes', { longo: true })
     + ferCampo('Promessas e expectativas geradas', 'promessas', { longo: true })
@@ -19186,6 +19194,8 @@ async function dossieRedigir() {
     const r = await apiFer('redigir', { corpo: {
       cliente: _dossieCampos.cliente,
       gravacoes: _dossieCampos.gravacoes,
+      contrato: _dossieCampos.contrato,
+      callExpansao: _dossieCampos.callExpansao,
       negociacao: {
         produto: _dossieCampos.produto, valor: _dossieCampos.valor,
         formaPagamento: _dossieCampos.formaPagamento, inicioServico: _dossieCampos.inicioServico,
@@ -19193,10 +19203,23 @@ async function dossieRedigir() {
       },
     } });
     const c = r.campos || {};
-    ['motivacao', 'objecoes', 'promessas', 'informacoes'].forEach(k => { if (c[k]) _dossieCampos[k] = c[k]; });
+    // Campo que a pessoa digitou à mão fica como está. O resto (vazio ou vindo do painel) a
+    // IA preenche, porque pro produto/valor/pagamento/data a fonte é o contrato.
+    const preenchidos = [];
+    ['produto', 'valor', 'formaPagamento', 'inicioServico', 'motivacao', 'objecoes', 'promessas', 'informacoes']
+      .forEach(k => {
+        if (!c[k] || _dossieTocado[k]) return;
+        _dossieCampos[k] = c[k];
+        preenchidos.push(k);
+      });
     dossieRenderForm();
     const m2 = document.getElementById('dossie-ia-msg');
-    if (m2) m2.textContent = 'Escrito a partir de ' + (r.reunioesLidas || 0) + ' reunião(ões). Revise antes de gravar.';
+    if (m2) {
+      const fontes = (r.lidas || []).length ? 'Li: ' + r.lidas.join(', ') + '. ' : '';
+      const avisos = (r.avisos || []).length ? ' Não deu pra ler o ' + r.avisos.join('; ') + '.' : '';
+      m2.textContent = fontes + preenchidos.length + ' campo(s) preenchido(s). Revise antes de gravar.' + avisos;
+      if ((r.avisos || []).length) m2.style.color = 'var(--amber)';
+    }
   } catch (e) {
     if (msg) { msg.style.color = 'var(--red)'; msg.textContent = e.message; }
   } finally {

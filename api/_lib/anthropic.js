@@ -18,13 +18,17 @@
 // garantiu saída idêntica byte a byte. Isto reduz muito a variância, não a zera.
 const TEMPERATURA_ANALISE = 0;
 
-export async function callClaude({ apiKey, system, userText, maxTokens, temperature, thinking }) {
+// `conteudo` é a alternativa ao `userText`: uma lista de blocos de conteúdo, pra quando a
+// mensagem tem PDF junto do texto (o Claude lê PDF nativo, em bloco `document` com base64 —
+// usado pelo dossiê, que lê o contrato assinado direto do Drive). Quem passa `userText`
+// continua igual.
+export async function callClaude({ apiKey, system, userText, conteudo, maxTokens, temperature, thinking }) {
   const body = {
     model: 'claude-sonnet-5',
     max_tokens: maxTokens,
     system,
     messages: [
-      { role: 'user', content: userText }
+      { role: 'user', content: conteudo || userText }
     ],
   };
   // A API exige temperature=1 quando "thinking" está ativo — só inclui temperature quando

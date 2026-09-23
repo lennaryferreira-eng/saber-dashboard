@@ -230,3 +230,71 @@ export async function criarEventoNaAgenda({ accessToken, titulo, descricao, inic
   }
   return { id: data.id, link: data.htmlLink || '', meet: data.hangoutLink || '' };
 }
+
+// ── Leitura de arquivo do Drive por link (contrato, anotações de reunião) ────
+// O consultor cola o link; quem lê é o token dele. Google Doc sai como texto; PDF sai em
+// base64 pra ir como documento na chamada do Claude (que lê PDF nativo, sem conversão).
+
+// Aceita as formas que o Drive/Docs usam: /file/d/<id>/, /document/d/<id>/, ?id=<id>,
+// /open?id=<id>, e o próprio id colado sozinho.
+export function idDoLinkDoDrive(link) {
+  const t = String(link || '').trim();
+  if (!t) return null;
+  const porCaminho = t.match(/\/(?:file|document|spreadsheets|presentation)\/d\/([a-zA-Z0-9_-]{10,})/);
+  if (porCaminho) return porCaminho[1];
+  const porParam = t.match(/[?&]id=([a-zA-Z0-9_-]{10,})/);
+  if (porParam) return porParam[1];
+  const porD = t.match(/\/d\/([a-zA-Z0-9_-]{10,})/);
+  if (porD) return porD[1];
+  if (/^[a-zA-Z0-9_-]{20,}$/.test(t)) return t;
+  return null;
+}
+
+const LIMITE_PDF = 12 * 1024 * 1024; // 12 MB — contrato assinado não passa disso; acima é outra coisa
+
+export async function lerArquivoDoDrive({ accessToken, link }) {
+  const fileId = idDoLinkDoDrive(link);
+  if (!fileId) throw new Error('Não reconheci esse link do Drive. Cole o link do arquivo (o que tem /d/… no meio).');
+
+  const meta = await fetch(DRIVE_FILES_URL + '/' + encodeURIComponent(fileId)
+    + '?fields=id,name,mimeType,size&supportsAllDrives=true', {
+    headers: { Authorization: 'Bearer ' + accessToken },
+  });
+  const dados = await meta.json();
+  if (!meta.ok) {
+    const msg = dados.error?.message || ('HTTP ' + meta.status);
+    if (meta.status === 404 || meta.status === 403) {
+      throw new Error('Não consegui abrir esse arquivo com a sua conta do Google. Confira se ele está compartilhado com você. (' + msg + ')');
+    }
+    throw new Error('Falha ao abrir o arquivo do Drive: ' + msg);
+  }
+
+  const tipo = dados.mimeType || '';
+  if (tipo.startsWith('application/vnd.google-apps.')) {
+    // Doc/Planilha/Apresentação do Google: exporta como texto puro
+    if (tipo === 'application/vnd.google-apps.folder') throw new Error('Esse link é de uma pasta, não de um arquivo.');
+    const texto = await exportFileAsText({ accessToken, fileId });
+    return { nome: dados.name || '', tipo, texto };
+  }
+  if (tipo === 'application/pdf') {
+    if (dados.size && Number(dados.size) > LIMITE_PDF) {
+      throw new Error('O PDF tem ' + Math.round(Number(dados.size) / 1048576) + ' MB e o limite aqui é 12 MB.');
+    }
+    const res = await fetch(DRIVE_FILES_URL + '/' + encodeURIComponent(fileId) + '?alt=media&supportsAllDrives=true', {
+      headers: { Authorization: 'Bearer ' + accessToken },
+    });
+    if (!res.ok) throw new Error('Falha ao baixar o PDF do Drive: HTTP ' + res.status);
+    const bytes = Buffer.from(await res.arrayBuffer());
+    if (bytes.length > LIMITE_PDF) throw new Error('O PDF passa de 12 MB.');
+    return { nome: dados.name || '', tipo, pdfBase64: bytes.toString('base64') };
+  }
+  if (tipo.startsWith('text/')) {
+    const res = await fetch(DRIVE_FILES_URL + '/' + encodeURIComponent(fileId) + '?alt=media&supportsAllDrives=true', {
+      headers: { Authorization: 'Bearer ' + accessToken },
+    });
+    if (!res.ok) throw new Error('Falha ao baixar o arquivo: HTTP ' + res.status);
+    return { nome: dados.name || '', tipo, texto: await res.text() };
+  }
+  // Vídeo/áudio da gravação, .docx, imagem: a IA não lê aqui
+  throw new Error('Esse arquivo é ' + tipo + ', que eu não consigo ler. Para o contrato use PDF ou Google Doc; para a call use as anotações/transcrição (Google Doc).');
+}
