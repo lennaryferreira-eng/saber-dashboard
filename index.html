@@ -312,7 +312,7 @@
     <div id="ov-conv-card" class="mcard c-green"><div id="ov-conv-border" class="ov-border-bar" style="background:var(--green);"></div><div class="mlabel">Taxa de Conversão</div><div class="mval" id="ov-conv-val" style="transition:color .3s;">—</div><div class="mmeta">Meta: 40%</div><div class="prog-bg"><div class="prog-fill" id="ov-conv-bar" style="width:0%;background:var(--green)"></div></div></div>
     <div id="ov-prazo-card" class="mcard c-blue"><div id="ov-prazo-border" class="ov-border-bar" style="background:var(--blue);"></div><div class="mlabel">Projetos no Prazo</div><div class="mval" id="ov-prazo-val" style="transition:color .3s;">—</div><div class="mmeta">Meta: 80%</div><div class="prog-bg"><div class="prog-fill" id="ov-prazo-bar" style="width:0%;background:var(--blue)"></div></div></div>
     <div id="ov-pdi-card" class="mcard c-purple"><div id="ov-pdi-border" class="ov-border-bar" style="background:var(--purple);"></div><div class="mlabel">PDI do Time</div><div class="mval" id="ov-pdi-val" style="transition:color .3s;">—</div><div class="mmeta">Meta: 80%</div><div class="prog-bg"><div class="prog-fill" id="ov-pdi-bar" style="width:0%;background:var(--purple)"></div></div></div>
-    <div id="ov-nps-card" class="mcard c-amber"><div id="ov-nps-border" class="ov-border-bar" style="background:var(--amber);"></div><div class="mlabel">NPS</div><div class="mval" id="ov-nps-val" style="transition:color .3s;">—</div><div class="mmeta">Meta: 50</div><div class="prog-bg"><div class="prog-fill" id="ov-nps-bar" style="width:0%;background:var(--amber)"></div></div></div>
+    <div id="ov-nps-card" class="mcard c-amber"><div id="ov-nps-border" class="ov-border-bar" style="background:var(--amber);"></div><div class="mlabel">NPS</div><div class="mval" id="ov-nps-val" style="transition:color .3s;">—</div><div id="ov-nps-sub" style="font-size:var(--fs-xs);color:var(--text-hint);margin-top:2px;"></div><div class="mmeta">Meta: 50</div><div class="prog-bg"><div class="prog-fill" id="ov-nps-bar" style="width:0%;background:var(--amber)"></div></div></div>
     <div id="ov-kpi-swipe-wrap" style="position:relative;">
       <div id="ov-mon-card" class="mcard c-gray" style="margin:0;display:none;"><div id="ov-mon-border" class="ov-border-bar" style="background:var(--text-hint);"></div><div class="mlabel">Monetização</div><div class="mval" id="ov-mon" style="font-size:var(--fs-2xl);">R$ 0</div><div id="ov-mon-sub" style="font-size:var(--fs-xs);color:var(--text-hint);margin-top:2px;"></div><div class="mmeta">Meta: <span id="ov-mon-meta-lbl">a definir</span></div><div class="prog-bg"><div class="prog-fill" id="ov-mon-bar" style="width:0%;background:var(--text-hint)"></div></div></div>
       <div id="ov-aql-card" class="mcard c-blue" style="margin:0;"><div id="ov-aql-border" class="ov-border-bar" style="background:var(--blue);"></div><div class="mlabel">AQL</div><div class="mval" id="ov-aql-val" style="font-size:var(--fs-2xl);">—</div><div id="ov-aql-sub" style="font-size:var(--fs-xs);color:var(--text-hint);margin-top:2px;"></div><div class="mmeta">Meta: <span id="ov-aql-meta-lbl">a definir</span></div><div class="prog-bg"><div class="prog-fill" id="ov-aql-bar" style="width:0%;background:var(--blue)"></div></div></div>
@@ -9277,6 +9277,18 @@ function buildOv(cspVin, convVin, prazoVin, npsVin, pdiVin) {
   const npsV = npsNotas.length
     ? Math.round((npsNotas.filter(n=>n>=9).length - npsNotas.filter(n=>n<=6).length) / npsNotas.length * 100)
     : null;
+
+  // Taxa de resposta: dos projetos que FINALIZARAM no recorte selecionado, quantos já deram
+  // alguma nota (independente de quando responderam) — mesmo conceito do card "% Resposta" da
+  // aba NPS, só que aplicado ao recorte de mês/trimestre/ano da Visão Geral.
+  const npsFinalizadosPeriodo = projects.filter(p => calcStatus2(p) === 'Finalizado' && (!p.modelo || p.modelo !== 'DRO')
+    && mesesSel.some(m => { const d = parseDate(p.realFim || p.prevFim); return d && d.getMonth() === m.idx && d.getFullYear() === m.ano; }));
+  const npsRespPeriodo = npsFinalizadosPeriodo.filter(p => { const nd = npsData[String(p.id)]; return nd && nd.nota !== '' && nd.dataResp; }).length;
+  const npsPctResp = npsFinalizadosPeriodo.length > 0 ? Math.round(npsRespPeriodo / npsFinalizadosPeriodo.length * 100) : null;
+  const ovNpsSub = document.getElementById('ov-nps-sub');
+  if (ovNpsSub) ovNpsSub.textContent = npsFinalizadosPeriodo.length > 0
+    ? npsRespPeriodo + '/' + npsFinalizadosPeriodo.length + ' responderam' + (npsPctResp !== null ? ' (' + npsPctResp + '%)' : '')
+    : 'sem finalizados no período';
 
   // ── MONETIZAÇÃO: soma TODAS as monetizações (por evento/mês) ──
   let monTotal = 0, monTotalOT = 0, monTotalRec = 0;
