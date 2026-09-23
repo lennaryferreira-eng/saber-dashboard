@@ -56,6 +56,8 @@ Duas ferramentas, ambas em `api/_lib/rota-ferramentas.js` (rotas de `api/conta.j
 
 **Convites das etapas** — cria os convites das etapas do Lead Time na agenda do consultor, com Meet, avisando os convidados. O título segue o padrão da coordenação, `[Nome da entrega] Cliente + V4 Company` (ver `tituloDoConvite`), com o nome da etapa daquele projeto — projeto que personalizou os tipos de entrega aparece com o nome real, não "3ª Entrega". Quem está criando entra na lista como organizador (presença já confirmada) — sem isso o Google o mantém como dono do evento, mas ele não aparece entre os participantes que o cliente vê. A coordenação (`SEMPRE_OBRIGATORIO`) e o designer do projeto entram como obrigatórios, com o e-mail resolvido pela tabela `usuarios` no servidor — não pelo navegador. Quem conectou o Google antes de 23/09/2026 tem só o escopo de leitura guardado: a primeira tentativa devolve 409 pedindo pra sair e entrar de novo, e o `prompt=consent` do login reemite o token com o escopo de escrita.
 
+O texto que a IA escreve é renderizado como marcação de verdade no Notion (`richTexto`/`blocosDeTexto` em `notion.js`): negrito, itálico, código, lista com marcador, lista numerada, citação, divisória, link em `[texto](url)` e URL solta. Cuidado ao mexer: `VIEWER`, no index.html, significa "não pode editar o dado do painel" e é true pra consultor e designer também — não serve pra decidir acesso às ferramentas (ver o comentário em `ferramentasPodeUsar`).
+
 Acesso: consultor e ADM. Designer não vê a aba (`DESIGNER_TABS_PERMITIDAS`) e quem é visualização é recusado no navegador **e** na rota.
 
 ## Rodando localmente

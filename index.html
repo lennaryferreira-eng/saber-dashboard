@@ -18885,10 +18885,16 @@ async function apiFer(f, opcoes) {
 }
 
 // As duas ferramentas escrevem fora do painel (Notion e Agenda), então quem está só
-// visualizando não entra. Mesmo critério dos salvamentos do painel.
+// visualizando não entra.
+//
+// NÃO usa VIEWER aqui, e isso é a correção de um bug: neste painel VIEWER quer dizer "não
+// pode editar o DADO DO PAINEL" e é true pra consultor e designer também (ver
+// perfilBloqueiaEdicao) — ou seja, usar VIEWER barrava justamente quem as ferramentas
+// atendem. O consultor Caio bateu nisso em 23/09/2026. Quem fica de fora é só o perfil de
+// visualização; o servidor aplica a mesma regra por conta própria (rota-ferramentas.js).
 function ferramentasPodeUsar() {
   if (SESSAO_CONTINGENCIA) return 'O painel está no modo de contingência (servidor fora do ar). As ferramentas voltam quando a conexão voltar.';
-  if (VIEWER || (currentPerfil && currentPerfil.viewer)) return 'Seu acesso é de visualização: as ferramentas são de consultor.';
+  if (currentPerfil && currentPerfil.viewer) return 'Seu acesso é de visualização: as ferramentas são de consultor.';
   return null;
 }
 

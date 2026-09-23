@@ -132,28 +132,109 @@ function rico(texto) {
   return [{ type: 'text', text: { content: String(texto == null ? '' : texto).slice(0, 2000) } }];
 }
 
-function paragrafo(rotulo, valor) {
-  const v = String(valor == null ? '' : valor).trim();
-  const ehLink = /^https?:\/\//i.test(v);
-  const partes = [{ type: 'text', text: { content: rotulo + ' ' }, annotations: { bold: true } }];
-  if (v && ehLink) partes.push({ type: 'text', text: { content: v.slice(0, 2000), link: { url: v.slice(0, 2000) } } });
-  else if (v) partes.push({ type: 'text', text: { content: v.slice(0, 2000) } });
-  return { type: 'paragraph', paragraph: { rich_text: partes } };
+// Marcação inline: **negrito**, __negrito__, *itálico*, _itálico_, `código`, ~~riscado~~ e
+// [texto](url). O itálico com um marcador só exige que ele não esteja encostado em letra ou
+// número, senão nome_de_variavel e 3*4 viravam itálico no meio do texto.
+const INLINE = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|\*\*([^*]+)\*\*|__([^_]+)__|(?<![\p{L}\p{N}])\*([^*\n]+)\*(?![\p{L}\p{N}])|(?<![\p{L}\p{N}])_([^_\n]+)_(?![\p{L}\p{N}])|`([^`]+)`|~~([^~]+)~~/gu;
+
+// Um texto vira a lista de trechos que o Notion chama de rich_text. Dois limites da API
+// moram aqui: 2000 caracteres por trecho e 100 trechos por bloco.
+function richTexto(texto) {
+  const t = String(texto == null ? '' : texto);
+  const partes = [];
+  const empurrar = (conteudo, anotacoes, url) => {
+    if (!conteudo) return;
+    for (let i = 0; i < conteudo.length && partes.length < 95; i += 1900) {
+      partes.push({
+        type: 'text',
+        text: { content: conteudo.slice(i, i + 1900), ...(url ? { link: { url: url.slice(0, 2000) } } : {}) },
+        ...(anotacoes ? { annotations: anotacoes } : {}),
+      });
+    }
+  };
+  let ultimo = 0;
+  let m;
+  INLINE.lastIndex = 0;
+  while ((m = INLINE.exec(t)) !== null) {
+    empurrar(t.slice(ultimo, m.index));
+    if (m[1]) empurrar(m[1], null, m[2]);
+    else if (m[3] || m[4]) empurrar(m[3] || m[4], { bold: true });
+    else if (m[5] || m[6]) empurrar(m[5] || m[6], { italic: true });
+    else if (m[7]) empurrar(m[7], { code: true });
+    else if (m[8]) empurrar(m[8], { strikethrough: true });
+    ultimo = m.index + m[0].length;
+  }
+  empurrar(t.slice(ultimo));
+  return partes;
 }
 
-// Texto longo virando um parágrafo por linha — o Notion tem limite de 2000 caracteres por
-// trecho de texto, e um bloco só com tudo junto fica ilegível na página.
-function paragrafosDeTextoLongo(rotulo, valor) {
-  const v = String(valor == null ? '' : valor).trim();
-  if (!v) return [paragrafo(rotulo, '')];
-  const linhas = v.split(/\n+/).map((l) => l.trim()).filter(Boolean);
-  const blocos = [paragrafo(rotulo, '')];
-  for (const linha of linhas) {
-    for (let i = 0; i < linha.length; i += 1900) {
-      blocos.push({ type: 'paragraph', paragraph: { rich_text: rico(linha.slice(i, i + 1900)) } });
+// URL solta no meio do texto o Notion não transforma em link quando vem pela API, só quando
+// alguém cola na mão. Então quem escreve um link sem marcação também sai clicável.
+function richTextoComLinksSoltos(texto) {
+  const t = String(texto == null ? '' : texto);
+  if (!/https?:\/\//i.test(t) || /\]\(https?:/i.test(t)) return richTexto(t);
+  const partes = [];
+  let ultimo = 0;
+  const re = /https?:\/\/[^\s<>()]+[^\s<>().,;:!?]/g;
+  let m;
+  while ((m = re.exec(t)) !== null) {
+    partes.push(...richTexto(t.slice(ultimo, m.index)));
+    partes.push({ type: 'text', text: { content: m[0].slice(0, 2000), link: { url: m[0].slice(0, 2000) } } });
+    ultimo = m.index + m[0].length;
+  }
+  partes.push(...richTexto(t.slice(ultimo)));
+  return partes.slice(0, 95);
+}
+
+// Marcação de bloco, linha por linha: título, lista com marcador, lista numerada, citação,
+// linha divisória — e parágrafo pro resto. `comoLista` transforma linha comum em item de
+// lista, pros campos que o modelo escreve como "um por linha" (objeções, promessas).
+function blocosDeTexto(valor, opcoes) {
+  const o = opcoes || {};
+  const blocos = [];
+  for (const linhaCrua of String(valor == null ? '' : valor).split('\n')) {
+    const linha = linhaCrua.trim();
+    if (!linha) continue;
+    if (/^([-*_]\s*){3,}$/.test(linha)) { blocos.push({ type: 'divider', divider: {} }); continue; }
+    let m;
+    if ((m = linha.match(/^#{1,6}\s+(.*)$/))) {
+      blocos.push({ type: 'heading_3', heading_3: { rich_text: richTexto(m[1]) } });
+    } else if ((m = linha.match(/^[-*•–]\s+(.*)$/))) {
+      blocos.push({ type: 'bulleted_list_item', bulleted_list_item: { rich_text: richTextoComLinksSoltos(m[1]) } });
+    } else if ((m = linha.match(/^\d+[.)]\s+(.*)$/))) {
+      blocos.push({ type: 'numbered_list_item', numbered_list_item: { rich_text: richTextoComLinksSoltos(m[1]) } });
+    } else if ((m = linha.match(/^>\s*(.*)$/))) {
+      blocos.push({ type: 'quote', quote: { rich_text: richTextoComLinksSoltos(m[1]) } });
+    } else if (o.comoLista) {
+      blocos.push({ type: 'bulleted_list_item', bulleted_list_item: { rich_text: richTextoComLinksSoltos(linha) } });
+    } else {
+      blocos.push({ type: 'paragraph', paragraph: { rich_text: richTextoComLinksSoltos(linha) } });
     }
   }
   return blocos;
+}
+
+function rotuloEmNegrito(rotulo) {
+  return { type: 'text', text: { content: rotulo + ' ' }, annotations: { bold: true } };
+}
+
+// Campo de uma linha: rótulo em negrito e o valor na mesma linha (link vira clicável).
+function paragrafo(rotulo, valor) {
+  const v = String(valor == null ? '' : valor).trim();
+  return { type: 'paragraph', paragraph: { rich_text: [rotuloEmNegrito(rotulo), ...richTextoComLinksSoltos(v)] } };
+}
+
+// Campo de texto longo. Valor de uma linha fica junto do rótulo; valor com várias linhas ou
+// com lista ganha o rótulo numa linha e os blocos embaixo.
+function campoLongo(rotulo, valor, opcoes) {
+  const v = String(valor == null ? '' : valor).trim();
+  if (!v) return [paragrafo(rotulo, '')];
+  const blocos = blocosDeTexto(v, opcoes);
+  if (!blocos.length) return [paragrafo(rotulo, '')];
+  if (blocos.length === 1 && blocos[0].type === 'paragraph') {
+    return [{ type: 'paragraph', paragraph: { rich_text: [rotuloEmNegrito(rotulo), ...blocos[0].paragraph.rich_text] } }];
+  }
+  return [paragrafo(rotulo, ''), ...blocos];
 }
 
 // Uma etapa pode ter dois links: a gravação/transcrição da reunião e o arquivo da entrega
@@ -198,13 +279,14 @@ export function blocosDoDossie(d) {
     paragrafo('Valor:', d.valor),
     paragrafo('Forma de pagamento:', d.formaPagamento),
     paragrafo('Data de início do novo serviço:', d.inicioServico),
-    ...paragrafosDeTextoLongo('O que motivou a contratação:', d.motivacao),
-    ...paragrafosDeTextoLongo('Objeções levantadas e como foram tratadas:', d.objecoes),
-    ...paragrafosDeTextoLongo('Promessas e expectativas geradas:', d.promessas),
+    ...campoLongo('O que motivou a contratação:', d.motivacao),
+    ...campoLongo('Objeções levantadas e como foram tratadas:', d.objecoes, { comoLista: true }),
+    ...campoLongo('Promessas e expectativas geradas:', d.promessas, { comoLista: true }),
     paragrafo('Link do contrato assinado:', d.contrato),
 
     { type: 'heading_3', heading_3: { rich_text: rico('4. Informações importantes sobre o projeto:') } },
-    ...paragrafosDeTextoLongo('', d.informacoes).slice(1),
+    ...(blocosDeTexto(d.informacoes).length ? blocosDeTexto(d.informacoes)
+      : [{ type: 'paragraph', paragraph: { rich_text: [] } }]),
 
     {
       type: 'paragraph',

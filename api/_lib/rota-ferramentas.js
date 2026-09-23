@@ -174,6 +174,7 @@ Regras:
 - Os quatro últimos vêm das reuniões, principalmente da call de expansão. Só afirme o que estiver nas anotações. Sem base, escreva exatamente "Não identificado nas reuniões — preencher à mão".
 - Nada de elogio, adjetivo de vendedor ou frase de efeito. Quem lê precisa operar a conta amanhã.
 - Português do Brasil, direto, sem jargão de IA.
+- Pode usar marcação simples nos campos de texto, que o dossiê renderiza: **negrito**, listas começando a linha com "- ", listas numeradas com "1. " e "### " pra um subtítulo. Não use tabela nem bloco de código.
 - Nome de pessoa, valor e prazo: copie como está na fonte.`;
 
 async function rotaRedigir(req, res) {
