@@ -19290,6 +19290,7 @@ function agendaRender() {
       + etapas
       + '<p class="fer-secao" style="margin-top:18px;">Convidados</p>'
       + '<div class="fer-chips" style="margin-bottom:8px;">'
+        + '<span class="fer-chip">' + escapeHtml((USUARIO_ATUAL && USUARIO_ATUAL.nome_exibicao) || 'Você') + ' · organizador</span>'
         + '<span class="fer-chip">Lennary · obrigatória</span>'
         + (designer ? '<span class="fer-chip">' + escapeHtml(designer) + ' (designer) · obrigatório</span>'
                     : '<span class="fer-chip">projeto sem designer no painel</span>')
@@ -19352,7 +19353,8 @@ async function agendaCriar() {
           + (c.link ? '<a href="' + escAttr(c.link) + '" target="_blank" rel="noopener noreferrer">abrir na agenda</a>' : 'criado')).join('<br>')
         + ((r.falhas || []).length ? '<br>' + r.falhas.map(f => '⚠️ ' + escapeHtml(f.titulo) + ' — ' + escapeHtml(f.erro)).join('<br>') : '')
         + '<div style="margin-top:8px;color:var(--text-hint);font-size:var(--fs-xs);">Convidados: '
-          + escapeHtml((r.convidados || []).map(c => c.email + (c.obrigatorio ? ' (obrigatório)' : '')).join(', ')) + '</div>';
+          + escapeHtml((r.convidados || []).map(c => c.email
+            + (c.organizador ? ' (organizador)' : c.obrigatorio ? ' (obrigatório)' : '')).join(', ')) + '</div>';
     }
     if (msg) { msg.className = 'conta-msg ok'; msg.textContent = (r.criados || []).length + ' convite(s) criado(s).'; }
     showToast && showToast('Convites criados na sua agenda', 'success');

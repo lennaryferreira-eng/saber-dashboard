@@ -192,8 +192,8 @@ export async function listarConteudoDaPasta({ accessToken, folderId, profundidad
 }
 
 // Cria um evento na agenda da pessoa (calendário "primary"), com Meet e convites enviados.
-// `convidados` é [{ email, obrigatorio }] — no Google, "obrigatório" é a ausência de
-// optional:true.
+// `convidados` é [{ email, obrigatorio, aceito }] — no Google, "obrigatório" é a ausência de
+// optional:true, e `aceito` marca a presença já confirmada (o caso de quem está criando).
 export async function criarEventoNaAgenda({ accessToken, titulo, descricao, inicioISO, fimISO, convidados, comMeet = true }) {
   const idPedido = 'gh-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
   const corpo = {
@@ -201,7 +201,13 @@ export async function criarEventoNaAgenda({ accessToken, titulo, descricao, inic
     description: descricao || undefined,
     start: { dateTime: inicioISO, timeZone: 'America/Sao_Paulo' },
     end: { dateTime: fimISO, timeZone: 'America/Sao_Paulo' },
-    attendees: (convidados || []).map((c) => ({ email: c.email, optional: !c.obrigatorio })),
+    // `aceito` só é usado pra quem está criando: o Google trata esse participante como
+    // organizador e não faz sentido pedir confirmação pra pessoa no próprio evento dela.
+    attendees: (convidados || []).map((c) => ({
+      email: c.email,
+      optional: !c.obrigatorio,
+      ...(c.aceito ? { responseStatus: 'accepted' } : {}),
+    })),
     guestsCanModify: false,
     ...(comMeet ? { conferenceData: { createRequest: { requestId: idPedido, conferenceSolutionKey: { type: 'hangoutsMeet' } } } } : {}),
   };

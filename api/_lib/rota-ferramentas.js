@@ -268,7 +268,11 @@ async function rotaAgenda(req, res) {
     const d = todos.find((u) => u.squad_nome === designer && u.squad_tipo === 'designer');
     if (d && d.email) obrigatorios.add(d.email);
   }
-  obrigatorios.delete(eu.email); // quem cria já é o organizador
+  // Quem cria entra na lista também. O Google já põe essa pessoa como organizadora por ser
+  // dona do calendário, mas sem estar entre os participantes ela não aparece na lista de
+  // convidados que o cliente vê — e era isso que estava faltando. Entra com a presença já
+  // confirmada, porque não faz sentido pedir confirmação no próprio evento.
+  obrigatorios.delete(eu.email);
 
   const opcionais = [...new Set((Array.isArray(convidados) ? convidados : [])
     .map((c) => String(c || '').trim().toLowerCase())
@@ -276,6 +280,7 @@ async function rotaAgenda(req, res) {
     .filter((c) => !obrigatorios.has(c) && c !== eu.email);
 
   const lista = [
+    { email: eu.email, obrigatorio: true, aceito: true, organizador: true },
     ...[...obrigatorios].map((email) => ({ email, obrigatorio: true })),
     ...opcionais.map((email) => ({ email, obrigatorio: false })),
   ];
