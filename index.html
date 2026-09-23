@@ -19306,6 +19306,14 @@ function agendaRender() {
       + '<div class="fer-resultado" id="ag-resultado"></div>');
 }
 
+// Padrão do título combinado com a coordenação em 23/09/2026:
+//   [Nome da entrega] Cliente + V4 Company     ex.: [Kick off] Clínica Auryon + V4 Company
+// O nome da entrega é o da etapa naquele projeto (nomeEtapa respeita os tipos de entrega
+// que o projeto personalizou), e o cliente é o nome do projeto no painel.
+function tituloDoConvite(p, i) {
+  return '[' + nomeEtapa(p, i) + '] ' + p.nome + ' + V4 Company';
+}
+
 function agendaProjetoMudou(id) {
   _agProj = (typeof projects !== 'undefined') ? projects.find(p => String(p.id) === String(id)) || null : null;
   agendaRender();
@@ -19322,7 +19330,7 @@ async function agendaCriar() {
     const dt = document.getElementById('ag-dt-' + i);
     const dur = document.getElementById('ag-dur-' + i);
     eventos.push({
-      titulo: p.nome + ' · ' + nomeEtapa(p, i),
+      titulo: tituloDoConvite(p, i),
       inicio: dt ? dt.value : '',
       minutos: dur ? parseInt(dur.value, 10) : 60,
       descricao: 'Etapa “' + nomeEtapa(p, i) + '” do projeto ' + p.nome + '. Convite criado pelo Painel Growth Hunters.',
