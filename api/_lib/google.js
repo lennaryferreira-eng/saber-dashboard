@@ -130,3 +130,97 @@ export async function exportFileAsText({ accessToken, fileId }) {
   }
   return res.text();
 }
+
+// ── Ferramentas do consultor (pasta do cliente e criação de agenda) ──────────
+// Usadas por api/_lib/rota-ferramentas.js, sempre com o token da pessoa logada: o consultor
+// só acha no Drive o que ele já podia abrir, e o convite sai no nome dele.
+
+// Aspas simples quebram a sintaxe do parâmetro `q` do Drive — precisa escapar.
+function escaparQ(texto) {
+  return String(texto || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+// Procura pastas cujo nome contém o termo. O Drive não tem busca "começa com", então quem
+// decide qual é a pasta certa é o consultor: a rota devolve as candidatas.
+export async function buscarPastas({ accessToken, termo, limite = 10 }) {
+  const params = new URLSearchParams({
+    q: "mimeType='application/vnd.google-apps.folder' and trashed=false and name contains '" + escaparQ(termo) + "'",
+    fields: 'files(id,name,webViewLink,modifiedTime,driveId)',
+    orderBy: 'modifiedTime desc',
+    supportsAllDrives: 'true',
+    includeItemsFromAllDrives: 'true',
+    pageSize: String(Math.min(limite, 50)),
+  });
+  const res = await fetch(DRIVE_FILES_URL + '?' + params.toString(), {
+    headers: { Authorization: 'Bearer ' + accessToken },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error('Falha ao buscar a pasta no Drive: ' + (data.error?.message || res.status));
+  return data.files || [];
+}
+
+// Conteúdo de uma pasta. `profundidade` 2 desce um nível nas subpastas, que é como as contas
+// costumam guardar as entregas (uma subpasta por entrega).
+export async function listarConteudoDaPasta({ accessToken, folderId, profundidade = 2 }) {
+  const itens = [];
+  const fila = [{ id: folderId, caminho: '' }];
+  while (fila.length) {
+    const atual = fila.shift();
+    const params = new URLSearchParams({
+      q: "'" + escaparQ(atual.id) + "' in parents and trashed=false",
+      fields: 'files(id,name,mimeType,webViewLink,modifiedTime)',
+      orderBy: 'folder,name',
+      supportsAllDrives: 'true',
+      includeItemsFromAllDrives: 'true',
+      pageSize: '200',
+    });
+    const res = await fetch(DRIVE_FILES_URL + '?' + params.toString(), {
+      headers: { Authorization: 'Bearer ' + accessToken },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error('Falha ao listar a pasta do Drive: ' + (data.error?.message || res.status));
+    for (const f of data.files || []) {
+      const ehPasta = f.mimeType === 'application/vnd.google-apps.folder';
+      itens.push({ id: f.id, nome: f.name, pasta: ehPasta, caminho: atual.caminho, link: f.webViewLink || '', modificadoEm: f.modifiedTime || '' });
+      if (ehPasta && atual.caminho.split('/').filter(Boolean).length + 1 < profundidade) {
+        fila.push({ id: f.id, caminho: atual.caminho ? atual.caminho + '/' + f.name : f.name });
+      }
+    }
+    if (itens.length > 400) break; // teto de segurança: pasta de conta não passa disso
+  }
+  return itens;
+}
+
+// Cria um evento na agenda da pessoa (calendário "primary"), com Meet e convites enviados.
+// `convidados` é [{ email, obrigatorio }] — no Google, "obrigatório" é a ausência de
+// optional:true.
+export async function criarEventoNaAgenda({ accessToken, titulo, descricao, inicioISO, fimISO, convidados, comMeet = true }) {
+  const idPedido = 'gh-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+  const corpo = {
+    summary: titulo,
+    description: descricao || undefined,
+    start: { dateTime: inicioISO, timeZone: 'America/Sao_Paulo' },
+    end: { dateTime: fimISO, timeZone: 'America/Sao_Paulo' },
+    attendees: (convidados || []).map((c) => ({ email: c.email, optional: !c.obrigatorio })),
+    guestsCanModify: false,
+    ...(comMeet ? { conferenceData: { createRequest: { requestId: idPedido, conferenceSolutionKey: { type: 'hangoutsMeet' } } } } : {}),
+  };
+  const params = new URLSearchParams({ sendUpdates: 'all', conferenceDataVersion: comMeet ? '1' : '0' });
+  const res = await fetch(CALENDAR_EVENTS_URL + '?' + params.toString(), {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify(corpo),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    const msg = data.error?.message || ('HTTP ' + res.status);
+    // 403 com "insufficient" = o token da pessoa só tem leitura da agenda (escopo antigo).
+    if (res.status === 403 && /insufficient|scope/i.test(msg)) {
+      const e = new Error('Sua conexão com o Google só tem permissão de leitura da agenda. Saia e entre de novo no painel para liberar a criação de convites.');
+      e.precisaReconectar = true;
+      throw e;
+    }
+    throw new Error('Falha ao criar o convite: ' + msg);
+  }
+  return { id: data.id, link: data.htmlLink || '', meet: data.hangoutLink || '' };
+}

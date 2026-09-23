@@ -42,7 +42,12 @@ export default async function handler(req, res) {
     prompt: 'consent',
     scope: [
       'openid', 'email', 'profile',
-      'https://www.googleapis.com/auth/calendar.readonly',
+      // calendar.events (e não calendar.readonly) porque o criador de agenda do painel
+      // cria os convites das etapas na agenda do próprio consultor. O escopo já cobre a
+      // leitura que a fila de auditoria faz. Quem conectou antes de 23/09/2026 tem só a
+      // leitura guardada: o convite falha com uma mensagem pedindo pra entrar de novo, e o
+      // prompt=consent acima já reemite o token com o escopo novo nesse próximo login.
+      'https://www.googleapis.com/auth/calendar.events',
       'https://www.googleapis.com/auth/drive.readonly',
     ].join(' '),
     state,

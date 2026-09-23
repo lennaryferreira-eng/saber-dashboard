@@ -1880,12 +1880,63 @@
       <div class="tbl-scroll"><table class="conta-tabela" id="usu-tabela"></table></div>
     </div>
   </section>
+
+  <!-- ───────── FERRAMENTAS (consultor) ─────────
+       Caixa de ferramentas do dia a dia: o que era trabalho manual repetido e agora o painel
+       faz. As duas primeiras nasceram em 23/09/2026 (dossiê de transição e convites das
+       etapas). Ferramenta nova entra como um card aqui, não como aba nova. -->
+  <section id="sec-ferramentas" class="section">
+    <div class="sec-head"><h2 class="sec-title">Ferramentas</h2><p class="sec-desc">O trabalho manual que o painel faz por você. Tudo acontece na sua conta do Google: o dossiê procura no seu Drive e os convites saem no seu nome.</p></div>
+    <div id="fer-aviso"></div>
+    <div class="fer-grid">
+      <div class="card fer-card">
+        <h3 class="fer-titulo">Dossiê de transição</h3>
+        <p class="fer-desc">O comercial já criou o dossiê do cliente no Notion com a seção <b>Fechamento Expansão</b> vazia. Aqui você escolhe o dossiê, o painel acha a pasta do cliente no Drive, os links das entregas e das gravações, a IA escreve os campos de texto a partir das reuniões, você revisa e manda pro Notion.</p>
+        <button class="btn btn-primary" onclick="dossieAbrir()">Alimentar um dossiê</button>
+      </div>
+      <div class="card fer-card">
+        <h3 class="fer-titulo">Convites das etapas</h3>
+        <p class="fer-desc">Em vez de criar convite por convite, escolhe o projeto, marca as etapas, ajusta dia e hora de cada uma e o painel cria tudo de uma vez com Meet. A coordenação e o designer do projeto entram como obrigatórios sempre.</p>
+        <button class="btn btn-primary" onclick="agendaAbrir()">Criar convites</button>
+      </div>
+    </div>
+  </section>
 </main>
 </div>
 
 
 
 </main>
+
+<!-- ───────── MODAL: Dossiê de transição ─────────
+     Lista lateral com os dossiês que já existem no Notion + o formulário do que vai ser
+     escrito dentro do "Fechamento Expansão". Ver rota-ferramentas.js no servidor. -->
+<div class="modal-overlay" id="modal-dossie" onclick="if(event.target===this)dossieFechar()">
+  <div class="modal-box" style="max-width:1040px;max-height:92vh;display:flex;flex-direction:column;" role="dialog" aria-modal="true" aria-labelledby="dossie-titulo">
+    <div class="modal-header">
+      <span class="modal-title" id="dossie-titulo">Dossiê de transição</span>
+      <button class="modal-close" onclick="dossieFechar()" title="Fechar" aria-label="Fechar"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+    </div>
+    <div class="modal-body dossie-layout">
+      <aside class="dossie-lista">
+        <input id="dossie-busca" class="aud-inp" type="search" placeholder="Buscar cliente" oninput="dossieFiltrar()" aria-label="Buscar dossiê">
+        <div class="dossie-itens" id="dossie-itens"></div>
+      </aside>
+      <div class="dossie-form" id="dossie-form"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ───────── MODAL: Convites das etapas na agenda ───────── -->
+<div class="modal-overlay" id="modal-agenda" onclick="if(event.target===this)agendaFechar()">
+  <div class="modal-box" style="max-width:760px;max-height:92vh;display:flex;flex-direction:column;" role="dialog" aria-modal="true" aria-labelledby="agenda-titulo">
+    <div class="modal-header">
+      <span class="modal-title" id="agenda-titulo">Convites das etapas</span>
+      <button class="modal-close" onclick="agendaFechar()" title="Fechar" aria-label="Fechar"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+    </div>
+    <div class="modal-body" id="agenda-corpo"></div>
+  </div>
+</div>
 
 <!-- ───────── MODAL: Nova Monetização (Passo 2) ───────── -->
 <div class="modal-overlay" id="modal-nova-mon" onclick="if(event.target===this)closeNovaMon()">
@@ -3463,6 +3514,7 @@ const ICONS = {
   undo:'<path d="M3 8a5 5 0 119 3.5"/><path d="M3 12V8h4"/>',
   cornerLeft:'<path d="M6 3L2 7l4 4"/><path d="M2 7h7a4 4 0 014 4v2"/>',
   coin:'<circle cx="8" cy="8" r="6.5"/><path d="M8 4.5v7M6 6.2c0-.9.9-1.5 2-1.5s2 .5 2 1.3-1 1-2 1.2-2 .4-2 1.3.9 1.3 2 1.3 2-.6 2-1.5"/>',
+  tool:'<path d="M9.5 2.2a3.4 3.4 0 014.3 4.3l-1.9-1.9-1.5 1.5 1.9 1.9A3.4 3.4 0 017.9 6.6L3.2 11.3a1.2 1.2 0 101.7 1.7l4.7-4.7"/>',
   route:'<circle cx="3.5" cy="12.5" r="2"/><circle cx="12.5" cy="3.5" r="2"/><path d="M5 11L11 5" stroke-dasharray="1.6 1.8"/>',
   pause:'<rect x="4" y="3" width="3" height="10" rx="1"/><rect x="9" y="3" width="3" height="10" rx="1"/>',
 };
@@ -3475,6 +3527,7 @@ const SIDEBAR_NAV = [
     { id: 'visao', label: 'Visão Geral', icon: 'chart' },
     { id: 'base', label: 'Base de Projetos', icon: 'clipboard', extraClass: 'tab-base' },
     { id: 'jornada', label: 'Jornada do Consultor', icon: 'route', href: 'jornada-consultor.html' },
+    { id: 'ferramentas', label: 'Ferramentas', icon: 'tool', elId: 'nav-tab-ferramentas' },
   ] },
   { group: 'okrs', label: 'OKRs', items: [
     { id: 'conversao', label: 'Tx. Conversão', icon: 'zap' },
@@ -3646,6 +3699,7 @@ const MODAL_CLOSE_FN = {
   'modal-drive-fila':'audFecharModalDrive', 'modal-consultores':'closeConsultoresModal',
   'modal-novo-projeto-ter':'closeNovoProjTer', 'modal-login':'closeLoginModal',
   'modal-confirm':()=>_confirmModalResponder(false), 'modal-otim-mes':'fecharModalOtimMes',
+  'modal-dossie':'dossieFechar', 'modal-agenda':'agendaFechar',
 };
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
@@ -4641,7 +4695,7 @@ function usuarioEhAdm() {
 }
 
 // Abas que ficam visíveis pra quem loga como consultor (não-ADM) — as demais somem do menu.
-const CONSULTOR_TABS_PERMITIDAS = ['base', 'aql', 'leadtime', 'performance', 'auditoria', 'pipeline', 'capacity', 'perfil'];
+const CONSULTOR_TABS_PERMITIDAS = ['base', 'aql', 'leadtime', 'performance', 'auditoria', 'pipeline', 'capacity', 'ferramentas', 'perfil'];
 // Designers têm um recorte menor — sem AQL nem Performance (não fazem sentido pra eles)
 const DESIGNER_TABS_PERMITIDAS = ['base', 'leadtime', 'auditoria', 'capacity', 'perfil'];
 // Retorna a lista de abas certa conforme o TIPO de perfil (designer x consultor). "viewer"
@@ -4990,6 +5044,15 @@ function updatePerfilNavVisibility() {
       label.style.display = '';
     }
   });
+  // Ferramentas: escrevem fora do painel (Notion e Agenda), então quem só visualiza não vê
+  // — a rota recusa do mesmo jeito. Fica depois do laço porque ele reexibe o que escondeu
+  // quando o perfil troca na mesma sessão. Designer já fica fora por DESIGNER_TABS_PERMITIDAS.
+  const btnFer = document.getElementById('nav-tab-ferramentas');
+  if (btnFer) {
+    if (currentPerfil && currentPerfil.viewer) btnFer.style.display = 'none';
+    // dataset.hiddenByPerfil = o laço acima escondeu (designer) — aí não é pra reexibir.
+    else if (!btnFer.dataset.hiddenByPerfil) btnFer.style.display = '';
+  }
   if (restringir) document.querySelectorAll('.nav-sep').forEach(s => s.style.display = 'none');
 }
 
@@ -10096,6 +10159,7 @@ function show(sec) {
     else if (sec === 'aql')         buildAql();
     else if (sec === 'cultura')     buildCultura();
     else if (sec === 'fca')         buildFca();
+    else if (sec === 'ferramentas') buildFerramentas();
     else if (sec === 'perfil')      buildPerfil();
     else if (sec === 'usuarios')    buildUsuarios();
   } catch(e) { console.error('show(' + sec + ') erro:', e); }
@@ -18750,6 +18814,514 @@ projects = []; // dados carregados do Supabase
     window.scrollTo(0, 0);
   };
 })();
+
+// ════════════════════════════════════════════════════════════════
+//  FERRAMENTAS DO CONSULTOR (aba Ferramentas)
+//  1) Dossiê de transição — alimenta a seção "Fechamento Expansão" do dossiê que o
+//     comercial já criou no Notion (a página existe; aqui só o miolo dessa seção é escrito).
+//  2) Convites das etapas — cria os convites das etapas na agenda do próprio consultor,
+//     com a coordenação e o designer do projeto como obrigatórios.
+//  Servidor: api/_lib/rota-ferramentas.js, sempre com o token do Google da pessoa logada.
+// ════════════════════════════════════════════════════════════════
+
+async function apiFer(f, opcoes) {
+  const o = opcoes || {};
+  const r = await fetch('/api/conta?r=ferramentas&f=' + encodeURIComponent(f), {
+    method: o.corpo ? 'POST' : 'GET',
+    credentials: 'same-origin',
+    cache: 'no-store',
+    headers: o.corpo ? { 'Content-Type': 'application/json' } : undefined,
+    body: o.corpo ? JSON.stringify(o.corpo) : undefined,
+  });
+  const dados = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const e = new Error(dados.error || ('Falha na chamada (HTTP ' + r.status + ')'));
+    e.status = r.status; e.dados = dados;
+    throw e;
+  }
+  return dados;
+}
+
+// As duas ferramentas escrevem fora do painel (Notion e Agenda), então quem está só
+// visualizando não entra. Mesmo critério dos salvamentos do painel.
+function ferramentasPodeUsar() {
+  if (SESSAO_CONTINGENCIA) return 'O painel está no modo de contingência (servidor fora do ar). As ferramentas voltam quando a conexão voltar.';
+  if (VIEWER || (currentPerfil && currentPerfil.viewer)) return 'Seu acesso é de visualização: as ferramentas são de consultor.';
+  return null;
+}
+
+function buildFerramentas() {
+  const aviso = document.getElementById('fer-aviso');
+  if (!aviso) return;
+  const impedimento = ferramentasPodeUsar();
+  aviso.innerHTML = impedimento
+    ? '<div class="conta-msg erro" style="margin-bottom:14px;">' + escapeHtml(impedimento) + '</div>'
+    : '';
+}
+
+// ── Dossiê de transição ─────────────────────────────────────────────
+
+let _dossies = [];        // o que veio do Notion
+let _dossieSel = null;    // dossiê escolhido na lista lateral
+let _dossieCampos = null; // o que vai ser gravado (tudo editável na tela)
+let _dossieCands = [];    // pastas candidatas no Drive
+let _dossieBuscando = false;
+
+const DOSSIE_ETAPAS = [
+  { chave: 'kickoff',   rotulo: 'Kick-off',   idx: 1 },
+  { chave: 'entrega1',  rotulo: '1ª Entrega', idx: 2 },
+  { chave: 'entrega2',  rotulo: '2ª Entrega', idx: 3 },
+  { chave: 'entrega3',  rotulo: '3ª Entrega', idx: 4 },
+  { chave: 'decolagem', rotulo: 'Decolagem',  idx: 6 },
+];
+
+function ferSemAcento(t) {
+  return String(t == null ? '' : t).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+}
+
+// Acha no painel o projeto do cliente do dossiê. O nome no Notion e o nome no painel quase
+// nunca batem letra por letra ("Frenecar" x "Frenecar Peças"), então vale "um contém o outro"
+// e o mais parecido ganha. Quem confirma é o consultor: o projeto chega num select na tela.
+function ferProjetoDoCliente(nome) {
+  const alvo = ferSemAcento(nome);
+  if (!alvo || typeof projects === 'undefined') return null;
+  let melhor = null;
+  for (const p of projects) {
+    const n = ferSemAcento(p.nome);
+    if (!n) continue;
+    if (n === alvo) return p;
+    if (n.includes(alvo) || alvo.includes(n)) {
+      if (!melhor || Math.abs(n.length - alvo.length) < Math.abs(ferSemAcento(melhor.nome).length - alvo.length)) melhor = p;
+    }
+  }
+  return melhor;
+}
+
+// Produto e valor da expansão saem da Monetização que o painel já guarda no projeto.
+function ferNegociacaoDoProjeto(p) {
+  const mons = (p && Array.isArray(p.monetizacoes)) ? p.monetizacoes : [];
+  const m = mons[mons.length - 1] || null;
+  if (!m) return { produto: '', valor: '' };
+  const valor = [
+    m.valorOT ? 'One-time: ' + m.valorOT : '',
+    m.valorRec ? 'Recorrente: ' + m.valorRec : '',
+  ].filter(Boolean).join(' · ');
+  return { produto: m.escopos || '', valor };
+}
+
+function dossieAbrir() {
+  const impedimento = ferramentasPodeUsar();
+  if (impedimento) { showAlert(impedimento); return; }
+  document.getElementById('modal-dossie').style.display = 'flex';
+  document.getElementById('dossie-form').innerHTML = '<div class="dossie-vazio">Escolha um dossiê na lista ao lado.</div>';
+  dossieCarregarLista();
+}
+
+function dossieFechar() {
+  document.getElementById('modal-dossie').style.display = 'none';
+}
+
+async function dossieCarregarLista() {
+  const el = document.getElementById('dossie-itens');
+  el.innerHTML = '<div class="dossie-vazio">Carregando os dossiês do Notion…</div>';
+  try {
+    const d = await apiFer('dossies');
+    _dossies = d.dossies || [];
+    dossieFiltrar();
+  } catch (e) {
+    el.innerHTML = '<div class="dossie-vazio">' + escapeHtml(e.message) + '</div>';
+  }
+}
+
+function dossieFiltrar() {
+  const termo = ferSemAcento(document.getElementById('dossie-busca') ? document.getElementById('dossie-busca').value : '');
+  const lista = _dossies.filter(d => !termo || ferSemAcento(d.nome).includes(termo));
+  const el = document.getElementById('dossie-itens');
+  if (!lista.length) {
+    el.innerHTML = '<div class="dossie-vazio">' + (_dossies.length ? 'Nenhum dossiê com esse nome.' : 'Nenhum dossiê na base do Notion.') + '</div>';
+    return;
+  }
+  el.innerHTML = lista.slice(0, 300).map(d => '<button class="dossie-item' + (_dossieSel && _dossieSel.id === d.id ? ' sel' : '')
+    + '" onclick="dossieSelecionar(\'' + escAttr(d.id) + '\')">'
+    + '<b>' + escapeHtml(d.nome) + '</b>'
+    + '<span>' + escapeHtml([d.closer ? 'Closer: ' + d.closer : '', d.dataFechamento || ''].filter(Boolean).join(' · ') || 'Sem closer na base') + '</span>'
+    + '</button>').join('');
+}
+
+function dossieSelecionar(id) {
+  _dossieSel = _dossies.find(d => d.id === id) || null;
+  _dossieCands = [];
+  if (!_dossieSel) return;
+  const proj = ferProjetoDoCliente(_dossieSel.nome);
+  const neg = ferNegociacaoDoProjeto(proj);
+  const gravacoes = {};
+  DOSSIE_ETAPAS.forEach(e => { gravacoes[e.chave] = { gravacao: '', entrega: '', nota: '' }; });
+  _dossieCampos = {
+    cliente: _dossieSel.nome,
+    projetoId: proj ? String(proj.id) : '',
+    consultor: (proj && proj.consultor) || (currentPerfil && currentPerfil.consultor) || (USUARIO_ATUAL && USUARIO_ATUAL.nome_exibicao) || '',
+    closer: _dossieSel.closer || '',
+    pastaDrive: '',
+    gravacoes,
+    produto: neg.produto,
+    valor: neg.valor,
+    formaPagamento: '',
+    inicioServico: '',
+    motivacao: '',
+    objecoes: '',
+    promessas: '',
+    informacoes: '',
+    contrato: '',
+  };
+  dossieFiltrar();
+  dossieRenderForm();
+}
+
+function dossieSet(campo, valor) {
+  if (!_dossieCampos) return;
+  _dossieCampos[campo] = valor;
+}
+
+function dossieSetEtapa(chave, qual, valor) {
+  if (!_dossieCampos) return;
+  if (!_dossieCampos.gravacoes[chave]) _dossieCampos.gravacoes[chave] = { gravacao: '', entrega: '', nota: '' };
+  _dossieCampos.gravacoes[chave][qual] = valor;
+}
+
+function dossieProjetoMudou(valor) {
+  if (!_dossieCampos) return;
+  _dossieCampos.projetoId = valor;
+  const proj = (typeof projects !== 'undefined') ? projects.find(p => String(p.id) === String(valor)) : null;
+  if (proj) {
+    const neg = ferNegociacaoDoProjeto(proj);
+    _dossieCampos.consultor = proj.consultor || _dossieCampos.consultor;
+    if (!_dossieCampos.produto) _dossieCampos.produto = neg.produto;
+    if (!_dossieCampos.valor) _dossieCampos.valor = neg.valor;
+  }
+  dossieRenderForm();
+}
+
+function ferCampo(rotulo, campo, opcoes) {
+  const o = opcoes || {};
+  const v = (_dossieCampos && _dossieCampos[campo]) || '';
+  const attr = 'class="aud-inp" oninput="dossieSet(\'' + campo + '\', this.value)"'
+    + (o.tipo ? ' type="' + o.tipo + '"' : '')
+    + (o.placeholder ? ' placeholder="' + escAttr(o.placeholder) + '"' : '');
+  return '<label class="fer-campo"><span>' + escapeHtml(rotulo) + '</span>'
+    + (o.longo
+      ? '<textarea ' + attr + '>' + escapeHtml(v) + '</textarea>'
+      : '<input ' + attr + ' value="' + escAttr(v) + '">')
+    + '</label>';
+}
+
+function dossieRenderForm() {
+  const el = document.getElementById('dossie-form');
+  if (!el || !_dossieCampos) return;
+  const d = _dossieCampos;
+  const proj = (typeof projects !== 'undefined') ? projects.find(p => String(p.id) === String(d.projetoId)) : null;
+
+  const opcoesProj = '<option value="">— sem projeto no painel —</option>'
+    + ((typeof projects !== 'undefined' ? projects : []).slice()
+        .sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'))
+        .map(p => '<option value="' + escAttr(String(p.id)) + '"' + (String(p.id) === String(d.projetoId) ? ' selected' : '') + '>'
+          + escapeHtml(p.nome) + (p.consultor ? ' · ' + escapeHtml(p.consultor) : '') + '</option>').join(''));
+
+  const candidatas = _dossieCands.length > 1
+    ? '<label class="fer-campo"><span>Outra pasta com esse nome</span><select class="aud-inp" onchange="dossieTrocarPasta(this.value)">'
+      + _dossieCands.map(c => '<option value="' + escAttr(c.id) + '"' + (c.link === d.pastaDrive ? ' selected' : '') + '>' + escapeHtml(c.nome) + '</option>').join('')
+      + '</select></label>'
+    : '';
+
+  const etapas = DOSSIE_ETAPAS.map(e => {
+    const g = d.gravacoes[e.chave] || {};
+    const dataEtapa = proj && proj.entregas && proj.entregas[e.idx] && proj.entregas[e.idx].real;
+    return '<div class="fer-campo"><span>' + escapeHtml(e.rotulo) + (dataEtapa ? ' · ' + escapeHtml(fmtD ? fmtD(dataEtapa) : dataEtapa) : ' · sem data no painel') + '</span>'
+      + '<div class="fer-duas">'
+      + '<input class="aud-inp" placeholder="Link da gravação/transcrição" value="' + escAttr(g.gravacao || '') + '" oninput="dossieSetEtapa(\'' + e.chave + '\',\'gravacao\', this.value)">'
+      + '<input class="aud-inp" placeholder="Link do arquivo da entrega" value="' + escAttr(g.entrega || '') + '" oninput="dossieSetEtapa(\'' + e.chave + '\',\'entrega\', this.value)">'
+      + '</div></div>';
+  }).join('');
+
+  el.innerHTML = ''
+    + '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:12px;">'
+      + '<div><b style="font-size:var(--fs-lg);">' + escapeHtml(_dossieSel.nome) + '</b>'
+      + '<div style="font-size:var(--fs-xs);color:var(--text-hint);">Vai escrever dentro de “💰 Fechamento Expansão”</div></div>'
+      + (_dossieSel.url ? '<a class="btn btn-ghost" href="' + escAttr(_dossieSel.url) + '" target="_blank" rel="noopener noreferrer">Abrir no Notion</a>' : '')
+    + '</div>'
+
+    + '<p class="fer-secao">1. Entregas do projeto</p>'
+    + '<div class="fer-duas">'
+      + ferCampo('Cliente (é o nome que o painel procura no Drive)', 'cliente')
+      + '<label class="fer-campo"><span>Projeto no painel</span><select class="aud-inp" onchange="dossieProjetoMudou(this.value)">' + opcoesProj + '</select></label>'
+    + '</div>'
+    + '<div class="fer-duas">' + ferCampo('Consultor', 'consultor') + ferCampo('Closer', 'closer') + '</div>'
+    + ferCampo('Pasta do projeto (Drive)', 'pastaDrive', { placeholder: 'https://drive.google.com/…' })
+    + candidatas
+    + '<div class="fer-acoes">'
+      + '<button class="btn btn-ghost" id="dossie-btn-buscar" onclick="dossieBuscarContexto()">Buscar no Drive e na Agenda</button>'
+      + '<span id="dossie-busca-msg" style="font-size:var(--fs-sm);color:var(--text-hint);align-self:center;"></span>'
+    + '</div>'
+    + '<p class="fer-secao">Gravações das reuniões / Transcrição</p>'
+    + etapas
+
+    + '<p class="fer-secao" style="margin-top:18px;">2. Negociação e contrato</p>'
+    + '<div class="fer-duas">' + ferCampo('Produto contratado', 'produto') + ferCampo('Valor', 'valor') + '</div>'
+    + '<div class="fer-duas">' + ferCampo('Forma de pagamento', 'formaPagamento') + ferCampo('Data de início do novo serviço', 'inicioServico', { tipo: 'date' }) + '</div>'
+    + ferCampo('Link do contrato assinado', 'contrato', { placeholder: 'https://…' })
+    + '<div class="fer-acoes">'
+      + '<button class="btn btn-ghost" id="dossie-btn-ia" onclick="dossieRedigir()">Escrever os textos com a IA</button>'
+      + '<span id="dossie-ia-msg" style="font-size:var(--fs-sm);color:var(--text-hint);align-self:center;"></span>'
+    + '</div>'
+    + ferCampo('O que motivou a contratação', 'motivacao', { longo: true })
+    + ferCampo('Objeções levantadas e como foram tratadas', 'objecoes', { longo: true })
+    + ferCampo('Promessas e expectativas geradas', 'promessas', { longo: true })
+
+    + '<p class="fer-secao" style="margin-top:18px;">4. Informações importantes sobre o projeto</p>'
+    + ferCampo('', 'informacoes', { longo: true })
+
+    + '<div class="fer-acoes" style="border-top:1px solid var(--border);padding-top:14px;">'
+      + '<button class="btn btn-primary" id="dossie-btn-gravar" onclick="dossieGravar(false)">Alimentar dossiê no Notion</button>'
+      + '<span id="dossie-msg" class="conta-msg" style="align-self:center;"></span>'
+    + '</div>';
+}
+
+function dossieTrocarPasta(id) {
+  const c = _dossieCands.find(x => x.id === id);
+  if (!c || !_dossieCampos) return;
+  _dossieCampos.pastaDrive = c.link;
+  dossieRenderForm();
+  dossieBuscarContexto(id);
+}
+
+async function dossieBuscarContexto(pastaId) {
+  if (!_dossieCampos || _dossieBuscando) return;
+  const msg = document.getElementById('dossie-busca-msg');
+  const btn = document.getElementById('dossie-btn-buscar');
+  _dossieBuscando = true;
+  if (btn) btn.disabled = true;
+  if (msg) { msg.style.color = 'var(--text-hint)'; msg.textContent = 'Procurando a pasta, as entregas e as reuniões…'; }
+  const proj = (typeof projects !== 'undefined') ? projects.find(p => String(p.id) === String(_dossieCampos.projetoId)) : null;
+  const etapas = DOSSIE_ETAPAS.map(e => ({
+    chave: e.chave,
+    data: (proj && proj.entregas && proj.entregas[e.idx] && proj.entregas[e.idx].real) || '',
+  }));
+  try {
+    const r = await apiFer('contexto', { corpo: { cliente: _dossieCampos.cliente, etapas, pastaId: pastaId || undefined } });
+    _dossieCands = r.candidatas || [];
+    if (r.pasta) _dossieCampos.pastaDrive = r.pasta.link || _dossieCampos.pastaDrive;
+    let achados = 0;
+    DOSSIE_ETAPAS.forEach(e => {
+      const alvo = _dossieCampos.gravacoes[e.chave] || (_dossieCampos.gravacoes[e.chave] = { gravacao: '', entrega: '', nota: '' });
+      const g = r.gravacoes && r.gravacoes[e.chave];
+      const ent = r.entregas && r.entregas[e.chave];
+      if (g && g.link && !alvo.gravacao) { alvo.gravacao = g.link; alvo.docId = g.docId || null; alvo.titulo = g.titulo || ''; achados++; }
+      else if (g && g.docId) { alvo.docId = g.docId; alvo.titulo = g.titulo || ''; }
+      if (ent && ent.link && !alvo.entrega) { alvo.entrega = ent.link; achados++; }
+    });
+    dossieRenderForm();
+    const m2 = document.getElementById('dossie-busca-msg');
+    if (m2) {
+      m2.textContent = r.pasta
+        ? 'Pasta: ' + (r.pasta.nome || 'encontrada') + ' · ' + achados + ' link(s) preenchido(s)' + (_dossieCands.length > 1 ? ' · ' + _dossieCands.length + ' pastas com esse nome' : '')
+        : 'Não achei pasta com esse nome no seu Drive. Cole o link à mão.';
+    }
+  } catch (e) {
+    if (msg) { msg.style.color = 'var(--red)'; msg.textContent = e.message; }
+  } finally {
+    _dossieBuscando = false;
+    const b2 = document.getElementById('dossie-btn-buscar');
+    if (b2) b2.disabled = false;
+  }
+}
+
+async function dossieRedigir() {
+  if (!_dossieCampos) return;
+  const btn = document.getElementById('dossie-btn-ia');
+  const msg = document.getElementById('dossie-ia-msg');
+  if (btn) btn.disabled = true;
+  if (msg) { msg.style.color = 'var(--text-hint)'; msg.textContent = 'Lendo as anotações das reuniões…'; }
+  try {
+    const r = await apiFer('redigir', { corpo: {
+      cliente: _dossieCampos.cliente,
+      gravacoes: _dossieCampos.gravacoes,
+      negociacao: {
+        produto: _dossieCampos.produto, valor: _dossieCampos.valor,
+        formaPagamento: _dossieCampos.formaPagamento, inicioServico: _dossieCampos.inicioServico,
+        closer: _dossieCampos.closer,
+      },
+    } });
+    const c = r.campos || {};
+    ['motivacao', 'objecoes', 'promessas', 'informacoes'].forEach(k => { if (c[k]) _dossieCampos[k] = c[k]; });
+    dossieRenderForm();
+    const m2 = document.getElementById('dossie-ia-msg');
+    if (m2) m2.textContent = 'Escrito a partir de ' + (r.reunioesLidas || 0) + ' reunião(ões). Revise antes de gravar.';
+  } catch (e) {
+    if (msg) { msg.style.color = 'var(--red)'; msg.textContent = e.message; }
+  } finally {
+    const b2 = document.getElementById('dossie-btn-ia');
+    if (b2) b2.disabled = false;
+  }
+}
+
+async function dossieGravar(substituir) {
+  if (!_dossieCampos || !_dossieSel) return;
+  const btn = document.getElementById('dossie-btn-gravar');
+  const msg = document.getElementById('dossie-msg');
+  if (btn) btn.disabled = true;
+  if (msg) { msg.className = 'conta-msg'; msg.textContent = 'Gravando no Notion…'; }
+  try {
+    await apiFer('gravar', { corpo: { pageId: _dossieSel.id, dados: _dossieCampos, substituir: !!substituir } });
+    if (msg) { msg.className = 'conta-msg ok'; msg.textContent = 'Dossiê alimentado.'; }
+    showToast && showToast('Dossiê alimentado no Notion', 'success');
+  } catch (e) {
+    if (e.status === 409 && e.dados && e.dados.jaTemConteudo) {
+      if (msg) { msg.className = 'conta-msg'; msg.textContent = ''; }
+      const ok = await showConfirm('A seção “Fechamento Expansão” desse dossiê já tem conteúdo. Substituir o que está lá pelo que você preencheu aqui?');
+      if (ok) { const b = document.getElementById('dossie-btn-gravar'); if (b) b.disabled = false; return dossieGravar(true); }
+      if (msg) { msg.className = 'conta-msg'; msg.textContent = 'Nada foi gravado.'; }
+    } else if (msg) {
+      msg.className = 'conta-msg erro'; msg.textContent = e.message;
+    }
+  } finally {
+    const b2 = document.getElementById('dossie-btn-gravar');
+    if (b2) b2.disabled = false;
+  }
+}
+
+// ── Convites das etapas na agenda ───────────────────────────────────
+
+let _agProj = null;
+
+function agendaAbrir() {
+  const impedimento = ferramentasPodeUsar();
+  if (impedimento) { showAlert(impedimento); return; }
+  _agProj = null;
+  document.getElementById('modal-agenda').style.display = 'flex';
+  agendaRender();
+}
+
+function agendaFechar() {
+  document.getElementById('modal-agenda').style.display = 'none';
+}
+
+// Data sugerida pra cada etapa: a data real, quando o projeto já registrou; senão o início
+// mais uma semana por etapa, que é a cadência padrão. É sugestão — o consultor ajusta.
+function agendaDataSugerida(p, idx) {
+  const real = p && p.entregas && p.entregas[idx] && p.entregas[idx].real;
+  if (real) return real;
+  if (p && p.inicio && typeof addDays === 'function') return addDays(p.inicio, 7 * idx);
+  return '';
+}
+
+function agendaRender() {
+  const el = document.getElementById('agenda-corpo');
+  if (!el) return;
+  const lista = (typeof projects !== 'undefined' ? projects : []).slice()
+    .filter(p => p.nome)
+    .sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
+  const p = _agProj;
+  const nomes = (typeof SEM_NOMES !== 'undefined') ? SEM_NOMES : [];
+
+  const etapas = p ? nomes.map((nome, i) => {
+    const data = agendaDataSugerida(p, i);
+    const valor = data ? data + 'T10:00' : '';
+    return '<div class="fer-etapa">'
+      + '<input type="checkbox" id="ag-on-' + i + '"' + (i === 1 || i === 6 ? ' checked' : '') + ' aria-label="Criar convite da etapa ' + escAttr(nomeEtapa(p, i)) + '">'
+      + '<label for="ag-on-' + i + '">' + escapeHtml(nomeEtapa(p, i)) + '</label>'
+      + '<input class="aud-inp" type="datetime-local" id="ag-dt-' + i + '" value="' + escAttr(valor) + '" aria-label="Data e hora">'
+      + '<select class="aud-inp" id="ag-dur-' + i + '" aria-label="Duração">'
+        + [30, 45, 60, 90, 120].map(m => '<option value="' + m + '"' + (m === 60 ? ' selected' : '') + '>' + m + ' min</option>').join('')
+      + '</select>'
+      + '<span style="font-size:var(--fs-xs);color:var(--text-hint);">' + (p.entregas && p.entregas[i] && p.entregas[i].real ? 'data real' : 'sugestão') + '</span>'
+      + '</div>';
+  }).join('') : '';
+
+  const designer = p && p.designer ? p.designer : '';
+  el.innerHTML = ''
+    + '<label class="fer-campo"><span>Projeto</span><select class="aud-inp" id="ag-proj" onchange="agendaProjetoMudou(this.value)">'
+      + '<option value="">— escolha o projeto —</option>'
+      + lista.map(x => '<option value="' + escAttr(String(x.id)) + '"' + (p && String(x.id) === String(p.id) ? ' selected' : '') + '>'
+        + escapeHtml(x.nome) + (x.consultor ? ' · ' + escapeHtml(x.consultor) : '') + '</option>').join('')
+    + '</select></label>'
+    + (!p ? '<div class="dossie-vazio">Escolha o projeto para ver as etapas.</div>' : ''
+      + '<p class="fer-secao" style="margin-top:14px;">Etapas — marque as que quer criar</p>'
+      + etapas
+      + '<p class="fer-secao" style="margin-top:18px;">Convidados</p>'
+      + '<div class="fer-chips" style="margin-bottom:8px;">'
+        + '<span class="fer-chip">Lennary · obrigatória</span>'
+        + (designer ? '<span class="fer-chip">' + escapeHtml(designer) + ' (designer) · obrigatório</span>'
+                    : '<span class="fer-chip">projeto sem designer no painel</span>')
+      + '</div>'
+      + '<label class="fer-campo"><span>Outros e-mails (um por linha ou separados por vírgula)</span>'
+        + '<textarea class="aud-inp" id="ag-convidados" placeholder="contato@cliente.com.br"></textarea></label>'
+      + '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);color:var(--text-hint);margin-bottom:12px;">'
+        + '<input type="checkbox" id="ag-meet" checked> Criar link do Meet em cada convite</label>'
+      + '<div class="fer-acoes" style="border-top:1px solid var(--border);padding-top:14px;">'
+        + '<button class="btn btn-primary" id="ag-btn" onclick="agendaCriar()">Criar convites</button>'
+        + '<span id="ag-msg" class="conta-msg" style="align-self:center;"></span>'
+      + '</div>'
+      + '<div class="fer-resultado" id="ag-resultado"></div>');
+}
+
+function agendaProjetoMudou(id) {
+  _agProj = (typeof projects !== 'undefined') ? projects.find(p => String(p.id) === String(id)) || null : null;
+  agendaRender();
+}
+
+async function agendaCriar() {
+  const p = _agProj;
+  if (!p) return;
+  const nomes = (typeof SEM_NOMES !== 'undefined') ? SEM_NOMES : [];
+  const eventos = [];
+  nomes.forEach((nome, i) => {
+    const on = document.getElementById('ag-on-' + i);
+    if (!on || !on.checked) return;
+    const dt = document.getElementById('ag-dt-' + i);
+    const dur = document.getElementById('ag-dur-' + i);
+    eventos.push({
+      titulo: p.nome + ' · ' + nomeEtapa(p, i),
+      inicio: dt ? dt.value : '',
+      minutos: dur ? parseInt(dur.value, 10) : 60,
+      descricao: 'Etapa “' + nomeEtapa(p, i) + '” do projeto ' + p.nome + '. Convite criado pelo Painel Growth Hunters.',
+    });
+  });
+  const msg = document.getElementById('ag-msg');
+  if (!eventos.length) { if (msg) { msg.className = 'conta-msg erro'; msg.textContent = 'Marque pelo menos uma etapa.'; } return; }
+  const semData = eventos.filter(e => !e.inicio);
+  if (semData.length) { if (msg) { msg.className = 'conta-msg erro'; msg.textContent = 'Falta a data e a hora de: ' + semData.map(e => e.titulo).join(', '); } return; }
+
+  const convidados = (document.getElementById('ag-convidados') ? document.getElementById('ag-convidados').value : '')
+    .split(/[\s,;]+/).map(s => s.trim()).filter(Boolean);
+  const comMeet = !!(document.getElementById('ag-meet') && document.getElementById('ag-meet').checked);
+
+  const resumo = eventos.length === 1
+    ? 'Criar 1 convite e avisar os convidados por e-mail?'
+    : 'Criar ' + eventos.length + ' convites e avisar os convidados por e-mail?';
+  if (!(await showConfirm(resumo + '\n\n' + eventos.map(e => '• ' + e.titulo + ' — ' + e.inicio.replace('T', ' às ')).join('\n')))) return;
+
+  const btn = document.getElementById('ag-btn');
+  if (btn) btn.disabled = true;
+  if (msg) { msg.className = 'conta-msg'; msg.textContent = 'Criando na sua agenda…'; }
+  try {
+    const r = await apiFer('agenda', { corpo: { cliente: p.nome, eventos, convidados, designer: p.designer || '', comMeet } });
+    const res = document.getElementById('ag-resultado');
+    if (res) {
+      res.innerHTML = (r.criados || []).map(c => '✅ ' + escapeHtml(c.titulo) + ' — '
+          + (c.link ? '<a href="' + escAttr(c.link) + '" target="_blank" rel="noopener noreferrer">abrir na agenda</a>' : 'criado')).join('<br>')
+        + ((r.falhas || []).length ? '<br>' + r.falhas.map(f => '⚠️ ' + escapeHtml(f.titulo) + ' — ' + escapeHtml(f.erro)).join('<br>') : '')
+        + '<div style="margin-top:8px;color:var(--text-hint);font-size:var(--fs-xs);">Convidados: '
+          + escapeHtml((r.convidados || []).map(c => c.email + (c.obrigatorio ? ' (obrigatório)' : '')).join(', ')) + '</div>';
+    }
+    if (msg) { msg.className = 'conta-msg ok'; msg.textContent = (r.criados || []).length + ' convite(s) criado(s).'; }
+    showToast && showToast('Convites criados na sua agenda', 'success');
+  } catch (e) {
+    if (msg) { msg.className = 'conta-msg erro'; msg.textContent = e.message; }
+  } finally {
+    const b2 = document.getElementById('ag-btn');
+    if (b2) b2.disabled = false;
+  }
+}
+
 </script>
 </body>
 </html>

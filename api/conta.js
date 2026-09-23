@@ -9,12 +9,15 @@
 //   POST   /api/conta?r=usuarios           cadastrar (ADM)
 //   PATCH  /api/conta?r=usuarios&id=...    alterar
 //   DELETE /api/conta?r=usuarios&id=...    remover (ADM)
+//   GET    /api/conta?r=ferramentas&f=dossies   ferramentas do consultor (dossiê e agenda),
+//   POST   /api/conta?r=ferramentas&f=...       uma rota por ferramenta — ver rota-ferramentas.js
 
 import token from './_lib/rota-token.js';
 import sessao from './_lib/rota-sessao.js';
 import usuarios from './_lib/rota-usuarios.js';
+import ferramentas from './_lib/rota-ferramentas.js';
 
-const ROTAS = { token, sessao, usuarios };
+const ROTAS = { token, sessao, usuarios, ferramentas };
 
 export default async function handler(req, res) {
   const rota = ROTAS[req.query && req.query.r];
