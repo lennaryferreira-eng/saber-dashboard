@@ -19262,11 +19262,13 @@ async function dossieGravar(substituir) {
 // ── Convites das etapas na agenda ───────────────────────────────────
 
 let _agProj = null;
+let _agBusca = '';
 
 function agendaAbrir() {
   const impedimento = ferramentasPodeUsar();
   if (impedimento) { showAlert(impedimento); return; }
   _agProj = null;
+  _agBusca = '';
   document.getElementById('modal-agenda').style.display = 'flex';
   agendaRender();
 }
@@ -19284,16 +19286,74 @@ function agendaDataSugerida(p, idx) {
   return '';
 }
 
+// A tela é montada em três pedaços de propósito: a busca e o select (que não são
+// redesenhados a cada tecla, senão o campo perde o foco e o que foi digitado), e a área de
+// baixo com as etapas e os convidados, que troca quando o projeto muda.
 function agendaRender() {
   const el = document.getElementById('agenda-corpo');
   if (!el) return;
-  const lista = (typeof projects !== 'undefined' ? projects : []).slice()
+  el.innerHTML = ''
+    + '<label class="fer-campo"><span>Buscar cliente</span>'
+      + '<input class="aud-inp" type="search" id="ag-busca" placeholder="Parte do nome do cliente ou do consultor" oninput="agendaFiltrar()" autocomplete="off" aria-label="Buscar cliente"></label>'
+    + '<label class="fer-campo"><span>Projeto</span>'
+      + '<select class="aud-inp" id="ag-proj" onchange="agendaProjetoMudou(this.value)"></select>'
+      + '<span id="ag-conta" style="display:block;font-size:var(--fs-xs);color:var(--text-hint);margin-top:4px;"></span></label>'
+    + '<div id="ag-area"></div>';
+  agendaFiltrar();
+  const busca = document.getElementById('ag-busca');
+  if (busca) busca.focus();
+}
+
+function agendaProjetosFiltrados() {
+  const termo = ferSemAcento(_agBusca);
+  return (typeof projects !== 'undefined' ? projects : []).slice()
     .filter(p => p.nome)
+    .filter(p => !termo || ferSemAcento(p.nome).includes(termo) || ferSemAcento(p.consultor).includes(termo))
     .sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
+}
+
+function agendaOpcao(p) {
+  return '<option value="' + escAttr(String(p.id)) + '"' + (_agProj && String(p.id) === String(_agProj.id) ? ' selected' : '') + '>'
+    + escapeHtml(p.nome) + (p.consultor ? ' · ' + escapeHtml(p.consultor) : '') + '</option>';
+}
+
+function agendaFiltrar() {
+  const inp = document.getElementById('ag-busca');
+  _agBusca = inp ? inp.value : '';
+  const lista = agendaProjetosFiltrados();
+  const sel = document.getElementById('ag-proj');
+  if (!sel) return;
+
+  // Sobrou um só: já escolhe, pra não pedir um clique a mais depois de digitar o nome.
+  const unico = lista.length === 1 ? lista[0] : null;
+  const jaEra = _agProj ? String(_agProj.id) : '';
+  if (unico) _agProj = unico;
+
+  // Projeto escolhido que o filtro atual não pega continua na lista, senão o select mostraria
+  // "escolha o projeto" enquanto as etapas embaixo são de um projeto de verdade.
+  const dentro = _agProj && lista.some(p => String(p.id) === String(_agProj.id));
+  sel.innerHTML = '<option value="">— ' + (lista.length ? 'escolha o projeto' : 'nenhum projeto com esse nome') + ' —</option>'
+    + (_agProj && !dentro ? agendaOpcao(_agProj) : '')
+    + lista.map(agendaOpcao).join('');
+
+  const conta = document.getElementById('ag-conta');
+  if (conta) {
+    conta.textContent = _agBusca.trim()
+      ? lista.length + (lista.length === 1 ? ' projeto encontrado' : ' projetos encontrados')
+      : lista.length + ' projetos no painel';
+  }
+  if (_agProj && String(_agProj.id) !== jaEra) agendaRenderEtapas();
+}
+
+// Etapas, convidados e o botão — o pedaço que depende do projeto escolhido.
+function agendaRenderEtapas() {
+  const area = document.getElementById('ag-area');
+  if (!area) return;
   const p = _agProj;
+  if (!p) { area.innerHTML = '<div class="dossie-vazio">Escolha o projeto para ver as etapas.</div>'; return; }
   const nomes = (typeof SEM_NOMES !== 'undefined') ? SEM_NOMES : [];
 
-  const etapas = p ? nomes.map((nome, i) => {
+  const etapas = nomes.map((nome, i) => {
     const data = agendaDataSugerida(p, i);
     const valor = data ? data + 'T10:00' : '';
     return '<div class="fer-etapa">'
@@ -19305,34 +19365,28 @@ function agendaRender() {
       + '</select>'
       + '<span style="font-size:var(--fs-xs);color:var(--text-hint);">' + (p.entregas && p.entregas[i] && p.entregas[i].real ? 'data real' : 'sugestão') + '</span>'
       + '</div>';
-  }).join('') : '';
+  }).join('');
 
-  const designer = p && p.designer ? p.designer : '';
-  el.innerHTML = ''
-    + '<label class="fer-campo"><span>Projeto</span><select class="aud-inp" id="ag-proj" onchange="agendaProjetoMudou(this.value)">'
-      + '<option value="">— escolha o projeto —</option>'
-      + lista.map(x => '<option value="' + escAttr(String(x.id)) + '"' + (p && String(x.id) === String(p.id) ? ' selected' : '') + '>'
-        + escapeHtml(x.nome) + (x.consultor ? ' · ' + escapeHtml(x.consultor) : '') + '</option>').join('')
-    + '</select></label>'
-    + (!p ? '<div class="dossie-vazio">Escolha o projeto para ver as etapas.</div>' : ''
-      + '<p class="fer-secao" style="margin-top:14px;">Etapas — marque as que quer criar</p>'
-      + etapas
-      + '<p class="fer-secao" style="margin-top:18px;">Convidados</p>'
-      + '<div class="fer-chips" style="margin-bottom:8px;">'
-        + '<span class="fer-chip">' + escapeHtml((USUARIO_ATUAL && USUARIO_ATUAL.nome_exibicao) || 'Você') + ' · organizador</span>'
-        + '<span class="fer-chip">Lennary · obrigatória</span>'
-        + (designer ? '<span class="fer-chip">' + escapeHtml(designer) + ' (designer) · obrigatório</span>'
-                    : '<span class="fer-chip">projeto sem designer no painel</span>')
-      + '</div>'
-      + '<label class="fer-campo"><span>Outros e-mails (um por linha ou separados por vírgula)</span>'
-        + '<textarea class="aud-inp" id="ag-convidados" placeholder="contato@cliente.com.br"></textarea></label>'
-      + '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);color:var(--text-hint);margin-bottom:12px;">'
-        + '<input type="checkbox" id="ag-meet" checked> Criar link do Meet em cada convite</label>'
-      + '<div class="fer-acoes" style="border-top:1px solid var(--border);padding-top:14px;">'
-        + '<button class="btn btn-primary" id="ag-btn" onclick="agendaCriar()">Criar convites</button>'
-        + '<span id="ag-msg" class="conta-msg" style="align-self:center;"></span>'
-      + '</div>'
-      + '<div class="fer-resultado" id="ag-resultado"></div>');
+  const designer = p.designer || '';
+  area.innerHTML = ''
+    + '<p class="fer-secao" style="margin-top:14px;">Etapas de ' + escapeHtml(p.nome) + ' — marque as que quer criar</p>'
+    + etapas
+    + '<p class="fer-secao" style="margin-top:18px;">Convidados</p>'
+    + '<div class="fer-chips" style="margin-bottom:8px;">'
+      + '<span class="fer-chip">' + escapeHtml((USUARIO_ATUAL && USUARIO_ATUAL.nome_exibicao) || 'Você') + ' · organizador</span>'
+      + '<span class="fer-chip">Lennary · obrigatória</span>'
+      + (designer ? '<span class="fer-chip">' + escapeHtml(designer) + ' (designer) · obrigatório</span>'
+                  : '<span class="fer-chip">projeto sem designer no painel</span>')
+    + '</div>'
+    + '<label class="fer-campo"><span>Outros e-mails (um por linha ou separados por vírgula)</span>'
+      + '<textarea class="aud-inp" id="ag-convidados" placeholder="contato@cliente.com.br"></textarea></label>'
+    + '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);color:var(--text-hint);margin-bottom:12px;">'
+      + '<input type="checkbox" id="ag-meet" checked> Criar link do Meet em cada convite</label>'
+    + '<div class="fer-acoes" style="border-top:1px solid var(--border);padding-top:14px;">'
+      + '<button class="btn btn-primary" id="ag-btn" onclick="agendaCriar()">Criar convites</button>'
+      + '<span id="ag-msg" class="conta-msg" style="align-self:center;"></span>'
+    + '</div>'
+    + '<div class="fer-resultado" id="ag-resultado"></div>';
 }
 
 // Padrão do título combinado com a coordenação em 23/09/2026:
@@ -19345,7 +19399,7 @@ function tituloDoConvite(p, i) {
 
 function agendaProjetoMudou(id) {
   _agProj = (typeof projects !== 'undefined') ? projects.find(p => String(p.id) === String(id)) || null : null;
-  agendaRender();
+  agendaRenderEtapas();
 }
 
 async function agendaCriar() {
