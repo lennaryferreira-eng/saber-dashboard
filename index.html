@@ -19021,6 +19021,7 @@ function dossieSelecionar(id) {
     promessas: '',
     informacoes: '',
     contrato: '',
+    contratoArquivo: null,
     callExpansao: '',
   };
   dossieFiltrar();
@@ -19122,6 +19123,12 @@ function dossieRenderForm() {
     + '<div class="fer-duas">' + ferCampo('Produto contratado', 'produto') + ferCampo('Valor', 'valor') + '</div>'
     + '<div class="fer-duas">' + ferCampo('Forma de pagamento', 'formaPagamento') + ferCampo('Data de início do novo serviço', 'inicioServico', { tipo: 'date' }) + '</div>'
     + ferCampo('Link do contrato assinado (PDF ou Doc no Drive — a IA lê daqui)', 'contrato', { placeholder: 'https://drive.google.com/file/d/…' })
+    + '<label class="fer-campo"><span>Ou anexe o PDF baixado no computador (até 3&nbsp;MB — não precisa estar no Drive)</span>'
+      + (d.contratoArquivo
+          ? ('<div class="fer-arquivo"><span>📎 ' + escapeHtml(d.contratoArquivo.nome) + '</span><button type="button" class="btn btn-ghost btn-sm" onclick="dossieRemoverArquivo()">Remover</button></div>')
+          : '<input type="file" accept="application/pdf" class="aud-inp" onchange="dossieAnexarArquivo(this)">')
+      + '<span id="dossie-arquivo-msg" style="display:block;font-size:var(--fs-xs);color:var(--red);margin-top:4px;"></span>'
+    + '</label>'
     + ferCampo('Link da call de expansão (anotações ou transcrição no Drive)', 'callExpansao', { placeholder: 'https://docs.google.com/document/d/…' })
     + '<div class="fer-acoes">'
       + '<button class="btn btn-ghost" id="dossie-btn-ia" onclick="dossieRedigir()">Preencher com o contrato e a call</button>'
@@ -19139,6 +19146,43 @@ function dossieRenderForm() {
       + '<button class="btn btn-primary" id="dossie-btn-gravar" onclick="dossieGravar(false)">Alimentar dossiê no Notion</button>'
       + '<span id="dossie-msg" class="conta-msg" style="align-self:center;"></span>'
     + '</div>';
+}
+
+// Contrato anexado direto do computador, sem passar pelo Drive — pro caso do PDF assinado
+// não estar (ainda) na pasta do cliente. Vira base64 e some no payload do "redigir"; o
+// "gravar" no Notion não leva o arquivo, só o nome (ver dossieGravar).
+async function dossieAnexarArquivo(input) {
+  const f = input.files && input.files[0];
+  if (!f || !_dossieCampos) return;
+  const msg = document.getElementById('dossie-arquivo-msg');
+  if (msg) msg.textContent = '';
+  if (f.type !== 'application/pdf') {
+    if (msg) msg.textContent = 'Só PDF por enquanto — pra Doc do Drive, use o link acima.';
+    input.value = '';
+    return;
+  }
+  // 3 MB de PDF vira ~4 MB em base64 dentro do JSON — a função da Vercel recusa corpo acima
+  // de 4,5 MB, então a margem é pra caber o resto do payload (gravações, textos etc).
+  const LIMITE = 3 * 1024 * 1024;
+  if (f.size > LIMITE) {
+    if (msg) msg.textContent = 'Arquivo com ' + (f.size / 1024 / 1024).toFixed(1) + ' MB — máximo 3 MB. Suba no Drive e cole o link acima.';
+    input.value = '';
+    return;
+  }
+  const base64 = await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(',')[1] || '');
+    r.onerror = () => reject(new Error('Não deu pra ler o arquivo'));
+    r.readAsDataURL(f);
+  });
+  _dossieCampos.contratoArquivo = { nome: f.name, base64 };
+  dossieRenderForm();
+}
+
+function dossieRemoverArquivo() {
+  if (!_dossieCampos) return;
+  _dossieCampos.contratoArquivo = null;
+  dossieRenderForm();
 }
 
 function dossieTrocarPasta(id) {
@@ -19201,6 +19245,7 @@ async function dossieRedigir() {
       cliente: _dossieCampos.cliente,
       gravacoes: _dossieCampos.gravacoes,
       contrato: _dossieCampos.contrato,
+      contratoArquivo: _dossieCampos.contratoArquivo || null,
       callExpansao: _dossieCampos.callExpansao,
       negociacao: {
         produto: _dossieCampos.produto, valor: _dossieCampos.valor,
@@ -19240,8 +19285,13 @@ async function dossieGravar(substituir) {
   const msg = document.getElementById('dossie-msg');
   if (btn) btn.disabled = true;
   if (msg) { msg.className = 'conta-msg'; msg.textContent = 'Gravando no Notion…'; }
+  // O anexo local não vai pro Notion (não tem link pra escrever, e é peso à toa no payload) —
+  // fica só o nome do arquivo como registro de que o contrato não está no Drive.
+  const dados = { ..._dossieCampos };
+  if (!dados.contrato && dados.contratoArquivo) dados.contrato = 'Anexado localmente: ' + dados.contratoArquivo.nome + ' (não está no Drive)';
+  delete dados.contratoArquivo;
   try {
-    await apiFer('gravar', { corpo: { pageId: _dossieSel.id, dados: _dossieCampos, substituir: !!substituir } });
+    await apiFer('gravar', { corpo: { pageId: _dossieSel.id, dados, substituir: !!substituir } });
     if (msg) { msg.className = 'conta-msg ok'; msg.textContent = 'Dossiê alimentado.'; }
     showToast && showToast('Dossiê alimentado no Notion', 'success');
   } catch (e) {

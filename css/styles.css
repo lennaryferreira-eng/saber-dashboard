@@ -692,6 +692,8 @@ html body .modal-overlay.modal-aberto{display:flex!important;position:fixed!impo
 .fer-etapa label{font-size:var(--fs-sm);color:var(--text);}
 .fer-chips{display:flex;gap:6px;flex-wrap:wrap;}
 .fer-chip{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-xs);background:var(--surface2);border:1px solid var(--border);border-radius:999px;padding:3px 9px;color:var(--text-hint);}
+.fer-arquivo{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:var(--fs-sm);}
+.fer-arquivo span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .fer-resultado{margin-top:12px;font-size:var(--fs-sm);}
 .fer-resultado a{color:var(--accent);}
 @media (max-width:820px){

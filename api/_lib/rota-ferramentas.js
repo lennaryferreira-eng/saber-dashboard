@@ -179,7 +179,7 @@ Regras:
 
 async function rotaRedigir(req, res) {
   const { eu } = await quemEsta(req);
-  const { cliente, gravacoes, negociacao, contrato, callExpansao } = req.body || {};
+  const { cliente, gravacoes, negociacao, contrato, contratoArquivo, callExpansao } = req.body || {};
   if (!cliente) throw new ErroDeUso(400, 'Informe o cliente');
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new ErroDeUso(503, 'ANTHROPIC_API_KEY não configurada no servidor');
@@ -189,8 +189,13 @@ async function rotaRedigir(req, res) {
   const lidas = [];    // o que deu pra ler, pra dizer na tela
   const avisos = [];   // o que não deu, com o motivo
 
-  // 1) contrato assinado — PDF vai como documento (o Claude lê PDF nativo), Doc vai como texto
-  if (contrato) {
+  // 1) contrato assinado — anexo direto do computador tem prioridade (é PDF, a pessoa acabou
+  //    de escolher); sem anexo, lê do Drive pelo link. PDF vai como documento (o Claude lê PDF
+  //    nativo), Doc do Drive vai como texto.
+  if (contratoArquivo && contratoArquivo.base64) {
+    blocos.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: contratoArquivo.base64 } });
+    lidas.push('contrato (anexado: ' + (contratoArquivo.nome || 'PDF') + ')');
+  } else if (contrato) {
     try {
       const arq = await lerArquivoDoDrive({ accessToken, link: contrato });
       if (arq.pdfBase64) {
