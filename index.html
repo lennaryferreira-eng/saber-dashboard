@@ -15408,6 +15408,11 @@ let audFilaAtiva = null; // {itens:[...]}
 let audFilaProcessando = false; // trava contra dois loops de geração rodando ao mesmo tempo
 let audFilaRevisandoId = null; // id do item da fila carregado agora na tela de revisão (null = não veio da fila)
 let audFilaSaveTimer = null;
+// Guarda o item da fila quando audSalvar() tenta gravar no Supabase e falha — audCancelar()
+// (chamado por audSalvar antes do save) já zerou audFilaRevisandoId a essa altura, então sem
+// isso audTentarSalvarDeNovo() não teria como saber qual item da fila concluir quando a
+// gravação enfim for confirmada. Ver comentário em audSalvar().
+let _audItemFilaEmRetentativa = null;
 
 // ── Fila do Drive por pessoa (login novo) — Agenda + Drive de quem já conectou ──
 let audDriveView = 'lista'; // 'lista' | 'calendario'
@@ -16411,6 +16416,13 @@ async function audTentarSalvarDeNovo() {
   const r = await audPersistirAuditorias();
   audRenderLista();
   audMostrarResultadoSave(r, '✓ Avaliação salva.');
+  // Ver comentário em audSalvar(): se essa avaliação tinha vindo da fila e a primeira
+  // tentativa falhou, só agora (gravação confirmada) o item pode sair da fila de pendências.
+  if (r.ok && _audItemFilaEmRetentativa) {
+    _audItemFilaEmRetentativa.status = 'revisada';
+    _audItemFilaEmRetentativa = null;
+    audRenderFilaLista(); audFilaSalvarEstado();
+  }
 }
 
 async function audSalvar(){
@@ -16487,11 +16499,21 @@ async function audSalvar(){
   const rSave = await audPersistirAuditorias();
   audRenderLista();
   audMostrarResultadoSave(rSave, (estavaEditando?'✓ Alterações salvas.':'✓ Avaliação salva.')+msgExtra);
-  // Se essa avaliação veio de um item da fila, marca 'revisada' — a lista de fila reaparece
-  // sem esse item (as outras que já estejam prontas continuam esperando, sem gerar de novo).
-  if (itemDaFila) itemDaFila.status='revisada';
+  // Só marca 'revisada' (e tira o item da fila) depois que o Supabase confirmou a gravação —
+  // antes disso, o item sumia da fila mesmo quando o save falhava: a avaliação ficava só na
+  // memória do navegador com o aviso vermelho, mas a fila já achava o trabalho concluído, e se
+  // a pessoa não notasse o aviso e saísse da página, a avaliação se perdia sem sobrar nem o
+  // item pendente pra saber que precisava refazer.
+  if (rSave.ok) {
+    if (itemDaFila) itemDaFila.status='revisada';
+    _audItemFilaEmRetentativa = null;
+    audRenderFilaLista(); audFilaSalvarEstado();
+  } else {
+    // audFilaRevisandoId já foi zerado pelo audCancelar() lá em cima — guarda o item aqui pra
+    // audTentarSalvarDeNovo() conseguir concluir a fila quando a gravação for confirmada.
+    _audItemFilaEmRetentativa = itemDaFila;
+  }
   audFilaRevisandoId = null;
-  audRenderFilaLista(); audFilaSalvarEstado();
 }
 
 async function audRemover(id){
