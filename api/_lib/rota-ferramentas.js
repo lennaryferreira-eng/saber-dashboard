@@ -175,7 +175,8 @@ Regras:
 - Nada de elogio, adjetivo de vendedor ou frase de efeito. Quem lê precisa operar a conta amanhã.
 - Português do Brasil, direto, sem jargão de IA.
 - Pode usar marcação simples nos campos de texto, que o dossiê renderiza: **negrito**, listas começando a linha com "- ", listas numeradas com "1. " e "### " pra um subtítulo. Não use tabela nem bloco de código.
-- Nome de pessoa, valor e prazo: copie como está na fonte.`;
+- Nome de pessoa, valor e prazo: copie como está na fonte.
+- Se o documento da call de expansão não for sobre venda/negociação (ex: é uma reunião de entrega do projeto), não escreva isso como explicação — devolva o JSON normalmente, com "Não identificado nas reuniões — preencher à mão" nos campos que essa reunião não cobre. A resposta é SEMPRE só o JSON, mesmo quando a fonte não é a esperada.`;
 
 async function rotaRedigir(req, res) {
   const { eu } = await quemEsta(req);
@@ -272,7 +273,20 @@ async function rotaRedigir(req, res) {
   try {
     dados = JSON.parse(bruto);
   } catch (e) {
-    throw new ErroDeUso(502, 'A IA respondeu fora do formato esperado. Tente de novo ou escreva os campos à mão.');
+    // A instrução pede "só o JSON", mas às vezes a IA emenda uma explicação antes (ex: percebe
+    // que a call de expansão colada é na verdade uma reunião de entrega) — tenta achar o objeto
+    // dentro do texto antes de desistir.
+    const ini = bruto.indexOf('{');
+    const fim = bruto.lastIndexOf('}');
+    if (ini >= 0 && fim > ini) {
+      try { dados = JSON.parse(bruto.slice(ini, fim + 1)); } catch (e2) { /* mantém dados indefinido */ }
+    }
+  }
+  if (!dados) {
+    // Sem isso, o texto real que a IA respondeu era descartado — sem pista de por que falhou.
+    const trecho = bruto.replace(/\s+/g, ' ').slice(0, 280);
+    throw new ErroDeUso(502, 'A IA respondeu fora do formato esperado. Tente de novo ou escreva os campos à mão.'
+      + (trecho ? ' O que a IA respondeu: "' + trecho + (bruto.length > 280 ? '…' : '') + '"' : ''));
   }
   res.status(200).json({ campos: dados, lidas, avisos, reunioesLidas: reunioes });
 }
