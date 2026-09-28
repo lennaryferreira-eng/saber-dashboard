@@ -3262,7 +3262,7 @@ function buildOvReembolsosTabela(lista){
       + '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">'
       + '<span style="font-weight:600;font-size:var(--fs-xs);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(p.nome) + '">' + esc(p.nome) + '</span>'
       + '<select class="sel" style="font-size:var(--fs-3xs);padding:0 2px;height:17px;flex:none;border-color:' + cor + ';color:' + cor + ';" title="Marcar como concedido/revertido" onchange="ovSetReembolsoStatus(' + p.id + ',this.value)">'
-      + ['', 'Concedido', 'Revertido'].map(o => '<option value="' + o + '"' + (st === o ? ' selected' : '') + '>' + (o || 'Solicitado') + '</option>').join('')
+      + ['', 'Concedido', 'Revertido'].map(o => '<option value="' + o + '"' + (st === o ? ' selected' : '') + '>' + (o || 'Em tratativa') + '</option>').join('')
       + '</select>'
       + '</div>'
       + '<div style="font-size:var(--fs-3xs);color:var(--text-hint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + dataMotivo + '">' + dataMotivo + '</div>'
@@ -3356,6 +3356,7 @@ function buildReembolsos() {
 
   const concedidos = lista.filter(p => p.reembolsoStatus === 'Concedido');
   const revertidos = lista.filter(p => p.reembolsoStatus === 'Revertido');
+  const emTratativa = lista.filter(p => !p.reembolsoStatus);
   const total = lista.length;
   const pctDe = n => total > 0 ? Math.round(n / total * 100) : 0;
 
@@ -3368,7 +3369,7 @@ function buildReembolsos() {
     funilEl.innerHTML = '<div style="display:flex;flex-direction:column;gap:8px;">'
       + '<div><div style="display:flex;align-items:baseline;gap:8px;margin-bottom:3px;"><span style="font-size:var(--fs-sm);font-weight:600;color:var(--text);">Solicitados</span><span style="font-size:var(--fs-sm);font-weight:700;color:var(--blue);">' + total + '</span></div>'
       + '<div style="background:var(--surface3);border-radius:var(--r-sm);height:20px;overflow:hidden;"><div style="height:100%;width:100%;background:var(--blue);border-radius:var(--r-sm);opacity:.85;"></div></div></div>'
-      + '<div style="display:flex;gap:8px;">' + quadrado('Concedidos', concedidos.length, 'var(--amber)') + quadrado('Revertidos', revertidos.length, 'var(--accent)') + '</div>'
+      + '<div style="display:flex;gap:8px;">' + quadrado('Em tratativa', emTratativa.length, 'var(--purple)') + quadrado('Concedidos', concedidos.length, 'var(--amber)') + quadrado('Revertidos', revertidos.length, 'var(--accent)') + '</div>'
       + '</div>';
   }
 
@@ -3379,13 +3380,19 @@ function buildReembolsos() {
     const paraNumero = v => parseFloat(String(v||'').replace(/[^\d,.-]/g,'').replace(/\.(?=\d{3}(,|$))/g,'').replace(',','.')) || 0;
     const soma = arr => arr.reduce((s, p) => s + paraNumero(reembValorEfetivo(p)), 0);
     const fmtR = n => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    const linha = (lbl, val, cor) => '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--border);">'
-      + '<span style="font-size:var(--fs-sm);color:var(--text-hint);">' + lbl + '</span>'
-      + '<span style="font-size:var(--fs-base);font-weight:700;color:' + cor + ';">' + val + '</span></div>';
-    valoresEl.innerHTML = '<div style="display:flex;flex-direction:column;">'
-      + linha('Solicitado (total)', fmtR(soma(lista)), 'var(--blue)')
-      + linha('Concedido (perdido)', fmtR(soma(concedidos)), 'var(--amber)')
-      + linha('Revertido (mantido)', fmtR(soma(revertidos)), 'var(--accent)')
+    const totalValor = soma(lista);
+    const pctValorDe = n => totalValor > 0 ? Math.round(n / totalValor * 100) : 0;
+    // Mesmo layout do funil (total em cima + 3 cards embaixo), só que com R$ e % do valor
+    // total em vez de contagem — os dois lados da tela contam a mesma história em unidades
+    // diferentes (quantidade de pedidos vs. dinheiro em jogo).
+    const quadradoValor = (lbl, n, cor) => '<div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-top:2px solid ' + cor + ';border-radius:6px;padding:8px 10px;">'
+      + '<div style="font-size:15px;font-weight:800;color:' + cor + ';line-height:1;">' + fmtR(n) + '</div>'
+      + '<div style="font-size:var(--fs-2xs);color:var(--text-hint);margin-top:4px;">' + lbl + ' · ' + pctValorDe(n) + '% do total</div>'
+      + '</div>';
+    valoresEl.innerHTML = '<div style="display:flex;flex-direction:column;gap:8px;">'
+      + '<div><div style="display:flex;align-items:baseline;gap:8px;margin-bottom:3px;"><span style="font-size:var(--fs-sm);font-weight:600;color:var(--text);">Valor total</span><span style="font-size:var(--fs-sm);font-weight:700;color:var(--blue);">' + fmtR(totalValor) + '</span></div>'
+      + '<div style="background:var(--surface3);border-radius:var(--r-sm);height:20px;overflow:hidden;"><div style="height:100%;width:100%;background:var(--blue);border-radius:var(--r-sm);opacity:.85;"></div></div></div>'
+      + '<div style="display:flex;gap:8px;">' + quadradoValor('Em tratativa', soma(emTratativa), 'var(--purple)') + quadradoValor('Concedidos', soma(concedidos), 'var(--amber)') + quadradoValor('Revertidos', soma(revertidos), 'var(--accent)') + '</div>'
       + '</div>';
   }
 
@@ -3411,22 +3418,43 @@ function buildReembolsos() {
 
   const tbody = document.getElementById('reemb-tbody');
   if (tbody) {
-    const STATUS_COR = { '': 'var(--blue)', 'Concedido': 'var(--amber)', 'Revertido': 'var(--accent)' };
+    const STATUS_COR = { '': 'var(--purple)', 'Concedido': 'var(--amber)', 'Revertido': 'var(--accent)' };
     const ordenados = lista.slice().sort((a,b) => (b.dataReembolso||'').localeCompare(a.dataReembolso||''));
     tbody.innerHTML = ordenados.length ? ordenados.map(p => {
       const st = p.reembolsoStatus || '';
+      const valorEstimado = !p.valorReembolso && p.fee;
       return '<tr style="border-bottom:1px solid var(--border);">'
         + '<td style="padding:6px 8px;font-weight:600;">' + esc(p.nome) + '</td>'
         + '<td style="padding:6px 8px;">' + esc(p.consultor) + '</td>'
         + '<td style="padding:6px 8px;white-space:nowrap;">' + fmtD(p.dataReembolso) + '</td>'
-        + '<td style="padding:6px 8px;color:' + (STATUS_COR[st]||'var(--text-hint)') + ';font-weight:600;white-space:nowrap;">' + (st || 'Solicitado') + '</td>'
-        + '<td style="padding:6px 8px;">' + esc(p.motivoReembolso || '—') + '</td>'
-        + '<td style="padding:6px 8px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(p.motivoReembolsoDetalhe) + '">' + esc(p.motivoReembolsoDetalhe) + '</td>'
-        + '<td style="padding:6px 8px;white-space:nowrap;' + (!p.valorReembolso && p.fee ? 'color:var(--text-hint);font-style:italic;' : '') + '" title="' + (!p.valorReembolso && p.fee ? 'Estimado a partir do fee — ainda não confirmado' : '') + '">' + esc(reembValorEfetivo(p)) + (!p.valorReembolso && p.fee ? ' (fee)' : '') + '</td>'
+        // Editável — o mesmo campo (reembolsoStatus) que o Lead Time e a Visão Geral leem, então
+        // mudar aqui já reflete lá (e vice-versa) sem nenhuma sincronização extra: é o mesmo
+        // dado, só reconstruído em telas diferentes.
+        + '<td style="padding:6px 8px;">'
+          + '<select class="sel" style="font-size:var(--fs-xs);padding:2px 4px;border-color:' + (STATUS_COR[st]||'var(--text-hint)') + ';color:' + (STATUS_COR[st]||'var(--text-hint)') + ';" title="Status do reembolso" onchange="reembSetStatus(' + p.id + ',this.value)">'
+          + ['', 'Concedido', 'Revertido'].map(o => '<option value="' + o + '"' + (st===o?' selected':'') + '>' + (o || 'Em tratativa') + '</option>').join('')
+          + '</select>'
+        + '</td>'
+        + '<td style="padding:6px 8px;">'
+          + '<select class="sel" style="font-size:var(--fs-xs);padding:2px 4px;" title="Motivo do reembolso" onchange="reembSetMotivo(' + p.id + ',this.value)">'
+          + '<option value="">—</option>'
+          + MOTIVOS_REEMBOLSO.map(m => '<option value="' + escAttr(m) + '"' + (p.motivoReembolso===m?' selected':'') + '>' + esc(m) + '</option>').join('')
+          + '</select>'
+        + '</td>'
+        + '<td style="padding:6px 8px;min-width:160px;"><input type="text" class="sel" style="font-size:var(--fs-xs);width:100%;" placeholder="Detalhe" value="' + escAttr(p.motivoReembolsoDetalhe||'') + '" onchange="reembSetMotivoDetalhe(' + p.id + ',this.value)"></td>'
+        + '<td style="padding:6px 8px;min-width:110px;"><input type="text" class="sel" style="font-size:var(--fs-xs);width:100%;' + (valorEstimado ? 'color:var(--text-hint);font-style:italic;' : '') + '" title="' + (valorEstimado ? 'Estimado a partir do fee — ainda não confirmado' : '') + '" placeholder="Valor (R$)" value="' + escAttr(reembValorEfetivo(p)) + '" onchange="reembSetValor(' + p.id + ',this.value)"></td>'
         + '</tr>';
     }).join('') : '<tr><td colspan="7" style="padding:12px 8px;color:var(--text-hint);">Nenhum reembolso no período.</td></tr>';
   }
 }
+// Movimentações feitas na aba Reembolsos passam pelos MESMOS setters do Lead Time
+// (ltSetReembolsoStatus/ltSetMotivoReembolso/…) — não existe um campo paralelo, então uma
+// mudança aqui já é a mudança em qualquer outra aba que leia esses campos (Lead Time, Visão
+// Geral). Só re-renderiza esta aba na hora (mesmo padrão de ovSetReembolsoStatus).
+function reembSetStatus(id, val) { ltSetReembolsoStatus(id, val); buildReembolsos(); }
+function reembSetMotivo(id, val) { ltSetMotivoReembolso(id, val); buildReembolsos(); }
+function reembSetMotivoDetalhe(id, val) { ltSetMotivoReembolsoDetalhe(id, val); buildReembolsos(); }
+function reembSetValor(id, val) { ltSetValorReembolso(id, val); buildReembolsos(); }
 
 /* ============================================================
    INIT
@@ -11235,7 +11263,7 @@ function ltReembStatusHTML(p) {
   if (!p.dataReembolso) return '';
   const st = p.reembolsoStatus || '';
   return '<select class="sel" style="font-size:var(--fs-2xs);width:100%;margin-top:3px;" title="Status do reembolso" onchange="ltSetReembolsoStatus(' + p.id + ',this.value)">'
-    + ['', 'Concedido', 'Revertido'].map(o => '<option value="' + o + '"' + (st === o ? ' selected' : '') + '>' + (o || 'Solicitado (sem decisão)') + '</option>').join('')
+    + ['', 'Concedido', 'Revertido'].map(o => '<option value="' + o + '"' + (st === o ? ' selected' : '') + '>' + (o || 'Em tratativa') + '</option>').join('')
     + '</select>';
 }
 // A data e o status ficam em campos separados (dataReembolso/reembolsoStatus) — não dá pra usar
