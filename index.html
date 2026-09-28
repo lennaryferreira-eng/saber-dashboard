@@ -3341,6 +3341,12 @@ function reembFiltroAtual() {
   const label = curQ ? curQ.label : (curM ? curM.label + '/' + curM.ano : 'Ano completo');
   return { mesesSel, label };
 }
+// Valor "efetivo" do reembolso: o que foi digitado, ou o fee do projeto como estimativa
+// enquanto ninguém ajustou — cobre os reembolsos registrados ANTES desse campo existir (só
+// tinham dataReembolso/reembolsoStatus, valorReembolso ficou vazio pra sempre porque o
+// preenchimento automático só dispara ao editar a data, ver ltSetReembolsoData). Não grava
+// nada sozinho, só exibe — vira valor de verdade quando a pessoa ajustar o campo.
+function reembValorEfetivo(p) { return p.valorReembolso || p.fee || ''; }
 function buildReembolsos() {
   buildFilterBar('filter-bar-reembolsos', 'reembolsos', buildReembolsos, { withQuarters: true });
   const { mesesSel } = reembFiltroAtual();
@@ -3371,7 +3377,7 @@ function buildReembolsos() {
     // valorReembolso é texto livre (ex: "1.200,00" ou "R$ 850") — normaliza pra número só na
     // hora de somar, sem obrigar um formato rígido no campo de digitação.
     const paraNumero = v => parseFloat(String(v||'').replace(/[^\d,.-]/g,'').replace(/\.(?=\d{3}(,|$))/g,'').replace(',','.')) || 0;
-    const soma = arr => arr.reduce((s, p) => s + paraNumero(p.valorReembolso), 0);
+    const soma = arr => arr.reduce((s, p) => s + paraNumero(reembValorEfetivo(p)), 0);
     const fmtR = n => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const linha = (lbl, val, cor) => '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--border);">'
       + '<span style="font-size:var(--fs-sm);color:var(--text-hint);">' + lbl + '</span>'
@@ -3416,7 +3422,7 @@ function buildReembolsos() {
         + '<td style="padding:6px 8px;color:' + (STATUS_COR[st]||'var(--text-hint)') + ';font-weight:600;white-space:nowrap;">' + (st || 'Solicitado') + '</td>'
         + '<td style="padding:6px 8px;">' + esc(p.motivoReembolso || '—') + '</td>'
         + '<td style="padding:6px 8px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(p.motivoReembolsoDetalhe) + '">' + esc(p.motivoReembolsoDetalhe) + '</td>'
-        + '<td style="padding:6px 8px;white-space:nowrap;">' + esc(p.valorReembolso) + '</td>'
+        + '<td style="padding:6px 8px;white-space:nowrap;' + (!p.valorReembolso && p.fee ? 'color:var(--text-hint);font-style:italic;' : '') + '" title="' + (!p.valorReembolso && p.fee ? 'Estimado a partir do fee — ainda não confirmado' : '') + '">' + esc(reembValorEfetivo(p)) + (!p.valorReembolso && p.fee ? ' (fee)' : '') + '</td>'
         + '</tr>';
     }).join('') : '<tr><td colspan="7" style="padding:12px 8px;color:var(--text-hint);">Nenhum reembolso no período.</td></tr>';
   }
@@ -12085,8 +12091,10 @@ function buildLeadTime() {
                 + '<input type="text" class="sel" style="font-size:var(--fs-2xs);width:100%;margin-top:2px;" placeholder="Detalhe (opcional)" '
                 + 'value="' + escAttr(p.motivoReembolsoDetalhe||'') + '" '
                 + 'onchange="ltSetMotivoReembolsoDetalhe(' + p.id + ',this.value)">'
-                + '<input type="text" class="sel" id="lt-reemb-valor-' + p.id + '" style="font-size:var(--fs-2xs);width:100%;margin-top:2px;" placeholder="Valor (R$)" title="Preenche sozinho com o fee ao registrar a data do pedido — ajuste se for diferente" '
-                + 'value="' + escAttr(p.valorReembolso||'') + '" '
+                + '<input type="text" class="sel" id="lt-reemb-valor-' + p.id + '" style="font-size:var(--fs-2xs);width:100%;margin-top:2px;" placeholder="Valor (R$)" title="Preenche sozinho com o fee — ajuste se for diferente" '
+                // Mostra o fee como estimativa pra reembolsos antigos (registrados antes desse
+                // campo existir) — não é gravado até a pessoa mexer no campo (ver reembValorEfetivo).
+                + 'value="' + escAttr(reembValorEfetivo(p)) + '" '
                 + 'onchange="ltSetValorReembolso(' + p.id + ',this.value)">'
               : '')
           + '</td>'
