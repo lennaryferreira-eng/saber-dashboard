@@ -993,6 +993,36 @@
   </div>
 </section>
 
+<!-- ───────── REEMBOLSOS (SABER) ─────────
+     Aba dedicada, separada do "motivo de perda" (Churn, que fica só no Lead Time). Os campos
+     dataReembolso/reembolsoStatus são os mesmos do Lead Time/Visão Geral; motivoReembolso,
+     motivoReembolsoDetalhe e valorReembolso são dedicados (ver MOTIVOS_REEMBOLSO,
+     ltSetMotivoReembolso/ltSetMotivoReembolsoDetalhe/ltSetValorReembolso). -->
+<section id="sec-reembolsos" class="section">
+  <div class="sec-head"><h2 class="sec-title">Reembolsos</h2><p class="sec-desc">Pedidos de reembolso, motivos e valores — separado dos motivos de perda (Churn), que continuam no Lead Time.</p></div>
+  <div class="card" style="margin-bottom:1rem;">
+    <div id="filter-bar-reembolsos" class="filter-bar"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:10px;">
+      <div>
+        <div class="card-title">Funil</div>
+        <div id="reemb-funil"></div>
+      </div>
+      <div>
+        <div class="card-title">Impacto financeiro</div>
+        <div id="reemb-valores"></div>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:1rem;">
+    <div class="card-title">Motivos mais frequentes</div>
+    <div id="reemb-motivos"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Detalhamento por projeto</div>
+    <div class="tbl-wrap"><table><thead><tr><th>Cliente</th><th>Consultor</th><th>Data do pedido</th><th>Status</th><th>Motivo</th><th>Detalhe</th><th>Valor</th></tr></thead><tbody id="reemb-tbody"></tbody></table></div>
+  </div>
+</section>
+
 <section id="sec-leadtime" class="section">
 <div id="lt-saber-view">
   <div class="sec-head"><h2 class="sec-title">Lead Time</h2><p class="sec-desc">Acompanhamento das entregas. Selecione a etapa e insira a data real — a barra mostra o andamento visualmente.</p></div>
@@ -3299,6 +3329,99 @@ function buildOvTratativas(){
   box.innerHTML = '<div class="tbl-scroll"><table style="border-collapse:collapse;font-size:var(--fs-sm);width:100%;"><thead>'+header+'</thead><tbody>'+rows+'</tbody></table></div>';
 }
 
+// ── Aba dedicada "Reembolsos" (SABER) ──────────────────────────────────
+// Mesmo padrão de filtro de período da Visão Geral (visaoFiltroAtual), só que com a própria
+// chave em `filters` — reembolsos tem seu próprio recorte de mês/trimestre, independente do
+// que está selecionado em Visão Geral.
+function reembFiltroAtual() {
+  const cur = filters['reembolsos'] || null;
+  const curQ = cur ? QUARTERS.find(x => x.key === cur) : null;
+  const curM = (!curQ && cur) ? ALL_MESES.find(x => x.key === cur) : null;
+  const mesesSel = curQ ? curQ.meses : (curM ? [curM] : ALL_MESES);
+  const label = curQ ? curQ.label : (curM ? curM.label + '/' + curM.ano : 'Ano completo');
+  return { mesesSel, label };
+}
+function buildReembolsos() {
+  buildFilterBar('filter-bar-reembolsos', 'reembolsos', buildReembolsos, { withQuarters: true });
+  const { mesesSel } = reembFiltroAtual();
+  const noMes = d => !!d && mesesSel.some(m => d.getMonth() === m.idx && d.getFullYear() === m.ano);
+  const lista = projects.filter(p => noMes(parseDate(p.dataReembolso)));
+  const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+
+  const concedidos = lista.filter(p => p.reembolsoStatus === 'Concedido');
+  const revertidos = lista.filter(p => p.reembolsoStatus === 'Revertido');
+  const total = lista.length;
+  const pctDe = n => total > 0 ? Math.round(n / total * 100) : 0;
+
+  const funilEl = document.getElementById('reemb-funil');
+  if (funilEl) {
+    const quadrado = (lbl, n, cor) => '<div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-top:2px solid ' + cor + ';border-radius:6px;padding:8px 10px;">'
+      + '<div style="font-size:20px;font-weight:800;color:' + cor + ';line-height:1;">' + n + '</div>'
+      + '<div style="font-size:var(--fs-2xs);color:var(--text-hint);margin-top:4px;">' + lbl + ' · ' + pctDe(n) + '% dos solicitados</div>'
+      + '</div>';
+    funilEl.innerHTML = '<div style="display:flex;flex-direction:column;gap:8px;">'
+      + '<div><div style="display:flex;align-items:baseline;gap:8px;margin-bottom:3px;"><span style="font-size:var(--fs-sm);font-weight:600;color:var(--text);">Solicitados</span><span style="font-size:var(--fs-sm);font-weight:700;color:var(--blue);">' + total + '</span></div>'
+      + '<div style="background:var(--surface3);border-radius:var(--r-sm);height:20px;overflow:hidden;"><div style="height:100%;width:100%;background:var(--blue);border-radius:var(--r-sm);opacity:.85;"></div></div></div>'
+      + '<div style="display:flex;gap:8px;">' + quadrado('Concedidos', concedidos.length, 'var(--amber)') + quadrado('Revertidos', revertidos.length, 'var(--accent)') + '</div>'
+      + '</div>';
+  }
+
+  const valoresEl = document.getElementById('reemb-valores');
+  if (valoresEl) {
+    // valorReembolso é texto livre (ex: "1.200,00" ou "R$ 850") — normaliza pra número só na
+    // hora de somar, sem obrigar um formato rígido no campo de digitação.
+    const paraNumero = v => parseFloat(String(v||'').replace(/[^\d,.-]/g,'').replace(/\.(?=\d{3}(,|$))/g,'').replace(',','.')) || 0;
+    const soma = arr => arr.reduce((s, p) => s + paraNumero(p.valorReembolso), 0);
+    const fmtR = n => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const linha = (lbl, val, cor) => '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--border);">'
+      + '<span style="font-size:var(--fs-sm);color:var(--text-hint);">' + lbl + '</span>'
+      + '<span style="font-size:var(--fs-base);font-weight:700;color:' + cor + ';">' + val + '</span></div>';
+    valoresEl.innerHTML = '<div style="display:flex;flex-direction:column;">'
+      + linha('Solicitado (total)', fmtR(soma(lista)), 'var(--blue)')
+      + linha('Concedido (perdido)', fmtR(soma(concedidos)), 'var(--amber)')
+      + linha('Revertido (mantido)', fmtR(soma(revertidos)), 'var(--accent)')
+      + '</div>';
+  }
+
+  const motivosEl = document.getElementById('reemb-motivos');
+  if (motivosEl) {
+    const cont = {};
+    lista.forEach(p => { const m = p.motivoReembolso || '(sem motivo registrado)'; cont[m] = (cont[m]||0) + 1; });
+    const arr = Object.keys(cont).map(k => ({motivo:k, n:cont[k]})).sort((a,b)=>b.n-a.n);
+    if (!arr.length) {
+      motivosEl.innerHTML = '<div style="font-size:var(--fs-base);color:var(--text-hint);padding:8px 0;">Nenhum reembolso no período.</div>';
+    } else {
+      const max = arr[0].n;
+      motivosEl.innerHTML = arr.map(x => {
+        const pctBar = Math.max(4, Math.round(x.n/max*100));
+        return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px;">'
+          + '<span style="font-size:var(--fs-sm);width:220px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(x.motivo) + '">' + esc(x.motivo) + '</span>'
+          + '<div style="flex:1;background:var(--surface3);border-radius:4px;height:14px;overflow:hidden;"><div style="height:100%;width:' + pctBar + '%;background:var(--blue);"></div></div>'
+          + '<span style="font-size:var(--fs-sm);font-weight:700;width:24px;text-align:right;">' + x.n + '</span>'
+          + '</div>';
+      }).join('');
+    }
+  }
+
+  const tbody = document.getElementById('reemb-tbody');
+  if (tbody) {
+    const STATUS_COR = { '': 'var(--blue)', 'Concedido': 'var(--amber)', 'Revertido': 'var(--accent)' };
+    const ordenados = lista.slice().sort((a,b) => (b.dataReembolso||'').localeCompare(a.dataReembolso||''));
+    tbody.innerHTML = ordenados.length ? ordenados.map(p => {
+      const st = p.reembolsoStatus || '';
+      return '<tr style="border-bottom:1px solid var(--border);">'
+        + '<td style="padding:6px 8px;font-weight:600;">' + esc(p.nome) + '</td>'
+        + '<td style="padding:6px 8px;">' + esc(p.consultor) + '</td>'
+        + '<td style="padding:6px 8px;white-space:nowrap;">' + fmtD(p.dataReembolso) + '</td>'
+        + '<td style="padding:6px 8px;color:' + (STATUS_COR[st]||'var(--text-hint)') + ';font-weight:600;white-space:nowrap;">' + (st || 'Solicitado') + '</td>'
+        + '<td style="padding:6px 8px;">' + esc(p.motivoReembolso || '—') + '</td>'
+        + '<td style="padding:6px 8px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(p.motivoReembolsoDetalhe) + '">' + esc(p.motivoReembolsoDetalhe) + '</td>'
+        + '<td style="padding:6px 8px;white-space:nowrap;">' + esc(p.valorReembolso) + '</td>'
+        + '</tr>';
+    }).join('') : '<tr><td colspan="7" style="padding:12px 8px;color:var(--text-hint);">Nenhum reembolso no período.</td></tr>';
+  }
+}
+
 /* ============================================================
    INIT
    ============================================================ */
@@ -3356,6 +3479,18 @@ function dv(v) {
 // ═══════════════════════════════════
 const SEMANAS = ['1ª Growthclass','2ª Kick off','3ª 1ª Entrega','4ª 2ª Entrega','5ª 3ª Entrega','6ª 4ª Entrega','7ª Decolagem'];
 const SEM_SHORT = ['Growth','Kick off','1ª Entrega','2ª Entrega','3ª Entrega','4ª Entrega','Decolagem'];
+
+// Categoria fixa do motivo de reembolso (aba Reembolsos + campo dedicado no Lead Time) —
+// separada do `motivo` de Churn, que é sobre projeto não monetizado.
+const MOTIVOS_REEMBOLSO = [
+  'Atraso na entrega',
+  'Insatisfação com o resultado/entregável',
+  'Problema de comunicação',
+  'Mudança de prioridade do cliente',
+  'Dificuldade financeira do cliente',
+  'Expectativa mal alinhada na venda',
+  'Outro',
+];
 
 const QUARTERS = [
   {key:'q1',label:'Q1 2026',meses:[
@@ -3555,6 +3690,9 @@ const SIDEBAR_NAV = [
     { id: 'dro', label: 'DRO/DRX', icon: 'refresh' },
     { id: 'pipeline', label: 'Pipeline', icon: 'arrowUp' },
     { id: 'monetizacao', label: 'Monetização', icon: 'coin' },
+    // Sem 'ter-ok': fica escondido na TER igual auditoria/cultura/fca (ver updateCoordUI) —
+    // motivo dedicado de reembolso é SABER só por enquanto (ver MOTIVOS_REEMBOLSO).
+    { id: 'reembolsos', label: 'Reembolsos', icon: 'undo', elId: 'nav-tab-reembolsos' },
     { id: 'capacity', label: 'Capacity', icon: 'users', extraClass: 'ter-ok' },
     { id: 'performance', label: 'Performance', icon: 'trophy', extraClass: 'ter-ok' },
     { id: 'auditoria', label: 'Auditoria de Entregas', icon: 'eye' },
@@ -10192,6 +10330,7 @@ function show(sec) {
     else if (sec === 'dro')         buildDRO();
     else if (sec === 'pipeline')    buildPipeline();
     else if (sec === 'monetizacao') calcMon();
+    else if (sec === 'reembolsos')  buildReembolsos();
     else if (sec === 'prazo')       calcPrazo();
     else if (sec === 'csp')         calcCsp();
     else if (sec === 'nps')         buildNpsTable();
@@ -10594,8 +10733,12 @@ function ltSetStatus2(id, val) {
   p.status2 = val;
   // Saindo de "Reembolso" pra outro status: limpa a data/decisão do pedido — senão o card de
   // Reembolsos da Visão Geral (que só olha dataReembolso, independente do status2) continuaria
-  // mostrando esse projeto como se ainda tivesse um pedido em aberto.
-  if (eraReembolso && val !== 'Reembolso') { p.dataReembolso = ''; p.reembolsoStatus = ''; }
+  // mostrando esse projeto como se ainda tivesse um pedido em aberto. Motivo/detalhe/valor são
+  // do pedido, não do projeto — some junto.
+  if (eraReembolso && val !== 'Reembolso') {
+    p.dataReembolso = ''; p.reembolsoStatus = '';
+    p.motivoReembolso = ''; p.motivoReembolsoDetalhe = ''; p.valorReembolso = '';
+  }
   upd();
   buildLeadTime();
 }
@@ -11097,7 +11240,8 @@ function ltSetReembolsoData(id, val) {
   const p = projects.find(x => String(x.id) === String(id));
   if (!p) return;
   p.dataReembolso = val;
-  if (!val) p.reembolsoStatus = ''; // limpou a data: reseta a decisão também, não faz sentido ficar "Concedido" sem pedido
+  // limpou a data: reseta o pedido inteiro — não faz sentido ficar com decisão/motivo/valor sem pedido
+  if (!val) { p.reembolsoStatus = ''; p.motivoReembolso = ''; p.motivoReembolsoDetalhe = ''; p.valorReembolso = ''; }
   upd();
   const el = document.getElementById('lt-reemb-status-' + id);
   if (el) el.innerHTML = ltReembStatusHTML(p);
@@ -11106,6 +11250,28 @@ function ltSetReembolsoStatus(id, val) {
   const p = projects.find(x => String(x.id) === String(id));
   if (!p) return;
   p.reembolsoStatus = val;
+  upd();
+}
+// Motivo dedicado do reembolso — separado do `motivo` de Churn (esse é sobre projeto não
+// monetizado; reembolso é um desfecho à parte, avaliado na aba Reembolsos). Categoria fixa
+// (MOTIVOS_REEMBOLSO) + detalhe livre + valor, pra dar pra agregar por motivo e por R$ na aba.
+// SABER só por enquanto.
+function ltSetMotivoReembolso(id, val) {
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!p) return;
+  p.motivoReembolso = val;
+  upd();
+}
+function ltSetMotivoReembolsoDetalhe(id, val) {
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!p) return;
+  p.motivoReembolsoDetalhe = val;
+  upd();
+}
+function ltSetValorReembolso(id, val) {
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!p) return;
+  p.valorReembolso = val;
   upd();
 }
 // Mesma troca de status, chamada a partir do card "Reembolsos" da Visão Geral — reaproveita
@@ -11900,6 +12066,19 @@ function buildLeadTime() {
                 + 'value="' + dv(p.dataReembolso) + '" '
                 + 'onchange="ltSetReembolsoData(' + p.id + ',this.value)">'
                 + '<div id="lt-reemb-status-' + p.id + '">' + ltReembStatusHTML(p) + '</div>'
+                // Motivo dedicado (separado do "Motivo da perda" do Churn acima) — analisado à
+                // parte na aba Reembolsos, ver MOTIVOS_REEMBOLSO/buildReembolsos().
+                + '<div style="font-size:var(--fs-2xs);color:var(--text-hint);margin:4px 0 1px;">Motivo do reembolso</div>'
+                + '<select class="sel" style="font-size:var(--fs-2xs);width:100%;" onchange="ltSetMotivoReembolso(' + p.id + ',this.value)">'
+                + '<option value="">—</option>'
+                + MOTIVOS_REEMBOLSO.map(m => '<option value="' + escAttr(m) + '"' + (p.motivoReembolso===m?' selected':'') + '>' + escapeHtml(m) + '</option>').join('')
+                + '</select>'
+                + '<input type="text" class="sel" style="font-size:var(--fs-2xs);width:100%;margin-top:2px;" placeholder="Detalhe (opcional)" '
+                + 'value="' + escAttr(p.motivoReembolsoDetalhe||'') + '" '
+                + 'onchange="ltSetMotivoReembolsoDetalhe(' + p.id + ',this.value)">'
+                + '<input type="text" class="sel" style="font-size:var(--fs-2xs);width:100%;margin-top:2px;" placeholder="Valor (R$)" '
+                + 'value="' + escAttr(p.valorReembolso||'') + '" '
+                + 'onchange="ltSetValorReembolso(' + p.id + ',this.value)">'
               : '')
           + '</td>'
                     + '</tr>';
