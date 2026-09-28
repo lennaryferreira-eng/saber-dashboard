@@ -11240,11 +11240,20 @@ function ltSetReembolsoData(id, val) {
   const p = projects.find(x => String(x.id) === String(id));
   if (!p) return;
   p.dataReembolso = val;
-  // limpou a data: reseta o pedido inteiro — não faz sentido ficar com decisão/motivo/valor sem pedido
-  if (!val) { p.reembolsoStatus = ''; p.motivoReembolso = ''; p.motivoReembolsoDetalhe = ''; p.valorReembolso = ''; }
+  if (!val) {
+    // limpou a data: reseta o pedido inteiro — não faz sentido ficar com decisão/motivo/valor sem pedido
+    p.reembolsoStatus = ''; p.motivoReembolso = ''; p.motivoReembolsoDetalhe = ''; p.valorReembolso = '';
+  } else if (!p.valorReembolso) {
+    // Pedido novo sem valor ainda: começa com o fee do projeto (o caso mais comum é reembolsar
+    // o próprio fee do ciclo) — só um ponto de partida, o campo continua editável pra ajustar
+    // (parcial, valor diferente etc.). Não sobrescreve se já tiver um valor preenchido.
+    p.valorReembolso = p.fee || '';
+  }
   upd();
   const el = document.getElementById('lt-reemb-status-' + id);
   if (el) el.innerHTML = ltReembStatusHTML(p);
+  const valorEl = document.getElementById('lt-reemb-valor-' + id);
+  if (valorEl) valorEl.value = p.valorReembolso || '';
 }
 function ltSetReembolsoStatus(id, val) {
   const p = projects.find(x => String(x.id) === String(id));
@@ -12076,7 +12085,7 @@ function buildLeadTime() {
                 + '<input type="text" class="sel" style="font-size:var(--fs-2xs);width:100%;margin-top:2px;" placeholder="Detalhe (opcional)" '
                 + 'value="' + escAttr(p.motivoReembolsoDetalhe||'') + '" '
                 + 'onchange="ltSetMotivoReembolsoDetalhe(' + p.id + ',this.value)">'
-                + '<input type="text" class="sel" style="font-size:var(--fs-2xs);width:100%;margin-top:2px;" placeholder="Valor (R$)" '
+                + '<input type="text" class="sel" id="lt-reemb-valor-' + p.id + '" style="font-size:var(--fs-2xs);width:100%;margin-top:2px;" placeholder="Valor (R$)" title="Preenche sozinho com o fee ao registrar a data do pedido — ajuste se for diferente" '
                 + 'value="' + escAttr(p.valorReembolso||'') + '" '
                 + 'onchange="ltSetValorReembolso(' + p.id + ',this.value)">'
               : '')
