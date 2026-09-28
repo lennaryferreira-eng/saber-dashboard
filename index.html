@@ -350,8 +350,8 @@
       </div>
     </div>
   </div>
-  <!-- Pipeline e Flags -->
-  <div id="ov-pipeline-flags-row" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+  <!-- Reembolsos (resumo) — Tratativas mudou-se pra aba Reembolsos/Tratativas -->
+  <div id="ov-pipeline-flags-row" style="margin-bottom:1rem;">
     <div class="card" style="margin:0;">
       <div class="card-title">Reembolsos <span id="ov-reemb-mes" style="font-weight:400;color:var(--text-hint);text-transform:none;letter-spacing:0;"></span></div>
       <div style="display:flex;gap:10px;align-items:stretch;">
@@ -359,13 +359,6 @@
         <div style="width:1px;background:var(--border);flex:none;"></div>
         <div id="ov-reemb-funil" style="flex:1;min-width:0;"></div>
       </div>
-    </div>
-    <div class="card" style="margin:0;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;">
-        <div class="card-title" style="margin:0;">Tratativas</div>
-        <button class="btn btn-primary" style="padding:4px 10px;font-size:var(--fs-sm);" onclick="tratAbrirModal()">+ Nova</button>
-      </div>
-      <div id="ov-tratativas-lista"></div>
     </div>
   </div>
   <!-- Ticket e Tier -->
@@ -993,13 +986,15 @@
   </div>
 </section>
 
-<!-- ───────── REEMBOLSOS (SABER) ─────────
+<!-- ───────── REEMBOLSOS/TRATATIVAS (SABER) ─────────
      Aba dedicada, separada do "motivo de perda" (Churn, que fica só no Lead Time). Os campos
      dataReembolso/reembolsoStatus são os mesmos do Lead Time/Visão Geral; motivoReembolso,
      motivoReembolsoDetalhe e valorReembolso são dedicados (ver MOTIVOS_REEMBOLSO,
-     ltSetMotivoReembolso/ltSetMotivoReembolsoDetalhe/ltSetValorReembolso). -->
+     ltSetMotivoReembolso/ltSetMotivoReembolsoDetalhe/ltSetValorReembolso). Tratativas (contas em
+     risco, não só reembolso) mudou-se pra cá de Visão Geral — mesmo motor (tratativas[],
+     buildTratativas(), ver comentário lá). -->
 <section id="sec-reembolsos" class="section">
-  <div class="sec-head"><h2 class="sec-title">Reembolsos</h2><p class="sec-desc">Pedidos de reembolso, motivos e valores — separado dos motivos de perda (Churn), que continuam no Lead Time.</p></div>
+  <div class="sec-head"><h2 class="sec-title">Reembolsos/Tratativas</h2><p class="sec-desc">Pedidos de reembolso, motivos e valores — separado dos motivos de perda (Churn), que continuam no Lead Time — e o acompanhamento de contas em risco.</p></div>
   <div class="card" style="margin-bottom:1rem;">
     <div id="filter-bar-reembolsos" class="filter-bar"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:10px;">
@@ -1017,9 +1012,16 @@
     <div class="card-title">Motivos mais frequentes</div>
     <div id="reemb-motivos"></div>
   </div>
-  <div class="card">
+  <div class="card" style="margin-bottom:1rem;">
     <div class="card-title">Detalhamento por projeto</div>
     <div class="tbl-wrap"><table><thead><tr><th>Cliente</th><th>Consultor</th><th>Data do pedido</th><th>Status</th><th>Motivo</th><th>Detalhe</th><th>Valor</th></tr></thead><tbody id="reemb-tbody"></tbody></table></div>
+  </div>
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;">
+      <div class="card-title" style="margin:0;">Tratativas</div>
+      <button class="btn btn-primary" style="padding:4px 10px;font-size:var(--fs-sm);" onclick="tratAbrirModal()">+ Nova</button>
+    </div>
+    <div id="reemb-trat-lista"></div>
   </div>
 </section>
 
@@ -3215,7 +3217,7 @@ function tratSalvar(){
   }
   upd();
   fecharModalTrat();
-  buildOvTratativas();
+  buildTratativas();
   if (typeof refreshAll === 'function') refreshAll(); // reflete o status/flag do projeto na hora (Visão Geral, Lead Time, Capacity…)
 }
 async function tratExcluirAtual(){
@@ -3224,7 +3226,7 @@ async function tratExcluirAtual(){
   tratativas = tratativas.filter(t => t.id !== _tratModalId);
   upd();
   fecharModalTrat();
-  buildOvTratativas();
+  buildTratativas();
 }
 // Edição rápida direto na tabela (reembolso/atualização/finalizado) — sem precisar abrir o
 // modal pra cada ajuste pequeno. Cliente/Situação continuam só pelo modal (abre com o ícone
@@ -3234,7 +3236,7 @@ function tratSetField(id, field, value){
   if (!item) return;
   item[field] = value;
   upd();
-  buildOvTratativas(); // finalizado muda quem aparece na tabela
+  buildTratativas(); // finalizado muda quem aparece na tabela
 }
 // Card "Reembolsos" na Visão Geral (substitui o antigo "Pipeline ativo") — dividido ao meio:
 // tabela dos projetos à esquerda (buildOvReembolsosTabela) + funil de status à direita
@@ -3302,11 +3304,11 @@ function buildOvReembolsosFunil(lista, mesLabel){
     + '</div>'
     + '</div>';
 }
-// Tabela compacta na Visão Geral — só as ABERTAS (finalizada some da lista, mas continua salva
-// pra histórico). Ícone de editar abre o modal completo; reembolso/atualização/finalizado dá
-// pra mexer direto na célula.
-function buildOvTratativas(){
-  const box = document.getElementById('ov-tratativas-lista');
+// Tabela compacta — mudou-se de Visão Geral pra aba Reembolsos/Tratativas — só as ABERTAS
+// (finalizada some da lista, mas continua salva pra histórico). Ícone de editar abre o modal
+// completo; reembolso/atualização/finalizado dá pra mexer direto na célula.
+function buildTratativas(){
+  const box = document.getElementById('reemb-trat-lista');
   if (!box) return;
   const abertas = tratativas.filter(t => !t.finalizado);
   if (!abertas.length) { box.innerHTML = '<div style="font-size:var(--fs-sm);color:var(--text-hint);padding:4px 0;">Nenhuma tratativa em aberto.</div>'; return; }
@@ -3446,6 +3448,8 @@ function buildReembolsos() {
         + '</tr>';
     }).join('') : '<tr><td colspan="7" style="padding:12px 8px;color:var(--text-hint);">Nenhum reembolso no período.</td></tr>';
   }
+
+  buildTratativas();
 }
 // Movimentações feitas na aba Reembolsos passam pelos MESMOS setters do Lead Time
 // (ltSetReembolsoStatus/ltSetMotivoReembolso/…) — não existe um campo paralelo, então uma
@@ -3705,6 +3709,10 @@ const SIDEBAR_NAV = [
     { id: 'nps', label: 'NPS', icon: 'star' },
     { id: 'pdi', label: 'PDI do Time', icon: 'medal' },
     { id: 'aql', label: 'AQL', icon: 'search' },
+    // Grupo OKRs some inteiro na TER (ver updateCoordUI) — mesmo mecanismo que já deixava
+    // "Reembolsos" escondido lá quando estava em Gestão sem a classe ter-ok, então continua
+    // SABER só sem precisar de nenhuma classe extra.
+    { id: 'reembolsos', label: 'Reembolsos/Tratativas', icon: 'undo', elId: 'nav-tab-reembolsos' },
   ] },
   { group: 'gestao', label: 'Gestão', items: [
     { id: 'leadtime', label: 'Lead Time', icon: 'calendar', extraClass: 'ter-ok', elId: 'nav-btn-leadtime' },
@@ -3724,9 +3732,6 @@ const SIDEBAR_NAV = [
     { id: 'dro', label: 'DRO/DRX', icon: 'refresh' },
     { id: 'pipeline', label: 'Pipeline', icon: 'arrowUp' },
     { id: 'monetizacao', label: 'Monetização', icon: 'coin' },
-    // Sem 'ter-ok': fica escondido na TER igual auditoria/cultura/fca (ver updateCoordUI) —
-    // motivo dedicado de reembolso é SABER só por enquanto (ver MOTIVOS_REEMBOLSO).
-    { id: 'reembolsos', label: 'Reembolsos', icon: 'undo', elId: 'nav-tab-reembolsos' },
     { id: 'capacity', label: 'Capacity', icon: 'users', extraClass: 'ter-ok' },
     { id: 'performance', label: 'Performance', icon: 'trophy', extraClass: 'ter-ok' },
     { id: 'auditoria', label: 'Auditoria de Entregas', icon: 'eye' },
@@ -10252,7 +10257,6 @@ function buildOvAnalises(mesesSel, mesLabel) {
 
   buildOvReembolsosTabela(reembMesProjs);
   buildOvReembolsosFunil(reembMesProjs, mesLabel);
-  buildOvTratativas();
 
   // Ticket médio — usa a MONETIZAÇÃO REALIZADA (array monetizacoes[]), por evento de venda
   let somaOT = 0, somaRec = 0, nOT = 0, nRec = 0;
