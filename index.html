@@ -10132,16 +10132,22 @@ function buildOvAnalises(mesesSel, mesLabel) {
   const emAndamento = projects.filter(p => (!p.modelo || p.modelo !== 'DRO') && calcStatus2(p) === 'Em andamento' && mesesSel.some(m => mesesAtivos(p).includes(m.idx)));
   set('ov-andamento-mes', emAndamento.length);
 
-  // Motivos de perda — volume por motivo, só entre os projetos em andamento no mês
+  // Motivos de perda — volume por motivo, entre os projetos Churn cuja dataChurn cai no
+  // mês/trimestre selecionado. Antes filtrava por "emAndamento" ("Em andamento") — um projeto
+  // Churn nunca é "Em andamento" (calcStatus2 devolve 'Churn' pra ele), então esse card nunca
+  // mostrava nada de verdade, pra nenhum mês. Churns antigos, de antes desse campo existir, sem
+  // dataChurn preenchida ainda: usa o realFim como estimativa (mesmo espírito do valor de
+  // reembolso puxando do fee em legados) — senão sumiriam do card até alguém preencher a mão.
   (function(){
     const box = document.getElementById('ov-motivos');
     if (!box) return;
+    const churnMes = projects.filter(p => p.status2 === 'Churn' && noMes(parseDate(p.dataChurn || p.realFim)));
     const cont = {};
-    emAndamento.forEach(p => { const m = (p.motivo||'').trim(); if (m) cont[m] = (cont[m]||0) + 1; });
+    churnMes.forEach(p => { const m = (p.motivo||'').trim(); if (m) cont[m] = (cont[m]||0) + 1; });
     const arr = Object.keys(cont).map(k => ({motivo:k, n:cont[k]})).sort((a,b)=>b.n-a.n);
     const total = arr.reduce((s,x)=>s+x.n,0);
     const totEl = document.getElementById('ov-motivos-total'); if (totEl) totEl.textContent = total;
-    if (!arr.length) { box.innerHTML = '<div style="font-size:var(--fs-base);color:var(--text-hint);padding:8px 0;">Nenhum motivo de perda entre os projetos em andamento no mês.</div>'; return; }
+    if (!arr.length) { box.innerHTML = '<div style="font-size:var(--fs-base);color:var(--text-hint);padding:8px 0;">Nenhum motivo de perda no período.</div>'; return; }
     const max = arr[0].n;
     box.innerHTML = arr.map(x => {
       const pct = Math.max(4, Math.round(x.n/max*100));
@@ -10671,15 +10677,20 @@ function ltSetStatus2(id, val) {
   const p = projects.find(x => String(x.id) === String(id));
   if (!p) return;
   const eraReembolso = p.status2 === 'Reembolso';
+  const eraChurn = p.status2 === 'Churn';
   p.status2 = val;
-  // Saindo de "Reembolso" pra outro status: limpa a data/decisão do pedido — senão o card de
-  // Reembolsos da Visão Geral (que só olha dataReembolso, independente do status2) continuaria
+  // Saindo de "Reembolso" pra outro status: limpa a data/decisão do pedido — senão a aba
+  // Reembolsos/Tratativas (que só olha dataReembolso, independente do status2) continuaria
   // mostrando esse projeto como se ainda tivesse um pedido em aberto. Motivo/detalhe/valor são
   // do pedido, não do projeto — some junto.
   if (eraReembolso && val !== 'Reembolso') {
     p.dataReembolso = ''; p.reembolsoStatus = '';
     p.motivoReembolso = ''; p.motivoReembolsoDetalhe = ''; p.valorReembolso = '';
   }
+  // Mesma lógica pro Churn: sem dataChurn não dá pra saber em qual mês contar a perda no card
+  // "Motivos de perda" — sair de Churn sem limpar deixaria uma data órfã se o projeto voltar a
+  // ser marcado Churn depois, com uma data antiga que ninguém revisou.
+  if (eraChurn && val !== 'Churn') { p.dataChurn = ''; }
   upd();
   buildLeadTime();
 }
@@ -11172,6 +11183,16 @@ function ltReembStatusHTML(p) {
   return '<select class="sel" style="font-size:var(--fs-2xs);width:100%;margin-top:3px;" title="Status do reembolso" onchange="ltSetReembolsoStatus(' + p.id + ',this.value)">'
     + ['', 'Concedido', 'Revertido'].map(o => '<option value="' + o + '"' + (st === o ? ' selected' : '') + '>' + (o || 'Em tratativa') + '</option>').join('')
     + '</select>';
+}
+// Data do churn — sem ela, "Motivos de perda" (Visão Geral) não tem como saber em qual mês
+// contar a perda (só sabia filtrar por "Em andamento", e um projeto Churn nunca é "Em
+// andamento" — o card ficava sempre vazio). Guarda um campo próprio em vez de reusar `inicio`
+// ou `realFim`, que são sobre o ciclo de entrega, não sobre quando a perda foi decidida.
+function ltSetDataChurn(id, val) {
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!p) return;
+  p.dataChurn = val;
+  upd();
 }
 // A data e o status ficam em campos separados (dataReembolso/reembolsoStatus) — não dá pra usar
 // ltSetField genérico aqui porque, ao mudar a data, a caixinha de status precisa
@@ -12002,6 +12023,12 @@ function buildLeadTime() {
               ? '<input type="text" class="sel" style="font-size:var(--fs-sm);width:100%;" placeholder="Motivo da perda" '
                 + 'value="' + (p.motivo||'') + '" '
                 + 'onchange="ltSetField(' + p.id + ',\'motivo\',this.value)">'
+                // Sem essa data, "Motivos de perda" (Visão Geral) não tem em qual mês contar a
+                // perda — ver comentário em ltSetDataChurn.
+                + '<div style="font-size:var(--fs-2xs);color:var(--text-hint);margin:4px 0 1px;">Data do churn</div>'
+                + '<input type="date" class="sel" style="font-size:var(--fs-xs);width:100%;" '
+                + 'value="' + dv(p.dataChurn) + '" '
+                + 'onchange="ltSetDataChurn(' + p.id + ',this.value)">'
               : '')
           + (p.status2 === 'Reembolso'
               ? '<div style="font-size:var(--fs-2xs);color:var(--text-hint);margin:0 0 1px;">Data do pedido</div>'
