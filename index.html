@@ -996,7 +996,7 @@
   </div>
   <div class="card" style="margin-bottom:1rem;">
     <div class="card-title">Detalhamento por projeto</div>
-    <div class="tbl-wrap"><table><thead><tr><th>Cliente</th><th>Consultor</th><th>Data do pedido</th><th>Status</th><th>Motivo</th><th>Detalhe</th><th>Valor</th></tr></thead><tbody id="reemb-tbody"></tbody></table></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Cliente</th><th>Consultor</th><th>Data do pedido</th><th>Status</th><th>Motivo</th><th>Detalhe</th><th>Valor</th><th>Tratativa</th></tr></thead><tbody id="reemb-tbody"></tbody></table></div>
   </div>
   <div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;">
@@ -3124,7 +3124,9 @@ function fcaRenderLista(){
 let tratativas = []; // [{id, criadoEm, clienteId, clienteNome, situacao, pediuReembolso, atualizacao, finalizado}]
 let _tratModalId = null; // null = criando nova; com valor = editando a tratativa desse id
 // Um único modal serve criação e edição — abre já preenchido quando vem de um clique na lista.
-function tratAbrirModal(id){
+// preFill (só usado criando nova, id null) permite abrir já com cliente/reembolso marcados —
+// ver tratAbrirDoReembolso().
+function tratAbrirModal(id, preFill){
   _tratModalId = id || null;
   const item = id ? tratativas.find(t => t.id === id) : null;
   const tituloEl = document.getElementById('trat-modal-titulo');
@@ -3139,15 +3141,25 @@ function tratAbrirModal(id){
     clienteEl.innerHTML = opcoes.map(p => '<option value="'+p.id+'">'+(p.nome||'').replace(/</g,'&lt;')+'</option>').join('');
   }
   if (tituloEl) tituloEl.textContent = item ? 'Editar Tratativa' : 'Nova Tratativa';
-  if (clienteEl) clienteEl.value = item ? item.clienteId : (clienteEl.options[0]?.value || '');
+  if (clienteEl) clienteEl.value = item ? item.clienteId : (preFill && preFill.clienteId != null ? preFill.clienteId : (clienteEl.options[0]?.value || ''));
   if (situacaoEl) situacaoEl.value = item ? (item.situacao || '') : '';
-  if (reembolsoEl) reembolsoEl.checked = !!(item && item.pediuReembolso);
+  if (reembolsoEl) reembolsoEl.checked = !!(item ? item.pediuReembolso : (preFill && preFill.pediuReembolso));
   if (atualizacaoEl) atualizacaoEl.value = item ? (item.atualizacao || '') : '';
   if (finalizadoEl) finalizadoEl.checked = !!(item && item.finalizado);
   if (excluirBtn) excluirBtn.style.display = item ? '' : 'none';
   tratSincronizarSinaisProjeto(); // reflete o status/flag ATUAIS do projeto selecionado nos checkboxes
   const modal = document.getElementById('modal-trat-novo');
   if (modal) modal.style.display = 'flex';
+}
+// Ponte Reembolsos -> Tratativas: todo projeto em risco tem uma tratativa aberta (a regra é
+// essa), reembolso é só a tratativa que teve "pediu reembolso" marcado — não é um registro à
+// parte. Se já existe uma tratativa aberta (não finalizada) pro projeto, edita ela em vez de
+// criar duplicada; senão abre o modal de nova já com o cliente e o checkbox de reembolso
+// marcados, faltando só a pessoa escrever a situação.
+function tratAbrirDoReembolso(projetoId) {
+  const aberta = tratativas.find(t => String(t.clienteId) === String(projetoId) && !t.finalizado);
+  if (aberta) { tratAbrirModal(aberta.id); return; }
+  tratAbrirModal(null, { clienteId: projetoId, pediuReembolso: true });
 }
 // Os checkboxes "Pausar"/"Em risco" espelham o estado ATUAL do projeto selecionado no <select>
 // de cliente (não algo salvo na tratativa) — precisa rodar de novo sempre que o cliente muda,
@@ -3361,8 +3373,14 @@ function buildReembolsos() {
         + '</td>'
         + '<td style="padding:6px 8px;min-width:160px;"><input type="text" class="sel" style="font-size:var(--fs-xs);width:100%;" placeholder="Detalhe" value="' + escAttr(p.motivoReembolsoDetalhe||'') + '" onchange="reembSetMotivoDetalhe(' + p.id + ',this.value)"></td>'
         + '<td style="padding:6px 8px;min-width:110px;"><input type="text" class="sel" style="font-size:var(--fs-xs);width:100%;' + (valorEstimado ? 'color:var(--text-hint);font-style:italic;' : '') + '" title="' + (valorEstimado ? 'Estimado a partir do fee — ainda não confirmado' : '') + '" placeholder="Valor (R$)" value="' + escAttr(reembValorEfetivo(p)) + '" onchange="reembSetValor(' + p.id + ',this.value)"></td>'
+        // Todo projeto em risco tem uma tratativa aberta — reembolso é só o pedido marcado
+        // dentro dela (ver tratAbrirDoReembolso). Rótulo muda se já existe uma tratativa aberta
+        // pra esse cliente, pra não parecer que vai criar duplicada.
+        + '<td style="padding:6px 8px;white-space:nowrap;"><button type="button" class="btn btn-ghost" style="padding:4px 10px;font-size:var(--fs-xs);" onclick="tratAbrirDoReembolso(' + p.id + ')">'
+          + (tratativas.some(t => String(t.clienteId) === String(p.id) && !t.finalizado) ? 'Ver tratativa' : 'Abrir tratativa')
+          + '</button></td>'
         + '</tr>';
-    }).join('') : '<tr><td colspan="7" style="padding:12px 8px;color:var(--text-hint);">Nenhum reembolso no período.</td></tr>';
+    }).join('') : '<tr><td colspan="8" style="padding:12px 8px;color:var(--text-hint);">Nenhum reembolso no período.</td></tr>';
   }
 
   buildTratativas();
