@@ -9126,7 +9126,7 @@ function closeNovoPipeEvento() { const m = document.getElementById('modal-pipe-e
 // retroativo). Cria uma oportunidade de verdade em oportunidades[] (não um evento solto) —
 // mesma régua de tudo o mais: uma linha por oportunidade, com histórico embutido, editável
 // dali em diante pelo Lead Time ou por essa própria lista.
-function confirmNovoPipeEvento() {
+async function confirmNovoPipeEvento() {
   const err = document.getElementById('pev-erro');
   const showErr = msg => { if (err) { err.textContent = msg; err.style.display='block'; } };
   const p = _nmAcharProjeto(document.getElementById('pev-proj').value);
@@ -9138,6 +9138,17 @@ function confirmNovoPipeEvento() {
   const valorOT = document.getElementById('pev-ot').value.trim();
   const valorRec = document.getElementById('pev-rec').value.trim();
   const escopo = document.getElementById('pev-escopo').value.trim();
+
+  // Esse botão sempre cria uma oportunidade NOVA — o projeto pode legitimamente ter mais de
+  // uma (upsell), mas na prática o caso comum é reforçar uma oportunidade já aberta no Lead
+  // Time. Sem esse aviso, isso gera "deals" duplicados pro mesmo projeto silenciosamente.
+  const abertas = oportunidadesDe(p).filter(o => !o.fechadaEm);
+  if (abertas.length) {
+    const lista = abertas.map(o => '• ' + o.etapa + (o.criadaEm ? ' (desde ' + o.criadaEm + ')' : '')).join('\n');
+    const msg = 'O projeto "' + (p.nome || '—') + '" já tem ' + (abertas.length > 1 ? 'oportunidades abertas' : 'uma oportunidade aberta') + ':\n' + lista
+      + '\n\nRegistrar esse evento aqui cria uma oportunidade NOVA e separada. Se for sobre a mesma negociação, ajuste a oportunidade existente pelo Lead Time em vez de continuar aqui.\n\nCriar mesmo assim uma nova oportunidade?';
+    if (!(await showConfirm(msg, { confirmLabel: 'Criar nova mesmo assim' }))) return;
+  }
 
   const o = {
     id: oportNovaId(), etapa: etapaAlvo, proximoContato: '', valorOT, valorRec,
