@@ -4389,10 +4389,13 @@ function calcFlagAutomatica(p, refDateISO) {
 // Sem passar nada, calcula em tempo real.
 function prazoStatus(p, refDateISO) {
   if (!p.inicio) return {ok: null, html: '<span style="color:var(--text-hint)">—</span>', dias: null};
-  // Reembolso → projeto INTERROMPIDO: não conta como atraso nem como no prazo.
-  if (p.dataReembolso) {
-    const dias = diffDays(p.inicio, p.dataReembolso);
-    return { ok: null, interrompido: true, dias, html: '<span class="badge b-gray" style="margin-top:0">⊘ interrompido</span>' };
+  // Churn/Pausado/Reembolso → projeto INTERROMPIDO: não conta como atraso nem como no prazo —
+  // senão um projeto parado/em tratativa continuaria sujando o indicador indefinidamente (mesmo
+  // critério já usado do lado da TER, ver prazoStatusTerAba).
+  if (['Churn','Pausado','Reembolso'].includes(p.status2) || p.dataReembolso) {
+    const dias = p.dataReembolso ? diffDays(p.inicio, p.dataReembolso) : (p.dataChurn ? diffDays(p.inicio, p.dataChurn) : null);
+    const label = p.status2 || 'Reembolso';
+    return { ok: null, interrompido: true, dias, html: '<span class="badge b-gray" style="margin-top:0">⊘ ' + label + '</span>' };
   }
   const dIni  = parseDate(p.inicio);
   const dPrev = p.prevFim ? parseDate(p.prevFim) : null;
@@ -14938,7 +14941,7 @@ function perfSelecionaConsultor(nome) {
     const st = prazoStatus(p);
     if (st.ok === true) { pTotal++; pOk++; } else if (st.ok === false) pTotal++;
     const cor = st.ok === true ? 'var(--green)' : st.ok === false ? 'var(--red)' : 'var(--text-hint)';
-    const prazoTxt = st.ok === true ? icon('check')+' No prazo' : st.ok === false ? `${icon('x')} ${st.dias}d fora` : st.interrompido ? '⊘ interrompido' : '—';
+    const prazoTxt = st.ok === true ? icon('check')+' No prazo' : st.ok === false ? `${icon('x')} ${st.dias}d fora` : st.interrompido ? '⊘ ' + (p.status2 || 'interrompido') : '—';
     // Já finalizado: mostra a data REAL (Decolagem/Conclusão Real) em vez da previsão — o status
     // "No prazo"/"Xd fora" é calculado em cima do prazo de 52 dias, não da previsão, então exibir
     // só a previsão dava a impressão de status errado quando a finalização real vinha depois dela.
