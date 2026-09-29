@@ -14939,10 +14939,17 @@ function perfSelecionaConsultor(nome) {
     if (st.ok === true) { pTotal++; pOk++; } else if (st.ok === false) pTotal++;
     const cor = st.ok === true ? 'var(--green)' : st.ok === false ? 'var(--red)' : 'var(--text-hint)';
     const prazoTxt = st.ok === true ? icon('check')+' No prazo' : st.ok === false ? `${icon('x')} ${st.dias}d fora` : st.interrompido ? '⊘ interrompido' : '—';
+    // Já finalizado: mostra a data REAL (Decolagem/Conclusão Real) em vez da previsão — o status
+    // "No prazo"/"Xd fora" é calculado em cima do prazo de 52 dias, não da previsão, então exibir
+    // só a previsão dava a impressão de status errado quando a finalização real vinha depois dela.
+    const fimReal = dataFimReal(p);
+    const dataCol = fimReal
+      ? `${fmtD(fimReal)}${p.prevFim ? `<span style="color:var(--text-hint);"> (prev. ${fmtD(p.prevFim)})</span>` : ''}`
+      : fmtD(p.prevFim);
     prazoRows += `<tr>
       <td style="padding:6px 8px;font-size:var(--fs-base);">${p.nome}</td>
       <td style="padding:6px 8px;font-size:var(--fs-sm);color:var(--text-hint);">${fmtD(p.inicio)}</td>
-      <td style="padding:6px 8px;font-size:var(--fs-sm);color:var(--text-hint);">${fmtD(p.prevFim)}</td>
+      <td style="padding:6px 8px;font-size:var(--fs-sm);color:var(--text-hint);">${dataCol}</td>
       <td style="padding:6px 8px;font-size:var(--fs-sm);font-weight:600;color:${cor};">${prazoTxt}</td>
     </tr>`;
   });
@@ -14981,7 +14988,7 @@ function perfSelecionaConsultor(nome) {
       <thead><tr style="background:var(--surface2);">
         <th style="padding:6px 8px;font-size:var(--fs-xs);text-align:left;">Projeto</th>
         <th style="padding:6px 8px;font-size:var(--fs-xs);text-align:left;">Início</th>
-        <th style="padding:6px 8px;font-size:var(--fs-xs);text-align:left;">Previsto</th>
+        <th style="padding:6px 8px;font-size:var(--fs-xs);text-align:left;">Finalizado / Previsto</th>
         <th style="padding:6px 8px;font-size:var(--fs-xs);text-align:left;">Status</th>
       </tr></thead>
       <tbody>${prazoRows || '<tr><td colspan="4" style="padding:12px;text-align:center;color:var(--text-hint);font-size:var(--fs-base);">Nenhum projeto no período</td></tr>'}</tbody>
