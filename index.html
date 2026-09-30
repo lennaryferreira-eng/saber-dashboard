@@ -2291,6 +2291,11 @@
           <label class="conta-check conta-campo-largo"><input type="checkbox" id="usu-squad-ativo"> Ativo no squad (inativo sai da Performance, AQL, Capacity e PDI, mas o histórico fica)</label>
         </div>
       </fieldset>
+      <fieldset class="conta-fieldset" id="usu-tabs-fieldset" style="display:none;">
+        <legend class="aud-lbl">Abas liberadas no menu</legend>
+        <label class="conta-check conta-campo-largo"><input type="checkbox" id="usu-tabs-padrao" onchange="usuarioTabsTogglePadrao(this)"> Usar a lista padrão do papel (recomendado)</label>
+        <div id="usu-tabs-lista" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:4px 10px;margin-top:8px;"></div>
+      </fieldset>
       <div id="usu-foto-linha" class="conta-foto-linha" style="display:none;">
         <span id="usu-foto-preview"></span>
         <button class="btn btn-ghost" onclick="usuarioRemoverFoto()">Remover foto</button>
@@ -4797,11 +4802,15 @@ function usuarioSoTer(u) {
 function perfilDoUsuario(u) {
   if (!u) return null;
   const nome = u.nome_exibicao;
+  // tabsCustom: override por PESSOA das abas do menu, definido pelo ADM na tela de Usuários
+  // (campo tabs_permitidas). null/vazio = sem override, usa a lista padrão do papel — ver
+  // tabsPermitidasDoPerfil logo abaixo.
+  const tabsCustom = (Array.isArray(u.tabs_permitidas) && u.tabs_permitidas.length) ? u.tabs_permitidas : null;
   if (u.acesso === 'adm') return { nome, consultor: null };
   if (usuarioSoTer(u)) return { nome, viewer: true, soTer: true };
   if (u.acesso === 'viewer') return { nome, viewer: true };
-  if (u.acesso === 'consultor') return { nome, consultor: u.squad_nome };
-  if (u.acesso === 'designer') return { nome, designer: u.squad_nome };
+  if (u.acesso === 'consultor') return { nome, consultor: u.squad_nome, tabsCustom };
+  if (u.acesso === 'designer') return { nome, designer: u.squad_nome, tabsCustom };
   return null;
 }
 // Gestão de usuários exige sessão confirmada pelo servidor — em contingência fica bloqueada.
@@ -4810,12 +4819,23 @@ function usuarioEhAdm() {
 }
 
 // Abas que ficam visíveis pra quem loga como consultor (não-ADM) — as demais somem do menu.
+// Isto é o PADRÃO do papel; um ADM pode dar um recorte diferente pra uma pessoa específica na
+// tela de Usuários (campo tabs_permitidas, ver perfilDoUsuario) — quando existe, o override
+// da pessoa vale, não essa lista.
 const CONSULTOR_TABS_PERMITIDAS = ['base', 'aql', 'leadtime', 'performance', 'auditoria', 'pipeline', 'capacity', 'ferramentas', 'perfil'];
 // Designers têm um recorte menor — sem AQL nem Performance (não fazem sentido pra eles)
 const DESIGNER_TABS_PERMITIDAS = ['base', 'leadtime', 'auditoria', 'capacity', 'perfil'];
-// Retorna a lista de abas certa conforme o TIPO de perfil (designer x consultor). "viewer"
-// não usa essa lista — vê tudo, sem restrição de menu (só não pode editar).
+// Todas as abas que podem entrar num recorte por pessoa (ADM/viewer veem tudo sem essa lista;
+// "usuarios" e "cultura" ficam de fora de propósito — têm critério próprio, sempre só-ADM,
+// independente do que for marcado aqui). Espelha TABS_VALIDAS em api/_lib/usuarios.js —
+// atualizar as duas juntas se nascer uma aba nova.
+const TABS_ASSIGNAVEIS = ['visao', 'base', 'ferramentas', 'conversao', 'prazo', 'csp', 'nps', 'pdi', 'aql', 'reembolsos',
+  'leadtime', 'recorrentes', 'trilhas', 'dro', 'pipeline', 'monetizacao', 'capacity', 'performance', 'auditoria', 'fca', 'perfil'];
+// Retorna a lista de abas certa pro perfil: o override da pessoa (tabsCustom), se existir,
+// senão a lista padrão conforme o TIPO (designer x consultor). "viewer" não usa essa lista —
+// vê tudo, sem restrição de menu (só não pode editar).
 function tabsPermitidasDoPerfil(perfil) {
+  if (perfil && perfil.tabsCustom) return perfil.tabsCustom;
   return (perfil && perfil.designer) ? DESIGNER_TABS_PERMITIDAS : CONSULTOR_TABS_PERMITIDAS;
 }
 // true se o perfil NÃO pode salvar nada (qualquer não-ADM: consultor, designer, ou viewer)
@@ -17529,7 +17549,8 @@ function buildUsuarios() {
       + '<td><span class="conta-pessoa">' + avatarUsuarioHTML(u, 32) + '<span><strong>' + escAttr(u.nome_exibicao) + '</strong>' + (eu ? ' <small style="display:inline;">(você)</small>' : '')
       + '<small>' + escAttr(u.email || 'sem e-mail') + '</small></span></span></td>'
       + '<td>' + (u.cargo ? escAttr(u.cargo) : '<span class="conta-celula-vazia">—</span>') + '</td>'
-      + '<td><span class="badge ' + ACESSO_BADGE[u.acesso] + '" style="margin:0;">' + rotuloAcesso(u) + '</span></td>'
+      + '<td><span class="badge ' + ACESSO_BADGE[u.acesso] + '" style="margin:0;">' + rotuloAcesso(u) + '</span>'
+      + ((Array.isArray(u.tabs_permitidas) && u.tabs_permitidas.length) ? ' <span class="badge b-amber" style="margin:4px 0 0;" title="' + escAttr(u.tabs_permitidas.length + ' aba(s): ' + u.tabs_permitidas.join(', ')) + '">Abas personalizadas</span>' : '') + '</td>'
       + '<td>' + squad + '</td>'
       + '<td style="white-space:nowrap;">' + (u.telefone ? escAttr(u.telefone) : '<span class="conta-celula-vazia">—</span>') + '</td>'
       + '<td style="text-align:right;"><button class="btn btn-ghost" data-id="' + escAttr(u.id) + '" onclick="usuarioAbrirModal(this.dataset.id)">Editar</button></td>'
@@ -17563,6 +17584,12 @@ function usuarioAbrirModal(id) {
   $('usu-foto-preview').innerHTML = temFoto ? avatarUsuarioHTML(u, 40) : '';
   $('usu-btn-remover').style.display = (u && !eu) ? '' : 'none';
   const msg = $('usu-modal-msg'); msg.className = 'conta-msg'; msg.textContent = eu ? 'Você não pode mudar o seu próprio acesso nem o e-mail de login.' : '';
+  // Abas liberadas: se a pessoa já tem um recorte próprio salvo, abre desmarcado e com esse
+  // recorte pronto — usuarioSincronizarAcesso() (chamada logo abaixo) respeita isso e não
+  // sobrescreve pela lista padrão do papel.
+  const tabsCustom = (u && Array.isArray(u.tabs_permitidas) && u.tabs_permitidas.length) ? u.tabs_permitidas : null;
+  $('usu-tabs-padrao').checked = !tabsCustom;
+  usuarioTabsRenderLista(tabsCustom || CONSULTOR_TABS_PERMITIDAS);
   usuarioSincronizarAcesso();
   $('modal-usuario').style.display = 'flex';
   setTimeout(() => $('usu-nome').focus(), 30);
@@ -17617,7 +17644,43 @@ function usuarioSincronizarAcesso() {
   if (ehSquad && !cargo.value) usuarioMontarCargos(acesso === 'consultor' ? 'Consultor' : 'Designer');
   const noSquad = !!tipo.value;
   ['usu-squad-nome', 'usu-coord', 'usu-cor', 'usu-squad-ativo'].forEach(i => { document.getElementById(i).disabled = !noSquad; });
+  // Abas liberadas: só faz sentido pra consultor/designer (viewer/ADM veem tudo). Enquanto
+  // "usar padrão" está marcado, a lista mostrada segue o papel atual (troca sozinha se o ADM
+  // muda de Consultor pra Designer, por exemplo) — só passa a ficar fixa quando desmarcada.
+  document.getElementById('usu-tabs-fieldset').style.display = ehSquad ? '' : 'none';
+  if (ehSquad) {
+    const padraoChk = document.getElementById('usu-tabs-padrao');
+    if (padraoChk.checked) usuarioTabsRenderLista(tipo.value === 'designer' ? DESIGNER_TABS_PERMITIDAS : CONSULTOR_TABS_PERMITIDAS);
+    usuarioTabsTogglePadrao(padraoChk);
+  }
 }
+
+// Rótulo de cada aba pro checklist — reaproveita o texto que já existe no menu lateral
+// (SIDEBAR_NAV), pra não manter uma segunda lista de nomes que desalinha com o tempo.
+function usuarioTabsLabels() {
+  const mapa = {};
+  SIDEBAR_NAV.forEach(g => g.items.forEach(it => { if (!(it.id in mapa)) mapa[it.id] = it.label; }));
+  return mapa;
+}
+function usuarioTabsRenderLista(selecionadas) {
+  const mapa = usuarioTabsLabels();
+  const el = document.getElementById('usu-tabs-lista');
+  el.innerHTML = TABS_ASSIGNAVEIS.map(id =>
+    '<label class="conta-check" style="font-weight:400;"><input type="checkbox" value="' + id + '"' + (selecionadas.includes(id) ? ' checked' : '') + '> ' + escapeHtml(mapa[id] || id) + '</label>'
+  ).join('');
+}
+function usuarioTabsTogglePadrao(chk) {
+  const lista = document.getElementById('usu-tabs-lista');
+  lista.style.opacity = chk.checked ? '.45' : '';
+  lista.querySelectorAll('input[type=checkbox]').forEach(i => { i.disabled = chk.checked; });
+}
+// null = sem override (usa o padrão do papel); array = lista fechada, só pra essa pessoa.
+function usuarioTabsColetar() {
+  const padrao = document.getElementById('usu-tabs-padrao');
+  if (!padrao || padrao.checked) return null;
+  return [...document.querySelectorAll('#usu-tabs-lista input[type=checkbox]:checked')].map(i => i.value);
+}
+
 function usuarioRemoverFoto() {
   _usuFotoRemover = true;
   document.getElementById('usu-foto-linha').style.display = 'none';
@@ -17639,6 +17702,7 @@ async function usuarioSalvar() {
     coordenacao: $('usu-coord').value,
     cor: tipo ? ($('usu-cor').value || null) : null,
     squad_ativo: tipo ? $('usu-squad-ativo').checked : true,
+    tabs_permitidas: usuarioTabsColetar(),
   };
   if (!eu) { corpo.email = $('usu-email').value.trim().toLowerCase() || null; corpo.acesso = $('usu-acesso').value; }
   if (_usuFotoRemover) corpo.foto = null;

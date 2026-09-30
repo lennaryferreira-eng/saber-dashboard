@@ -11,14 +11,25 @@ export const ACESSOS = ['adm', 'viewer', 'consultor', 'designer', 'nenhum'];
 const TIPOS_SQUAD = ['consultor', 'designer'];
 const COORDENACOES = ['saber', 'ter'];
 
+// Mesma lista de ids de aba que o painel usa no menu (SIDEBAR_NAV, index.html) — replicada
+// aqui porque o servidor valida sem carregar o front. Atualizar as duas juntas se um dia
+// nascer uma aba nova. IDs que já têm regra própria (usuarios, cultura) ficam de fora: não
+// fazem parte do recorte por pessoa, têm critério fixo (só ADM) em outro lugar.
+const TABS_VALIDAS = [
+  'visao', 'base', 'ferramentas',
+  'conversao', 'prazo', 'csp', 'nps', 'pdi', 'aql', 'reembolsos',
+  'leadtime', 'recorrentes', 'trilhas', 'dro', 'pipeline', 'monetizacao',
+  'capacity', 'performance', 'auditoria', 'fca', 'perfil',
+];
+
 // A própria pessoa muda só isso. Cargo fica de fora de propósito: quem define é o ADM.
 export const CAMPOS_DA_PROPRIA_PESSOA = ['nome_exibicao', 'telefone', 'foto'];
 export const CAMPOS_DO_ADM = [
   'email', 'nome_exibicao', 'cargo', 'telefone', 'foto', 'acesso',
-  'squad_nome', 'squad_tipo', 'coordenacao', 'cor', 'squad_ativo',
+  'squad_nome', 'squad_tipo', 'coordenacao', 'cor', 'squad_ativo', 'tabs_permitidas',
 ];
 
-const COLUNAS = 'id,email,nome_exibicao,cargo,telefone,foto,acesso,squad_nome,squad_tipo,coordenacao,cor,squad_ativo,updated_at,updated_by';
+const COLUNAS = 'id,email,nome_exibicao,cargo,telefone,foto,acesso,squad_nome,squad_tipo,coordenacao,cor,squad_ativo,tabs_permitidas,updated_at,updated_by';
 
 export class ErroDeRegra extends Error {
   constructor(status, mensagem) { super(mensagem); this.status = status; }
@@ -114,6 +125,16 @@ export function limparCampos(entrada, permitidos) {
         if (typeof v !== 'boolean') throw new ErroDeRegra(400, 'squad_ativo precisa ser verdadeiro ou falso');
         out.squad_ativo = v;
         break;
+      case 'tabs_permitidas': {
+        // null = sem override, usa a lista padrão do papel (ver tabsPermitidasDoPerfil no
+        // index.html). Array = lista fechada de abas liberadas SÓ pra essa pessoa.
+        if (v === null) { out.tabs_permitidas = null; break; }
+        if (!Array.isArray(v) || v.some((t) => typeof t !== 'string' || !TABS_VALIDAS.includes(t))) {
+          throw new ErroDeRegra(400, 'Lista de abas inválida');
+        }
+        out.tabs_permitidas = [...new Set(v)];
+        break;
+      }
     }
   }
   return out;
