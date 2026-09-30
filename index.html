@@ -10934,7 +10934,20 @@ async function _oportPersistirAgora(projId) {
 
 // Nova oportunidade sempre começa em "Mapeado (AQL)" — abre direto o pop-up de produtos;
 // só entra na lista de verdade quando ela salva (cancelar não cria nada).
-function oportAdicionar(projId) {
+//
+// Mesmo risco do "+ Registrar evento" da aba AQL (ver confirmNovoPipeEvento): se o projeto já
+// tem uma oportunidade aberta, criar outra por aqui passa batido — o botão é pra upsell de
+// verdade, mas nada impedia clicar nele sem querer reforçar a mesma negociação. Mesmo aviso.
+async function oportAdicionar(projId) {
+  const p = projects.find(x => String(x.id) === String(projId));
+  if (!p) return;
+  const abertas = oportunidadesDe(p).filter(o => !o.fechadaEm);
+  if (abertas.length) {
+    const lista = abertas.map(o => '• ' + o.etapa + (o.criadaEm ? ' (desde ' + o.criadaEm + ')' : '')).join('\n');
+    const msg = 'O projeto "' + (p.nome || '—') + '" já tem ' + (abertas.length > 1 ? 'oportunidades abertas' : 'uma oportunidade aberta') + ':\n' + lista
+      + '\n\nCriar outra aqui é pra um upsell de verdade (negociação separada). Se for sobre a mesma negociação, ajuste a oportunidade existente em vez de criar uma nova.\n\nCriar mesmo assim uma nova oportunidade?';
+    if (!(await showConfirm(msg, { confirmLabel: 'Criar nova mesmo assim' }))) return;
+  }
   _aqlProdIsNovo = true;
   aqlAbrirProdutos(projId, null, null, true);
 }
