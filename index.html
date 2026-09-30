@@ -4843,8 +4843,13 @@ function aplicarGruposPermissoes(grupos) {
 // "usuarios" e "cultura" ficam de fora de propósito — têm critério próprio, sempre só-ADM,
 // independente do que for marcado aqui). Espelha TABS_VALIDAS em api/_lib/usuarios.js —
 // atualizar as duas juntas se nascer uma aba nova.
+//
+// De propósito SEM "recorrentes" nem "trilhas" (abas exclusivas da TER): quem usa essa lista
+// é sempre Consultor/Designer, e esse papel nunca acessa a TER (bloqueado em switchCoord, logo
+// abaixo) — misturar aba só-TER aqui era escolha morta, nunca tinha efeito, só confundia SABER
+// com TER numa lista que na prática é só de SABER.
 const TABS_ASSIGNAVEIS = ['visao', 'base', 'ferramentas', 'conversao', 'prazo', 'csp', 'nps', 'pdi', 'aql', 'reembolsos',
-  'leadtime', 'recorrentes', 'trilhas', 'dro', 'pipeline', 'monetizacao', 'capacity', 'performance', 'auditoria', 'fca', 'perfil'];
+  'leadtime', 'dro', 'pipeline', 'monetizacao', 'capacity', 'performance', 'auditoria', 'fca', 'perfil'];
 // Retorna a lista de abas certa pro perfil: o override da pessoa (tabsCustom), se existir,
 // senão a lista padrão conforme o TIPO (designer x consultor). "viewer" não usa essa lista —
 // vê tudo, sem restrição de menu (só não pode editar).

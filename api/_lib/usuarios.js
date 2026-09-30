@@ -15,10 +15,16 @@ const COORDENACOES = ['saber', 'ter'];
 // aqui porque o servidor valida sem carregar o front. Atualizar as duas juntas se um dia
 // nascer uma aba nova. IDs que já têm regra própria (usuarios, cultura) ficam de fora: não
 // fazem parte do recorte por pessoa, têm critério fixo (só ADM) em outro lugar.
+//
+// Só abas da SABER (ou compartilhadas com a TER pelo mesmo id, ex: leadtime/prazo/nps/pdi/
+// capacity/performance) — de propósito SEM "recorrentes" nem "trilhas" (exclusivas da TER):
+// quem usa esse recorte é sempre Consultor/Designer, e esse papel NUNCA acessa a TER (barrado
+// direto em switchCoord, index.html) — incluir aba só-TER aqui era escolha morta, nunca surtia
+// efeito nenhum, só misturava as duas coordenações numa lista que é só de SABER na prática.
 const TABS_VALIDAS = [
   'visao', 'base', 'ferramentas',
   'conversao', 'prazo', 'csp', 'nps', 'pdi', 'aql', 'reembolsos',
-  'leadtime', 'recorrentes', 'trilhas', 'dro', 'pipeline', 'monetizacao',
+  'leadtime', 'dro', 'pipeline', 'monetizacao',
   'capacity', 'performance', 'auditoria', 'fca', 'perfil',
 ];
 
