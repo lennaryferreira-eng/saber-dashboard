@@ -22,6 +22,17 @@ const TABS_VALIDAS = [
   'capacity', 'performance', 'auditoria', 'fca', 'perfil',
 ];
 
+// Grupos com lista de abas editável na tela de Usuários (tabela grupos_permissoes). Um
+// override por pessoa (tabs_permitidas, acima) continua valendo por cima disso quando existir.
+export const GRUPOS_VALIDOS = ['consultor', 'designer'];
+// Sementes: o recorte que já estava fixo no código (CONSULTOR_TABS_PERMITIDAS/
+// DESIGNER_TABS_PERMITIDAS no index.html) antes dessa tela existir. Serve de fallback quando
+// a linha do grupo ainda não foi salva na tabela — assim a primeira leitura nunca vem vazia.
+const GRUPOS_PADRAO = {
+  consultor: ['base', 'aql', 'leadtime', 'performance', 'auditoria', 'pipeline', 'capacity', 'ferramentas', 'perfil'],
+  designer: ['base', 'leadtime', 'auditoria', 'capacity', 'perfil'],
+};
+
 // A própria pessoa muda só isso. Cargo fica de fora de propósito: quem define é o ADM.
 export const CAMPOS_DA_PROPRIA_PESSOA = ['nome_exibicao', 'telefone', 'foto'];
 export const CAMPOS_DO_ADM = [
@@ -246,4 +257,35 @@ export async function alterarUsuario(id, campos, porEmail) {
 
 export async function removerUsuario(id) {
   await chamar('usuarios?id=eq.' + encodeURIComponent(id), { method: 'DELETE', headers: cabecalhos({ Prefer: 'return=minimal' }) });
+}
+
+// ── Grupos (lista padrão de abas por papel) ────────────────────────────
+
+function validarTabsDeGrupo(v) {
+  if (!Array.isArray(v) || !v.length || v.some((t) => typeof t !== 'string' || !TABS_VALIDAS.includes(t))) {
+    throw new ErroDeRegra(400, 'Lista de abas inválida — escolha pelo menos uma aba válida');
+  }
+  return [...new Set(v)];
+}
+
+// Sempre devolve os dois grupos, mesmo que a tabela ainda esteja vazia (cai no fallback fixo).
+export async function listarGrupos() {
+  const linhas = await chamar('grupos_permissoes?select=grupo,tabs', { headers: cabecalhos() });
+  const mapa = { ...GRUPOS_PADRAO };
+  for (const l of linhas) {
+    if (GRUPOS_VALIDOS.includes(l.grupo) && Array.isArray(l.tabs) && l.tabs.length) mapa[l.grupo] = l.tabs;
+  }
+  return mapa;
+}
+
+export async function salvarGrupo(grupo, tabs, porEmail) {
+  if (!GRUPOS_VALIDOS.includes(grupo)) throw new ErroDeRegra(400, 'Grupo desconhecido');
+  const lista = validarTabsDeGrupo(tabs);
+  // Upsert por `grupo` (chave primária) — a linha pode não existir ainda na primeira edição.
+  await chamar('grupos_permissoes?on_conflict=grupo', {
+    method: 'POST',
+    headers: cabecalhos({ Prefer: 'resolution=merge-duplicates,return=minimal' }),
+    body: JSON.stringify([{ grupo, tabs: lista, updated_at: new Date().toISOString(), updated_by: porEmail }]),
+  });
+  return lista;
 }

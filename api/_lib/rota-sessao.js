@@ -4,7 +4,7 @@
 // DELETE → sair: apaga o cookie.
 
 import { emailDaSessao, cookieDeSaida } from './sessao.js';
-import { listarUsuarios, visaoDaLista } from './usuarios.js';
+import { listarUsuarios, visaoDaLista, listarGrupos } from './usuarios.js';
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
@@ -41,7 +41,7 @@ export default async function handler(req, res) {
       res.status(403).json({ error: 'Sua conta (' + email + ') entrou pelo Google, mas não tem acesso a este painel. Peça para um ADM te cadastrar.' });
       return;
     }
-    res.status(200).json({ usuario: eu, usuarios: visaoDaLista(eu, todos) });
+    res.status(200).json({ usuario: eu, usuarios: visaoDaLista(eu, todos), grupos: await listarGrupos() });
   } catch (err) {
     res.status(500).json({ error: 'Falha ao carregar a sessão: ' + err.message });
   }

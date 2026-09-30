@@ -1879,6 +1879,11 @@
   <section id="sec-usuarios" class="section">
     <div class="sec-head"><h2 class="sec-title">Usuários</h2><p class="sec-desc">Quem entra no painel, com que acesso, e como cada pessoa aparece no squad. Quem está marcado como consultor aqui é quem aparece nos filtros e na Performance.</p></div>
     <div class="mgrid mg4" id="usu-resumo"></div>
+    <div class="card" id="grupos-card">
+      <h3 style="margin:0 0 2px;">Permissões por grupo</h3>
+      <p class="conta-dica" style="margin:0 0 12px;">Abas padrão de quem tem acesso Consultor ou Designer — muda pra todo mundo do grupo de uma vez. Uma pessoa específica pode ter um recorte próprio, editável no cadastro dela (abaixo), que vale por cima disso.</p>
+      <div id="grupos-lista" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;"></div>
+    </div>
     <div class="card">
       <div class="conta-toolbar">
         <input id="usu-busca" class="aud-inp" type="search" placeholder="Buscar por nome, e-mail ou cargo" oninput="buildUsuarios()" aria-label="Buscar usuário">
@@ -4819,12 +4824,21 @@ function usuarioEhAdm() {
 }
 
 // Abas que ficam visíveis pra quem loga como consultor (não-ADM) — as demais somem do menu.
-// Isto é o PADRÃO do papel; um ADM pode dar um recorte diferente pra uma pessoa específica na
-// tela de Usuários (campo tabs_permitidas, ver perfilDoUsuario) — quando existe, o override
-// da pessoa vale, não essa lista.
-const CONSULTOR_TABS_PERMITIDAS = ['base', 'aql', 'leadtime', 'performance', 'auditoria', 'pipeline', 'capacity', 'ferramentas', 'perfil'];
+// Isto é o PADRÃO do papel — editável pelo ADM na tela de Usuários ("Permissões por grupo"),
+// carregado do servidor em aplicarSessao() (grupos_permissoes no Supabase). Os valores aqui são
+// só o fallback antes da primeira resposta do servidor chegar (ou em contingência sem cache).
+// Um ADM também pode dar um recorte diferente pra uma pessoa específica (campo tabs_permitidas,
+// ver perfilDoUsuario) — quando existe, o override da pessoa vale, não a lista do grupo.
+let CONSULTOR_TABS_PERMITIDAS = ['base', 'aql', 'leadtime', 'performance', 'auditoria', 'pipeline', 'capacity', 'ferramentas', 'perfil'];
 // Designers têm um recorte menor — sem AQL nem Performance (não fazem sentido pra eles)
-const DESIGNER_TABS_PERMITIDAS = ['base', 'leadtime', 'auditoria', 'capacity', 'perfil'];
+let DESIGNER_TABS_PERMITIDAS = ['base', 'leadtime', 'auditoria', 'capacity', 'perfil'];
+// Aplica a lista de abas vinda do servidor (GET r=sessao ou PATCH r=usuarios&grupo=...) —
+// ignora grupo desconhecido ou lista vazia/malformada, mantendo o fallback acima.
+function aplicarGruposPermissoes(grupos) {
+  if (!grupos || typeof grupos !== 'object') return;
+  if (Array.isArray(grupos.consultor) && grupos.consultor.length) CONSULTOR_TABS_PERMITIDAS = grupos.consultor;
+  if (Array.isArray(grupos.designer) && grupos.designer.length) DESIGNER_TABS_PERMITIDAS = grupos.designer;
+}
 // Todas as abas que podem entrar num recorte por pessoa (ADM/viewer veem tudo sem essa lista;
 // "usuarios" e "cultura" ficam de fora de propósito — têm critério próprio, sempre só-ADM,
 // independente do que for marcado aqui). Espelha TABS_VALIDAS em api/_lib/usuarios.js —
@@ -5016,8 +5030,9 @@ function aplicarSessao(data) {
   USUARIO_ATUAL = data.usuario;
   USUARIOS = Array.isArray(data.usuarios) ? data.usuarios : [];
   SESSAO_CONTINGENCIA = false;
+  aplicarGruposPermissoes(data.grupos);
   try {
-    localStorage.setItem(CHAVE_CACHE_SESSAO, JSON.stringify({ ts: Date.now(), usuario: _resumoParaCache(USUARIO_ATUAL), usuarios: USUARIOS.map(_resumoParaCache) }));
+    localStorage.setItem(CHAVE_CACHE_SESSAO, JSON.stringify({ ts: Date.now(), usuario: _resumoParaCache(USUARIO_ATUAL), usuarios: USUARIOS.map(_resumoParaCache), grupos: data.grupos || null }));
     localStorage.removeItem('saber_gsi_email'); // sessão antiga, só no navegador
   } catch (e) {}
   _aplicarLogin(perfilDoUsuario(USUARIO_ATUAL));
@@ -5073,6 +5088,7 @@ async function entrarEmContingencia(motivo) {
   USUARIO_ATUAL = cache.usuario;
   USUARIOS = Array.isArray(cache.usuarios) ? cache.usuarios : [];
   SESSAO_CONTINGENCIA = true;
+  aplicarGruposPermissoes(cache.grupos);
   _aplicarLogin(perfilDoUsuario(USUARIO_ATUAL));
   aplicarRosterDoSquad();
   await garantirCoordenacaoDoPerfil();
@@ -10359,7 +10375,7 @@ function show(sec) {
     else if (sec === 'fca')         buildFca();
     else if (sec === 'ferramentas') buildFerramentas();
     else if (sec === 'perfil')      buildPerfil();
-    else if (sec === 'usuarios')    buildUsuarios();
+    else if (sec === 'usuarios')    { buildUsuarios(); buildGruposPermissoes(); }
   } catch(e) { console.error('show(' + sec + ') erro:', e); }
 }
 
@@ -17556,6 +17572,57 @@ function buildUsuarios() {
       + '<td style="text-align:right;"><button class="btn btn-ghost" data-id="' + escAttr(u.id) + '" onclick="usuarioAbrirModal(this.dataset.id)">Editar</button></td>'
       + '</tr>';
   }).join('') + '</tbody>';
+}
+
+// Chamada só ao ABRIR a aba Usuários (não a cada busca/filtro de buildUsuarios) — senão
+// digitar na busca resetaria uma edição de grupo ainda não salva.
+function buildGruposPermissoes() {
+  const el = document.getElementById('grupos-lista');
+  if (!el || !usuarioEhAdm()) return;
+  const mapa = usuarioTabsLabels();
+  const blocos = [
+    { grupo: 'consultor', titulo: 'Consultor', tabs: CONSULTOR_TABS_PERMITIDAS },
+    { grupo: 'designer', titulo: 'Designer', tabs: DESIGNER_TABS_PERMITIDAS },
+  ];
+  el.innerHTML = blocos.map(b => '<div style="border:1px solid var(--border);border-radius:var(--r);padding:12px;">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
+      + '<strong>' + b.titulo + '</strong>'
+      + '<button class="btn btn-ghost btn-sm" data-grupo="' + b.grupo + '" onclick="grupoSalvar(this.dataset.grupo)" disabled>Salvar</button>'
+    + '</div>'
+    + '<div id="grupo-lista-' + b.grupo + '" onchange="grupoMarcarPendente(\'' + b.grupo + '\')" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px 10px;">'
+      + TABS_ASSIGNAVEIS.map(id => '<label class="conta-check" style="font-weight:400;"><input type="checkbox" value="' + id + '"' + (b.tabs.includes(id) ? ' checked' : '') + '> ' + escapeHtml(mapa[id] || id) + '</label>').join('')
+    + '</div>'
+    + '<span id="grupo-msg-' + b.grupo + '" class="conta-msg" style="display:block;margin-top:6px;"></span>'
+  + '</div>').join('');
+}
+function grupoMarcarPendente(grupo) {
+  const btn = document.querySelector('#grupos-lista button[data-grupo="' + grupo + '"]');
+  if (btn) btn.disabled = false;
+  const msg = document.getElementById('grupo-msg-' + grupo);
+  if (msg) { msg.className = 'conta-msg'; msg.textContent = ''; }
+}
+async function grupoSalvar(grupo) {
+  const lista = document.getElementById('grupo-lista-' + grupo);
+  const btn = document.querySelector('#grupos-lista button[data-grupo="' + grupo + '"]');
+  const msg = document.getElementById('grupo-msg-' + grupo);
+  const tabs = [...lista.querySelectorAll('input[type=checkbox]:checked')].map(i => i.value);
+  if (!tabs.length) { if (msg) { msg.className = 'conta-msg erro'; msg.textContent = 'Marque pelo menos uma aba.'; } return; }
+  if (btn) btn.disabled = true;
+  if (msg) { msg.className = 'conta-msg'; msg.textContent = 'Salvando…'; }
+  try {
+    const r = await fetch('/api/conta?r=usuarios&grupo=' + encodeURIComponent(grupo), {
+      method: 'PATCH', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tabs }),
+    });
+    const dados = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(dados.error || ('HTTP ' + r.status));
+    aplicarGruposPermissoes(dados.grupos);
+    if (msg) { msg.className = 'conta-msg ok'; msg.textContent = 'Salvo — vale a partir do próximo login de quem é ' + (grupo === 'designer' ? 'Designer' : 'Consultor') + '.'; }
+    showToast && showToast('Permissões do grupo salvas', 'success');
+  } catch (e) {
+    if (msg) { msg.className = 'conta-msg erro'; msg.textContent = e.message; }
+    if (btn) btn.disabled = false;
+  }
 }
 
 function usuarioAbrirModal(id) {
