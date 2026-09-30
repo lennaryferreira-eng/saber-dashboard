@@ -3697,9 +3697,13 @@ function renderSidebarNav() {
     + g.items.map((it, ii) => (it.href
         // Item externo (página estática fora da SPA, ex: Jornada do Consultor) — link de
         // verdade em vez de button+show(), senão show() procuraria uma aba #tab-jornada que
-        // não existe. Nova aba pra não perder o estado da SPA atual.
+        // não existe. Nova aba pra não perder o estado da SPA atual. data-tab identifica o
+        // item pro recorte de permissões (updatePerfilNavVisibility) do mesmo jeito que o
+        // onclick="show(...)" faz pros itens internos — sem isso, um link href nunca era
+        // encontrado por aquele laço e ficava sempre visível, driblando qualquer restrição.
         ? '<a class="nav-tab sidebar-link' + (it.extraClass ? ' ' + it.extraClass : '') + '"'
           + (it.elId ? ' id="' + it.elId + '"' : '')
+          + ' data-tab="' + it.id + '"'
           + (it.hiddenByDefault ? ' style="display:none;"' : '')
           + ' href="' + it.href + '" target="_blank" rel="noopener noreferrer">'
           + icon(it.icon) + '<span class="sidebar-link-label">' + it.label + '</span></a>'
@@ -3707,6 +3711,7 @@ function renderSidebarNav() {
           + (it.extraClass ? ' ' + it.extraClass : '')
           + (gi === 0 && ii === 0 ? ' active' : '') + '"'
           + (it.elId ? ' id="' + it.elId + '"' : '')
+          + ' data-tab="' + it.id + '"'
           + (it.hiddenByDefault ? ' style="display:none;"' : '')
           + ' onclick="show(\'' + it.id + '\')">'
           + icon(it.icon) + '<span class="sidebar-link-label">' + it.label + '</span></button>')).join('')
@@ -4829,9 +4834,9 @@ function usuarioEhAdm() {
 // só o fallback antes da primeira resposta do servidor chegar (ou em contingência sem cache).
 // Um ADM também pode dar um recorte diferente pra uma pessoa específica (campo tabs_permitidas,
 // ver perfilDoUsuario) — quando existe, o override da pessoa vale, não a lista do grupo.
-let CONSULTOR_TABS_PERMITIDAS = ['base', 'aql', 'leadtime', 'performance', 'auditoria', 'pipeline', 'capacity', 'ferramentas', 'perfil'];
+let CONSULTOR_TABS_PERMITIDAS = ['base', 'jornada', 'aql', 'leadtime', 'performance', 'auditoria', 'pipeline', 'capacity', 'ferramentas', 'perfil'];
 // Designers têm um recorte menor — sem AQL nem Performance (não fazem sentido pra eles)
-let DESIGNER_TABS_PERMITIDAS = ['base', 'leadtime', 'auditoria', 'capacity', 'perfil'];
+let DESIGNER_TABS_PERMITIDAS = ['base', 'jornada', 'leadtime', 'auditoria', 'capacity', 'perfil'];
 // Aplica a lista de abas vinda do servidor (GET r=sessao ou PATCH r=usuarios&grupo=...) —
 // ignora grupo desconhecido ou lista vazia/malformada, mantendo o fallback acima.
 function aplicarGruposPermissoes(grupos) {
@@ -4848,7 +4853,7 @@ function aplicarGruposPermissoes(grupos) {
 // é sempre Consultor/Designer, e esse papel nunca acessa a TER (bloqueado em switchCoord, logo
 // abaixo) — misturar aba só-TER aqui era escolha morta, nunca tinha efeito, só confundia SABER
 // com TER numa lista que na prática é só de SABER.
-const TABS_ASSIGNAVEIS = ['visao', 'base', 'ferramentas', 'conversao', 'prazo', 'csp', 'nps', 'pdi', 'aql', 'reembolsos',
+const TABS_ASSIGNAVEIS = ['visao', 'base', 'jornada', 'ferramentas', 'conversao', 'prazo', 'csp', 'nps', 'pdi', 'aql', 'reembolsos',
   'leadtime', 'dro', 'pipeline', 'monetizacao', 'capacity', 'performance', 'auditoria', 'fca', 'perfil'];
 // Retorna a lista de abas certa pro perfil: o override da pessoa (tabsCustom), se existir,
 // senão a lista padrão conforme o TIPO (designer x consultor). "viewer" não usa essa lista —
@@ -5175,14 +5180,22 @@ function updatePerfilNavVisibility() {
     btnReinj.style.display = (ehAdm && _snapshotPendente) ? '' : 'none';
   }
   document.querySelectorAll('nav .nav-tab').forEach(btn => {
-    const m = (btn.getAttribute('onclick') || '').match(/show\('([a-z]+)'\)/);
-    if (!m) return;
-    const key = m[1];
+    // data-tab cobre tanto os itens internos (button+show()) quanto os externos (link href,
+    // ex: Jornada do Consultor) — antes só o onclick="show(...)" era lido, então um link href
+    // nunca batia com o regex e ficava sempre visível, ignorando qualquer restrição de papel.
+    const key = btn.dataset.tab || (btn.getAttribute('onclick') || '').match(/show\('([a-z]+)'\)/)?.[1];
+    if (!key) return;
     if (key === 'usuarios') return; // tem regra própria (só ADM), definida acima
     if (restringir) {
       if (!tabsPermitidas.includes(key)) {
         btn.style.display = 'none';
         btn.dataset.hiddenByPerfil = '1';
+      } else if (btn.dataset.hiddenByPerfil) {
+        // Cobre o caso de tabsPermitidas mudar NA MESMA sessão restrita (ex: reaplicar login
+        // depois de um recorte editado) — sem isso, uma aba antes escondida ficava escondida
+        // pra sempre, mesmo depois de passar a estar permitida.
+        btn.style.display = '';
+        delete btn.dataset.hiddenByPerfil;
       }
     } else if (btn.dataset.hiddenByPerfil) {
       btn.style.display = '';

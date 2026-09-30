@@ -22,7 +22,7 @@ const COORDENACOES = ['saber', 'ter'];
 // direto em switchCoord, index.html) — incluir aba só-TER aqui era escolha morta, nunca surtia
 // efeito nenhum, só misturava as duas coordenações numa lista que é só de SABER na prática.
 const TABS_VALIDAS = [
-  'visao', 'base', 'ferramentas',
+  'visao', 'base', 'jornada', 'ferramentas',
   'conversao', 'prazo', 'csp', 'nps', 'pdi', 'aql', 'reembolsos',
   'leadtime', 'dro', 'pipeline', 'monetizacao',
   'capacity', 'performance', 'auditoria', 'fca', 'perfil',
@@ -35,8 +35,8 @@ export const GRUPOS_VALIDOS = ['consultor', 'designer'];
 // DESIGNER_TABS_PERMITIDAS no index.html) antes dessa tela existir. Serve de fallback quando
 // a linha do grupo ainda não foi salva na tabela — assim a primeira leitura nunca vem vazia.
 const GRUPOS_PADRAO = {
-  consultor: ['base', 'aql', 'leadtime', 'performance', 'auditoria', 'pipeline', 'capacity', 'ferramentas', 'perfil'],
-  designer: ['base', 'leadtime', 'auditoria', 'capacity', 'perfil'],
+  consultor: ['base', 'jornada', 'aql', 'leadtime', 'performance', 'auditoria', 'pipeline', 'capacity', 'ferramentas', 'perfil'],
+  designer: ['base', 'jornada', 'leadtime', 'auditoria', 'capacity', 'perfil'],
 };
 
 // A própria pessoa muda só isso. Cargo fica de fora de propósito: quem define é o ADM.
