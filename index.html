@@ -19313,7 +19313,7 @@ function dossieRenderForm() {
     + '<div class="fer-duas">' + ferCampo('Produto contratado', 'produto') + ferCampo('Valor', 'valor') + '</div>'
     + '<div class="fer-duas">' + ferCampo('Forma de pagamento', 'formaPagamento') + ferCampo('Data de início do novo serviço', 'inicioServico', { tipo: 'date' }) + '</div>'
     + ferCampo('Link do contrato assinado (PDF ou Doc no Drive — a IA lê daqui)', 'contrato', { placeholder: 'https://drive.google.com/file/d/…' })
-    + '<label class="fer-campo"><span>Ou anexe o PDF baixado no computador (até 3&nbsp;MB — não precisa estar no Drive)</span>'
+    + '<label class="fer-campo"><span>Ou anexe o PDF baixado no computador (até 3&nbsp;MB — não precisa estar no Drive; ao gravar, o arquivo é enviado pro Notion como anexo de verdade)</span>'
       + (d.contratoArquivo
           ? ('<div class="fer-arquivo"><span>📎 ' + escapeHtml(d.contratoArquivo.nome) + '</span><button type="button" class="btn btn-ghost btn-sm" onclick="dossieRemoverArquivo()">Remover</button></div>')
           : '<input type="file" accept="application/pdf" class="aud-inp" onchange="dossieAnexarArquivo(this)">')
@@ -19475,11 +19475,10 @@ async function dossieGravar(substituir) {
   const msg = document.getElementById('dossie-msg');
   if (btn) btn.disabled = true;
   if (msg) { msg.className = 'conta-msg'; msg.textContent = 'Gravando no Notion…'; }
-  // O anexo local não vai pro Notion (não tem link pra escrever, e é peso à toa no payload) —
-  // fica só o nome do arquivo como registro de que o contrato não está no Drive.
+  // O anexo local vai junto (base64) — o servidor sobe ele pro Notion de verdade na hora de
+  // gravar (ver rotaGravar em rota-ferramentas.js) e ele vira um bloco de arquivo real na
+  // página, não só um texto com o nome do PDF.
   const dados = { ..._dossieCampos };
-  if (!dados.contrato && dados.contratoArquivo) dados.contrato = 'Anexado localmente: ' + dados.contratoArquivo.nome + ' (não está no Drive)';
-  delete dados.contratoArquivo;
   try {
     await apiFer('gravar', { corpo: { pageId: _dossieSel.id, dados, substituir: !!substituir } });
     if (msg) { msg.className = 'conta-msg ok'; msg.textContent = 'Dossiê alimentado.'; }

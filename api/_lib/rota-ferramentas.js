@@ -15,7 +15,7 @@ import { emailDaSessao } from './sessao.js';
 import { listarUsuarios } from './usuarios.js';
 import { getGoogleConnection } from './supabase.js';
 import { getAccessToken, buscarPastas, listarConteudoDaPasta, listCalendarEvents, criarEventoNaAgenda, exportFileAsText, lerArquivoDoDrive } from './google.js';
-import { listarDossies, acharSecaoExpansao, blocosDoDossie, escreverNaSecao, limparSecao, ErroNotion, TITULO_EXPANSAO } from './notion.js';
+import { listarDossies, acharSecaoExpansao, blocosDoDossie, escreverNaSecao, limparSecao, subirArquivoNotion, ErroNotion, TITULO_EXPANSAO } from './notion.js';
 import { callClaude } from './anthropic.js';
 
 // Quem entra como obrigatório em todo convite, além do designer do projeto. Definido com a
@@ -153,16 +153,35 @@ async function rotaContexto(req, res) {
 }
 
 // ── Redação com a IA ────────────────────────────────────────────────
+//
+// Duas chamadas SEPARADAS, cada uma só vendo a fonte certa — não é só instrução de prompt,
+// é isolamento de verdade: a chamada do contrato fisicamente não recebe nenhum texto de
+// reunião, e vice-versa. Antes ia tudo junto numa mensagem só (contrato + call + reuniões de
+// entrega) com uma instrução pedindo pra IA não misturar — só que produto/valor às vezes saía
+// da transcrição da reunião em vez do contrato, porque a IA via as duas fontes juntas e o
+// isolamento dependia só dela obedecer a regra. Separar em duas chamadas fecha essa brecha.
 
-const SISTEMA_REDACAO = `Você escreve o dossiê de transição de um projeto de Estruturação Estratégica da V4 Company, que passa o bastão do consultor para quem vai operar a conta.
-
-Você recebe, em qualquer combinação: o contrato assinado (PDF ou texto), as anotações da call de expansão (a reunião em que a venda foi fechada) e as anotações das reuniões de entrega do projeto. Devolve APENAS um JSON válido, sem markdown e sem texto em volta:
+const SISTEMA_CONTRATO = `Você lê o contrato assinado de um projeto de Estruturação Estratégica da V4 Company e extrai só o que está escrito nele. Devolve APENAS um JSON válido, sem markdown e sem texto em volta:
 
 {
   "produto": "O serviço contratado, exatamente como está escrito no contrato",
   "valor": "O valor, com a moeda e o número como aparecem no contrato",
   "formaPagamento": "Forma de pagamento e parcelamento como está no contrato",
-  "inicioServico": "Data de início do novo serviço no formato AAAA-MM-DD, se estiver clara",
+  "inicioServico": "Data de início do novo serviço no formato AAAA-MM-DD, se estiver clara"
+}
+
+Regras:
+- Cópia fiel do contrato. Não arredonde valor, não converta data por dedução, não complete parcelamento que não está escrito.
+- Se o contrato não disser algo, devolva string vazia nesse campo — quem preenche à mão é o consultor.
+- Nome de pessoa, valor e prazo: copie como está na fonte.
+- Português do Brasil, direto, sem jargão de IA.
+- A resposta é SEMPRE só o JSON, mesmo se o documento não parecer um contrato — nesse caso devolva os quatro campos vazios.`;
+
+const SISTEMA_REUNIOES = `Você escreve parte do dossiê de transição de um projeto de Estruturação Estratégica da V4 Company, que passa o bastão do consultor para quem vai operar a conta.
+
+Você recebe, em qualquer combinação: as anotações da call de expansão (a reunião em que a venda foi fechada) e as anotações das reuniões de entrega do projeto. Devolve APENAS um JSON válido, sem markdown e sem texto em volta:
+
+{
   "motivacao": "O que pesou na decisão de contratar e qual argumento fechou. 2 a 4 frases.",
   "objecoes": "As objeções que o cliente levantou e como foram tratadas. Uma por linha, no formato 'Objeção — como foi tratada'.",
   "promessas": "O que foi dito que o cliente espera receber e em qual prazo. Uma por linha.",
@@ -170,13 +189,40 @@ Você recebe, em qualquer combinação: o contrato assinado (PDF ou texto), as a
 }
 
 Regras:
-- Os quatro primeiros campos são cópia fiel do contrato. Não arredonde valor, não converta data por dedução, não complete parcelamento que não está escrito. Se o contrato não disser, devolva string vazia — quem preenche à mão é o consultor.
-- Os quatro últimos vêm das reuniões, principalmente da call de expansão. Só afirme o que estiver nas anotações. Sem base, escreva exatamente "Não identificado nas reuniões — preencher à mão".
+- Só afirme o que estiver nas anotações, principalmente na call de expansão. Sem base, escreva exatamente "Não identificado nas reuniões — preencher à mão".
 - Nada de elogio, adjetivo de vendedor ou frase de efeito. Quem lê precisa operar a conta amanhã.
 - Português do Brasil, direto, sem jargão de IA.
 - Pode usar marcação simples nos campos de texto, que o dossiê renderiza: **negrito**, listas começando a linha com "- ", listas numeradas com "1. " e "### " pra um subtítulo. Não use tabela nem bloco de código.
-- Nome de pessoa, valor e prazo: copie como está na fonte.
-- Se o documento da call de expansão não for sobre venda/negociação (ex: é uma reunião de entrega do projeto), não escreva isso como explicação — devolva o JSON normalmente, com "Não identificado nas reuniões — preencher à mão" nos campos que essa reunião não cobre. A resposta é SEMPRE só o JSON, mesmo quando a fonte não é a esperada.`;
+- Se o documento da call de expansão não for sobre venda/negociação (ex: é uma reunião de entrega do projeto), não escreva isso como explicação — devolva o JSON normalmente, com "Não identificado nas reuniões — preencher à mão" nos campos que essa reunião não cobre. A resposta é SEMPRE só o JSON, mesmo quando a fonte não é a esperada.
+- Você não recebe o contrato. Não invente produto, valor ou forma de pagamento aqui — isso não está entre os campos pedidos.`;
+
+// Extrai o JSON da resposta do Claude, com a mesma tolerância pra quando ele emenda uma
+// explicação antes do objeto (ex: percebe que o documento colado não é o esperado).
+function extrairJson(resposta, origem) {
+  if (!resposta.ok) {
+    const msg = (resposta.data && resposta.data.error && resposta.data.error.message) || ('HTTP ' + resposta.status);
+    throw new ErroDeUso(502, 'A IA não respondeu (' + origem + '): ' + msg);
+  }
+  const texto = ((resposta.data && resposta.data.content) || [])
+    .filter((b) => b && b.type === 'text').map((b) => b.text).join('');
+  const bruto = String(texto || '').trim().replace(/^```(?:json)?/, '').replace(/```$/, '').trim();
+  let dados;
+  try {
+    dados = JSON.parse(bruto);
+  } catch (e) {
+    const ini = bruto.indexOf('{');
+    const fim = bruto.lastIndexOf('}');
+    if (ini >= 0 && fim > ini) {
+      try { dados = JSON.parse(bruto.slice(ini, fim + 1)); } catch (e2) { /* mantém dados indefinido */ }
+    }
+  }
+  if (!dados) {
+    const trecho = bruto.replace(/\s+/g, ' ').slice(0, 280);
+    throw new ErroDeUso(502, 'A IA respondeu fora do formato esperado (' + origem + '). Tente de novo ou escreva os campos à mão.'
+      + (trecho ? ' O que a IA respondeu: "' + trecho + (bruto.length > 280 ? '…' : '') + '"' : ''));
+  }
+  return dados;
+}
 
 async function rotaRedigir(req, res) {
   const { eu } = await quemEsta(req);
@@ -186,24 +232,25 @@ async function rotaRedigir(req, res) {
   if (!apiKey) throw new ErroDeUso(503, 'ANTHROPIC_API_KEY não configurada no servidor');
   const { accessToken } = await tokenDaPessoa(eu.email);
 
-  const blocos = [];   // conteúdo da mensagem pro Claude, PDF incluído
-  const lidas = [];    // o que deu pra ler, pra dizer na tela
-  const avisos = [];   // o que não deu, com o motivo
+  const blocosContrato = [];   // só o contrato — vai pra chamada que preenche produto/valor/forma/data
+  const blocosReunioes = [];   // call de expansão + reuniões de entrega — vai pra chamada do resto
+  const lidas = [];            // o que deu pra ler, pra dizer na tela
+  const avisos = [];           // o que não deu, com o motivo
 
   // 1) contrato assinado — anexo direto do computador tem prioridade (é PDF, a pessoa acabou
   //    de escolher); sem anexo, lê do Drive pelo link. PDF vai como documento (o Claude lê PDF
   //    nativo), Doc do Drive vai como texto.
   if (contratoArquivo && contratoArquivo.base64) {
-    blocos.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: contratoArquivo.base64 } });
+    blocosContrato.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: contratoArquivo.base64 } });
     lidas.push('contrato (anexado: ' + (contratoArquivo.nome || 'PDF') + ')');
   } else if (contrato) {
     try {
       const arq = await lerArquivoDoDrive({ accessToken, link: contrato });
       if (arq.pdfBase64) {
-        blocos.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: arq.pdfBase64 } });
+        blocosContrato.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: arq.pdfBase64 } });
         lidas.push('contrato (PDF' + (arq.nome ? ': ' + arq.nome : '') + ')');
       } else {
-        blocos.push({ type: 'text', text: '### Contrato assinado' + (arq.nome ? ' — ' + arq.nome : '') + '\n' + String(arq.texto || '').slice(0, 60000) });
+        blocosContrato.push({ type: 'text', text: '### Contrato assinado' + (arq.nome ? ' — ' + arq.nome : '') + '\n' + String(arq.texto || '').slice(0, 60000) });
         lidas.push('contrato' + (arq.nome ? ' (' + arq.nome + ')' : ''));
       }
     } catch (e) {
@@ -216,10 +263,10 @@ async function rotaRedigir(req, res) {
     try {
       const arq = await lerArquivoDoDrive({ accessToken, link: callExpansao });
       if (arq.pdfBase64) {
-        blocos.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: arq.pdfBase64 } });
+        blocosReunioes.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: arq.pdfBase64 } });
         lidas.push('call de expansão (PDF)');
       } else {
-        blocos.push({ type: 'text', text: '### Call de expansão (onde a venda foi fechada)\n' + String(arq.texto || '').slice(0, 60000) });
+        blocosReunioes.push({ type: 'text', text: '### Call de expansão (onde a venda foi fechada)\n' + String(arq.texto || '').slice(0, 60000) });
         lidas.push('call de expansão');
       }
     } catch (e) {
@@ -236,59 +283,52 @@ async function rotaRedigir(req, res) {
     if (!g || !g.docId) continue;
     try {
       const texto = await exportFileAsText({ accessToken, fileId: g.docId });
-      blocos.push({ type: 'text', text: '### Reunião ' + chave + (g.titulo ? ' — ' + g.titulo : '') + '\n' + texto.slice(0, 18000) });
+      blocosReunioes.push({ type: 'text', text: '### Reunião ' + chave + (g.titulo ? ' — ' + g.titulo : '') + '\n' + texto.slice(0, 18000) });
       reunioes++;
     } catch (e) { /* sem permissão de leitura nessa: segue sem ela */ }
     if (reunioes >= 3) break; // três reuniões já dão o retrato; mais que isso estoura o tempo
   }
   if (reunioes) lidas.push(reunioes + ' reunião(ões) de entrega');
 
-  if (!blocos.length) {
+  if (!blocosContrato.length && !blocosReunioes.length) {
     throw new ErroDeUso(422, 'Não achei nada pra ler. Cole o link do contrato e o da call de expansão'
       + (avisos.length ? ' — ' + avisos.join('; ') : '') + '.');
   }
 
-  // O texto do pedido vai por último: o modelo lê melhor quando os documentos vêm antes.
-  blocos.push({ type: 'text', text: 'Cliente: ' + cliente
-    + '\n\nCampos que o consultor já preencheu (não contradiga sem base no contrato): '
-    + JSON.stringify(negociacao || {})
-    + '\n\nPreencha o JSON pedido a partir dos documentos acima.' });
-
+  // As duas chamadas, quando as duas fontes existem, saem em paralelo — não dobra a espera.
   // Sem `temperature`: o callClaude compartilhado aponta pro claude-sonnet-5, que recusa o
   // parâmetro (a justificativa está no comentário do anthropic.js).
-  const resposta = await callClaude({
-    apiKey,
-    system: SISTEMA_REDACAO,
-    conteudo: blocos,
-    maxTokens: 2500,
-  });
-  if (!resposta.ok) {
-    const msg = (resposta.data && resposta.data.error && resposta.data.error.message) || ('HTTP ' + resposta.status);
-    throw new ErroDeUso(502, 'A IA não respondeu: ' + msg);
-  }
-  const texto = ((resposta.data && resposta.data.content) || [])
-    .filter((b) => b && b.type === 'text').map((b) => b.text).join('');
-  const bruto = String(texto || '').trim().replace(/^```(?:json)?/, '').replace(/```$/, '').trim();
-  let dados;
-  try {
-    dados = JSON.parse(bruto);
-  } catch (e) {
-    // A instrução pede "só o JSON", mas às vezes a IA emenda uma explicação antes (ex: percebe
-    // que a call de expansão colada é na verdade uma reunião de entrega) — tenta achar o objeto
-    // dentro do texto antes de desistir.
-    const ini = bruto.indexOf('{');
-    const fim = bruto.lastIndexOf('}');
-    if (ini >= 0 && fim > ini) {
-      try { dados = JSON.parse(bruto.slice(ini, fim + 1)); } catch (e2) { /* mantém dados indefinido */ }
-    }
-  }
-  if (!dados) {
-    // Sem isso, o texto real que a IA respondeu era descartado — sem pista de por que falhou.
-    const trecho = bruto.replace(/\s+/g, ' ').slice(0, 280);
-    throw new ErroDeUso(502, 'A IA respondeu fora do formato esperado. Tente de novo ou escreva os campos à mão.'
-      + (trecho ? ' O que a IA respondeu: "' + trecho + (bruto.length > 280 ? '…' : '') + '"' : ''));
-  }
-  res.status(200).json({ campos: dados, lidas, avisos, reunioesLidas: reunioes });
+  const [respContrato, respReunioes] = await Promise.all([
+    blocosContrato.length
+      ? callClaude({
+          apiKey,
+          system: SISTEMA_CONTRATO,
+          conteudo: [...blocosContrato, { type: 'text', text: 'Cliente: ' + cliente
+            + '\n\nCampos que o consultor já preencheu (não contradiga sem base no contrato): '
+            + JSON.stringify({
+                produto: (negociacao && negociacao.produto) || '',
+                valor: (negociacao && negociacao.valor) || '',
+                formaPagamento: (negociacao && negociacao.formaPagamento) || '',
+                inicioServico: (negociacao && negociacao.inicioServico) || '',
+              })
+            + '\n\nPreencha o JSON pedido a partir do contrato acima.' }],
+          maxTokens: 800,
+        })
+      : null,
+    blocosReunioes.length
+      ? callClaude({
+          apiKey,
+          system: SISTEMA_REUNIOES,
+          conteudo: [...blocosReunioes, { type: 'text', text: 'Cliente: ' + cliente + '\n\nPreencha o JSON pedido a partir das reuniões acima.' }],
+          maxTokens: 2000,
+        })
+      : null,
+  ]);
+
+  const camposContrato = respContrato ? extrairJson(respContrato, 'contrato') : {};
+  const camposReunioes = respReunioes ? extrairJson(respReunioes, 'reuniões') : {};
+
+  res.status(200).json({ campos: { ...camposContrato, ...camposReunioes }, lidas, avisos, reunioesLidas: reunioes });
 }
 
 // ── Gravar no Notion ────────────────────────────────────────────────
@@ -309,7 +349,22 @@ async function rotaGravar(req, res) {
   }
   if (secao.jaTemConteudo && substituir) await limparSecao(secao.id);
 
-  await escreverNaSecao(secao.id, blocosDoDossie({ ...dados, porQuem: eu.nome_exibicao }));
+  // Contrato anexado direto do computador (sem link do Drive): sobe pro Notion de verdade
+  // agora, na hora de gravar — não faz sentido subir a cada vez que a IA só lê o PDF pra
+  // extrair os campos (rotaRedigir). Vira um bloco de arquivo real na página, não só um texto
+  // com o nome do PDF.
+  let dadosFinal = dados;
+  if (dados.contratoArquivo && dados.contratoArquivo.base64) {
+    const fileUploadId = await subirArquivoNotion({
+      nome: dados.contratoArquivo.nome,
+      base64: dados.contratoArquivo.base64,
+      contentType: 'application/pdf',
+    });
+    dadosFinal = { ...dados, contratoFileUploadId: fileUploadId };
+  }
+  delete dadosFinal.contratoArquivo;
+
+  await escreverNaSecao(secao.id, blocosDoDossie({ ...dadosFinal, porQuem: eu.nome_exibicao }));
   res.status(200).json({ ok: true });
 }
 

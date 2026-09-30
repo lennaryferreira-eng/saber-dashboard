@@ -214,6 +214,51 @@ function blocosDeTexto(valor, opcoes) {
   return blocos;
 }
 
+// ── Upload de arquivo ───────────────────────────────────────────────
+//
+// Sobe um PDF pro Notion de verdade (File Upload API, em 2 passos) e devolve o id pra usar
+// num bloco de arquivo. Só cobre o modo "single_part" (arquivo inteiro numa tacada só) — o
+// painel já limita o upload local a 3 MB antes de chegar aqui (ver dossieAnexarArquivo no
+// index.html), bem abaixo do teto de 20 MB do single_part, então não precisa da variante
+// em partes (multi_part) pensada pra arquivo grande.
+export async function subirArquivoNotion({ nome, base64, contentType }) {
+  const criado = await notion('POST', '/file_uploads', {
+    filename: nome || 'contrato.pdf',
+    content_type: contentType || 'application/pdf',
+  });
+  const buffer = Buffer.from(base64, 'base64');
+  const form = new FormData();
+  form.append('file', new Blob([buffer], { type: contentType || 'application/pdf' }), nome || 'contrato.pdf');
+  const res = await fetch(NOTION_API + '/file_uploads/' + encodeURIComponent(criado.id) + '/send', {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer ' + token(),
+      'Notion-Version': NOTION_VERSION,
+      // Sem Content-Type manual — o FormData nativo calcula o boundary do multipart sozinho.
+    },
+    body: form,
+  });
+  const dados = await res.json().catch(() => null);
+  if (!res.ok) {
+    const msg = (dados && dados.message) || ('HTTP ' + res.status);
+    throw new ErroNotion(502, 'Notion (upload do contrato): ' + msg);
+  }
+  return criado.id;
+}
+
+// Bloco de arquivo já enviado (referencia o id de subirArquivoNotion) — some junto do resto do
+// dossiê, abrível direto no Notion, em vez de só um texto dizendo o nome do PDF.
+function blocoArquivo(fileUploadId, legenda) {
+  return {
+    type: 'file',
+    file: {
+      type: 'file_upload',
+      file_upload: { id: fileUploadId },
+      caption: legenda ? richTexto(legenda) : [],
+    },
+  };
+}
+
 function rotuloEmNegrito(rotulo) {
   return { type: 'text', text: { content: rotulo + ' ' }, annotations: { bold: true } };
 }
@@ -283,6 +328,7 @@ export function blocosDoDossie(d) {
     ...campoLongo('Objeções levantadas e como foram tratadas:', d.objecoes, { comoLista: true }),
     ...campoLongo('Promessas e expectativas geradas:', d.promessas, { comoLista: true }),
     paragrafo('Link do contrato assinado:', d.contrato),
+    ...(d.contratoFileUploadId ? [blocoArquivo(d.contratoFileUploadId, 'Contrato assinado (PDF anexado pelo consultor)')] : []),
 
     { type: 'heading_3', heading_3: { rich_text: rico('4. Informações importantes sobre o projeto:') } },
     ...(blocosDeTexto(d.informacoes).length ? blocosDeTexto(d.informacoes)
