@@ -220,7 +220,7 @@
   <div class="card">
     <div class="base-toolbar">
       <div class="base-filter-group">
-        <span class="base-filter-label">Consultor</span>
+        <span class="base-filter-label">Analista de Martech</span>
         <select class="base-sel" id="ft-consultor" onchange="renderBaseTer()"><option value="">Todos</option></select>
       </div>
       <div class="base-filter-group">
@@ -281,7 +281,7 @@
       <table>
         <thead>
           <tr>
-            <th style="width:36px;min-width:36px;">#</th><th style="min-width:160px;">Projeto</th><th>Modelo</th><th>Consultor</th><th>Recorrência</th><th>Dedicação</th><th>GMV (R$)</th><th>Tier</th><th>Fee (R$)</th>
+            <th style="width:36px;min-width:36px;">#</th><th style="min-width:160px;">Projeto</th><th>Modelo</th><th>Analista de Martech</th><th>Recorrência</th><th>Dedicação</th><th>GMV (R$)</th><th>Tier</th><th>Fee (R$)</th>
             <th>Dt. Início</th><th>Dt. Prev. Conclusão</th><th>Dt. Conclusão Real</th>
             <th>Prazo</th><th>Flag</th>
             <th>Status</th>
@@ -370,9 +370,9 @@
     </div>
     <div id="ov-motivos"></div>
   </div>
-  <!-- Carga por consultor -->
+  <!-- Carga por consultor (rótulo vira "Analista de Martech" na TER — ver buildOvAnalises) -->
   <div class="card" style="margin-bottom:1rem;">
-    <div class="card-title">Carga por consultor <span style="font-weight:400;color:var(--text-hint);text-transform:none;letter-spacing:0;">— semana atual</span></div>
+    <div class="card-title" id="ov-carga-consultor-titulo">Carga por consultor <span style="font-weight:400;color:var(--text-hint);text-transform:none;letter-spacing:0;">— semana atual</span></div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;" id="ov-consultores"></div>
   </div>
   <!-- Andamento dos Projetos (versão simplificada, sem status de prazo/monetização) -->
@@ -856,7 +856,7 @@
 </div>
 <div id="prazo-ter-view" style="display:none;">
   <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:1rem;">
-    <span class="base-filter-label">Consultor</span>
+    <span class="base-filter-label">Analista de Martech</span>
     <select class="base-sel" id="prazo-ter-f-cons" onchange="calcPrazoTer()"><option value="">Todos</option></select>
     <button class="base-clear" onclick="clearPrazoTerFilters()">Limpar</button>
   </div>
@@ -930,7 +930,7 @@
   </div>
 
   <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:.8rem;">
-    <span class="base-filter-label">Consultor</span>
+    <span class="base-filter-label">Analista de Martech</span>
     <select class="base-sel" id="nps-ter-f-cons" onchange="buildNpsTer()"><option value="">Todos</option></select>
     <span class="base-filter-label">Mês</span>
     <select class="base-sel" id="nps-ter-f-mes" onchange="buildNpsTer()"><option value="">Todos</option></select>
@@ -939,11 +939,11 @@
 
   <div class="card" style="margin-bottom:1rem;">
     <div class="card-title">One-time — por projeto finalizado</div>
-    <div class="tbl-wrap"><table><thead><tr><th>Finalização</th><th>Projeto</th><th>Consultor</th><th>Nota (0–10)</th><th>Categoria</th><th>Data Resposta</th><th>Comentário</th></tr></thead><tbody id="nps-ter-ot-tbody"></tbody></table></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Finalização</th><th>Projeto</th><th>Analista de Martech</th><th>Nota (0–10)</th><th>Categoria</th><th>Data Resposta</th><th>Comentário</th></tr></thead><tbody id="nps-ter-ot-tbody"></tbody></table></div>
   </div>
   <div class="card">
     <div class="card-title">Recorrente — por mês</div>
-    <div class="tbl-wrap"><table><thead><tr><th>Mês</th><th>Projeto</th><th>Consultor</th><th>Nota (0–10)</th><th>Categoria</th><th>Data Resposta</th><th>Comentário</th></tr></thead><tbody id="nps-ter-rec-tbody"></tbody></table></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Mês</th><th>Projeto</th><th>Analista de Martech</th><th>Nota (0–10)</th><th>Categoria</th><th>Data Resposta</th><th>Comentário</th></tr></thead><tbody id="nps-ter-rec-tbody"></tbody></table></div>
   </div>
 </div>
 </section>
@@ -1110,7 +1110,7 @@
         <option>Finalizados</option>
         <option>Todos</option>
       </select>
-      <span class="base-filter-label">Consultor</span>
+      <span class="base-filter-label">Analista de Martech</span>
       <select class="base-sel" id="ltt-f-cons" onchange="buildLeadTimeTer()"><option value="">Todos</option></select>
       <span class="base-filter-label">Conversão</span>
       <select class="base-sel" id="ltt-f-conv" onchange="buildLeadTimeTer()">
@@ -1132,7 +1132,7 @@
     <table class="lt-table">
       <thead>
         <tr>
-          <th style="min-width:170px;">Consultor / Projeto</th>
+          <th style="min-width:170px;">Analista de Martech / Projeto</th>
           <th style="min-width:90px;">GMV</th>
           <th style="min-width:80px;">Tier</th>
           <th>Início</th><th>Previsto</th>
@@ -1164,7 +1164,7 @@
 
   <div class="card" style="padding:.7rem 1.1rem;margin-bottom:.8rem;">
     <div class="lt-filter-bar" style="margin-bottom:0;">
-      <span class="base-filter-label">Consultor</span>
+      <span class="base-filter-label">Analista de Martech</span>
       <select class="base-sel" id="ltr-f-cons" onchange="buildLeadTimeRec()"><option value="">Todos</option></select>
       <span class="base-filter-label">Conversão</span>
       <select class="base-sel" id="ltr-f-conv" onchange="buildLeadTimeRec()">
@@ -1186,7 +1186,7 @@
     <table class="lt-table">
       <thead>
         <tr>
-          <th style="min-width:170px;">Consultor / Projeto</th>
+          <th style="min-width:170px;">Analista de Martech / Projeto</th>
           <th style="min-width:90px;">GMV</th>
           <th style="min-width:80px;">Tier</th>
           <th>Início</th><th>Previsto</th>
@@ -1407,7 +1407,7 @@
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:1rem;">
       <div class="card-title" style="margin-bottom:0;">Andamento dos projetos</div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        <span style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Consultor</span>
+        <span style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Analista de Martech</span>
         <select class="base-sel" id="gantt-ter-cons-filter" onchange="buildGanttTer()"><option value="">Todos</option></select>
         <span style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Status</span>
         <select class="base-sel" id="gantt-ter-status-filter" onchange="buildGanttTer()">
@@ -1450,7 +1450,7 @@
       <span style="width:10px;height:10px;border-radius:50%;background:var(--green);display:inline-block;"></span>
       Projetos Recorrentes
     </div>
-    <p style="font-size:var(--fs-sm);color:var(--text-hint);margin:-4px 0 1rem;">Mesmas colunas de semana do Gantt One-time acima — o ciclo mensal de cada projeto (Otimizações previstas · Reunião mensal · Envio NPS, nessa ordem em cada célula) aparece marcado na semana em que aconteceu. Só visualização, sem clique; pra marcar algo, use a aba Escopos Recorrentes. Reaproveita os filtros de Consultor e Período do Gantt acima.</p>
+    <p style="font-size:var(--fs-sm);color:var(--text-hint);margin:-4px 0 1rem;">Mesmas colunas de semana do Gantt One-time acima — o ciclo mensal de cada projeto (Otimizações previstas · Reunião mensal · Envio NPS, nessa ordem em cada célula) aparece marcado na semana em que aconteceu. Só visualização, sem clique; pra marcar algo, use a aba Escopos Recorrentes. Reaproveita os filtros de Analista de Martech e Período do Gantt acima.</p>
     <div class="gantt-wrap">
       <table class="gantt-table"><thead id="cap-ter-rec-thead"></thead><tbody id="cap-ter-rec-tbody"></tbody></table>
     </div>
@@ -1821,10 +1821,10 @@
     </div>
   </div>
   <div id="performance-ter-view" style="display:none;">
-    <div class="sec-head"><h2 class="sec-title">Performance</h2><p class="sec-desc">Ranking de consultores da TER — Projetos no Prazo, NPS e PDI. 2026.</p></div>
+    <div class="sec-head"><h2 class="sec-title">Performance</h2><p class="sec-desc">Ranking de Analistas de Martech da TER — Projetos no Prazo, NPS e PDI. 2026.</p></div>
     <div id="perf-ter-filter-bar" style="margin-bottom:.6rem;"></div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.2rem;">
-      <span style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Consultor</span>
+      <span style="font-size:var(--fs-xs);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-hint);">Analista de Martech</span>
       <select class="base-sel" id="perf-ter-f-cons" onchange="buildPerformanceTer()"><option value="">Todos</option></select>
     </div>
     <div style="overflow-x:auto;padding-bottom:8px;margin-bottom:1.5rem;">
@@ -1834,7 +1834,7 @@
     <div id="perf-ter-detalhe" style="display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
         <h3 id="perf-ter-detalhe-nome" style="font-family:var(--cond);font-size:1.3rem;font-weight:700;"></h3>
-        <span style="font-size:var(--fs-sm);color:var(--text-hint);">Clique em outro consultor para comparar</span>
+        <span style="font-size:var(--fs-sm);color:var(--text-hint);">Clique em outro Analista de Martech para comparar</span>
       </div>
       <div style="display:flex;flex-direction:column;gap:1rem;">
         <div class="card" style="padding:0;">
@@ -2169,7 +2169,7 @@
           <input id="npt-nome" type="text" class="sel" style="width:100%;font-size:var(--fs-lg);" placeholder="Ex: Frotix Tecnologia">
         </div>
         <div>
-          <label for="npt-consultor" style="display:block;font-size:var(--fs-xs);font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">Consultor responsável</label>
+          <label for="npt-consultor" style="display:block;font-size:var(--fs-xs);font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">Analista de Martech responsável</label>
           <input id="npt-consultor" type="text" class="sel" style="width:100%;font-size:var(--fs-lg);" placeholder="Ex: Camila">
         </div>
         <div>
@@ -2290,7 +2290,7 @@
           </label>
           <label class="conta-campo"><span class="aud-lbl">Nome nos projetos</span><input id="usu-squad-nome" class="aud-inp" maxlength="40" placeholder="Como aparece em Consultor/Designer"></label>
           <label class="conta-campo"><span class="aud-lbl">Coordenação</span>
-            <select id="usu-coord" class="aud-inp"><option value="saber">SABER</option><option value="ter">TER</option></select>
+            <select id="usu-coord" class="aud-inp" onchange="usuarioSincronizarAcesso()"><option value="saber">SABER</option><option value="ter">TER</option></select>
           </label>
           <label class="conta-campo"><span class="aud-lbl">Cor</span><select id="usu-cor" class="aud-inp"></select></label>
           <label class="conta-check conta-campo-largo"><input type="checkbox" id="usu-squad-ativo"> Ativo no squad (inativo sai da Performance, AQL, Capacity e PDI, mas o histórico fica)</label>
@@ -7865,7 +7865,7 @@ function calcPrazoTer() {
         </div>
       </div>
       <div class="month-stats">Projetos: <strong>${total}</strong> · <span style="color:var(--green)">${icon('check')} ${ok}</span> · <span style="color:var(--red)">${icon('x')} ${nok}</span>${interr>0?` · <span style="color:var(--text-hint)">⊘ ${interr}</span>`:''}</div>
-      <div class="tbl-wrap"><table><thead><tr><th>Projeto</th><th>Consultor</th><th>Início</th><th>Prev. Conclusão</th><th>Conclusão Real</th><th>Dias</th><th>Status</th><th>Flag</th></tr></thead><tbody>${rows||emptyRow(8,'Nenhum projeto ativo')}</tbody></table></div>
+      <div class="tbl-wrap"><table><thead><tr><th>Projeto</th><th>Analista de Martech</th><th>Início</th><th>Prev. Conclusão</th><th>Conclusão Real</th><th>Dias</th><th>Status</th><th>Flag</th></tr></thead><tbody>${rows||emptyRow(8,'Nenhum projeto ativo')}</tbody></table></div>
     </div>`;
   }, 'prazoTer');
 
@@ -10295,6 +10295,11 @@ function buildOvAnalises(mesesSel, mesLabel) {
   // Carga por consultor — reflete a semana ATUAL especificamente (mesmo critério de
   // "janela ativa" usado no Capacity: início <= fim da semana E fim (real/prevista) >= início
   // da semana), não todos os projetos "Em andamento" no geral.
+  const tituloCargaEl = document.getElementById('ov-carga-consultor-titulo');
+  if (tituloCargaEl) {
+    tituloCargaEl.innerHTML = (currentCoord === 'ter' ? 'Carga por Analista de Martech' : 'Carga por consultor')
+      + ' <span style="font-weight:400;color:var(--text-hint);text-transform:none;letter-spacing:0;">— semana atual</span>';
+  }
   const consEl = document.getElementById('ov-consultores');
   if (consEl) {
     const hojeCarga = new Date(); hojeCarga.setHours(0,0,0,0);
@@ -12948,7 +12953,7 @@ function buildGanttTer() {
     return true;
   });
   const prjsCargaTotal = [...prjsParaCarga, ...recParaCarga];
-  buildCargaSemanal(prjsCargaTotal, semanas, 'consultor', 'carga-consultor-ter', 'Carga por consultor — semana a semana', 'Consultor', (p, seg, dom) => ativoNaSemana(p, seg));
+  buildCargaSemanal(prjsCargaTotal, semanas, 'consultor', 'carga-consultor-ter', 'Carga por Analista de Martech — semana a semana', 'Analista de Martech', (p, seg, dom) => ativoNaSemana(p, seg));
   const cargaDiv = document.getElementById('carga-semanal-ter');
   if (cargaDiv) {
     const maxCarga = Math.max(...semanas.map(s => prjsCargaTotal.filter(p => ativoNaSemana(p, s)).length), 1);
@@ -12985,7 +12990,7 @@ function buildGanttTer() {
   });
   thead.innerHTML = '<tr>'
     + '<th style="min-width:160px;text-align:left;padding:5px 8px;">Projeto</th>'
-    + '<th style="min-width:80px;text-align:left;padding:5px 8px;">Consultor</th>'
+    + '<th style="min-width:80px;text-align:left;padding:5px 8px;">Analista de Martech</th>'
     + mesGroups.map(g => '<th colspan="' + g.count + '" style="text-align:center;">' + g.label + '</th>').join('')
     + '</tr>'
     + '<tr><th></th><th></th>'
@@ -13364,7 +13369,7 @@ function buildCapacityRec(semanasExt) {
 
   thead.innerHTML = '<tr>'
     + '<th style="min-width:160px;text-align:left;padding:5px 8px;position:sticky;left:0;background:var(--surface2);z-index:3;">Projeto</th>'
-    + '<th style="min-width:80px;text-align:left;padding:5px 8px;">Consultor</th>'
+    + '<th style="min-width:80px;text-align:left;padding:5px 8px;">Analista de Martech</th>'
     + semanas.map(s => {
         const sEnd = new Date(s.getTime() + 6*864e5);
         const isHoje = hoje >= s && hoje <= sEnd;
@@ -14514,7 +14519,7 @@ function buildPerformanceTer() {
     return { nome, dot, kpis, atingidos, totalComDado, pctMedio };
   });
 
-  if (!cards.length) { el.innerHTML = '<div style="color:var(--text-hint);font-size:var(--fs-base);">Nenhum consultor no squad.</div>'; return; }
+  if (!cards.length) { el.innerHTML = '<div style="color:var(--text-hint);font-size:var(--fs-base);">Nenhum Analista de Martech no squad.</div>'; return; }
 
   // Ordena: mais KPIs atingidos primeiro · desempate maior % médio · desempate alfabético
   // (a TER não tem um KPI de "projetos em andamento" ou "conversão" pra desempatar como a
@@ -17198,9 +17203,16 @@ function avatarUsuarioHTML(u, px, fotoForcada) {
   const cor = (u && u.cor) || 'var(--text-hint)';
   return '<span class="conta-avatar" aria-hidden="true" style="' + estilo + 'background:' + escAttr(cor) + ';">' + escAttr(iniciaisDe(u && u.nome_exibicao)) + '</span>';
 }
+// Rótulo do papel de squad, sensível à coordenação: a função de "consultor" na SABER é
+// chamada de "Analista de Martech" na TER — mesmo campo (squad_tipo='consultor'), nome
+// diferente na prática do time. Designer não muda (a TER não usa esse termo).
+function rotuloSquadTipo(tipo, coord) {
+  if (tipo === 'designer') return 'Designer';
+  return coord === 'ter' ? 'Analista de Martech' : 'Consultor';
+}
 function descricaoSquad(u) {
   if (!u.squad_tipo) return '';
-  return (u.squad_tipo === 'consultor' ? 'Consultor' : 'Designer') + ' · ' + u.squad_nome + ' · ' + (u.coordenacao || 'saber').toUpperCase()
+  return rotuloSquadTipo(u.squad_tipo, u.coordenacao) + ' · ' + u.squad_nome + ' · ' + (u.coordenacao || 'saber').toUpperCase()
     + (u.squad_ativo ? '' : ' · inativo');
 }
 
@@ -17563,7 +17575,7 @@ function buildUsuarios() {
     const eu = USUARIO_ATUAL && u.id === USUARIO_ATUAL.id;
     const squad = u.squad_tipo
       ? '<span class="conta-pessoa" style="min-width:0;gap:6px;"><span class="conta-dot" style="background:' + escAttr(u.cor || 'var(--text-hint)') + ';"></span>'
-        + escAttr(u.squad_nome) + ' <small style="display:inline;">' + (u.squad_tipo === 'consultor' ? 'consultor' : 'designer') + ' · ' + (u.coordenacao || 'saber').toUpperCase() + '</small></span>'
+        + escAttr(u.squad_nome) + ' <small style="display:inline;">' + rotuloSquadTipo(u.squad_tipo, u.coordenacao).toLowerCase() + ' · ' + (u.coordenacao || 'saber').toUpperCase() + '</small></span>'
         + (u.squad_ativo ? '' : '<span class="badge b-gray" style="margin:4px 0 0;">Inativo</span>')
       : '<span class="conta-celula-vazia">—</span>';
     return '<tr' + (eu ? ' class="conta-linha-eu"' : '') + '>'
@@ -17711,6 +17723,10 @@ function usuarioSincronizarAcesso() {
   if (ehSquad) tipo.value = acesso;
   else if (tipo.value !== _usuTipoOriginal && document.getElementById('usu-squad-tipo-campo').style.display === 'none') tipo.value = _usuTipoOriginal;
   document.getElementById('usu-squad-tipo-campo').style.display = ehSquad ? 'none' : '';
+  // "Consultor" na TER se chama "Analista de Martech" — a opção do dropdown segue a
+  // Coordenação escolhida no mesmo modal (chamada de novo pelo onchange do usu-coord).
+  const optConsultor = document.querySelector('#usu-squad-tipo option[value="consultor"]');
+  if (optConsultor) optConsultor.textContent = rotuloSquadTipo('consultor', document.getElementById('usu-coord').value);
   // Cargo vazio: sugere o cargo correspondente ao acesso
   const cargo = document.getElementById('usu-cargo');
   if (ehSquad && !cargo.value) usuarioMontarCargos(acesso === 'consultor' ? 'Consultor' : 'Designer');
