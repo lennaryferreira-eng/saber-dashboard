@@ -11028,11 +11028,27 @@ async function oportFechar(projId, opId) {
   _oportRefresh(p);
 }
 
+// Eventos da AQL ligados à oportunidade excluída não podem virar "fantasma" (linkOportId
+// apontando pra um id que não existe mais) — isso inflava o volume de AQL/SAL em duplicidade
+// toda vez que alguém limpava uma oportunidade duplicada manualmente (ex: Bill Motos chegou a
+// acumular 4 eventos órfãos, 2 com reunião feita, aparecendo multiplicado em Performance mas
+// escondido do Registro da AQL — achado em 01/10/2026). Com outra oportunidade sobrando no
+// projeto, realoca o histórico pra ela (prefere uma aberta, mais recente primeiro) — só apaga
+// os eventos junto quando não sobra nenhuma oportunidade pra herdar esse histórico.
 async function oportRemover(projId, opId) {
   const p = projects.find(x => String(x.id) === String(projId));
   if (!p) return;
   if (!(await showConfirm('Excluir essa oportunidade? Essa ação não pode ser desfeita.'))) return;
-  p.oportunidades = oportunidadesDe(p).filter(x => x.id !== opId);
+  const restantes = oportunidadesDe(p).filter(x => x.id !== opId);
+  ensurePipeEventos(p);
+  if (restantes.length) {
+    const sobrevivente = restantes.slice().sort((a, b) => (b.criadaEm || '').localeCompare(a.criadaEm || ''))
+      .find(o => !o.fechadaEm) || restantes[restantes.length - 1];
+    p.pipeEventos.forEach(e => { if (e.linkOportId === opId) e.linkOportId = sobrevivente.id; });
+  } else {
+    p.pipeEventos = p.pipeEventos.filter(e => e.linkOportId !== opId);
+  }
+  p.oportunidades = restantes;
   _oportRefresh(p);
 }
 
